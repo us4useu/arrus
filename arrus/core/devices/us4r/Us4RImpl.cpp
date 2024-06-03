@@ -16,6 +16,8 @@
         throw std::runtime_error("Us4RImpl object has no rx setting set.");                                            \
     }
 
+#undef ERROR
+
 namespace arrus::devices {
 
 using namespace ::std;

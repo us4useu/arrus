@@ -296,7 +296,7 @@ public:
         for(const auto &p: parameters) {
             if(! p.isRxNOP()) {
                 auto padding = p.getRxPadding().sum();
-                s.insert(getNumberOfActiveChannels(p.getRxAperture()) + padding);
+                s.insert(static_cast<ChannelIdx>(getNumberOfActiveChannels(p.getRxAperture()) + padding));
             }
         }
         ARRUS_REQUIRES_TRUE_IAE(s.size() == 1, "All TX/RXs should have the same RX aperture size "
@@ -336,7 +336,7 @@ private:
     friend TxRxParametersSequenceBuilder;
     std::vector<TxRxParameters> parameters;
     uint16 nRepeats{0};
-    std::optional<float> sri{0};
+    std::optional<float> sri{0.0f};
     ops::us4r::TGCCurve tgcCurve;
     DeviceId txProbeId{DeviceType::Probe, 0};
     DeviceId rxProbeId{DeviceType::Probe, 0};
