@@ -9,6 +9,7 @@
 
 namespace arrus::ops::us4r {
 
+
 class SchemeBuilder;
 
 /**
@@ -54,6 +55,7 @@ public:
     /**
      * TODO(0.12.0) Deprecated: please use Scheme::create instead
      */
+    ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode, std::optional<DigitalDownConversion> ddc,
            const std::vector<arrus::framework::NdArray> &constants);
@@ -68,6 +70,7 @@ public:
      * @param outputBuffer output buffer specification
      * @param workMode scheme work mode
      */
+    ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode)
         :Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, {}) {}
@@ -84,6 +87,7 @@ public:
      * @param workMode scheme work mode
      * @param digitalDownConversion DDC parameters
      */
+    ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode, DigitalDownConversion ddc)
         : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::move(ddc), {}) {}
@@ -92,12 +96,16 @@ public:
     /**
      * TODO(0.12.0) Deprecated: please use Scheme::create instead
      */
+    ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode, const std::vector<framework::NdArray> &constants)
         : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, constants) {}
 
+    ARRUS_CPP_EXPORT
     Scheme(const Scheme &o);
+    ARRUS_CPP_EXPORT
     Scheme(Scheme &&o) noexcept;
+    ARRUS_CPP_EXPORT
     virtual ~Scheme();
     Scheme& operator=(const Scheme &o);
     Scheme& operator=(Scheme &&o) noexcept;
@@ -105,17 +113,26 @@ public:
     /**
      * TODO(0.12.0) Deprecated: please use getTxRxSequence(int ordinal) instead
      */
+     ARRUS_CPP_EXPORT
     const TxRxSequence &getTxRxSequence() const;
+    ARRUS_CPP_EXPORT
     const TxRxSequence &getTxRxSequence(size_t ordinal) const;
+    ARRUS_CPP_EXPORT
     const std::vector<TxRxSequence> &getTxRxSequences() const;
+    ARRUS_CPP_EXPORT
     uint16 getRxBufferSize() const;
+    ARRUS_CPP_EXPORT
     const framework::DataBufferSpec &getOutputBuffer() const;
+    ARRUS_CPP_EXPORT
     WorkMode getWorkMode() const;
+    ARRUS_CPP_EXPORT
     const std::optional<DigitalDownConversion> &getDigitalDownConversion() const;
+    ARRUS_CPP_EXPORT
     const std::vector<arrus::framework::NdArray> &getConstants() const;
 
 private:
     friend class SchemeBuilder;
+    ARRUS_CPP_EXPORT
     Scheme();
     class Impl;
     UniqueHandle<Impl> impl;
@@ -123,14 +140,21 @@ private:
 
 class SchemeBuilder {
 public:
+    ARRUS_CPP_EXPORT
     SchemeBuilder() = default;
+    ARRUS_CPP_EXPORT
     SchemeBuilder& addSequence(TxRxSequence sequence);
+   ARRUS_CPP_EXPORT
     SchemeBuilder& withOutputBufferDefinition(framework::DataBufferSpec spec);
+   ARRUS_CPP_EXPORT
     SchemeBuilder& withRxBufferSize(uint16 rxBufferSize);
+    ARRUS_CPP_EXPORT
     SchemeBuilder& withWorkMode(Scheme::WorkMode mode);
+    ARRUS_CPP_EXPORT
     SchemeBuilder& withDigitalDownConversion(DigitalDownConversion ddc);
     // TODO support constants
 
+    ARRUS_CPP_EXPORT
     Scheme build();
 private:
     Scheme scheme;

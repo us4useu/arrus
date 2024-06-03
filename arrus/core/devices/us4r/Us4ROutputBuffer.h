@@ -203,7 +203,7 @@ public:
         ARRUS_REQUIRES_TRUE(noems <= 16, "Currently Us4R data buffer supports up to 16 OEMs.");
 
         Accumulator elementReadyPattern = createElementReadyPattern(arrayDefs, noems);
-        size_t elementSize = calculateElementSize(arrayDefs);
+        elementSize = calculateElementSize(arrayDefs);
         try {
             size_t totalSize = elementSize * nElements;
             getDefaultLogger()->log(
@@ -374,7 +374,7 @@ private:
         for (auto &array : arrays.getValues()) {
             Accumulator accumulator((1ul << noems) - 1);
             for (size_t oem = 0; oem < noems; ++oem) {
-                if (array.getOEMSize(oem) == 0) {
+                if (static_cast<Ordinal>(array.getOEMSize(oem)) == 0) {
                     accumulator &= ~(1ul << oem);
                 }
             }

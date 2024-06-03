@@ -3,6 +3,8 @@
 
 #include <optional>
 #include <utility>
+#include <algorithm>
+#include <iterator>
 
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/framework.h"
