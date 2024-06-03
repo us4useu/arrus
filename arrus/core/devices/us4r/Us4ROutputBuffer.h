@@ -67,7 +67,7 @@ public:
     Us4ROutputBufferElement(size_t position, Tuple<framework::NdArray> arrays, Accumulator filledAccumulator)
         : position(position), arrays(arrays), filledAccumulator(filledAccumulator) {
         const auto &arr = arrays.getValues();
-        size = std::accumulate(std::begin(arr), std::end(arr), 0,
+        size = std::accumulate(std::begin(arr), std::end(arr), size_t(0),
                                [](const auto &s, const framework::NdArray &b) { return s + b.nbytes(); });
     }
 
@@ -374,7 +374,7 @@ private:
         for (auto &array : arrays.getValues()) {
             Accumulator accumulator((1ul << noems) - 1);
             for (size_t oem = 0; oem < noems; ++oem) {
-                if (static_cast<Ordinal>(array.getOEMSize(oem)) == 0) {
+                if (array.getOEMSize(ARRUS_SAFE_CAST(oem, Ordinal)) == 0) {
                     accumulator &= ~(1ul << oem);
                 }
             }
@@ -399,12 +399,12 @@ private:
         return result;
     }
 
-    void createElements(const Tuple<Us4ROutputBufferArrayDef> &arrayDefs, uint16 elementReadyPattern,
-                        unsigned nElements, size_t elementSize) {
+    void createElements(const Tuple<Us4ROutputBufferArrayDef> &arrayDefinitions, uint16 elementReadyPattern,
+                        unsigned nElements, size_t elementSizeBytes) {
         for (unsigned i = 0; i < nElements; ++i) {
             std::vector<framework::NdArray> arraysVector;
-            for (const Us4ROutputBufferArrayDef &arrayDef : arrayDefs.getValues()) {
-                size_t elementOffset = i * elementSize;
+            for (const Us4ROutputBufferArrayDef &arrayDef : arrayDefinitions.getValues()) {
+                size_t elementOffset = i * elementSizeBytes;
                 size_t arrayOffset = elementOffset + arrayDef.getAddress();
                 auto arrayAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + arrayOffset);
                 auto def = arrayDef.getDefinition();
@@ -458,7 +458,7 @@ public:
             return *this;
         }
         ArrayId nArrays = buffers.at(0).getNumberOfArrays();
-        noems = buffers.size();
+        noems = ARRUS_SAFE_CAST(buffers.size(), unsigned);
 
         std::vector<Us4ROutputBufferArrayDef> result;
         // Array -> shape

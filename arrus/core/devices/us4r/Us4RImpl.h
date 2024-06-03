@@ -216,7 +216,7 @@ private:
     // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
-    std::optional<Ordinal> frameMetadataOEM{0};
+    std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
 };
 
 }// namespace arrus::devices

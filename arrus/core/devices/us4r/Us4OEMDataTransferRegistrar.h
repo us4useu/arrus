@@ -80,7 +80,7 @@ public:
     }
 
     [[nodiscard]] size_t getNumberOfTransfers() const {
-        return std::accumulate(std::begin(elementTransfers), std::end(elementTransfers), 0,
+        return std::accumulate(std::begin(elementTransfers), std::end(elementTransfers), size_t(0),
                                [](const auto &a, const auto &b) { return a + b.size(); });
     }
 

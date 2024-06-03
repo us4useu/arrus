@@ -69,7 +69,7 @@ public:
         for(const auto &s: sequences) {
             for(const auto &op: s.getOps()) {
                 if(! op.getTx().isNOP()) {
-                    uint32_t txTime = getTxTimeUs(op);
+                    TxTimeout txTime = getTxTimeUs(op);
                     if(txTime > MAX_TIMEOUT) {
                         throw IllegalArgumentException(
                             format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
@@ -113,7 +113,7 @@ public:
         for(const auto &s: sequences) {
             OpId opId = 0;
             for(const auto &op: s.getOps()) {
-                uint32_t txTime = getTxTimeUs(op) + EPSILON;
+                TxTimeout txTime = getTxTimeUs(op) + EPSILON;
                 // Find the first timeout, that is greater or equal than the given tx time.
                 auto it = std::find_if(std::begin(timeouts), std::end(timeouts),
                              [txTime](auto t) {return t >= txTime; });
@@ -135,13 +135,13 @@ public:
 private:
     static constexpr TxTimeout MAX_TIMEOUT = (1 << 11) - 1; // TODO move that to the Us4OEMDescriptor?
 
-    [[nodiscard]] uint32_t getTxTimeUs(const ops::us4r::TxRx &op) const {
+    [[nodiscard]] TxTimeout getTxTimeUs(const ops::us4r::TxRx &op) const {
         const auto &delays = op.getTx().getDelaysApertureOnly();
         float maxDelay = *std::max_element(std::begin(delays), std::end(delays));
         float frequency = actualTxFunc(op.getTx().getExcitation().getCenterFrequency());
         float nPeriods = op.getTx().getExcitation().getNPeriods();
         float burstTime = 1.0f/frequency*nPeriods;
-        auto txTimeUs = static_cast<uint32_t>(std::roundf((maxDelay + burstTime)*1e6));
+        auto txTimeUs = ARRUS_SAFE_CAST(std::roundf((maxDelay + burstTime)*1e6f), TxTimeout);
         return txTimeUs;
     }
 

@@ -151,7 +151,7 @@ public:
                             rxSubapertures[subapIdx - 1][ch] = true;
                             // Channel masking
                             if(setContains(op.getMaskedChannelsRx(),ARRUS_SAFE_CAST(ch, ChannelIdx))) {
-                                maskedChannelsRx.at(subapIdx-1).insert(ch);
+                                maskedChannelsRx.at(subapIdx-1).insert(ARRUS_SAFE_CAST(ch, ChannelIdx));
                             }
                             // FC mapping
                             // -1 because subapIdx starts from one
