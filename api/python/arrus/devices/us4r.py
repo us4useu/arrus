@@ -116,13 +116,25 @@ class Us4R(Device, Ultrasound):
             # points.
             self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
-    def set_hv_voltage(self, voltage):
+    def set_hv_voltage(self, *args):
         """
-        Enables HV and sets a given voltage.
+        Enables HV and sets a given voltage(s).
 
-        :param voltage: voltage to set
+        This method expects a list of integers or a list of pairs of integers
+        as input.
+        A single integer v means that the voltage should be set t +v and -v.
+        A pair (vm, vp) means that the -voltage should be set to vm,
+        -voltage to vp.
+
+        Voltage is always expected to be positive number (even for -v).
+
+        Examples:
+            set_hv_voltage(10) -- sets +10 -10 on amplitude level 0.
+            set_hv_voltage((10, 10), (5, 5)) -- sets +10, -10 on level 0,
+            +5, -5 on level 1.
         """
-        self._handle.setVoltage(voltage)
+        voltages = arrus.utils.core.convert_to_hv_voltages(args)
+        self._handle.setVoltage(voltages)
 
     def disable_hv(self):
         """
@@ -296,6 +308,18 @@ class Us4R(Device, Ultrasound):
         Returns a list of system channels that are masked in the configuration, for Probe:{probe_nr}.
         """
         return self._handle.getChannelsMask(probe_nr)
+
+    def get_actual_frequency(self, frequency: float) -> float:
+        """
+        Return the system TX frequency that would be actually set for the given
+        TX frequency.
+        The output frequency depends on the frequency discretization performed
+        by the driver.
+
+        :param frequency: input frequency
+        :return: the actual frequency that will be set
+        """
+        return self._handle.getActualFrequency(frequency)
 
     def set_stop_on_overflow(self, is_stop):
         """

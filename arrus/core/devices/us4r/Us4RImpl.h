@@ -7,6 +7,7 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "TxTimeoutRegister.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -30,7 +31,7 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
-    static float getRxDelay(const ops::us4r::TxRxSequence &sequence);
+    static float getRxDelay(const ops::us4r::TxRx &op, const std::function<float(float)> &actualTxFunc);
 
     ~Us4RImpl() override;
 
@@ -83,6 +84,7 @@ public:
     void sync(std::optional<long long> timeout) override;
 
     void setVoltage(Voltage voltage) override;
+    void setVoltage(const std::vector<HVVoltage> &voltages) override;
 
     void disableHV() override;
     void cleanupBuffers();
@@ -106,8 +108,7 @@ public:
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
-    std::vector<std::pair<std::string, float>> logVoltages(bool isUS4PSC);
-    void checkVoltage(Voltage voltage, float tolerance, int retries, bool isUS4PSC);
+    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isUS4PSC);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
@@ -143,8 +144,18 @@ public:
     setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
+    float getActualTxFrequency(float frequency) override;
 
 private:
+    struct VoltageLogbook {
+        enum class Polarity { MINUS, PLUS };
+
+        std::string name;
+        float voltage;
+        Polarity polarity;
+    };
+    std::vector<VoltageLogbook> logVoltages(bool isHV256);
+
     void stopDevice();
 
     std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
@@ -153,7 +164,8 @@ private:
                     const std::vector<framework::NdArray> &txDelayProfiles);
     us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
     std::vector<us4r::TxRxParametersSequence>
-    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences);
+    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
+                               const TxTimeoutRegister &timeoutRegister);
 
     /**
      * Applies a given function on all functions.
@@ -179,6 +191,8 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
+    float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
+    void registerPulserIRQCallback();
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;
@@ -202,7 +216,7 @@ private:
     // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
-    std::optional<Ordinal> frameMetadataOEM{0};
+    std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
 };
 
 }// namespace arrus::devices

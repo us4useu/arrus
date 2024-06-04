@@ -224,6 +224,8 @@ public:
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
+    MOCK_METHOD(float, GetMinTxPulseLength, (), (const, override));
+    MOCK_METHOD(float, GetMaxTxPulseLength, (), (const, override));
     MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end, bool syncMode, uint32_t endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
@@ -232,6 +234,14 @@ public:
     MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
+    MOCK_METHOD(void, VerifyTxWaveform, (), (override));
+    MOCK_METHOD(void, EnableTxTimeout, (), (override));
+    MOCK_METHOD(void, DisableTxTimeout, (), (override));
+    MOCK_METHOD(void, SetTxTimeout, (uint8_t id, uint16_t timeoutUs), (override));
+    MOCK_METHOD(void, SetFiringTxTimoutId, (uint16_t firing, uint8_t id), (override));
+    MOCK_METHOD(void, SetTxVoltageLevel, (uint8_t level, uint16_t firing), (override));
+    MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
+    MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

@@ -34,6 +34,10 @@ namespace arrus::devices {
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits.getDelay(), firingStr);
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getAmplitudeLevel(),
+                                                  static_cast<ops::us4r::Pulse::AmplitudeLevel>(0),
+                                                  static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
+                                                  firingStr);
 
                 // Tx - pulse
                 ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(op.getTxPulse().getCenterFrequency(), txLimits.getFrequency(), firingStr);

@@ -3,7 +3,7 @@ import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
 from arrus.devices.device import parse_device_id, DeviceId
-from typing import Dict, Any, Iterable
+from typing import Dict, Any, Iterable, Tuple, Union, List
 
 _UINT16_MIN = 0
 _UINT16_MAX = 2**16-1
@@ -33,7 +33,8 @@ def convert_to_core_sequence(seq):
         core_excitation = arrus.core.Pulse(
             centerFrequency=tx.excitation.center_frequency,
             nPeriods=tx.excitation.n_periods,
-            inverse=tx.excitation.inverse
+            inverse=tx.excitation.inverse,
+            amplitudeLevel=tx.excitation.amplitude_level
         )
         tx_placement = parse_device_id(tx.placement)
         tx_placement = to_core_device_id(tx_placement)
@@ -219,3 +220,25 @@ def convert_constants_to_arrus_ndarray(py_constants):
             py_const.name
         )
     return result
+
+
+def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
+    result = []
+    for v in values:
+        if isinstance(v, tuple):
+            vm, vp = v
+            if not isinstance(vm, int) or not isinstance(vp, int):
+                raise ValueError("Voltages are expected to be integers")
+        elif isinstance(v, int):
+            vm, vp = v, v
+        else:
+            raise ValueError("Voltages are expected to be integers "
+                             "or pair of integers.")
+
+        min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
+        if not (min_v <= vm <= max_v) or not (min_v <= vp <= max_v):
+            raise ValueError("Voltages are expected to be values in range "
+                             f"[{min_v}, {max_v}]")
+        result.append(arrus.core.HVVoltage(vm, vp))
+    return arrus.core.VectorHVVoltage(result)
+

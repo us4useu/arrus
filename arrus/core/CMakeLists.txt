@@ -22,7 +22,8 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/IOSettings.proto
     io/proto/devices/us4r/DigitalBackplaneSettings.proto
     io/proto/devices/us4r/Bitstream.proto
-    )
+    io/proto/devices/us4r/Us4RTxRxLimits.proto
+)
 ################################################################################
 # Target
 ################################################################################
@@ -184,7 +185,7 @@ set(SRC_FILES
     api/common.h api/io.h
     devices/us4r/validators/RxSettingsValidator.h
     devices/us4r/Us4OEMDataTransferRegistrar.h
-    devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+    devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h
     devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h
     devices/us4r/us4oem/Us4OEMUploadResult.h
     devices/us4r/us4oem/Us4OEMTxRxValidator.h
@@ -196,6 +197,9 @@ set(SRC_FILES
     api/ops/us4r/constraints/TxRxSequenceLimits.h
     devices/us4r/us4oem/Us4OEMDescriptorFactory.h
     devices/us4r/us4oem/IRQEvent.h
+    api/devices/us4r/HVPSMeasurement.h
+    api/devices/us4r/Us4RTxRxLimits.h
+    devices/us4r/TxTimeoutRegister.h
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
@@ -281,7 +285,7 @@ if (ARRUS_RUN_TESTS)
         devices/TxRxParameters.cpp
         devices/DeviceId.cpp
         devices/us4r/FrameChannelMappingImpl.cpp
-        devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h
+        devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h
         common/logging.cpp
     )
 
@@ -307,6 +311,8 @@ if (ARRUS_RUN_TESTS)
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
     create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
+
+    create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
 endif ()
 
 ################################################################################

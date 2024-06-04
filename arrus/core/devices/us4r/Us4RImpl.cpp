@@ -1,9 +1,10 @@
 #include "Us4RImpl.h"
 #include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
+#include "TxTimeoutRegister.h"
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/devices/probe/ProbeImpl.h"
-#include "arrus/core/devices/us4r/mapping/AdaterToUs4OEMMappingConverter.h"
+#include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include <chrono>
 #include <future>
@@ -19,6 +20,7 @@
 
 namespace arrus::devices {
 
+using namespace ::std;
 using namespace ::arrus::framework;
 using namespace ::arrus::ops::us4r;
 using namespace ::arrus::session;
@@ -69,20 +71,17 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     }
 }
 
-std::vector<std::pair<std::string, float>> Us4RImpl::logVoltages(bool isHV256) {
-    std::vector<std::pair<std::string, float>> voltages;
-    std::pair<std::string, float> temp;
+std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
+    std::vector<VoltageLogbook> voltages;
     float voltage;
     // Do not log the voltage measured by US4RPSC, as it may not be correct
     // for this hardware.
     if (isHV256) {
         //Measure voltages on HV
         voltage = this->getMeasuredPVoltage();
-        temp = std::make_pair(std::string("HVP on HV supply"), voltage);
-        voltages.push_back(temp);
+        voltages.push_back(VoltageLogbook{std::string("HVP on HV supply"), voltage, VoltageLogbook::Polarity::PLUS});
         voltage = this->getMeasuredMVoltage();
-        temp = std::make_pair(std::string("HVM on HV supply"), voltage);
-        voltages.push_back(temp);
+        voltages.push_back(VoltageLogbook{std::string("HVM on HV supply"), voltage, VoltageLogbook::Polarity::MINUS});
     }
 
     auto ver = us4oems[0]->getOemVersion();
@@ -91,28 +90,26 @@ std::vector<std::pair<std::string, float>> Us4RImpl::logVoltages(bool isHV256) {
         //Verify measured voltages on OEMs
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
             voltage = this->getUCDMeasuredHVPVoltage(i);
-            temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
-            voltages.push_back(temp);
+            voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::PLUS});
             voltage = this->getUCDMeasuredHVMVoltage(i);
-            temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
-            voltages.push_back(temp);
+            voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::MINUS});
         }
     } else if (ver == 2) {
         //Verify measured voltages on OEM+s
         //Currently OEM+ does not support internal voltage measurement - skip
     }
-
     return voltages;
 }
 
-void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool isHV256) {
-    std::vector<std::pair<std::string, float>> voltages;
+void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isHV256) {
+    std::vector<VoltageLogbook> voltages;
     bool fail = true;
     while (retries-- && fail) {
         fail = false;
         voltages = logVoltages(isHV256);
-        for (size_t i = 0; i < voltages.size(); i++) {
-            if (abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
+        for (const auto &logbook: voltages) {
+            const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
+            if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
                 fail = true;
             }
         }
@@ -123,39 +120,74 @@ void Us4RImpl::checkVoltage(Voltage voltage, float tolerance, int retries, bool 
     }
 
     //log last measured voltages
-    for (size_t i = 0; i < voltages.size(); i++) {
-        logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].first + " = {} V", voltages[i].second));
+    for(size_t i = 0; i < voltages.size(); i++) {
+        logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].name + " = {} V", voltages[i].voltage));
     }
 
     if (fail) {
         disableHV();
         //find violating voltage
-        for (size_t i = 0; i < voltages.size(); i++) {
-            if (abs(voltages[i].second - static_cast<float>(voltage)) > tolerance) {
-                throw IllegalStateException(::arrus::format(
-                    voltages[i].first + " invalid '{}', should be in range: [{}, {}]", voltages[i].second,
-                    (static_cast<float>(voltage) - tolerance), (static_cast<float>(voltage) + tolerance)));
+        for (const auto &logbook: voltages) {
+            const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
+            if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
+                throw IllegalStateException(
+                    format(logbook.name + " invalid '{}', should be in range: [{}, {}]",
+                    logbook.voltage,
+                    (static_cast<float>(expectedVoltage) - tolerance),
+                    (static_cast<float>(expectedVoltage) + tolerance)));
             }
         }
     }
 }
 
 void Us4RImpl::setVoltage(Voltage voltage) {
-    logger->log(LogSeverity::INFO, ::arrus::format("Setting voltage {}", voltage));
+    std::vector<HVVoltage> voltages = {HVVoltage(voltage, voltage)};
+    setVoltage(voltages);
+}
+
+void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
-    // Validate.
-    Voltage minVoltage = 5, maxVoltage = 90;
-    for (const auto &probeSetting : probeSettings) {
-        auto probeRange = probeSetting.getModel().getVoltageRange();
-        minVoltage = std::max<Voltage>(probeRange.start(), minVoltage);
-        maxVoltage = std::min<Voltage>(probeRange.end(), maxVoltage);
+
+    // Determine the narrowest voltage range for us4OEMs and the connected probes
+    // (i.e. find the maximum start voltage, minimum end voltage).
+    std::vector<Voltage> voltageStart, voltageEnd;
+    for(auto &oem: us4oems) {
+        const auto &voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx().getVoltage();
+        voltageStart.push_back(voltageLimits.start());
+        voltageEnd.push_back(voltageLimits.end());
+    }
+    for(const auto &probe: probeSettings) {
+        const auto &voltageLimits = probe.getModel().getVoltageRange();
+        voltageStart.push_back(voltageLimits.start());
+        voltageEnd.push_back(voltageLimits.end());
+    }
+    auto minVoltage = *std::max_element(std::begin(voltageStart), std::end(voltageStart));
+    auto maxVoltage = *std::min_element(std::begin(voltageEnd), std::end(voltageEnd));
+    if(minVoltage > maxVoltage) {
+        throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
+                                           "the actual minimum voltage {} is greater than the maximum: {}.",
+                                           minVoltage, maxVoltage));
     }
 
-    if (voltage < minVoltage || voltage > maxVoltage) {
-        throw IllegalArgumentException(
-            format("Unaccepted voltage '{}', should be in range: [{}, {}]", voltage, minVoltage, maxVoltage));
+    ARRUS_REQUIRES_TRUE(!voltages.empty(), "At least a single voltage level should be set.");
+
+    for(size_t i = 0; i < voltages.size(); ++i) {
+        const auto& voltage = voltages[i];
+        auto voltageMinus = voltage.getVoltageMinus();
+        auto voltagePlus = voltage.getVoltagePlus();
+        logger->log(LogSeverity::INFO,
+            format("Setting voltage -{}, +{}, level: {}", voltageMinus, voltagePlus, i));
+        ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
+            IllegalArgumentException(format(
+                "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,
+                minVoltage, maxVoltage)));
+        ARRUS_REQUIRES_TRUE_E(voltagePlus >= minVoltage && voltagePlus <= maxVoltage,
+            IllegalArgumentException(format(
+                "Unaccepted voltage '{}', should be in range: [{}, {}]", voltagePlus,
+                minVoltage, maxVoltage)));
     }
 
+    // Set voltages.
     bool isHVPS = true;
 
     for (uint8_t n = 0; n < hv.size(); n++) {
@@ -169,17 +201,18 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     if (isHVPS) {
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
-            futures.push_back(std::async(std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), voltage));
+            futures.push_back(std::async(
+            std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), voltages));
         }
         for (auto &future : futures) {
             future.wait();
         }
-    } else {
-        for (uint8_t n = 0; n < hv.size(); n++) {
-            hv[n]->setVoltage(voltage);
+    }
+    else {
+        for(uint8_t n = 0; n < hv.size(); n++) {
+            hv[n]->setVoltage(voltages);
         }
     }
-
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     float tolerance = 4.0f;// 4V tolerance
@@ -189,22 +222,23 @@ void Us4RImpl::setVoltage(Voltage voltage) {
     auto &hvModel = this->hv[0]->getModelId();
     bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
 
-    if (isHV256) {
-        // Do not check the voltage measured by US4RPSC, as it may not be correct
-        // for this hardware.
-        Voltage setVoltage = this->getVoltage();
-        if (setVoltage != voltage) {
+    if(isHV256) {
+        Voltage actualVoltage = this->getVoltage();
+        // For HV256 we expect only a single voltage level, and +V == -V.
+        auto expectedVoltage = voltages[0].getVoltagePlus();
+        if (actualVoltage != expectedVoltage) {
             disableHV();
-            throw IllegalStateException(::arrus::format(
-                "Voltage set on HV module '{}' does not match requested value: '{}'", setVoltage, voltage));
+            throw IllegalStateException(
+                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",
+                    actualVoltage, expectedVoltage));
         }
     } else {
         this->logger->log(LogSeverity::INFO,
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
-
-    checkVoltage(voltage, tolerance, retries, isHV256);
+    // TODO what about checking voltages on rail 1?
+    checkVoltage(voltages[0].getVoltageMinus(), voltages[0].getVoltagePlus(), tolerance, retries, isHV256);
 }
 
 unsigned char Us4RImpl::getVoltage() {
@@ -381,6 +415,8 @@ std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
+    // NOTE: assuming all OEMs are of the same version (legacy or OEM+)
+    auto oemDescriptor = getMasterOEM()->getDescriptor();
     // Convert to intermediate representation (TxRxParameters).
     auto noems = ARRUS_SAFE_CAST(this->us4oems.size(), Ordinal);
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
@@ -388,8 +424,19 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<ProbeToAdapterMappingConverter> probe2Adapter;
     // Sequence id -> converter
     std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
+    // Calculate TX timeouts
+    TxTimeoutRegisterFactory txTimeoutRegisterFactory{
+        oemDescriptor.getNTimeouts(),
+        [this](const float frequency) {
+            return this->getActualTxFrequency(frequency);
+        }};
+    TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
+    // Register pulser IRQ handling procedure.
+    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
+        registerPulserIRQCallback();
+    }
     // Convert API sequences to internal representation.
-    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences);
+    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
     // Initialize converters.
     auto oemMappings = getOEMMappings();
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -430,8 +477,8 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
         // TODO Consider implementing dynamic change of delay profiles
-        auto uploadResult =
-            us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc, std::vector<NdArray>{});
+        auto uploadResult = us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc,
+                                                    std::vector<NdArray>{}, timeouts.getTimeouts());
         buffers.emplace_back(uploadResult.getBufferDescription());
         auto oemFCM = uploadResult.acquireFCMs();
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -469,9 +516,12 @@ TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequenc
     return preambleBuilder.build();
 }
 
-std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const std::vector<TxRxSequence> &sequences) {
+std::vector<us4r::TxRxParametersSequence>
+Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
+                                     const TxTimeoutRegister &txTimeoutRegister) {
     std::vector<TxRxParametersSequence> result;
     std::optional<BitstreamId> currentBitstreamId = std::nullopt;
+    SequenceId sequenceId = 0;
     for(const auto &sequence: sequences) {
         TxRxParametersSequenceBuilder sequenceBuilder;
         sequenceBuilder.setCommon(sequence);
@@ -484,16 +534,24 @@ std::vector<TxRxParametersSequence> Us4RImpl::convertToInternalSequences(const s
                 currentBitstreamId = preamble.getBitstreamId();
             }
         }
-        auto rxDelay = getRxDelay(sequence);
+
+        OpId opId = 0;
         for (const auto &txrx : sequence.getOps()) {
             TxRxParametersBuilder builder(txrx);
+            auto rxDelay = getRxDelay(txrx);
             builder.setRxDelay(rxDelay);
             if (hasIOBitstreamAdressing) {
                 builder.setBitstreamId(BitstreamId(0));
             }
+            if(! txTimeoutRegister.empty()) {
+                auto timeoutId = txTimeoutRegister.getTimeoutId({sequenceId, opId});
+                builder.setTxTimeoutId(timeoutId);
+            }
             sequenceBuilder.addEntry(builder.build());
+            ++opId;
         }
         result.emplace_back(sequenceBuilder.build());
+        ++sequenceId;
     }
     return result;
 }
@@ -988,41 +1046,43 @@ std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) {
     return vec;
 }
 
-int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
+int Us4RImpl::getNumberOfProbes() const {
+    return static_cast<int>(probeSettings.size());
+}
 
 /**
- * Calculates RX delay as the maximum TX delay of the sequence + burst time
+ * Calculates RX delay as the maximum TX delay of the TX/RX + burst time
  * Only TX delays from the active (aperture) elements are considered.
- * If the given sequence does not perform TX, this method returns 0.
- *
+ * If the given TX/RX does not perform TX, this method returns 0.
+ * If the given RX does not perform RX, this method also return 0.
  * @return rx delay [s]
+ *
  */
-float Us4RImpl::getRxDelay(const TxRxSequence &sequence) {
-    std::vector<float> opDelays;
-    for(const auto &op: sequence.getOps()) {
-        std::vector<float> delays;
-        for(size_t i = 0; i < op.getTx().getAperture().size(); ++i) {
-            if(op.getTx().getAperture()[i]) {
-                delays.push_back(op.getTx().getDelays()[i]);
-            }
-        }
-        if(!delays.empty()) {
-            float txDelay = *std::max_element(std::begin(delays), std::end(delays));
-            // burst time
-            float frequency = op.getTx().getExcitation().getCenterFrequency();
-            float nPeriods = op.getTx().getExcitation().getNPeriods();
-            float burstTime = 1.0f/frequency*nPeriods;
-            // Total rx delay
-            opDelays.push_back(txDelay + burstTime);
+float Us4RImpl::getRxDelay(const TxRx &op, const std::function<float(float)> &actualTxFunc) {
+    float rxDelay = 0.0f; // default value.
+    if(op.getRx().isNOP()) {
+        return rxDelay;
+    }
+    std::vector<float> txDelays;
+    for(size_t i = 0; i < op.getTx().getAperture().size(); ++i) {
+        if(op.getTx().getAperture()[i]) {
+            txDelays.push_back(op.getTx().getDelays()[i]);
         }
     }
-    if(!opDelays.empty()) {
-        return *std::max_element(std::begin(opDelays), std::end(opDelays));
+    if(!txDelays.empty()) {
+        float txDelay = *std::max_element(std::begin(txDelays), std::end(txDelays));
+        // burst time
+        float frequency = actualTxFunc(op.getTx().getExcitation().getCenterFrequency());
+        float nPeriods = op.getTx().getExcitation().getNPeriods();
+        float burstTime = 1.0f/frequency*nPeriods;
+        // Total rx delay
+        rxDelay = txDelay + burstTime;
     }
-    else {
-        // No TX
-        return 0.0f;
-    }
+    return rxDelay;
+}
+
+float Us4RImpl::getRxDelay(const TxRx &op) {
+    return getRxDelay(op, [this](float frequency) {return this->getActualTxFrequency(frequency); });
 }
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
@@ -1036,5 +1096,27 @@ void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     }
 }
 
+float Us4RImpl::getActualTxFrequency(float frequency) {
+    // NOTE! we are assuming here that all OEMs have the same target TX frequency.
+    return getMasterOEM()->getActualTxFrequency(frequency);
+}
+
+void Us4RImpl::registerPulserIRQCallback() {
+    for(auto &oem: us4oems) {
+        const auto &ius4oem = oem->getIUs4OEM();
+        ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
+            try{
+                ius4oem->LogPulsersInterruptRegister();
+                ius4oem->TriggerStop();
+            }
+            catch(const std::exception &e) {
+                logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
+            }
+            catch(...) {
+                logger->log(LogSeverity::ERROR, "Unknown exception on handling pulser IRQ.");
+            }
+        });
+    }
+}
 
 }// namespace arrus::devices

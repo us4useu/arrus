@@ -1,5 +1,6 @@
 #ifndef ARRUS_CORE_API_DEVICES_US4R_HVPS_MEASUREMENT_H
 #define ARRUS_CORE_API_DEVICES_US4R_HVPS_MEASUREMENT_H
+#include "HVVoltage.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
 
 #include <unordered_map>

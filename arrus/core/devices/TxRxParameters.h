@@ -45,12 +45,14 @@ public:
                    Tuple<ChannelIdx> rxPadding = {0, 0}, float rxDelay = 0.0f,
                    std::optional<BitstreamId> bitstreamId = std::nullopt,
                    std::unordered_set<ChannelIdx> maskedChannelsTx = {},
-                   std::unordered_set<ChannelIdx> maskedChannelsRx = {}
+                   std::unordered_set<ChannelIdx> maskedChannelsRx = {},
+                   std::optional<TxTimeoutId> txTimeoutId = {}
     )
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
-          bitstreamId(bitstreamId), maskedChannelsTx(std::move(maskedChannelsTx)), maskedChannelsRx(std::move(maskedChannelsRx)) {}
+          bitstreamId(bitstreamId), maskedChannelsTx(std::move(maskedChannelsTx)),
+          maskedChannelsRx(std::move(maskedChannelsRx)), txTimeoutId(txTimeoutId) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const { return txAperture; }
 
@@ -95,6 +97,8 @@ public:
 
     [[nodiscard]] const std::unordered_set<ChannelIdx> &getMaskedChannelsRx() const { return maskedChannelsRx; }
 
+    const std::optional<TxTimeoutId> &getTxTimeoutId() const { return txTimeoutId; }
+
     friend std::ostream &operator<<(std::ostream &os, const TxRxParameters &parameters) {
         os << std::scientific;
         os << "Tx/Rx: ";
@@ -106,7 +110,8 @@ public:
         }
         os << ", center frequency: " << parameters.getTxPulse().getCenterFrequency()
            << ", n. periods: " << parameters.getTxPulse().getNPeriods()
-           << ", inverse: " << parameters.getTxPulse().isInverse();
+           << ", inverse: " << parameters.getTxPulse().isInverse()
+           << ", tx voltage level: " <<parameters.getTxPulse().getAmplitudeLevel();
         os << "; RX: ";
         os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
         os << ", sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
@@ -124,6 +129,9 @@ public:
         for(auto ch: parameters.getMaskedChannelsRx()) {
             os << ch << ", ";
         }
+        if(parameters.txTimeoutId.has_value()) {
+            os << ", tx timeout: " << (int)parameters.txTimeoutId.value();
+        }
         os << std::endl;
         os << std::fixed;
         return os;
@@ -135,7 +143,8 @@ public:
             && rxDecimationFactor == rhs.rxDecimationFactor && pri == rhs.pri && rxDelay == rhs.rxDelay
             && bitstreamId == rhs.bitstreamId
             && maskedChannelsTx == rhs.maskedChannelsTx
-            && maskedChannelsRx == rhs.maskedChannelsRx;
+            && maskedChannelsRx == rhs.maskedChannelsRx
+            && txTimeoutId == rhs.txTimeoutId;
     }
 
     bool operator!=(const TxRxParameters &rhs) const { return !(rhs == *this); }
@@ -156,6 +165,7 @@ private:
      * however it will be present in the output RF frame, as it were a channel enabled in RX. */
     std::unordered_set<ChannelIdx> maskedChannelsTx;
     std::unordered_set<ChannelIdx> maskedChannelsRx;
+    std::optional<TxTimeoutId> txTimeoutId;
 };
 
 class TxRxParametersBuilder {
@@ -173,6 +183,7 @@ public:
         bitstreamId = params.getBitstreamId();
         maskedChannelsTx = params.getMaskedChannelsTx();
         maskedChannelsRx = params.getMaskedChannelsRx();
+        txTimeoutId = params.getTxTimeoutId();
     }
 
     explicit TxRxParametersBuilder(const arrus::ops::us4r::TxRx &op) {
@@ -194,6 +205,7 @@ public:
         this->bitstreamId = std::nullopt;
         this->maskedChannelsTx = {};
         this->maskedChannelsRx = {};
+        this->txTimeoutId = std::nullopt;
     }
 
     TxRxParameters build() {
@@ -201,7 +213,7 @@ public:
             throw IllegalArgumentException("TX pulse definition is required");
         }
         return TxRxParameters(txAperture, txDelays, txPulse.value(), rxAperture, rxSampleRange, rxDecimationFactor, pri,
-                              rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx);
+                              rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx, txTimeoutId);
     }
 
     void convertToNOP() {
@@ -222,6 +234,7 @@ public:
     void setBitstreamId(const std::optional<BitstreamId> &value) { TxRxParametersBuilder::bitstreamId = value; }
     void setMaskedChannelsTx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsTx = value; }
     void setMaskedChannelsRx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsRx = value; }
+    void setTxTimeoutId(const std::optional<TxTimeoutId> &value) { TxRxParametersBuilder::txTimeoutId = value; }
 
 private:
     ::std::vector<bool> txAperture;
@@ -236,6 +249,7 @@ private:
     std::optional<BitstreamId> bitstreamId;
     std::unordered_set<ChannelIdx> maskedChannelsTx;
     std::unordered_set<ChannelIdx> maskedChannelsRx;
+    std::optional<TxTimeoutId> txTimeoutId;
 };
 
 class TxRxParametersSequenceBuilder;

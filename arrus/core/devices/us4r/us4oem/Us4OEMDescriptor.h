@@ -30,16 +30,21 @@ public:
     // TODO deprecated!
     static constexpr size_t TGC_N_SAMPLES = 1022;
     static constexpr unsigned MAX_IRQ_NR = IUs4OEM::MAX_IRQ_NR;
+    uint32_t US4OEM_LEGACY_REVISION = 1;
+    uint32_t US4OEM_PLUS_REVISION = 2;
 
 
-    Us4OEMDescriptor(ChannelIdx nRxChannels, float minRxTime, float rxTimeEpsilon, float sequenceReprogrammingTime,
-                     float samplingFrequency, size_t ddrSize, size_t maxTransferSize, float nPeriodsResolution,
-                     bool master, ops::us4r::TxRxSequenceLimits txRxSequenceLimits)
-        : nRxChannels(nRxChannels), minRxTime(minRxTime), rxTimeEpsilon(rxTimeEpsilon),
+    Us4OEMDescriptor(
+        uint32_t version, ChannelIdx nRxChannels, float minRxTime, float rxTimeEpsilon, float sequenceReprogrammingTime,
+        float samplingFrequency, size_t ddrSize, size_t maxTransferSize, float nPeriodsResolution,
+        bool master, ops::us4r::TxRxSequenceLimits txRxSequenceLimits, uint8_t nTimeouts)
+        : version(version), nRxChannels(nRxChannels), minRxTime(minRxTime), rxTimeEpsilon(rxTimeEpsilon),
           sequenceReprogrammingTime(sequenceReprogrammingTime), samplingFrequency(samplingFrequency), ddrSize(ddrSize),
           maxTransferSize(maxTransferSize), nPeriodsResolution(nPeriodsResolution),
-          master(master), txRxSequenceLimits(std::move(txRxSequenceLimits)) {}
+          master(master), txRxSequenceLimits(std::move(txRxSequenceLimits)), nTimeouts(nTimeouts) {}
 
+    bool isUs4OEMLegacy() {return version == US4OEM_LEGACY_REVISION; }
+    bool isUs4OEMPlus() {return version == US4OEM_PLUS_REVISION; }
     ChannelIdx getNTxChannels() const { return N_TX_CHANNELS; }
     ChannelIdx getNRxChannels() const { return nRxChannels; }
     ChannelIdx getNAddressableRxChannels() const { return N_ADDR_CHANNELS; }
@@ -55,9 +60,11 @@ public:
     float getNPeriodsResolution() const { return nPeriodsResolution; }
     bool isMaster() const { return master; }
     unsigned getMaxIRQNumber() {return MAX_IRQ_NR; }
+    uint8_t getNTimeouts() const { return nTimeouts; }
 
 private:
     friend class Us4OEMDescriptorBuilder;
+    uint32_t version{0};
     ChannelIdx nRxChannels;
     float minRxTime;
     float rxTimeEpsilon;
@@ -68,6 +75,7 @@ private:
     float nPeriodsResolution;
     bool master;
     arrus::ops::us4r::TxRxSequenceLimits txRxSequenceLimits;
+    uint8_t nTimeouts{0};
 };
 
 class Us4OEMDescriptorBuilder {
@@ -75,8 +83,9 @@ public:
 
     explicit Us4OEMDescriptorBuilder(Us4OEMDescriptor descriptor): descriptor(std::move(descriptor)) {}
 
-    void setTxRxSequenceLimits(const ::arrus::ops::us4r::TxRxSequenceLimits &limits) {
+    Us4OEMDescriptorBuilder &setTxRxSequenceLimits(const ::arrus::ops::us4r::TxRxSequenceLimits &limits) {
         this->descriptor->txRxSequenceLimits = limits;
+        return *this;
     }
 
     Us4OEMDescriptor build() {

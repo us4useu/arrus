@@ -18,7 +18,7 @@ class Us4OEMFactory {
 public:
     virtual Us4OEMImplBase::Handle
     getUs4OEM(Ordinal ordinal, IUs4OEMHandle &handle, const Us4OEMSettings &settings, bool isExternalTrigger,
-              bool acceptRxNops) = 0;
+              bool acceptRxNops = false, const std::optional<Us4RTxRxLimits> &limits = std::nullopt) = 0;
     virtual ~Us4OEMFactory() = default;
 };
 

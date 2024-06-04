@@ -1,9 +1,6 @@
-#ifndef ARRUS_ARRUS_CORE_DEVICES_US4R_MAPPING_ADAPTERTOUS4OEMMAPPINGCONVERTERTEST_H_
-#define ARRUS_ARRUS_CORE_DEVICES_US4R_MAPPING_ADAPTERTOUS4OEMMAPPINGCONVERTERTEST_H_
-
 #include <gtest/gtest.h>
 
-#include "AdaterToUs4OEMMappingConverter.h"
+#include "AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/TxRxParameters.h"
@@ -1019,5 +1016,3 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
-#endif //ARRUS_ARRUS_CORE_DEVICES_US4R_MAPPING_ADAPTERTOUS4OEMMAPPINGCONVERTERTEST_H_

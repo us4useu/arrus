@@ -20,11 +20,12 @@ public:
         case 1:
             // Legacy us4OEM
             return Us4OEMDescriptor{
+                version, // Us4OEM version
                 32, // RX channels
                 20e-6f,  // min. RX time,
-                5e-6, // RX time epsilon,
-                35e-6, // TX parameters reprogramming time,
-                65e6, // Sampling frequency [Hz]
+                5e-6f, // RX time epsilon,
+                35e-6f, // TX parameters reprogramming time,
+                65e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
                 1ull << (14+12), // Max transfer size [B]
                 0.5f,  // number of TX periods resolution
@@ -34,7 +35,7 @@ public:
                         arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, 32.0f/10e6}, // pulse length,
+                            Interval<float>{0.0f, (float)(32.0f/10e6)}, // pulse length,
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::RxLimits {
@@ -43,16 +44,18 @@ public:
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
                     Interval<uint32>{0, 16383} // sequence length
-                }
+                },
+                0 // maximum number of TX timeouts
             };
         case 2:
             // us4OEM+ variant 0
             return Us4OEMDescriptor{
+                version, // us4OEM version
                 32, // RX channels
                 20e-6f,  // min. RX time,
-                5e-6, // RX time epsilon,
-                35e-6, // TX parameters reprogramming time,
-                65e6, // Sampling frequency [Hz]
+                5e-6f, // RX time epsilon,
+                35e-6f, // TX parameters reprogramming time,
+                65e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
                 1ull << (14+12), // Max transfer size [B]
                 0.5f,  // number of TX periods resolution
@@ -62,7 +65,7 @@ public:
                         arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, 32.0f/10e6}, // pulse length,
+                            Interval<float>{0.0f, (float)(32.0f/10e6f)}, // pulse length,
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::RxLimits {
@@ -71,7 +74,8 @@ public:
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
                     Interval<uint32>{0, 2047} // sequence length
-                }
+                },
+                4 // maximum number of timeouts
             };
         default:
             throw arrus::IllegalArgumentException(format("Unsupported us4OEM version: {}", version));

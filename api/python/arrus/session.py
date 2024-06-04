@@ -167,7 +167,7 @@ class Session(AbstractSession):
             self.metadatas.append(const_metadata)
 
         # numpy/cupy processing initialization
-        return  self._set_processing(self.buffer, self.const_metadata, processing)
+        return  self._set_processing(self.buffer, self.metadatas, processing, sequences)
 
     def __enter__(self):
         return self
@@ -345,9 +345,9 @@ class Session(AbstractSession):
             data_desc=data_description,
             context=fac,
         )
-        return self._set_processing(self.buffer, metadata, processing)
+        return self._set_processing(self.buffer, metadata, processing, [sequence])
 
-    def _set_processing(self, buffer, const_metadata, processing):
+    def _set_processing(self, buffer, metadatas, processing, sequences):
         # setup processing
         if self._current_processing is not None:
             self._current_processing.close()

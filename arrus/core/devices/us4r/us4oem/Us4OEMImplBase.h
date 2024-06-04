@@ -32,11 +32,12 @@ public:
 
     virtual bool isMaster() = 0;
 
-    virtual Us4OEMUploadResult
-    upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
-           uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
-           const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-           const std::vector<arrus::framework::NdArray> &txDelays) = 0;
+    virtual Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
+                                      ops::us4r::Scheme::WorkMode workMode,
+                                      const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                                      const std::vector<arrus::framework::NdArray> &txDelays,
+                                      const std::vector<TxTimeout> &txTimeouts = {}) = 0;
+
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
     virtual void enableSequencer(bool resetSequencerPointer) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
@@ -47,9 +48,6 @@ public:
     virtual void clearCallbacks() = 0;
     virtual Us4OEMDescriptor getDescriptor() const = 0;
 
-    HVPSMeasurement getHVPSMeasurement() override = 0;
-
-    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
     /**
      * Sets maximum pulse length that can be set during the TX/RX sequence programming.
@@ -73,6 +71,10 @@ public:
      */
     virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) override = 0;
 
+
+    HVPSMeasurement getHVPSMeasurement() override = 0;
+
+    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

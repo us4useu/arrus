@@ -2,7 +2,9 @@
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_TESTS_COMMONS_H
 
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/ops/us4r/constraints/TxRxSequenceLimits.h"
+#include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMDescriptor.h"
 
@@ -46,6 +48,7 @@ struct TestUs4OEMSettings {
 };
 
 Us4OEMDescriptor DEFAULT_DESCRIPTOR {
+    1, // Us4OEM revision (legacy)
     32, // RX channels
     20e-6f,  // min. RX time,
     5e-6, // RX time epsilon,
@@ -69,8 +72,8 @@ Us4OEMDescriptor DEFAULT_DESCRIPTOR {
             Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
         },
         Interval<uint32>{0, 16384} // sequence length
-    }
-
+    },
+    0 // number of timeouts
 };
 
 struct TestTxRxParams {

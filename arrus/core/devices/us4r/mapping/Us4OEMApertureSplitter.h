@@ -115,6 +115,7 @@ public:
                 // Split rx aperture, if necessary.
                 // subaperture number starts from 1, 0 means that the channel
                 // should be inactive.
+                // (NOTE: greedy approach).
                 std::vector<ChannelIdx> subapertureIdxs(op.getRxAperture().size());
                 for (ChannelIdx ch = 0; ch < nRxChannels; ++ch) {
                     ChannelIdx subaperture = 1;
@@ -150,7 +151,7 @@ public:
                             rxSubapertures[subapIdx - 1][ch] = true;
                             // Channel masking
                             if(setContains(op.getMaskedChannelsRx(),ARRUS_SAFE_CAST(ch, ChannelIdx))) {
-                                maskedChannelsRx.at(subapIdx-1).insert(ch);
+                                maskedChannelsRx.at(subapIdx-1).insert(ARRUS_SAFE_CAST(ch, ChannelIdx));
                             }
                             // FC mapping
                             // -1 because subapIdx starts from one

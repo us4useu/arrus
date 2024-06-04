@@ -63,11 +63,11 @@ public:
     void stopTrigger() override;
     void syncTrigger() override;
     void setTgcCurve(const std::vector<us4r::TxRxParametersSequence> & sequences);
-    Us4OEMUploadResult
-    upload(const us4r::TxParametersSequenceColl &sequences,
-           uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
-           const std::optional<ops::us4r::DigitalDownConversion> &ddc=std::nullopt,
-           const std::vector<framework::NdArray> &txDelays = std::vector<framework::NdArray>()) override;
+    Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
+                              ops::us4r::Scheme::WorkMode workMode,
+                              const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                              const std::vector<arrus::framework::NdArray> &txDelays,
+                              const std::vector<TxTimeout> &txTimeouts) override;
 
     float getSamplingFrequency() override;
     void start() override;
@@ -116,13 +116,14 @@ public:
     void sync(std::optional<long long> timeout) override;
     void setWaitForHVPSMeasurementDone() override;
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
+    float getActualTxFrequency(float frequency) override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;
 
     float getTxRxTime(float rxTime) const;
-    float getRxTime(size_t nSamples, float samplingFrequency);
+    float getRxTime(const ::arrus::devices::us4r::TxRxParameters &op, float samplingFrequency);
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
@@ -159,10 +160,10 @@ private:
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                        const std::vector<arrus::framework::NdArray> &txDelays,
                        const Us4OEMRxMappingRegister &rxMappingRegister);
-    size_t scheduleReceiveDDC(size_t outputAddress, uint16 startSample, uint16 endSample, uint16 entryId,
+    size_t scheduleReceiveDDC(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
                               const us4r::TxRxParameters &op, uint16 rxMapId,
                               const std::optional<ops::us4r::DigitalDownConversion> &ddc);
-    size_t scheduleReceiveRF(size_t outputAddress, uint16 startSample, uint16 endSample, uint16 entryId,
+    size_t scheduleReceiveRF(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
                              const us4r::TxRxParameters &op, uint16 rxMapId);
     Us4OEMBuffer uploadAcquisition(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
                                    const std::optional<ops::us4r::DigitalDownConversion> &ddc,
@@ -175,7 +176,7 @@ private:
     size_t getNumberOfFirings(const us4r::TxParametersSequenceColl &vector);
     size_t getNumberOfTriggers(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize);
     Us4OEMRxMappingRegister setRxMappings(const us4r::TxParametersSequenceColl &sequences);
-
+    void setWaitForEventDone();
     std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> filterAperture(
         std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
         const std::unordered_set<ChannelIdx> &channelsMask);
@@ -204,6 +205,7 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
+    void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
 };
 
 }// namespace arrus::devices
