@@ -149,7 +149,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
                                       ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                                       const std::vector<arrus::framework::NdArray> &txDelays,
-                                      const std::vector<TxTimeout> &/*txTimeouts*/) {
+                                      const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
     setTgcCurve(sequences);
@@ -159,7 +159,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     ius4oem->ResetCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
-    // setTxTimeouts(txTimeouts);
+    setTxTimeouts(txTimeouts);
     uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(ARRUS_SAFE_CAST(getNumberOfTriggers(sequences, rxBufferSize), uint16_t));
@@ -260,7 +260,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxTime(rxTime, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             if(op.getTxTimeoutId().has_value()) {
-                //ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
+                ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
         }
     }
