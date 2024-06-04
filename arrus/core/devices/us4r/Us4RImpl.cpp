@@ -1046,7 +1046,9 @@ std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) {
     return vec;
 }
 
-int Us4RImpl::getNumberOfProbes() const { return ARRUS_SAFE_CAST(probeSettings.size(), int); }
+int Us4RImpl::getNumberOfProbes() const {
+    return static_cast<int>(probeSettings.size());
+}
 
 /**
  * Calculates RX delay as the maximum TX delay of the TX/RX + burst time
