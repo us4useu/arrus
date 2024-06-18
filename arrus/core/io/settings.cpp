@@ -163,7 +163,7 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     Tuple<double> pitch{pitchVec};
 
     double curvatureRadius = proto.curvature_radius();
-    float lensDelay = ARRUS_SAFE_CAST(proto.lens_delay(), float);
+    double lensDelay = proto.lens_delay();
 
     ::arrus::Interval<float> txFreqRange{static_cast<float>(proto.tx_frequency_range().begin()),
                                          static_cast<float>(proto.tx_frequency_range().end())};

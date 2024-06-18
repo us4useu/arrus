@@ -27,7 +27,7 @@ public:
                const Interval<float> &txFrequencyRange,
                const Interval<Voltage> &voltageRange,
                const double curvatureRadius,
-               const float lensDelay)
+               const double lensDelay)
         : modelId(std::move(modelId)), numberOfElements(numberOfElements),
           pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange),
           curvatureRadius(curvatureRadius), lensDelay(lensDelay) {
@@ -66,7 +66,7 @@ public:
         return curvatureRadius;
     }
 
-    float getLensDelay() const {
+    double getLensDelay() const {
         return lensDelay;
     }
 
@@ -77,7 +77,7 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
-    float lensDelay;
+    double lensDelay;
 };
 
 }

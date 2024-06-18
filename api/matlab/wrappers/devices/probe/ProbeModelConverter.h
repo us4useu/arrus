@@ -30,7 +30,7 @@ public:
             ARRUS_MATLAB_GET_CPP_PAIR(ctx, float, txFrequencyRange, object),
             ARRUS_MATLAB_GET_CPP_PAIR(ctx, Voltage, voltageRange, object),
             ARRUS_MATLAB_GET_CPP_SCALAR(ctx, double, curvatureRadius, object),
-            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, lensDelay, object)
+            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, double, lensDelay, object)
         };
     }
 
@@ -56,7 +56,7 @@ public:
         const std::pair<float, float> &txFrequencyRange,
         const std::pair<Voltage, Voltage> &voltageRange,
         double curvatureRadius,
-        float lensDelay
+        double lensDelay
     )
         : ctx(std::move(ctx)), modelId(std::move(modelId)), nElements(numberOfElements), pitch(pitch),
           txFrequencyRange(txFrequencyRange), voltageRange(voltageRange), curvatureRadius(curvatureRadius), 
@@ -85,7 +85,7 @@ public:
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, float, txFrequencyRange, txFrequencyRange.asPair()),
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, Voltage, voltageRange, voltageRange.asPair()),
                 ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, double, curvatureRadius),
-                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, lensDelay),
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, double, lensDelay),
             }
         );
     }
@@ -98,7 +98,7 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
-    float lensDelay;
+    double lensDelay;
 };
 
 } //
