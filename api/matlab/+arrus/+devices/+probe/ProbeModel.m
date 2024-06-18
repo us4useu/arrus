@@ -11,9 +11,10 @@ classdef ProbeModel
     % :param voltageRange: (a pair - two-element vector)
     %   a range [min, max] of the available TX voltage
     % :param curvatureRadius: probe curvature radius, equal 0 for linear arrays [m]
+    % :param lensDelay: effective time delay due to lens [s]
 
     properties(Constant, Hidden=true)
-        REQUIRED_PARAMS = {"modelId", "nElements", "pitch", "txFrequencyRange", "voltageRange", "curvatureRadius"};
+        REQUIRED_PARAMS = {"modelId", "nElements", "pitch", "txFrequencyRange", "voltageRange", "curvatureRadius", "lensDelay"};
     end
     
     properties
@@ -23,6 +24,7 @@ classdef ProbeModel
         txFrequencyRange
         voltageRange
         curvatureRadius
+        lensDelay
     end
     
     methods

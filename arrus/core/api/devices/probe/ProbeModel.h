@@ -26,10 +26,11 @@ public:
                // Float, because carrier frequency can be set only to specific values
                const Interval<float> &txFrequencyRange,
                const Interval<Voltage> &voltageRange,
-               const double curvatureRadius)
+               const double curvatureRadius,
+               const float lensDelay)
         : modelId(std::move(modelId)), numberOfElements(numberOfElements),
           pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange),
-          curvatureRadius(curvatureRadius) {
+          curvatureRadius(curvatureRadius), lensDelay(lensDelay) {
 
         if(numberOfElements.size() != pitch.size()) {
             throw IllegalArgumentException(
@@ -65,6 +66,10 @@ public:
         return curvatureRadius;
     }
 
+    float getLensDelay() const {
+        return lensDelay;
+    }
+
 private:
     ProbeModelId modelId;
     Tuple<ElementIdxType> numberOfElements;
@@ -72,6 +77,7 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
+    float lensDelay;
 };
 
 }

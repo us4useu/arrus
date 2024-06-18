@@ -19,4 +19,5 @@ message ProbeModel {
   IntervalInteger voltage_range = 5;
   // Curvature radius; 0 means no curvature.
   double curvature_radius = 6;
+  float lens_delay = 7;
 }

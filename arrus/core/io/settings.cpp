@@ -163,12 +163,13 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     Tuple<double> pitch{pitchVec};
 
     double curvatureRadius = proto.curvature_radius();
+    float lensDelay = ARRUS_SAFE_CAST(proto.lens_delay(), float);
 
     ::arrus::Interval<float> txFreqRange{static_cast<float>(proto.tx_frequency_range().begin()),
                                          static_cast<float>(proto.tx_frequency_range().end())};
     ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
                                           static_cast<uint8>(proto.voltage_range().end())};
-    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius);
+    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius, lensDelay);
 }
 
 std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapterConnection &connection) {

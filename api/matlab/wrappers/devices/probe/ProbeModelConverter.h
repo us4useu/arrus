@@ -29,7 +29,8 @@ public:
             ARRUS_MATLAB_GET_CPP_VECTOR(ctx, double, pitch, object),
             ARRUS_MATLAB_GET_CPP_PAIR(ctx, float, txFrequencyRange, object),
             ARRUS_MATLAB_GET_CPP_PAIR(ctx, Voltage, voltageRange, object),
-            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, double, curvatureRadius, object)
+            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, double, curvatureRadius, object),
+            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, lensDelay, object)
         };
     }
 
@@ -42,7 +43,8 @@ public:
             object.getPitch().getValues(),
             object.getTxFrequencyRange().asPair(),
             object.getVoltageRange().asPair(),
-            object.getCurvatureRadius()
+            object.getCurvatureRadius(),
+            object.getLensDelay()
         };
     }
 
@@ -53,9 +55,12 @@ public:
         const std::vector<double> &pitch,
         const std::pair<float, float> &txFrequencyRange,
         const std::pair<Voltage, Voltage> &voltageRange,
-        double curvatureRadius)
+        double curvatureRadius,
+        float lensDelay
+    )
         : ctx(std::move(ctx)), modelId(std::move(modelId)), nElements(numberOfElements), pitch(pitch),
-          txFrequencyRange(txFrequencyRange), voltageRange(voltageRange), curvatureRadius(curvatureRadius) {}
+          txFrequencyRange(txFrequencyRange), voltageRange(voltageRange), curvatureRadius(curvatureRadius), 
+          lensDelay(lensDelay) {}
 
     // ProbeModelConverter -> C++ API object.
     [[nodiscard]] ::arrus::devices::ProbeModel toCore() const {
@@ -64,7 +69,8 @@ public:
             pitch,
             txFrequencyRange,
             voltageRange,
-            curvatureRadius
+            curvatureRadius,
+            lensDelay
         };
     }
 
@@ -78,7 +84,8 @@ public:
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, double, pitch, pitch.getValues()),
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, float, txFrequencyRange, txFrequencyRange.asPair()),
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, Voltage, voltageRange, voltageRange.asPair()),
-                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, double, curvatureRadius)
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, double, curvatureRadius),
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, lensDelay),
             }
         );
     }
@@ -91,6 +98,7 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
+    float lensDelay;
 };
 
 } //
