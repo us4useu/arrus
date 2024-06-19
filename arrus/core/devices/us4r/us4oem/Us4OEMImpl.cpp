@@ -257,6 +257,8 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firingId);
             ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
+            ius4oem->SetLongTxSoftStart(op.getTxPulse().getSoftStart(), firingId);
+            ius4oem->SetTxRtzCycles(op.getTxPulse().getRtzCycles(), firingId);
             ius4oem->SetRxTime(rxTime, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             if(op.getTxTimeoutId().has_value()) {

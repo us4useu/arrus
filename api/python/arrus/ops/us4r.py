@@ -23,6 +23,8 @@ class Pulse:
     n_periods: float
     inverse: bool
     amplitude_level: int = 0
+    soft_start: bool = None
+    rtz: int = 0
 
 
 @dataclass(frozen=True)

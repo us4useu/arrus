@@ -18,8 +18,8 @@ public:
 	 * @param inverse if set to true - inverse the pulse polarity
 	 * @param amplitudeLevel amplitude level to use, default: 0
 	 */
-    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 0)
-        : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel) {}
+    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 0, bool softStart = true, uint8_t rtzCycles = 0)
+        : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel), softStart(softStart), rtzCycles(rtzCycles) {}
 
     float getCenterFrequency() const {
         return centerFrequency;
@@ -33,11 +33,17 @@ public:
 
     AmplitudeLevel getAmplitudeLevel() const { return amplitudeLevel; }
 
+    bool getSoftStart() const { return softStart; }
+
+    uint8_t getRtzCycles() const { return rtzCycles;}
+
     bool operator==(const Pulse &rhs) const {
         return centerFrequency == rhs.centerFrequency
                && nPeriods == rhs.nPeriods
                && inverse == rhs.inverse
-               && amplitudeLevel == rhs.amplitudeLevel;
+               && amplitudeLevel == rhs.amplitudeLevel
+               && softStart == rhs.softStart
+               && rtzCycles == rhs.rtzCycles;
     }
 
     bool operator!=(const Pulse &rhs) const {
@@ -53,6 +59,8 @@ private:
     float nPeriods;
     bool inverse;
     AmplitudeLevel amplitudeLevel = 0;
+    bool softStart = true;
+    uint8_t rtzCycles = 0;
 };
 
 }

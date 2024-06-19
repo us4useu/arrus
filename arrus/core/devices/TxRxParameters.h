@@ -46,13 +46,18 @@ public:
                    std::optional<BitstreamId> bitstreamId = std::nullopt,
                    std::unordered_set<ChannelIdx> maskedChannelsTx = {},
                    std::unordered_set<ChannelIdx> maskedChannelsRx = {},
-                   std::optional<TxTimeoutId> txTimeoutId = {}
+                   std::optional<TxTimeoutId> txTimeoutId = {}//,
+                   //std::optional<bool> softStartEn = {},
+                   //std::optional<uint8_t> rtzCycles = {}
     )
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txPulse(txPulse),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
           bitstreamId(bitstreamId), maskedChannelsTx(std::move(maskedChannelsTx)),
-          maskedChannelsRx(std::move(maskedChannelsRx)), txTimeoutId(txTimeoutId) {}
+          maskedChannelsRx(std::move(maskedChannelsRx)),
+          txTimeoutId(txTimeoutId)/*,
+          softStartEn(softStartEn),
+          rtzCycles(rtzCycles)*/ {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const { return txAperture; }
 
@@ -99,6 +104,11 @@ public:
 
     const std::optional<TxTimeoutId> &getTxTimeoutId() const { return txTimeoutId; }
 
+    //const std::optional<bool> &getSoftStartEn() const { return softStartEn; }
+
+    //const std::optional<uint8_t> &getRtzCycles() const { return rtzCycles; }
+
+
     friend std::ostream &operator<<(std::ostream &os, const TxRxParameters &parameters) {
         os << std::scientific;
         os << "Tx/Rx: ";
@@ -111,7 +121,9 @@ public:
         os << ", center frequency: " << parameters.getTxPulse().getCenterFrequency()
            << ", n. periods: " << parameters.getTxPulse().getNPeriods()
            << ", inverse: " << parameters.getTxPulse().isInverse()
-           << ", tx voltage level: " <<parameters.getTxPulse().getAmplitudeLevel();
+           << ", tx voltage level: " << parameters.getTxPulse().getAmplitudeLevel()
+           << ", soft start: " << parameters.getTxPulse().getSoftStart()
+           << ", RTZ cycles: " << parameters.getTxPulse().getRtzCycles();
         os << "; RX: ";
         os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
         os << ", sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
@@ -144,7 +156,9 @@ public:
             && bitstreamId == rhs.bitstreamId
             && maskedChannelsTx == rhs.maskedChannelsTx
             && maskedChannelsRx == rhs.maskedChannelsRx
-            && txTimeoutId == rhs.txTimeoutId;
+            && txTimeoutId == rhs.txTimeoutId
+           /*&& softStartEn == rhs.softStartEn
+            && rtzCycles == rhs.rtzCycles*/;
     }
 
     bool operator!=(const TxRxParameters &rhs) const { return !(rhs == *this); }
@@ -166,6 +180,8 @@ private:
     std::unordered_set<ChannelIdx> maskedChannelsTx;
     std::unordered_set<ChannelIdx> maskedChannelsRx;
     std::optional<TxTimeoutId> txTimeoutId;
+    //std::optional<bool> softStartEn;
+    //std::optional<uint8_t> rtzCycles; 
 };
 
 class TxRxParametersBuilder {
@@ -184,6 +200,8 @@ public:
         maskedChannelsTx = params.getMaskedChannelsTx();
         maskedChannelsRx = params.getMaskedChannelsRx();
         txTimeoutId = params.getTxTimeoutId();
+        //softStartEn = params.getSoftStartEn();
+        //rtzCycles = params.getRtzCycles();
     }
 
     explicit TxRxParametersBuilder(const arrus::ops::us4r::TxRx &op) {
@@ -206,6 +224,8 @@ public:
         this->maskedChannelsTx = {};
         this->maskedChannelsRx = {};
         this->txTimeoutId = std::nullopt;
+        //this->softStartEn = std::nullopt;
+        //this->rtzCycles = std::nullopt;
     }
 
     TxRxParameters build() {
@@ -235,6 +255,8 @@ public:
     void setMaskedChannelsTx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsTx = value; }
     void setMaskedChannelsRx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsRx = value; }
     void setTxTimeoutId(const std::optional<TxTimeoutId> &value) { TxRxParametersBuilder::txTimeoutId = value; }
+   //void setSoftStartEn(const std::optional<bool> &value) { TxRxParametersBuilder::softStartEn = value; }
+   // void setRtzCycles(const std::optional<uint8_t> &value) { TxRxParametersBuilder::rtzCycles = value; }
 
 private:
     ::std::vector<bool> txAperture;
@@ -250,6 +272,8 @@ private:
     std::unordered_set<ChannelIdx> maskedChannelsTx;
     std::unordered_set<ChannelIdx> maskedChannelsRx;
     std::optional<TxTimeoutId> txTimeoutId;
+    //std::optional<bool> softStartEn;
+    //std::optional<uint8_t> rtzCycles;
 };
 
 class TxRxParametersSequenceBuilder;

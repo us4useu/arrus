@@ -35,6 +35,8 @@ def convert_to_core_sequence(seq):
             nPeriods=tx.excitation.n_periods,
             inverse=tx.excitation.inverse,
             amplitudeLevel=tx.excitation.amplitude_level
+            softStart=tx.excitation.soft_start,
+            rtzCycles=tx.excitation.rtz
         )
         tx_placement = parse_device_id(tx.placement)
         tx_placement = to_core_device_id(tx_placement)

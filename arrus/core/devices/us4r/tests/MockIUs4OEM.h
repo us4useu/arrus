@@ -242,6 +242,8 @@ public:
     MOCK_METHOD(void, SetTxVoltageLevel, (uint8_t level, uint16_t firing), (override));
     MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
     MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
+    MOCK_METHOD(void, SetLongTxSoftStart, (bool enable, const unsigned short firing), (override));
+    MOCK_METHOD(void, SetTxRtzCycles, (uint8_t rtz, const unsigned short firing), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
