@@ -23,7 +23,7 @@ class Pulse:
     n_periods: float
     inverse: bool
     amplitude_level: int = 0
-    soft_start: bool = None
+    soft_start: bool = True
     rtz: int = 0
 
 

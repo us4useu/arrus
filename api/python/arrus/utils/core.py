@@ -34,7 +34,7 @@ def convert_to_core_sequence(seq):
             centerFrequency=tx.excitation.center_frequency,
             nPeriods=tx.excitation.n_periods,
             inverse=tx.excitation.inverse,
-            amplitudeLevel=tx.excitation.amplitude_level
+            amplitudeLevel=tx.excitation.amplitude_level,
             softStart=tx.excitation.soft_start,
             rtzCycles=tx.excitation.rtz
         )

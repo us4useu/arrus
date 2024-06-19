@@ -9,6 +9,7 @@ namespace arrus::ops::us4r {
 class Pulse {
 public:
     using AmplitudeLevel = uint8;
+    using RtzCycles = uint8;
 
     /**
 	 * Pulse constructor.
@@ -18,7 +19,7 @@ public:
 	 * @param inverse if set to true - inverse the pulse polarity
 	 * @param amplitudeLevel amplitude level to use, default: 0
 	 */
-    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 0, bool softStart = true, uint8_t rtzCycles = 0)
+    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 0, bool softStart = true, RtzCycles rtzCycles = 0)
         : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel), softStart(softStart), rtzCycles(rtzCycles) {}
 
     float getCenterFrequency() const {
@@ -60,7 +61,7 @@ private:
     bool inverse;
     AmplitudeLevel amplitudeLevel = 0;
     bool softStart = true;
-    uint8_t rtzCycles = 0;
+    RtzCycles rtzCycles = 0;
 };
 
 }
