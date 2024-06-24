@@ -174,9 +174,8 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
 void Us4OEMImpl::setTxTimeouts(const std::vector<TxTimeout> &txTimeouts) {
     if(!txTimeouts.empty()) {
         ius4oem->EnableTxTimeout();
-        TxTimeoutId timeoutId = TxTimeoutId(0);
-        for(auto &t: txTimeouts) {
-            ius4oem->SetTxTimeout(timeoutId, t);
+        for(size_t n = 0; n < txTimeouts.size(); ++n) {
+            ius4oem->SetTxTimeout((uint8_t)n, txTimeouts[n]);
         }
     }
 }
