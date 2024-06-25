@@ -123,7 +123,7 @@ public:
         using namespace arrus::devices;
         using FCM = FrameChannelMapping;
         using FCMA = FrameChannelMappingAddress;
-        auto fcm = uploadResult.getConstMetadata()->get<FCM>("frameChannelMapping");
+        auto fcm = uploadResult.getConstMetadata(0)->get<FCM>("frameChannelMapping");
         auto frameOffsets = fcm->getFrameOffsets();
         auto numberOfFrames = fcm->getNumberOfFrames();
 
