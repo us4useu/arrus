@@ -118,6 +118,10 @@ public:
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
     float getActualTxFrequency(float frequency) override;
 
+    bool isOEMPlus() {
+        return getOemVersion() == 2;
+    }
+
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;
