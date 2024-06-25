@@ -73,7 +73,7 @@ public:
                         },
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
-                    Interval<uint32>{0, 2047} // sequence length
+                    Interval<uint32>{0, 4095} // sequence length
                 },
                 4 // maximum number of timeouts
             };
