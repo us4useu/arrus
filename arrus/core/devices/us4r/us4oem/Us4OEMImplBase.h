@@ -40,7 +40,7 @@ public:
     // TODO expose "registerUs4OEMOutputBuffer" function, keep this class hermetic
     virtual Ius4OEMRawHandle getIUs4oem() = 0;
 
-    virtual void enableSequencer(bool resetSequencerPointer = true) = 0;
+    virtual void enableSequencer(uint16_t startEntry = 0) = 0;
 
     virtual std::vector<uint8_t> getChannelMapping() = 0;
 
