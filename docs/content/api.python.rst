@@ -238,10 +238,6 @@ Probe check functionality
     :members:
     :show-inheritance:
 
-.. autoclass:: arrus.utils.probe_check.MaxHVPSCurrentExtractor
-    :members:
-    :show-inheritance:
-
 .. autoclass:: arrus.utils.probe_check.ByThresholdValidator
     :members:
     :show-inheritance:

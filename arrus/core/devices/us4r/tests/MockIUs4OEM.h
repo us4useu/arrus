@@ -85,7 +85,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode, bool irqDone),
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode),
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
@@ -113,7 +113,6 @@ public:
     MOCK_METHOD(void, MarkEntriesAsReadyForTransfer, (unsigned short,unsigned short), (override));
     MOCK_METHOD(void, RegisterReceiveOverflowCallback, (const std::function<void (void)> &), (override));
     MOCK_METHOD(void, RegisterTransferOverflowCallback, (const std::function<void (void)> &), (override));
-    MOCK_METHOD(void, RegisterCallback, (IUs4OEM::MSINumber, const std::function<void (void)> &), (override));
     MOCK_METHOD(void, EnableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, EnableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, SyncReceive, (), (override));
@@ -228,9 +227,7 @@ public:
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
     MOCK_METHOD(void, ClearCallbacks, (), (override));
-    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
-    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
-    MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
+    MOCK_METHOD(void, ClearTransferRXBufferToHost, (size_t firing), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

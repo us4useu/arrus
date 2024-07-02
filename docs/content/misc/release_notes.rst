@@ -4,24 +4,6 @@ Release notes
 0.10.x
 -----
 
-0.10.2
-
-- core (C++):
-
-    - Exposed HVPS measurements and MANUAL_OP work mode #US4R-395.
-
-        - Implemented MANUAL_OP work mode #US4R-395.
-        - Exposed the Us4R::setMaximumPulseLength(pulseLength) function, which allows you to set what is the maximum allowable pulse length. The function was prepared in order to provide the possibility to transmit with more than 32 cycles (available only for OEM+), and that is necessary for the new probe_check function to get reliable results. By default (when the method is not explicitly called), the maximum pulse length is set to 32 cycles. 
-
-- Python API:
-
-    - Implement HVPS-based probe check and MANUAL_OP work mode #US4R-395.
-        
-        - Exposed HVPS measurement in the Python API
-        - Implemented MANUAL_OP work mode
-        - Updated arrus.utils.probe_check module to use the HVPS measurements (OEM+ rev1 only). Exposed the new parameters: signal_type (rf or hvps), current (hvps only).
-        - Exposed the us4r.set_maximum_pulse_length(pulse_length) function. See the core (C++) release notes for more details.
-
 0.10.1
 
 - core (C++):

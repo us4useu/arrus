@@ -320,22 +320,12 @@ class Us4R(Device, Ultrasound):
             custom={"frame_channel_mapping": fcm}
         )
 
-    def set_stop_on_overflow(self, is_stop):
+    def set_stop_on_overflow(is_stop):
         """
         Set the system to stop when (RX or host) buffer overflow is detected (ASYNC mode only).
         This property is set by default to true.
         """
         return self._handle.setStopOnOverflow(is_stop)
-
-    def set_maximum_pulse_length(self, max_length):
-        """
-        Sets maximum pulse length that can be set during the TX/RX sequence programming.
-        None means to use up to 32 TX cycles.
-
-        :param max_length: maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
-        """
-        self._handle.setMaximumPulseLength(max_length)
-
 
     def _get_fcm(self, upload_result, sequence):
         """

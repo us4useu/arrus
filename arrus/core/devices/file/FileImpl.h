@@ -40,10 +40,7 @@ public:
 
     void start() override;
     void stop() override;
-    void trigger(bool sync, std::optional<long long> timeout) override;
-    void sync(std::optional<long long> /*timeout*/) override {
-        throw std::runtime_error("Currently not supported");
-    }
+    void trigger() override;
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
     std::pair<arrus::framework::Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
