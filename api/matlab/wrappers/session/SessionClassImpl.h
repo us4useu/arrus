@@ -159,8 +159,8 @@ public:
         auto framesArr = ctx->createTypedArray<FrameNr>(frames, fcmArrayShape);
         auto channelsArr = ctx->createTypedArray<Us4OEMChannelNr>(channels, fcmArrayShape);
 
-        auto rxOffsetPtr = uploadResult.getConstMetadata(0)->get<int32>("rxOffset");
-        auto rxOffset = ctx->createScalar<int32>(*rxOffsetPtr);
+        auto rxOffsetPtr = uploadResult.getConstMetadata(0)->get<float>("rxOffset");
+        auto rxOffset = ctx->createScalar<float>(*rxOffsetPtr);
 
         outputs[1] = frameOffsetsArr;
         outputs[2] = numberOfFramesArr;

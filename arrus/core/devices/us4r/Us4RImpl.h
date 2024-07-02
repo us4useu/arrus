@@ -158,7 +158,7 @@ private:
 
     void stopDevice();
 
-    std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, int32>
+    std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<framework::NdArray> &txDelayProfiles);

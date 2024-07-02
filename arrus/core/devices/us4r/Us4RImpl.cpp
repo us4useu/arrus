@@ -333,7 +333,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
         metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
-        metadataBuilder.add<int32>("rxOffset", std::make_shared<int32>(offsetResidue));
+        metadataBuilder.add<float>("rxOffset", std::make_shared<float>(offsetResidue));
         metadatas.emplace_back(metadataBuilder.buildPtr());
     }
     return std::make_pair(this->buffer, metadatas);
@@ -412,7 +412,7 @@ Us4RImpl::~Us4RImpl() {
     }
 }
 
-std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, int32>
+std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
@@ -475,7 +475,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<FrameChannelMapping::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
-    int32 offsetResidue;
+    float offsetResidue;
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
         // TODO Consider implementing dynamic change of delay profiles

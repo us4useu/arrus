@@ -270,7 +270,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     ius4oem->SetTxDelays(txDelays.size());
 }
 
-std::pair<size_t, int32> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, 
+std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, 
                                                         uint32 startSample, uint32 endSample, uint16 entryId,
                                                         const TxRxParameters &op, uint16 rxMapId,
                                                         const std::optional<DigitalDownConversion> &ddc) {
@@ -336,7 +336,7 @@ size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, u
  * This method programs us4OEM sequencer to fill the us4OEM memory with the acquired data
  * us4oem RXDMA output address.
 */
-std::pair<Us4OEMBuffer, int32> Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
+std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
                                                              const std::optional<DigitalDownConversion> &ddc,
                                                              const Us4OEMRxMappingRegister &rxMappingRegister) {
     bool isDDCOn = ddc.has_value();
@@ -353,7 +353,7 @@ std::pair<Us4OEMBuffer, int32> Us4OEMImpl::uploadAcquisition(const TxParametersS
     size_t arrayStartAddress = 0;
     size_t elementStartAddress = 0;
     uint16 entryId = 0;
-    int32 offsetResidue = 0;
+    float offsetResidue = 0;
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
         for (SequenceId seqId = 0; seqId < nSequences; ++seqId) {
@@ -711,7 +711,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     }
 }
 
-std::pair<uint32_t, int32> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
+std::pair<uint32_t, float> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
     //DDC valid data offset
     uint32_t txOffset = ius4oem->GetTxOffset();
     uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
@@ -742,7 +742,7 @@ std::pair<uint32_t, int32> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcD
         offset += ((txOffset + filterDelay - offset) / dataStep) * dataStep;
     }
 
-    int32 offsetResidue = (int32)(txOffset + filterDelay) - (int32)(offset);
+    float offsetResidue = (float)(txOffset + filterDelay) - (float)(offset);
 
     return std::make_pair(offset, offsetResidue);
 }
