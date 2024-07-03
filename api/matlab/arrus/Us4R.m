@@ -874,9 +874,9 @@ classdef Us4R < handle
             %% Default decimation & DDC filter coefficients
             if obj.seq.hwDdcEnable
                 if isempty(obj.seq.dec)
-%                     obj.seq.dec = round(obj.sys.rxSampFreq / max(obj.seq.txFreq));
-                    obj.seq.dec = obj.sys.rxSampFreq / max(obj.seq.txFreq);
-                    obj.seq.dec = round(obj.seq.dec * 4) / 4;
+                    obj.seq.dec = round(obj.sys.rxSampFreq / max(obj.seq.txFreq));
+%                     obj.seq.dec = obj.sys.rxSampFreq / max(obj.seq.txFreq);
+%                     obj.seq.dec = round(obj.seq.dec * 4) / 4;
                 end
                 obj.seq.fpgaDec = 1;
                 
