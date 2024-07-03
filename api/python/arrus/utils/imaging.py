@@ -914,7 +914,7 @@ class Pipeline:
         return self.process(data)
 
     def process(self, data):
-        if len(data) == 1:
+        if (isinstance(data, tuple) or isinstance(data, list)) and len(data) == 1:
             # Backward compatibility
             data = data[0]
         outputs = deque()  # TODO avoid creating deque on each processing step
