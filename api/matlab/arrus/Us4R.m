@@ -874,18 +874,24 @@ classdef Us4R < handle
             %% Default decimation & DDC filter coefficients
             if obj.seq.hwDdcEnable
                 if isempty(obj.seq.dec)
-                    obj.seq.dec = round(obj.sys.rxSampFreq / max(obj.seq.txFreq));
+%                     obj.seq.dec = round(obj.sys.rxSampFreq / max(obj.seq.txFreq));
+                    obj.seq.dec = obj.sys.rxSampFreq / max(obj.seq.txFreq);
+                    obj.seq.dec = round(obj.seq.dec * 4) / 4;
                 end
                 obj.seq.fpgaDec = 1;
                 
-                cutoffFrequency = mean(obj.seq.txFreq)/(obj.sys.rxSampFreq/2);
-                firOrder = obj.seq.dec * 16 - 1;
+                decMultipMap = [1 4 2 4];
+                decMultip = decMultipMap(mod(obj.seq.dec*4, 4) + 1);
+                cutoffFrequency = mean(obj.seq.txFreq) / (obj.sys.rxSampFreq*decMultip/2);
+                firOrder = obj.seq.dec * decMultip * 16 - 1;
                 firCoeff = fir1(firOrder, cutoffFrequency, "low");
                 obj.seq.ddcFirCoeff = firCoeff((numel(firCoeff)/2 + 1) : end);
                 
             else
                 if isempty(obj.seq.dec)
                     obj.seq.dec = 1;
+                elseif mod(obj.seq.dec,1) ~= 0
+                    error('Sequence decimation factor must be integer if hwDdcEnable is set to false');
                 end
                 obj.seq.fpgaDec = obj.seq.dec;
                 obj.seq.ddcFirCoeff = [];
@@ -1050,7 +1056,8 @@ classdef Us4R < handle
                     obj.rec.dec = round(obj.subSeq.rxSampFreq / max(obj.subSeq.txFreq));
                 end
                 
-                % Filter design the same as in hardware DDC
+                % Filter design similar as in hardware DDC, 
+                % but rec.dec is always integer, so decMultip = 1;
                 % downConvertion.m performs filtration with no phase delay
                 cutoffFrequency = mean(obj.subSeq.txFreq)/(obj.subSeq.rxSampFreq/2);
                 firOrder = obj.rec.dec * 16 - 1;
@@ -1555,7 +1562,7 @@ classdef Us4R < handle
                                     obj.subSeq.txApFstElem(selFrames), ...
                                     obj.subSeq.txApLstElem(selFrames), ...
                                     obj.subSeq.rxApOrig(selFrames), ...
-                                    obj.subSeq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                    ceil(obj.subSeq.nSampOmit(selFrames)/obj.rec.dec), ...
                                     rxTangLim(:,1).', ...
                                     rxTangLim(:,2).', ...
                                     obj.subSeq.rxSampFreq/obj.rec.dec, ...
@@ -1599,7 +1606,7 @@ classdef Us4R < handle
                                 obj.subSeq.txFreq(selFrames), ...
                                 obj.subSeq.initDel(selFrames) + obj.buffer.rxTimeOffset, ...
                                 obj.subSeq.rxApOrig(selFrames), ...
-                                obj.subSeq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                ceil(obj.subSeq.nSampOmit(selFrames)/obj.rec.dec), ...
                                 obj.rec.bmodeRxTangLim(:,1).', ...
                                 obj.rec.bmodeRxTangLim(:,2).', ...
                                 obj.subSeq.rxSampFreq/obj.rec.dec, ...
