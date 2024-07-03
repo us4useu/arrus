@@ -17,19 +17,19 @@ namespace arrus::devices {
  */
 class Us4OEMUploadResult {
 public:
-    Us4OEMUploadResult(Us4OEMBuffer bufferDescription, std::vector<FrameChannelMapping::Handle> fcms, float offsetResidue)
-        : bufferDescription(std::move(bufferDescription)), fcms(std::move(fcms)), offsetResidue(offsetResidue) {}
+    Us4OEMUploadResult(Us4OEMBuffer bufferDescription, std::vector<FrameChannelMapping::Handle> fcms, float rxTimeOffset)
+        : bufferDescription(std::move(bufferDescription)), fcms(std::move(fcms)), rxTimeOffset(rxTimeOffset) {}
 
     [[nodiscard]] const Us4OEMBuffer &getBufferDescription() const { return bufferDescription; }
     FrameChannelMapping::RawHandle getFCM(size_t sequenceId) { return fcms.at(sequenceId).get(); }
     /** NOTE: THIS FUNCTIONS MAKES this->fcms no more usable !!! */
     std::vector<FrameChannelMapping::Handle> acquireFCMs() {return std::move(fcms); }
-    float getOffsetResidue() { return offsetResidue; }
+    float getRxTimeOffset() { return rxTimeOffset; }
 private:
     Us4OEMBuffer bufferDescription;
     // Sequence id -> FCM.
     std::vector<FrameChannelMapping::Handle> fcms;
-    float offsetResidue;
+    float rxTimeOffset;
 };
 
 }// namespace arrus::devices
