@@ -70,10 +70,14 @@ def _get_const_memory_array(module, name, input_array):
     return const_arr
 
 
-def _assert_unique_property(seq: TxRxSequence, getter: Callable, name: str):
-    s = {getter(op) for op in seq.ops}
+def _assert_unique_property_for_rx_active_ops(seq: TxRxSequence, getter: Callable, name: str):
+    """
+    Asserts if the given sequence has a given unique property (determined by
+    the user-defined `getter`).
+    """
+    s = {getter(op) for op in seq.ops if not op.rx.is_nop()}
     if len(s) > 1:
-        raise ValueError("The following property should be unique "
+        raise ValueError("The following property should be unique for RX active ops "
                          f"in the sequence: {name}, found values: "
                          f"{s}")
 
@@ -1161,7 +1165,11 @@ def _get_unique_center_frequency(sequence):
     if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
         return sequence.pulse.center_frequency
     elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
-        cfs = {tx_rx.tx.excitation.center_frequency for tx_rx in sequence.ops}
+        cfs = {
+            tx_rx.tx.excitation.center_frequency
+            for tx_rx in sequence.ops
+            if not tx_rx.rx.is_nop()
+        }
         if len(cfs) > 1:
             raise ValueError("Each TX/RX should have exactly the same "
                              "definition of transmit pulse.")
@@ -1517,12 +1525,12 @@ class RxBeamforming(Operation):
             rx_aperture_size = seq.rx_aperture_size
             angles = np.array(tx_rx_params["tx_angle"])
         elif isinstance(seq, TxRxSequence):
-            _assert_unique_property(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
-            _assert_unique_property(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
-            _assert_unique_property(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
-            _assert_unique_property(seq, lambda op: op.rx.sample_range, "sample_range")
-            _assert_unique_property(seq, lambda op: op.rx.init_delay, "init_delay")
-            _assert_unique_property(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.sample_range, "sample_range")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.init_delay, "init_delay")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
             ref_tx = seq.ops[0].tx
             ref_rx = seq.ops[0].rx
             # Tx
@@ -2663,11 +2671,11 @@ class ReconstructLri(Operation):
             ops = [op for op in seq.ops
                    if op.rx.aperture.size is None or op.rx.aperture.size > 0]
             seq = dataclasses.replace(seq, ops=ops)
-            _assert_unique_property(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
-            _assert_unique_property(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
-            _assert_unique_property(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
-            _assert_unique_property(seq, lambda op: op.rx.sample_range, "sample_range")
-            _assert_unique_property(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.sample_range, "sample_range")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
 
             rx_op = ops[0].rx
             tx_op = ops[0].tx
