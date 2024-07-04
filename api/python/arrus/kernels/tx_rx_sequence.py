@@ -73,8 +73,19 @@ def _get_full_tx_delays(constant_delays, sequence_with_masks):
     return np.stack(output_array)
 
 
+def __merge_txs(txs):
+    # TODO
+    pass
+
+
+# TODO zaimplementowac merge
+# TODO jak jednoznacznie identyfikwaac TX? (nazwa? hash?)
+# TODO upewnic sie ze zadziala dla mieszanych TX opoznienia vs focus (ignorowac surowe opoznienia);
+# gdy same opoznienia: tx_center_delay zwracac jako None
+
 def convert_to_us4r_sequence_with_constants(
-        sequence: TxRxSequence, probe_tx, probe_rx, fs: float, tx_focus_constants
+        sequence: TxRxSequence, probe_tx, probe_rx, fs: float,
+        tx_focus_constants
 ):
     sequence_with_masks: TxRxSequence = set_aperture_masks(
         sequence=sequence,
@@ -82,74 +93,55 @@ def convert_to_us4r_sequence_with_constants(
         probe_rx=probe_rx
     )
     original_sequence = sequence
-    # We want all operators to have exactly the same combination
-    # of parameters: delays or focus,angle,speed of sound.
-    # Currently this is required because of TX center delay equalization
-    # (see code below).
-    delays_is_none = set(op.tx.delays is None for op in sequence.ops)
-    foc_ang_c_is_none = set(
-        op.tx.focus is None
-        and op.tx.angle is None
-        and op.tx.speed_of_sound is None
-        for op in sequence.ops
+    dels, tx_center_delay = get_tx_delays(
+        probe=probe_tx,
+        sequence=sequence,
+        seq_with_masks=sequence_with_masks,
     )
-    if len(delays_is_none) != 1 or len(foc_ang_c_is_none) != 1:
-        # the above arrays are {True, False}
-        raise ValueError("All TX/RXs delays should be None "
-                         "or focus,angle,speed of sound should be None.")
-    if delays_is_none == {True}:
-        # Updates in the input sequence the following parameters:
-        # - tx: delays, focus, angle, speed_of_sound
-        # - rx: init_delay, sample_range
-        # Otherwise, we need to convert focus, angle, c to raw TX delays.
-        dels, tx_center_delay = get_tx_delays(
-            probe=probe_tx,
-            sequence=sequence,
-            seq_with_masks=sequence_with_masks,
-        )
-        # Calculate delays for each constant.
-        new_ops = []
-        # Update input sequence.
-        for i, op in enumerate(sequence_with_masks.ops):
-            d = dels[i]
-            sample_range = __get_sample_range(
-                op=op, tx_delay_center=tx_center_delay, fs=fs)
-            # Replace
-            old_tx = op.tx
-            new_tx = dataclasses.replace(old_tx, delays=np.atleast_1d(d),
+    # Calculate delays for each constant.
+    new_ops = []
+    # Update input sequence.
+    for i, op in enumerate(sequence_with_masks.ops):
+        d = dels[i]
+        sample_range = __get_sample_range(
+            op=op, tx_delay_center=tx_center_delay, fs=fs)
+        # Replace
+        new_txs = []
+        for tx in op.tx:
+            new_tx = dataclasses.replace(tx, delays=np.atleast_1d(d),
                                          focus=None, angle=None,
                                          speed_of_sound=None)
-            old_rx = op.rx
-            new_rx = dataclasses.replace(old_rx,
-                                         sample_range=sample_range,
-                                         init_delay="tx_start")
-            new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
-            new_ops.append(new_op)
-        sequence = dataclasses.replace(sequence, ops=new_ops)
+            new_txs.append(new_tx)
+        new_tx = __merge_txs(new_txs)
+        old_rx = op.rx
+        new_rx = dataclasses.replace(old_rx,
+                                     sample_range=sample_range,
+                                     init_delay="tx_start")
+        new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
+        new_ops.append(new_op)
 
-        output_constants = []
-        for i, tx_focus_const in enumerate(tx_focus_constants):
-            focus = tx_focus_const.value
-            focuses = [focus]*len(sequence_with_masks.ops)
-            constant_delays, _ = get_tx_delays_for_focuses(
-                probe=probe_tx,
-                sequence=original_sequence,
-                seq_with_masks=sequence_with_masks,
-                tx_focuses=focuses
+    sequence = dataclasses.replace(sequence, ops=new_ops)
+
+    output_constants = []
+    for i, tx_focus_const in enumerate(tx_focus_constants):
+        focus = tx_focus_const.value
+        focuses = [focus]*len(sequence_with_masks.ops)
+        constant_delays, _ = get_tx_delays_for_focuses(
+            probe=probe_tx,
+            sequence=original_sequence,
+            seq_with_masks=sequence_with_masks,
+            tx_focuses=focuses
+        )
+        full_tx_delays = _get_full_tx_delays(
+            constant_delays, sequence_with_masks)
+        output_constants.append(
+            Constant(
+                value=full_tx_delays,
+                placement=tx_focus_const.placement,
+                name=f"sequence/txDelays:{i}"
             )
-            full_tx_delays = _get_full_tx_delays(
-                constant_delays, sequence_with_masks)
-            output_constants.append(
-                Constant(
-                    value=full_tx_delays,
-                    placement=tx_focus_const.placement,
-                    name=f"sequence/txDelays:{i}"
-                )
-            )
-        return sequence, tx_center_delay, output_constants
-    else:
-        # NOTE: constants are currently not supported for raw TxRxSequence
-        return sequence, None, []
+        )
+    return sequence, tx_center_delay, output_constants
 
 
 def get_tx_delays(
@@ -342,8 +334,24 @@ def __get_aperture_center_element(aperture: Aperture, probe_model):
         assert False
 
 
-def set_aperture_masks(sequence, probe_tx, probe_rx) -> TxRxSequence:
+def __get_tx_set(tx):
+    if isinstance(tx, Tx):
+        return set(tx)
+    elif isinstance(tx, typing.Set):
+        return tx
+    else:
+        raise ValueError(f"Invalid type of TX: {tx}")
 
+
+def __assert_apertures_disjoint(apertures):
+    apertures = np.stack(apertures).astype(np.int32)
+    ntimes = np.sum(apertures, axis=0)
+    if not (ntimes <= 1).all():
+        raise ValueError(f"All TX/RX aperture should be disjoint, "
+                         f"got: {apertures}")
+
+
+def set_aperture_masks(sequence, probe_tx, probe_rx) -> TxRxSequence:
     def get_new_ap_if_necessary(ap, probe):
         if isinstance(ap, Aperture):
             center_element = __get_aperture_center_element(ap, probe)
@@ -358,17 +366,25 @@ def set_aperture_masks(sequence, probe_tx, probe_rx) -> TxRxSequence:
     new_ops = []
     for i, op in enumerate(sequence.ops):
         # Replace
-        old_tx = op.tx
+        old_tx = __get_tx_set(op.tx)
+        new_txs = set()
+        tx_apertures = []
+
+        for tx in old_tx:
+            new_tx_ap, _ = get_new_ap_if_necessary(tx.aperture, probe=probe_tx)
+            new_tx = dataclasses.replace(tx, aperture=new_tx_ap)
+            new_txs.add(new_tx)
+            tx_apertures.append(new_tx_ap)
+
+        # Make sure that all apertures within a single TX are disjoint
+        __assert_apertures_disjoint(tx_apertures)
         old_rx = op.rx
-        new_tx_ap, _ = get_new_ap_if_necessary(old_tx.aperture,
-                                               probe=probe_tx)
         new_rx_ap, padding = get_new_ap_if_necessary(old_rx.aperture,
                                                      probe=probe_rx)
 
-        new_tx = dataclasses.replace(old_tx, aperture=new_tx_ap)
         new_rx = dataclasses.replace(old_rx, aperture=new_rx_ap,
                                      padding=padding)
-        new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
+        new_op = dataclasses.replace(op, tx=new_txs, rx=new_rx)
         new_ops.append(new_op)
     return dataclasses.replace(sequence, ops=new_ops)
 

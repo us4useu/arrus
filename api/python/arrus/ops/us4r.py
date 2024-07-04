@@ -5,7 +5,7 @@ from arrus.ops.operation import Operation
 from typing import Iterable
 from arrus.framework import Constant
 import dataclasses
-from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional
+from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Set
 from arrus.devices.device import parse_device_id, DeviceId
 
 
@@ -178,7 +178,7 @@ class TxRx:
     :param rx: signal reception to perform
     :param pri: pulse repetition interval [s] - time to next event
     """
-    tx: Tx
+    tx: Union[Tx, Set[Tx]]
     rx: Rx
     pri: float
 
