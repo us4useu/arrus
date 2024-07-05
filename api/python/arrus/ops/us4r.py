@@ -14,6 +14,8 @@ class Pulse:
     """
     A definition of the pulse that can be triggered by the us4r device.
 
+    NOTE: this object is assumed to be hashable.
+
     :param center_frequency: pulse center frequency [Hz]
     :param n_periods: number of periods of the generated pulse, possible values: 0.5, 1, 1.5, ...
     :param inverse: true if the signal amplitude should be reversed, false otherwise
