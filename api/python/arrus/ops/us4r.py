@@ -230,7 +230,14 @@ class TxRxSequence:
         return next(iter(sample_range))
 
     def get_tx_probe_id_unique(self) -> DeviceId:
-        tx_probe_ids = {parse_device_id(op.tx.placement) for op in self.ops}
+        tx_probe_ids = set()
+        for op in self.ops:
+            txs = op.tx
+            if not isinstance(txs, Iterable):
+                txs = [txs]
+            for tx in txs:
+                tx_probe_ids.add(parse_device_id(tx.placement))
+
         if(len(tx_probe_ids)) > 1:
             raise ValueError(f"All TX/Rxs within this sequence: {self.name} "
                              f"are expected to use the same TX probe, found: "

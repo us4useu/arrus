@@ -108,7 +108,7 @@ def __merge_txs(txs):
     is_all_sorted_by_first_element = (np.diff([np.min(np.argwhere(tx.aperture)) for tx in txs]) > 0).all()
     assert is_all_sorted_by_first_element, "Internal error: txs: were not sorted appropriately"
     # assert unique values: excitation, placement
-    n_unqiue_pulses = len({tx.pulse for tx in txs})  # NOTE: assuming tx.pulse is hashable
+    n_unqiue_pulses = len({tx.excitation for tx in txs})  # NOTE: assuming tx.pulse is hashable
     if n_unqiue_pulses > 1:
         raise ValueError("Each TX of a single op should have exactly the same Pulse definition")
     n_unique_placements = len({tx.placement for tx in txs})
@@ -116,8 +116,8 @@ def __merge_txs(txs):
         raise ValueError("Each Tx of a single op should have exactly the same placement.")
 
     ref_tx = txs[0]
-    aperture = ref_tx[0]
-    delays = np.zeros(len(aperture), dtype=aperture.dtype)
+    aperture = ref_tx.aperture
+    delays = np.zeros(len(aperture.flatten()), dtype=np.float32)
     for tx in txs:
         aperture = np.logical_or(aperture, tx.aperture)
         for d, i in zip(tx.delays, np.argwhere(tx.aperture).flatten().tolist()):
@@ -275,17 +275,17 @@ def get_tx_delays_for_focuses(
             op_center_delays.append(center_delay)
         tx_delays.append(op_delays)
         # EQUALIZE TO THE MAXIMUM CENTER DELAY OF THE WHOLE OPERATION
-        center_delays.append(np.max(op_center_delays))
+        center_delays.append(op_center_delays)
 
     normalized_delays = []
     normalized_center_delays = []
 
     # Equalize delays to the TX center.
     for i, op in enumerate(sequence.ops):
-        op_center_delay = center_delays[i]
         op_normalized_delays = []
         op_normalized_center_delays = []
         for j, tx in enumerate(op.tx):
+            op_center_delay = center_delays[i][j]
             op_delays = tx_delays[i][j]
             tx_aperture_mask = seq_with_masks.ops[i].tx[j].aperture
             if op_center_delay is None:
@@ -326,6 +326,7 @@ def get_tx_delays_for_focuses(
                     # Move center delay to the maximum value
                     d = d + max_center_delay
                     normalized_delays[i][j] = d
+
             normalized_center_delays[i] = max_center_delay
 
     # Equalize through the whole sequence (NOTE: RX active operations only!)
