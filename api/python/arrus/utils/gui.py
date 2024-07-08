@@ -18,6 +18,7 @@ class Layer2D:
     metadata: object
     value_range: tuple
     cmap: str
+    aspect: str
     input: int = None
     value_func: object = None
 
@@ -51,6 +52,8 @@ class Display2D:
         :param xlabel: x label
         :param ylabel: y label
         :param cmap: color map to apply
+        :param aspect: data aspect to apply
+            (matplotlib aspects, like 'auto' (default), 'equal', etc.)
         :param interval: number of milliseconds between successive img updates
         :param extent: OX/OZ extent: a tuple of (ox_min, ox_max, oz_max, oz_min)
         """
@@ -61,11 +64,13 @@ class Display2D:
                 kwargs["value_range"] = None
             if "cmap" not in kwargs:
                 kwargs["cmap"] = None
+            if "aspect" not in kwargs:
+                kwargs["aspect"] = "auto"
 
         accepted_params = [
-            {"metadata", "value_range", "cmap"},
+            {"metadata", "value_range", "cmap", "aspect"},
             {"layers"},
-            {"views"}
+            {"views"},
         ]
         kwargs_params = set(kwargs.keys())
         actual_params_set = [s for s in accepted_params if s == kwargs_params]
@@ -119,6 +124,7 @@ class Display2D:
                 metadata = layer.metadata
                 value_range = layer.value_range
                 cmap = layer.cmap
+                aspect = layer.aspect
                 input_shape = metadata.input_shape[-2:]
                 datatype = metadata.dtype
                 empty = np.zeros(input_shape, dtype=datatype)
@@ -134,8 +140,14 @@ class Display2D:
                         vmin, vmax = iinfo.min, iinfo.max
                     else:
                         raise ValueError(f"Unsupported data type: {empty.dtype}")
-                img = self._axes[view_id].imshow(empty, cmap=cmap, vmin=vmin, vmax=vmax,
-                                                 extent=view.extent)
+                img = self._axes[view_id].imshow(
+                    empty,
+                    cmap=cmap,
+                    vmin=vmin,
+                    vmax=vmax,
+                    extent=view.extent,
+                    aspect=aspect,
+                )
                 self.all_canvases.append(img)
                 if layer.input is None:
                     layer = dataclasses.replace(layer, input=i)
