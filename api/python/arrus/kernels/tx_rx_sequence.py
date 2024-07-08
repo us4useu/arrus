@@ -118,10 +118,13 @@ def __merge_txs(txs):
     ref_tx = txs[0]
     aperture = ref_tx.aperture
     delays = np.zeros(len(aperture.flatten()), dtype=np.float32)
+    delays[:] = np.nan
     for tx in txs:
         aperture = np.logical_or(aperture, tx.aperture)
         for d, i in zip(tx.delays, np.argwhere(tx.aperture).flatten().tolist()):
             delays[i] = d
+    # Remove unused elements
+    delays = delays[np.logical_not(np.isnan(delays))]
     return dataclasses.replace(ref_tx, aperture=aperture, delays=delays)
 
 
