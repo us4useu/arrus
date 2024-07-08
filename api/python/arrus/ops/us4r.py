@@ -170,6 +170,12 @@ class Rx(Operation):
         start, end = self.sample_range
         return end - start
 
+    def is_nop(self):
+        if isinstance(self.aperture, Aperture):
+            return self.aperture.size == 0
+        else:
+            return np.sum(self.aperture) == 0
+
 
 @dataclass(frozen=True)
 class TxRx:
