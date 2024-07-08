@@ -5,7 +5,7 @@ from arrus.ops.operation import Operation
 from typing import Iterable
 from arrus.framework import Constant
 import dataclasses
-from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional
+from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Set
 from arrus.devices.device import parse_device_id, DeviceId
 
 
@@ -13,6 +13,8 @@ from arrus.devices.device import parse_device_id, DeviceId
 class Pulse:
     """
     A definition of the pulse that can be triggered by the us4r device.
+
+    NOTE: this object is assumed to be hashable.
 
     :param center_frequency: pulse center frequency [Hz]
     :param n_periods: number of periods of the generated pulse, possible values: 0.5, 1, 1.5, ...
@@ -178,7 +180,7 @@ class TxRx:
     :param rx: signal reception to perform
     :param pri: pulse repetition interval [s] - time to next event
     """
-    tx: Tx
+    tx: Union[Tx, Set[Tx]]
     rx: Rx
     pri: float
 
@@ -228,7 +230,14 @@ class TxRxSequence:
         return next(iter(sample_range))
 
     def get_tx_probe_id_unique(self) -> DeviceId:
-        tx_probe_ids = {parse_device_id(op.tx.placement) for op in self.ops}
+        tx_probe_ids = set()
+        for op in self.ops:
+            txs = op.tx
+            if not isinstance(txs, Iterable):
+                txs = [txs]
+            for tx in txs:
+                tx_probe_ids.add(parse_device_id(tx.placement))
+
         if(len(tx_probe_ids)) > 1:
             raise ValueError(f"All TX/Rxs within this sequence: {self.name} "
                              f"are expected to use the same TX probe, found: "
