@@ -246,16 +246,16 @@ def get_tx_delays_for_focuses(
         op_delays = []
         op_center_delays = []
         for j, tx in enumerate(op.tx):
-            tx_angle = tx.angle + tx_center_angles[i][j]
-            tx_cent_x = tx_center_x[i][j]
-            tx_cent_z = tx_center_z[i][j]
-            c = tx.speed_of_sound
-            tx_focus = tx_focuses[i][j]
             if tx.delays is not None:
                 # RAW DELAYS
                 delays = tx.delays
                 center_delay = None
             else:
+                tx_angle = tx.angle + tx_center_angles[i][j]
+                tx_cent_x = tx_center_x[i][j]
+                tx_cent_z = tx_center_z[i][j]
+                c = tx.speed_of_sound
+                tx_focus = tx_focuses[i][j]
                 if np.isinf(tx_focus):
                     # PWI
                     delays = (element_x * np.sin(tx_angle)
@@ -354,7 +354,8 @@ def get_tx_delays_for_focuses(
         op_equalized_tx_delays = []
         for j, tx in enumerate(op.tx):
             d = normalized_delays[i][j]
-            if len(d) > 0 and np.sum(op_with_mask.rx.aperture) > 0:
+            cd = normalized_center_delays[i]
+            if not np.isnan(cd) and len(d) > 0 and np.sum(op_with_mask.rx.aperture) > 0:
                 # Non-empty delays.
                 d = d - normalized_center_delays[i] + tx_center_delay
             op_equalized_tx_delays.append(d)
