@@ -18,9 +18,9 @@ class Layer2D:
     metadata: object
     value_range: tuple
     cmap: str
-    aspect: str
     input: int = None
     value_func: object = None
+    aspect: str = "equal"
 
 
 @dataclasses.dataclass(frozen=True)
