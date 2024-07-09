@@ -53,7 +53,7 @@ class Display2D:
         :param ylabel: y label
         :param cmap: color map to apply
         :param aspect: data aspect to apply
-            (matplotlib aspects, like 'auto' (default), 'equal', etc.)
+            (matplotlib aspects, like 'auto', 'equal (default)', etc.)
         :param interval: number of milliseconds between successive img updates
         :param extent: OX/OZ extent: a tuple of (ox_min, ox_max, oz_max, oz_min)
         """
@@ -65,7 +65,7 @@ class Display2D:
             if "cmap" not in kwargs:
                 kwargs["cmap"] = None
             if "aspect" not in kwargs:
-                kwargs["aspect"] = "auto"
+                kwargs["aspect"] = "equal"
 
         accepted_params = [
             {"metadata", "value_range", "cmap", "aspect"},
