@@ -1,3 +1,6 @@
+// Welcome in the Windows API hell...
+# define NOMINMAX
+
 #include <gtest/gtest.h>
 
 #include "AdapterToUs4OEMMappingConverter.h"
@@ -7,6 +10,7 @@
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
+
 
 namespace {
 
