@@ -132,26 +132,37 @@ void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
     ius4oem->AfeDemodWriteFirCoeffs(coeffs, length);
 }
 
-void Us4OEMImpl::setHpfCornerFrequency(uint32_t frequency) {
-    uint8_t coefficient = 10;
+void Us4OEMImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
+    uint8_t coefficient = 0;
     switch (frequency) {
-    case 4520'000: coefficient = 2; break;
-    case 2420'000: coefficient = 3; break;
-    case 1200'000: coefficient = 4; break;
-    case 600'000: coefficient = 5; break;
-    case 300'000: coefficient = 6; break;
-    case 180'000: coefficient = 7; break;
-    case 80'000: coefficient = 8; break;
-    case 40'000: coefficient = 9; break;
-    case 20'000: coefficient = 10; break;
+    case 20'000: coefficient = 8; break;
+    case 50'000: coefficient = 15; break;
+    case 100'000: coefficient = 0; break;
     default:
-        throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported HPF corner frequency: {}", frequency));
+        throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported LNA HPF corner frequency: {}", frequency));
     }
-    ius4oem->AfeEnableHPF();
-    ius4oem->AfeSetHPFCornerFrequency(coefficient);
+    ius4oem->AfeEnableLnaHPF();
+    ius4oem->AfeSetLnaHPFCornerFrequency(coefficient);
 }
 
-void Us4OEMImpl::disableHpf() { ius4oem->AfeDisableHPF(); }
+void Us4OEMImpl::disableLnaHpf() { ius4oem->AfeDisableLnaHPF(); }
+
+void Us4OEMImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
+    uint8_t coefficient = 0;
+    switch (frequency) {
+    case 150'000: coefficient = 4; break;
+    case 300'000: coefficient = 3; break;
+    case 600'000: coefficient = 2; break;
+    case 1'200'000: coefficient = 1; break;
+    case 2'400'000: coefficient = 0; break;
+    default:
+        throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported ADC HPF corner frequency: {}", frequency));
+    }
+    ius4oem->AfeEnableAdcHPF();
+    ius4oem->AfeSetAdcHPFParamsPreset(coefficient);
+}
+
+void Us4OEMImpl::disableAdcHpf() { ius4oem->AfeDisableAdcHPF(); }
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 

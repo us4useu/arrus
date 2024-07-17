@@ -197,8 +197,10 @@ private:
     void writeAfeFIRCoeffs(const int16_t* coeffs, uint16_t length);
     void writeAfeFIRCoeffs(const float* coeffs, uint16_t length);
     void resetAfe();
-    void setHpfCornerFrequency(uint32_t frequency);
-    void disableHpf();
+    void setLnaHpfCornerFrequency(uint32_t frequency);
+    void disableLnaHpf();
+    void setAdcHpfCornerFrequency(uint32_t frequency);
+    void disableAdcHpf();
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;

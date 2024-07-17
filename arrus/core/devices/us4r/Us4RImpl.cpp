@@ -570,13 +570,22 @@ void Us4RImpl::disableAfeDemod() {
 
 float Us4RImpl::getCurrentSamplingFrequency() const {return us4oems[0]->getCurrentSamplingFrequency(); }
 
-void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
-    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setHpfCornerFrequency(frequency); },
-                       "setAfeHpfCornerFrequency");
+void Us4RImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setLnaHpfCornerFrequency(frequency); },
+                       "setLnaHpfCornerFrequency");
 }
 
-void Us4RImpl::disableHpf() {
-    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
+void Us4RImpl::disableLnaHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableLnaHpf(); }, "disableLnaHpf");
+}
+
+void Us4RImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setAdcHpfCornerFrequency(frequency); },
+                       "setAdcHpfCornerFrequency");
+}
+
+void Us4RImpl::disableAdcHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAdcHpf(); }, "disableAdcHpf");
 }
 
 uint16_t Us4RImpl::getAfe(uint8_t reg) {

@@ -191,9 +191,13 @@ public:
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalCycles, (uint8_t), (override));
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalDelay, (uint8_t), (override));
     MOCK_METHOD(float, GetFPGAWallclock, (), (override));
-    MOCK_METHOD(void, AfeEnableHPF, (), (override));
-    MOCK_METHOD(void, AfeDisableHPF, (), (override));
-    MOCK_METHOD(void, AfeSetHPFCornerFrequency, (uint8_t), (override));
+    MOCK_METHOD(void, AfeEnableLnaHPF, (), (override));
+    MOCK_METHOD(void, AfeDisableLnaHPF, (), (override));
+    MOCK_METHOD(void, AfeSetLnaHPFCornerFrequency, (uint8_t), (override));
+    MOCK_METHOD(void, AfeEnableAdcHPF, (), (override));
+    MOCK_METHOD(void, AfeDisableAdcHPF, (), (override));
+    MOCK_METHOD(void, AfeSetAdcHPFParams, (uint16_t, uint16_t, uint16_t, uint16_t), (override));
+    MOCK_METHOD(void, AfeSetAdcHPFParamsPreset, (uint8_t), (override));
     MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, const float*, uint16_t, float), (override));
     MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, uint8_t, const float*, uint16_t, float), (override));
     MOCK_METHOD(void, DisableWaitOnReceiveOverflow, (), (override));

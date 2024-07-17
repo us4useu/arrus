@@ -117,8 +117,10 @@ public:
     MOCK_METHOD(void, setAfe, (uint8_t address, uint16_t value), (override));
     MOCK_METHOD(float, getUCDMeasuredVoltage, (uint8_t), (override));
     MOCK_METHOD(float, getFPGAWallclock, (), (override));
-    MOCK_METHOD(void, setHpfCornerFrequency, (uint32_t), (override));
-    MOCK_METHOD(void, disableHpf, (), (override));
+    MOCK_METHOD(void, setLnaHpfCornerFrequency, (uint32_t), (override));
+    MOCK_METHOD(void, disableLnaHpf, (), (override));
+    MOCK_METHOD(void, setAdcHpfCornerFrequency, (uint32_t), (override));
+    MOCK_METHOD(void, disableAdcHpf, (), (override));
     MOCK_METHOD(float, getUCDTemperature, (), (override));
     MOCK_METHOD(float, getUCDExternalTemperature, (), (override));
     MOCK_METHOD(const char*, getSerialNumber, (), (override));

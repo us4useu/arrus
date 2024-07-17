@@ -135,8 +135,10 @@ public:
     float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
-    void setHpfCornerFrequency(uint32_t frequency) override;
-    void disableHpf() override;
+    void setLnaHpfCornerFrequency(uint32_t frequency) override;
+    void disableLnaHpf() override;
+    void setAdcHpfCornerFrequency(uint32_t frequency) override;
+    void disableAdcHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
