@@ -360,12 +360,18 @@ class Session(AbstractSession):
                 # Wrap Pipeline into the Processing object.
                 if processing.name is None:
                     processing.name = f"Pipeline:0"
+
+                n_outputs = processing._get_n_outputs()
+                operations = {processing}
+                dependencies = {
+                    processing.name: sequences[0].name,
+                }
+                for i in range(n_outputs):
+                    dependencies[f"Output:{i}"] = f"{processing.name}/Output:{i}"
+
                 graph = _imaging.Graph(
-                    operations={processing},
-                    dependencies={
-                        processing.name: sequences[0].name,
-                        "Output:0": processing.name
-                    }
+                    operations=operations,
+                    dependencies=dependencies
                 )
                 processing = _imaging.Processing(
                     graph=graph,

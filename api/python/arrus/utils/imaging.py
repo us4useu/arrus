@@ -1863,7 +1863,7 @@ class ScanConversion(Operation):
         self.num_pkg = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
 
         new_signal_description = dataclasses.replace(
             const_metadata.data_description,
@@ -1915,7 +1915,7 @@ class ScanConversion(Operation):
         if not isinstance(seq, arrus.ops.imaging.LinSequence):
             raise ValueError("Scan conversion works only with LinSequence.")
         medium = const_metadata.context.medium
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
         n_elements = probe.n_elements
@@ -1962,7 +1962,7 @@ class ScanConversion(Operation):
         else:
             import cupyx.scipy.ndimage
             self.interpolator = cupyx.scipy.ndimage.map_coordinates
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
 
@@ -2036,7 +2036,7 @@ class ScanConversion(Operation):
         return self.output_buffer
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         data_desc = const_metadata.data_description
 
         self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
