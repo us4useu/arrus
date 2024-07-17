@@ -7,11 +7,15 @@ to be reflection from the lens surface.
 The transmit-receive scheme includes transmitting by single transducer
 and receiving by transducers in aperture centered on the transmitter.
 
-Current features are
+Current features are (RF):
 1. amplitude,
 2. pulse duration,
 3. energy of normalised signal,
 4. pearson correlation coefficient (PCC) with 'footprint' signal.
+
+HVPS measurement (OEM+ only):
+1. current.
+
 PCC require a footprint (i.e. object containing reference rf signal array).
 The footprint should be acquired earlier using the same setup.
 This feature measure how much the signals changed comparing to footprint.
@@ -51,7 +55,7 @@ Following options are accepted:
 --help : displays help,
 --method : determines which method will be used ('threshold' (default)
   or 'neighborhood'),
---rf_file : determines the name of optional output file with rf data,
+--file: determines the name of optional output file with signal data,
 --create_footprint : creates footprint and store it in given file,
 --use_footprint : determines which footprint file to use,
 --n : the number of full Tx cycles to run (default 8),
@@ -63,16 +67,20 @@ Following options are accepted:
 --features: features to evaluation (amplitude, energy, duration, pcc)
 --display_summary : (flag) displays features values on figure,
 --visual_eval : (flag) displays pulses from all channels in single figure,
+-- signal_type: signal type; 'rf' or 'hvps'. NOTE: hvps is available for OEM+ rev1 or later only.
 
 Examples:
 python check_probe.py --help
 python check_probe.py --cfg_path /home/user/us4r.prototxt
-python check_probe.py --cfg_path /home/user/us4r.prototxt --rf_file rf.pkl
+python check_probe.py --cfg_path /home/user/us4r.prototxt --file rf.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --create_footprint footprint.pkl --n=16
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl
 python check_probe.py --cfg_path ~/us4r.prototxt --use_footprint footprint.pkl --features amplitude pcc
 python check_probe.py --cfg_path ~/us4r.prototxt --display_tx_channel 64
 python check_probe.py --cfg_path ~/us4r.prototxt --display_summary
+
+(OEM+ only).
+python check_probe.py --n 1 --cfg_path ~/us4r.prototxt --tx_frequency 9e6 --display_summary --tx_voltage 10 --signal_type hvps --feature current --method neighborhood
 
 Additional notes:
 1. This script tries to identify channels it considers suspicious.
@@ -106,6 +114,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from arrus.utils.probe_check import *
+import arrus.logging
+
+arrus.logging.add_log_file("probe_check.log", arrus.logging.TRACE)
 
 # ------------------------- Utility functions ---------------------------------
 
@@ -131,9 +142,9 @@ def visual_evaluation(report, minsamp=0, maxsamp=512, nx=16, figsize=(16, 8),
 
     for i in range(1, ny):
         for j in range(nx):
-            rf = data[iframe, k, minsamp:maxsamp, int(nrx / 2) - 1]
-            rf = rf - np.mean(rf)
-            ax[i, j].plot(rf, c=status_color[k])
+            line = data[iframe, k, minsamp:maxsamp, int((nrx-1)/2)]
+            line = line - np.mean(line)
+            ax[i, j].plot(line, c=status_color[k])
             ax[i, j].set_title(f"{k}")
             ax[i, j].axis("off")
             k += 1
@@ -215,8 +226,8 @@ def print_health_info(report):
                       f"valid range: {result.valid_range}.")
 
 
-def get_data_dimensions(metadata):
-    n_elements = metadata.context.device.probe.model.n_elements
+def get_data_dimensions(metadata, probe_nr):
+    n_elements = metadata.context.device.probe[probe_nr].model.n_elements
     sequence = metadata.context.raw_sequence
     start_sample, end_sample = sequence.ops[0].rx.sample_range
     n_samples = end_sample - start_sample
@@ -302,6 +313,13 @@ def main():
         default=8e6,
     )
     parser.add_argument(
+        "--tx_voltage", dest="tx_voltage",
+        help="TX voltage.",
+        required=False,
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
         "--nrx", dest="nrx",
         help="Size of receiving aperture",
         required=False,
@@ -309,8 +327,8 @@ def main():
         default=32,
     )
     parser.add_argument(
-        "--rf_file", dest="rf_file",
-        help="The name of the output file with RF data.",
+        "--file", dest="file",
+        help="The name of the output file with signal data.",
         required=False,
         default=None,
     )
@@ -349,6 +367,13 @@ def main():
         nargs="+",
     )
     parser.add_argument(
+        "--signal_type", dest="signal_type",
+        help="Signal type to use for the probe elements evaluation.",
+        choices=["rf", "hvps"],
+        required=False,
+        default="rf",
+    )
+    parser.add_argument(
         "--display_summary", dest="display_summary",
         help="Display features values in all channels.",
         required=False,
@@ -360,6 +385,22 @@ def main():
         required=False,
         action="store_true",
     )
+    parser.add_argument(
+        "--probe_nr", dest="probe_nr",
+        help="Number of the probe to use.",
+        required=False,
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        "--hpf_corner_frequency", dest="hpf_corner_frequency",
+        help="AFE High-pass filter corner frequency to apply, None means that the system's default value should be used.",
+        required=False,
+        type=int,
+        default=None,
+    )
+
+
     args = parser.parse_args()
 
     verifier = ProbeHealthVerifier()
@@ -375,7 +416,7 @@ def main():
         pickle.dump(footprint, open(args.create_footprint, "wb"))
         print("---------------------------------------------------------------")
         print("The footptint have been created "
-              f"and store in {args.create_footprint} file.")
+              f"and stored in {args.create_footprint} file.")
         print(f"The script {__file__} ends here.")
         print("---------------------------------------------------------------")
         quit()
@@ -386,7 +427,7 @@ def main():
     if args.method == "threshold":
         validator = ByThresholdValidator()
     elif args.method == "neighborhood":
-        validator = ByNeighborhoodValidator()
+        validator = ByNeighborhoodValidator(feature_range_in_neighborhood=(0.5, 1.5))
     else:
         import warnings
         warnings.warn(
@@ -395,22 +436,15 @@ def main():
         validator = ByThresholdValidator()
 
     # prepare examined features list
-    available_features = [
-        "amplitude",
-        "duration",
-        "energy",
-        "pcc"
-    ]
-    can_use_footprint = args.method == "threshold" and footprint is not None
+    available_features = set(EXTRACTORS[args.signal_type].keys())
     if args.features == 'all':
         given_features = available_features
-        if not can_use_footprint:
-            given_features.pop(3)
+        given_features.remove("footprint_pcc")
     else:
         given_features = args.features
     features = []
-    for feat in given_features:
-        if feat == "amplitude":
+    for feature_name in given_features:
+        if feature_name == "amplitude":
             features.append(
                 FeatureDescriptor(
                     name=MaxAmplitudeExtractor.feature,
@@ -418,7 +452,7 @@ def main():
                     masked_elements_range=(0, 3000)  # [a.u.]
                 )
             )
-        elif feat == "duration":
+        elif feature_name == "duration":
             features.append(
                 FeatureDescriptor(
                     name=SignalDurationTimeExtractor.feature,
@@ -426,7 +460,7 @@ def main():
                     masked_elements_range=(200, np.inf)  # number of samples
                 )
             )
-        elif feat == "energy":
+        elif feature_name == "energy":
             features.append(
                 FeatureDescriptor(
                     name=EnergyExtractor.feature,
@@ -434,7 +468,7 @@ def main():
                     masked_elements_range=(0, np.inf)  # [a.u.]
                 )
             )
-        elif feat == "pcc":
+        elif feature_name == "pcc":
             if can_use_footprint:
                 features.append(
                     FeatureDescriptor(
@@ -443,8 +477,24 @@ def main():
                         masked_elements_range=(0, 1)  # [a.u.]
                     )
                 )
+        elif feature_name == "current":
+            features.append(
+                FeatureDescriptor(
+                    name=MaxHVPSCurrentExtractor.feature,
+                    active_range=(0, 3000),  # [Ohm]
+                    masked_elements_range=(0, 3000)  # [Ohm]
+                )
+            )
+        elif feature_name == "signal_duration_time":
+            features.append(
+                FeatureDescriptor(
+                    name=SignalDurationTimeExtractor.feature,
+                    active_range=(0, 3000),
+                    masked_elements_range=(0, 3000)
+                )
+            )
         else:
-            raise ValueError(f"{feat} is a bad feature name")
+            raise ValueError(f"Unsupported feature '{feature_name}' for signal type: '{args.signal_type}'")
 
     # check probe
     report = verifier.check_probe(
@@ -455,15 +505,22 @@ def main():
         features=features,
         validator=validator,
         footprint=footprint,
+        probe_nr=args.probe_nr,
+        hpf_corner_frequency=args.hpf_corner_frequency,
+        signal_type=args.signal_type,
+        voltage=args.tx_voltage
     )
 
     # show results
     print_health_info(report)
     print("----------------------------------------------")
 
-    n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
+    n_elements, n_samples = get_data_dimensions(report.sequence_metadata, probe_nr=args.probe_nr)
 
     if args.display_tx_channel is not None:
+        if args.signal_type != "rf":
+            raise ValueError("The display_tx_channel parameter is available only "
+                             "for signal_type='rf'.")
         fig, ax, canvas = init_rf_display(n_elements, n_samples)
         ax.set_title(f"tx channel: {args.display_tx_channel}")
         display_rf(
@@ -481,9 +538,9 @@ def main():
     if args.display_summary:
         display_summary(n_elements, report)
 
-    if args.rf_file is not None:
-        data = {"rf": report.data, "context": report.sequence_metadata}
-        pickle.dump(data, open(args.rf_file, "wb"))
+    if args.file is not None:
+        data = {"report": report}
+        pickle.dump(data, open(args.file, "wb"))
 
     if args.show_pulse_comparison is not None:
         show_footprint_pulse_comparison(

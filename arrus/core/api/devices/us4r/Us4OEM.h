@@ -2,9 +2,11 @@
 #define ARRUS_CORE_API_DEVICES_US4R_US4OEM_H
 
 #include <memory>
-#include "arrus/core/api/devices/Device.h"
+
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/TriggerGenerator.h"
+#include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
 
 namespace arrus::devices {
 
@@ -160,6 +162,41 @@ public:
      * Disables digital high-pass filter.
      */
     virtual void disableHpf() = 0;
+
+    /**
+     * Returns HVPS ADC measurements
+     */
+    virtual HVPSMeasurement getHVPSMeasurement() = 0;
+
+    /**
+     * Configures HVPS voltage/current measurement in Sync mode.
+     *
+     * :param nSamples: number of ADC samples to acquire.
+     * :param frequency: Requested sampling frequency.
+     * :return: Actual sampling frequency
+     */
+    virtual float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) = 0;
+
+    /**
+     * Configures the system to sync with the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void setWaitForHVPSMeasurementDone() = 0;
+
+    /**
+     * Waits for the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) = 0;
+
+    /**
+     * Return the system TX frequency that would be actually set for the given TX frequency.
+     * The output frequency depends on the frequency discretization performed by the driver.
+     *
+     * @param frequency input frequency
+     * @return the actual frequency that will be set
+     */
+    virtual float getActualTxFrequency(float frequency) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

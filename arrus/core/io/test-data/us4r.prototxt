@@ -34,6 +34,21 @@ us4r: {
     ]
     nus4oems: 2
     adapter_to_us4r_module_nr: [1, 0]
+
+    tx_rx_limits: {
+        voltage: {
+            begin: 10
+            end: 30
+        }
+        pulse_length: {
+            begin: 1e-6
+            end: 10e-6
+        }
+        pri: {
+            begin: 2e-6,
+            end: 1
+        }
+    }
 }
 
 

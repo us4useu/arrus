@@ -28,7 +28,7 @@ public:
     UploadResult upload(const ops::us4r::Scheme &scheme) override;
     void startScheme() override;
     void stopScheme() override;
-    void run() override;
+    void run(bool async, std::optional<long long> timeout) override;
     SessionImpl(SessionImpl const &) = delete;
     void operator=(SessionImpl const &) = delete;
     SessionImpl(SessionImpl const &&) = delete;

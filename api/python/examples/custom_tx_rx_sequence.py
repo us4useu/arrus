@@ -34,13 +34,13 @@ from arrus.utils.gui import (
 )
 
 arrus.set_clog_level(arrus.logging.INFO)
-arrus.add_log_file("test.log", arrus.logging.INFO)
+arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
-    with arrus.Session("us4r.prototxt", medium=medium) as sess:
+    with arrus.Session("/home/pjarosik/us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(5)
 
@@ -50,10 +50,30 @@ def main():
             ops=[
                 TxRx(
                     Tx(aperture=[True]*n_elements,
+                       excitation=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
+                       # Custom delays 1.
+                       focus=10e-3, speed_of_sound=1540, angle=0),
+                    Rx(aperture=[False]*n_elements,
+                       sample_range=(0, 4096),
+                       downsampling_factor=1),
+                    pri=1000e-6
+                ),
+                TxRx(
+                    Tx(aperture=[True]*n_elements,
+                       excitation=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
+                       # Custom delays 1.
+                       focus=5e-3, speed_of_sound=1540, angle=0),
+                    Rx(aperture=[False]*n_elements,
+                       sample_range=(0, 4096),
+                       downsampling_factor=1),
+                    pri=1000e-6
+                ),
+                TxRx(
+                    Tx(aperture=[True]*n_elements,
                        excitation=Pulse(center_frequency=6e6, n_periods=2,
                                         inverse=False),
                        # Custom delays 1.
-                       delays=[0]*n_elements),
+                       focus=np.inf, speed_of_sound=1540, angle=0),
                     Rx(aperture=[True]*n_elements,
                        sample_range=(0, 4096),
                        downsampling_factor=1),
@@ -63,13 +83,14 @@ def main():
                     Tx(aperture=[True]*n_elements,
                        excitation=Pulse(center_frequency=6e6, n_periods=2,
                                         inverse=False),
-                       # Custom delays 2.
-                       delays=np.linspace(0, 1e-6, n_elements)),
+                       # Custom delays 1.
+                       focus=np.inf, speed_of_sound=1540, angle=0/180*np.pi),
                     Rx(aperture=[True]*n_elements,
                        sample_range=(0, 4096),
                        downsampling_factor=1),
                     pri=200e-6
                 ),
+
             ],
             # Turn off TGC.
             tgc_curve=[],  # [dB]
@@ -95,13 +116,13 @@ def main():
         buffer, metadata = sess.upload(scheme)
         us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
         # Created 2D image display.
-        display = Display2D(metadata=metadata, value_range=(-100, 100))
+        #display = Display2D(metadata=metadata, value_range=(-100, 100))
         # Start the scheme.
-        sess.start_scheme()
+        #sess.start_scheme()
         # Start the 2D display.
         # The 2D display will consume data put the the input queue.
         # The below function blocks current thread until the window is closed.
-        display.start(buffer)
+        #display.start(buffer)
 
         print("Display closed, stopping the script.")
 

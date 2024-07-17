@@ -33,8 +33,7 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     std::vector<Ordinal> expectedAdapterToUs4RMapping = {1, 0};
     EXPECT_EQ(us4rSettings.getAdapterToUs4RModuleNumber(), expectedAdapterToUs4RMapping);
 
-    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({}));
-    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<uint8>>({{}, {}}));
+    EXPECT_EQ(us4rSettings.getChannelsMask(), std::unordered_set<ChannelIdx>({}));
 
     // Probe settings
     // Probe model
@@ -97,6 +96,10 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
               std::vector<TGCSampleValue>({}));
     EXPECT_EQ(rxSettings->getLpfCutoff(), 15000000);
     EXPECT_EQ(rxSettings->getActiveTermination(), 200);
+    EXPECT_TRUE(us4rSettings.getTxRxLimits().has_value());
+    EXPECT_EQ(us4rSettings.getTxRxLimits()->getVoltage(), ::arrus::Interval<Voltage>(10, 30));
+    EXPECT_EQ(us4rSettings.getTxRxLimits()->getPri(), ::arrus::Interval<float>(2e-6, 1));
+    EXPECT_EQ(us4rSettings.getTxRxLimits()->getPulseLength(), ::arrus::Interval<float>(1e-6, 10e-6));
 }
 
 TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
@@ -106,10 +109,7 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
     EXPECT_TRUE(us4rSettings.getUs4OEMSettings().empty());
-
-    EXPECT_EQ(us4rSettings.getChannelsMask(), std::vector<ChannelIdx>({0, 15, 30}));
-    EXPECT_EQ(us4rSettings.getUs4OEMChannelsMask(), std::vector<std::vector<uint8>>({{0, 15, 30},{}}));
-
+    EXPECT_EQ(us4rSettings.getChannelsMask(), std::unordered_set<ChannelIdx>({0, 15, 30}));
     // Probe settings
     // Probe model
     auto const &probeSettings = us4rSettings.getProbeSettings();
@@ -158,58 +158,8 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
               std::vector<TGCSampleValue>({20, 21, 22}));
     EXPECT_EQ(rxSettings->getLpfCutoff(), 1000000);
     EXPECT_FALSE(rxSettings->getActiveTermination().has_value());
-}
+    EXPECT_FALSE(us4rSettings.getTxRxLimits().has_value());
 
-TEST(ReadingProtoTxtFile, readUs4OEMsPrototxtSettingsCorrectly) {
-    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    boost::filesystem::path("us4oems.prototxt");
-    SessionSettings settings = arrus::io::readSessionSettings(
-        filepath.string());
-    auto const &us4rSettings = settings.getUs4RSettings();
-    EXPECT_FALSE(us4rSettings.getProbeAdapterSettings().has_value());
-    EXPECT_FALSE(us4rSettings.getProbeSettings().has_value());
-    EXPECT_FALSE(us4rSettings.getRxSettings().has_value());
-
-    // us4oem:0
-    auto const &us4oem0 = us4rSettings.getUs4OEMSettings()[0];
-    EXPECT_EQ(us4oem0.getChannelMapping(),
-              ::arrus::getRange<ChannelIdx>(0, 128));
-    EXPECT_EQ(us4oem0.getActiveChannelGroups(), std::vector<bool>(
-        {
-            true, true, true, true,
-                true, true, true, true,
-                true, true, true, true,
-                false, false, false, false
-        }));
-    // Rx settings
-    auto const &rxSettings0 = us4oem0.getRxSettings();
-    EXPECT_EQ(rxSettings0.getDtgcAttenuation(), 24);
-    EXPECT_EQ(rxSettings0.getLnaGain(), 12);
-    EXPECT_EQ(rxSettings0.getPgaGain(), 24);
-    EXPECT_TRUE(rxSettings0.getTgcSamples().empty());
-    EXPECT_EQ(rxSettings0.getLpfCutoff(), 10000000);
-    EXPECT_FALSE(rxSettings0.getActiveTermination().has_value());
-
-    // us4oem:1
-    auto const &us4oem1 = us4rSettings.getUs4OEMSettings()[1];
-    EXPECT_EQ(us4oem1.getChannelMapping(),
-              generateReversed(0, 128));
-    EXPECT_EQ(us4oem1.getActiveChannelGroups(), std::vector<bool>(
-        {
-            false, false, false, false,
-                true, true, true, true,
-                true, true, true, true,
-                true, true, true, true
-        }));
-    // Rx settings
-    auto const &rxSettings1 = us4oem1.getRxSettings();
-    EXPECT_FALSE(rxSettings1.getDtgcAttenuation().has_value());
-    EXPECT_EQ(rxSettings1.getLnaGain(), 30);
-    EXPECT_EQ(rxSettings1.getPgaGain(), 24);
-    EXPECT_EQ(rxSettings1.getTgcSamples(),
-              std::vector<TGCSampleValue>({14.5, 15.5, 16.5, 17.5}));
-    EXPECT_EQ(rxSettings1.getLpfCutoff(), 1000000);
-    EXPECT_EQ(rxSettings1.getActiveTermination(), 500);
 }
 
 TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {
@@ -221,12 +171,6 @@ TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {
     EXPECT_EQ(fileSettings.getProbeModel().getModelId().getManufacturer(), "esaote");
     EXPECT_EQ(fileSettings.getProbeModel().getModelId().getName(), "sl1543");
     EXPECT_EQ(fileSettings.getProbeModel().getNumberOfElements().get(0), 192);
-}
-
-TEST(ReadingProtoTxtFile, throwsExceptionOnNoChannelsMask) {
-    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    boost::filesystem::path("custom_us4r_no_channels_mask.prototxt");
-    EXPECT_THROW(arrus::io::readSessionSettings(filepath.string()), IllegalArgumentException);
 }
 
 int main(int argc, char **argv) {

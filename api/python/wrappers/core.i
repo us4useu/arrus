@@ -32,17 +32,26 @@ private:
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/devices/us4r/HVVoltage.h"
 using namespace ::arrus;
 %};
+
+%include "arrus/core/api/common/types.h"
+
+%feature("valuewrapper", "1");
+%include "arrus/core/api/devices/us4r/HVVoltage.h"
+%include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
+%feature("valuewrapper", "0");
 
 // TODO try not declaring explicitly the below types
 namespace std {
 %template(VectorBool) vector<bool>;
 %template(VectorFloat) vector<float>;
 %template(VectorUInt16) vector<unsigned short>;
+%template(VectorUInt8) vector<unsigned char>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
-
+%template(VectorHVVoltage) vector<arrus::devices::HVVoltage>;
 };
 
 // ------------------------------------------ EXCEPTION HANDLING
@@ -121,6 +130,32 @@ namespace std {
     }
 %}
 
+%typemap(in) std::optional<long long> %{
+    if($input == Py_None) {
+        $1 = std::optional<long long>();
+    }
+    else {
+        long long value = PyLong_AsLong($input);
+        if(value > std::numeric_limits<long long>::max() || value < std::numeric_limits<long long>::min()) {
+            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
+                + std::to_string(std::numeric_limits<long long>::min())
+                + ", " + std::to_string(std::numeric_limits<long long>::max()) + "]";
+            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
+            return NULL;
+        }
+        $1 = std::optional<long long>(value);
+    }
+%}
+
+%typemap(out) std::optional<long long> %{
+    if($1) {
+        $result = PyLong_FromLong(*$1);
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
 
 %module(directors="1") core
 
@@ -152,7 +187,6 @@ using namespace ::arrus;
 #define __attribute__(x)
 
 %include "arrus/core/api/common/macros.h"
-%include "arrus/core/api/common/types.h"
 
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)
@@ -202,6 +236,9 @@ using namespace ::arrus;
 
 %inline %{
     size_t castToInt(short* ptr) {
+        return (size_t)ptr;
+    }
+    size_t castUint8ToInt(unsigned char* ptr) {
         return (size_t)ptr;
     }
 %};
@@ -302,6 +339,10 @@ using namespace ::arrus::session;
 %shared_ptr(arrus::session::Session);
 %ignore createSession;
 
+// Ignore overloaded `run` methods -- the full signature will be used only.
+%ignore arrus::session::Session::run();
+%ignore arrus::session::Session::run(bool);
+
 
 %include "arrus/core/api/session/Metadata.h"
 %include "arrus/core/api/session/UploadResult.h"
@@ -314,8 +355,8 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
     return res;
 }
 
-std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arrus::session::UploadResult* uploadResult) {
-    return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
+std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(size_t arrayId, arrus::session::UploadResult* uploadResult) {
+    return uploadResult->getConstMetadata(arrayId)->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
 }
 
 std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {
@@ -334,6 +375,16 @@ void arrusSessionStartScheme(std::shared_ptr<arrus::session::Session> session) {
 void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
     ArrusPythonGILUnlock unlock;
     session->stopScheme();
+}
+
+void arrusSessionRun(std::shared_ptr<arrus::session::Session> session, bool async, std::optional<long long> timeout) {
+    ArrusPythonGILUnlock unlock;
+    session->run(async, timeout);
+}
+
+void arrusUs4OEMWaitForHVPSMeasuerementDone(arrus::devices::Us4OEM *us4oem, std::optional<long long> timeout) {
+    ArrusPythonGILUnlock unlock;
+    us4oem->waitForHVPSMeasurementDone(timeout);
 }
 
 
@@ -357,6 +408,9 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceId.h"
 %include "arrus/core/api/devices/Device.h"
 %include "arrus/core/api/devices/DeviceWithComponents.h"
+%include "arrus/core/api/devices/probe/ProbeModelId.h"
+%include "arrus/core/api/devices/probe/ProbeModel.h"
+%include "arrus/core/api/devices/probe/Probe.h"
 %include "arrus/core/api/devices/us4r/Us4OEM.h"
 %include "arrus/core/api/devices/us4r/Us4R.h"
 %include "arrus/core/api/devices/File.h"

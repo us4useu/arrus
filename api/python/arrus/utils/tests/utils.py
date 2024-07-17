@@ -60,6 +60,10 @@ class ProbeMock:
 class UltrasoundDeviceMock:
     probe: ProbeMock
     sampling_frequency: float
+    data_sampling_frequency: float
+
+    def get_probe_by_id(self, id):
+        return self.probe
 
 
 class ArrusTestCase(unittest.TestCase):
@@ -140,6 +144,7 @@ class ArrusImagingTestCase(ArrusTestCase):
             op_result = op_result.get()
         elif not isinstance(op_result, np.ndarray):
             raise ValueError(f"Invalid output result type: {type(op_result)}")
+        op_instance.close()
         return op_result
 
     def get_probe_model_instance(self, **kwargs):
@@ -170,7 +175,8 @@ class ArrusImagingTestCase(ArrusTestCase):
                     pitch=0.2e-3,
                     curvature_radius=0.0
                 ),
-                sampling_frequency=65e6
+                sampling_frequency=65e6,
+                data_sampling_frequency=65e6
             )
         # if medium is none, keep it None
 

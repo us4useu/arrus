@@ -79,7 +79,8 @@ class ReconstructionTestCase(ArrusImagingTestCase):
             )
         device = self.get_ultrasound_device(
             probe=probe,
-            sampling_frequency=65e6
+            sampling_frequency=65e6,
+            data_sampling_frequency=65e6
             )
         return device
 
@@ -390,12 +391,12 @@ class BfrReconstructionTestCase(ReconstructionTestCase):
 
     def test_0(self):
         # Given
-        data = 0
+        data = np.zeros((1, 192, 64, 512), dtype=np.complex64)
         # Run
         result = self.run_op(data=data)
         # Expect
-        expected_shape = (self.x_grid.size, self.z_grid.size )
-        expected = np.zeros(expected_shape, dtype=complex)
+        expected_shape = (192, 512)
+        expected = np.zeros(expected_shape, dtype=np.complex64)
         np.testing.assert_equal(result, expected)
 
     # TODO: Does RxBeamforming does not work correctly with empty input data?

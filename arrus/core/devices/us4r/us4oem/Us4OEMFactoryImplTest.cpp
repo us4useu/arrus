@@ -37,13 +37,18 @@ struct ExpectedUs4RParameters {
     ACTIVE_TERM_EN activeTerminationEnabled = ACTIVE_TERM_EN::ACTIVE_TERM_EN;
 };
 
+std::optional<Us4RTxRxLimits> DEFAULT_US4R_LIMITS = std::nullopt;
+
 class Us4OEMFactorySimpleParametersTest
         : public testing::TestWithParam<std::pair<TestUs4OEMSettings, ExpectedUs4RParameters>> {
+protected:
+    std::optional<Us4RTxRxLimits> defaultUs4RLimits = std::nullopt;
 };
 
 TEST_P(Us4OEMFactorySimpleParametersTest, VerifyUs4OEMFactorySimpleParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetPGAGain(us4rParameters.pgaGain));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetLNAGain(us4rParameters.lnaGain));
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(us4rParameters.dtgcAttEnabled, us4rParameters.dtgcAttValue));
@@ -51,7 +56,7 @@ TEST_P(Us4OEMFactorySimpleParametersTest, VerifyUs4OEMFactorySimpleParameters) {
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(us4rParameters.activeTerminationEnabled,
                                        us4rParameters.activeTerminationValue));
     Us4OEMFactoryImpl factory;
-    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false);
+    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false, false, defaultUs4RLimits);
 }
 
 INSTANTIATE_TEST_CASE_P
@@ -69,11 +74,14 @@ INSTANTIATE_TEST_CASE_P
 
 class Us4OEMFactoryOptionalParametersTest
         : public testing::TestWithParam<std::pair<TestUs4OEMSettings, ExpectedUs4RParameters>> {
+protected:
+    std::optional<Us4RTxRxLimits> defaultUs4RLimits = std::nullopt;
 };
 
 TEST_P(Us4OEMFactoryOptionalParametersTest, VerifyUs4OEMFactoryOptionalParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
     if(GetParam().first.dtgcAttenuation.has_value()) {
         // NO disable
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(EN_DIG_TGC::EN_DIG_TGC_DIS, _)).Times(0);
@@ -98,7 +106,7 @@ TEST_P(Us4OEMFactoryOptionalParametersTest, VerifyUs4OEMFactoryOptionalParameter
         EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(ACTIVE_TERM_EN::ACTIVE_TERM_DIS, testing::Matcher<::us4r::afe58jd18::GBL_ACTIVE_TERM>(_)));
     }
     Us4OEMFactoryImpl factory;
-    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false);
+    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false, false, defaultUs4RLimits);
 }
 
 INSTANTIATE_TEST_CASE_P
@@ -119,12 +127,15 @@ INSTANTIATE_TEST_CASE_P
 
 
 class Us4OEMFactoryTGCSamplesTest : public testing::TestWithParam<std::pair<TestUs4OEMSettings, ExpectedUs4RParameters>> {
+protected:
+    std::optional<Us4RTxRxLimits> defaultUs4RLimits = std::nullopt;
 };
 
 TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
     ExpectedUs4RParameters us4rParameters = GetParam().second;
     RxSettings::TGCCurve tgcCurve = GetParam().first.getUs4OEMSettings().getRxSettings().getTgcSamples();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
 
     if(tgcCurve.empty()) {
         // NO TGC enable
@@ -138,7 +149,7 @@ TEST_P(Us4OEMFactoryTGCSamplesTest, VerifyUs4OEMFactorySimpleParameters) {
 
     Us4OEMFactoryImpl factory;
 
-    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false);
+    factory.getUs4OEM(0, ius4oem, GetParam().first.getUs4OEMSettings(), false, false, defaultUs4RLimits);
 }
 
 INSTANTIATE_TEST_CASE_P
@@ -162,6 +173,7 @@ INSTANTIATE_TEST_CASE_P
 TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
 
     // Mapping includes groups of 32 channel, each has the same permutation
     std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
@@ -183,12 +195,13 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
                                 std::begin(channelMapping) + 32), 0))
             .Times(1);
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false);
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, false, DEFAULT_US4R_LIMITS);
 }
 
 TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
 
     // Mapping includes groups of 32 channel, each has the same permutation
     std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
@@ -208,13 +221,15 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
     // Expect
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false);
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, false, DEFAULT_US4R_LIMITS);
 }
 
 // Tx channel mapping
 TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
+
     std::vector<ChannelIdx> channelMapping = getRange<ChannelIdx>(0, 128, 1);
     TestUs4OEMSettings cfg;
     cfg.channelMapping = channelMapping;
@@ -222,7 +237,7 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
     // Expect
     {
         InSequence seq;
-        for(ChannelIdx i = 0; i < Us4OEMImpl::N_TX_CHANNELS; ++i) {
+        for(ChannelIdx i = 0; i < Us4OEMDescriptor::N_TX_CHANNELS; ++i) {
             EXPECT_CALL(GET_MOCK_PTR(ius4oem),
                         SetTxChannelMapping(i, channelMapping[i]));
         }
@@ -235,7 +250,47 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
             .Times(0);
 
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false);
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, false, DEFAULT_US4R_LIMITS);
+}
+
+TEST(Us4OEMFactoryTest, SetsAppropriateTxRxLimits) {
+    // Given
+    std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
+
+    // All parameters set
+    Interval<float> pulseLengthLimits{1e-6f, 10e-6f};
+    Interval<Voltage> voltageLimits{10, 40};
+    Interval<float> priLimits{10e-6, 100e-6};
+    Us4RTxRxLimits limits0{pulseLengthLimits, voltageLimits, priLimits};
+
+    // Run
+    auto descriptor0 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits0);
+    const auto &txRxLimits0 = descriptor0.getTxRxSequenceLimits().getTxRx();
+    EXPECT_EQ(txRxLimits0.getPri(), priLimits);
+    EXPECT_EQ(txRxLimits0.getTx().getPulseLength(), pulseLengthLimits);
+    EXPECT_EQ(txRxLimits0.getTx().getVoltage(), voltageLimits);
+
+    Us4RTxRxLimits limits1{std::nullopt, voltageLimits, priLimits};
+    auto descriptor1 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits1);
+    const auto &txRxLimits1 = descriptor1.getTxRxSequenceLimits().getTxRx();
+    EXPECT_EQ(txRxLimits1.getPri(), priLimits);
+    EXPECT_EQ(txRxLimits1.getTx().getPulseLength(),  Interval<float>(0.0f, 32.0f/10e6)); // Us4OEMFactoryImpl default
+    EXPECT_EQ(txRxLimits1.getTx().getVoltage(), voltageLimits);
+
+    Us4RTxRxLimits limits2{pulseLengthLimits, std::nullopt, priLimits};
+    auto descriptor2 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits2);
+    const auto &txRxLimits2 = descriptor2.getTxRxSequenceLimits().getTxRx();
+    EXPECT_EQ(txRxLimits2.getPri(), priLimits);
+    EXPECT_EQ(txRxLimits2.getTx().getPulseLength(),  pulseLengthLimits);
+    EXPECT_EQ(txRxLimits2.getTx().getVoltage(), Interval<Voltage>(5, 90)); // Us4OEMFactoryImpl default value
+
+    Us4RTxRxLimits limits3{pulseLengthLimits, voltageLimits, std::nullopt};
+    auto descriptor3 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits3);
+    const auto &txRxLimits3 = descriptor3.getTxRxSequenceLimits().getTxRx();
+    EXPECT_EQ(txRxLimits3.getPri(), Interval<float>(35e-6f, 1.0f)); // Us4OEMFactoryImpl default value
+    EXPECT_EQ(txRxLimits3.getTx().getPulseLength(),  pulseLengthLimits);
+    EXPECT_EQ(txRxLimits3.getTx().getVoltage(), voltageLimits);
 }
 }
 

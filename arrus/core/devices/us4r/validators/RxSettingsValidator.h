@@ -34,7 +34,7 @@ public:
                         settings.getActiveTermination().value(), ActiveTerminationValueMap::getInstance().getAvailableValues());
         }
         if(!settings.getTgcSamples().empty()) {
-            expectInRange("tgc samples", settings.getTgcSamples().size(), size_t(0), size_t(Us4OEMImpl::TGC_N_SAMPLES));
+            expectInRange("tgc samples", settings.getTgcSamples().size(), size_t(0), size_t(Us4OEMDescriptor::TGC_N_SAMPLES));
             auto[min, max] = RxSettings::getTgcMinMax(settings.getPgaGain(), settings.getLnaGain());
             expectAllInRange("tgc samples", settings.getTgcSamples(), min, max);
         }

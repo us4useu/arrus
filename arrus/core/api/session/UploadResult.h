@@ -16,7 +16,7 @@ public:
     virtual ~UploadResult() {};
 
     UploadResult(std::shared_ptr<::arrus::framework::Buffer> buffer,
-                 std::shared_ptr<Metadata> constMetadata)
+                 std::vector<std::shared_ptr<Metadata>> constMetadata)
         : buffer(std::move(buffer)), constMetadata(std::move(constMetadata)) {}
 
 	/**
@@ -30,13 +30,17 @@ public:
      * Returns a pointer to the upload constant metadata
      * (desription of the data produced by the system).
      */
-    const std::shared_ptr<Metadata> &getConstMetadata() const {
-        return constMetadata;
+    const std::shared_ptr<Metadata> &getConstMetadata(ArrayId id) const {
+        return constMetadata.at(id);
+    }
+
+    size_t getNumberOfArrays() const {
+        return constMetadata.size();
     }
 
 private:
     ::arrus::framework::Buffer::SharedHandle buffer;
-    Metadata::SharedHandle constMetadata;
+    std::vector<Metadata::SharedHandle> constMetadata;
 };
 
 }

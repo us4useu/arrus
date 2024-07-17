@@ -8,10 +8,12 @@
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "RxSettings.h"
+#include "Us4RTxRxLimits.h"
 #include "arrus/core/api/devices/us4r/HVSettings.h"
 #include "arrus/core/api/devices/probe/ProbeSettings.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/us4r/DigitalBackplaneSettings.h"
+#include "arrus/core/api/devices/us4r/Bitstream.h"
 
 namespace arrus::devices {
 
@@ -19,42 +21,64 @@ class Us4RSettings {
 public:
     using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
 
-    explicit Us4RSettings(std::vector<Us4OEMSettings> us4OemSettings, std::optional<HVSettings> hvSettings,
-                          std::optional<Ordinal> nUs4OEMs = std::nullopt,
-                          std::vector<Ordinal> adapterToUs4RModuleNumber = {},
-                          int txFrequencyRange = 1,
-                          std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
-                          )
-        : us4oemSettings(std::move(us4OemSettings)), hvSettings(std::move(hvSettings)),
-          nUs4OEMs(nUs4OEMs), adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
-          txFrequencyRange(txFrequencyRange), digitalBackplaneSettings(std::move(digitalBackplaneSettings))
-          {}
+    Us4RSettings(
+        ProbeAdapterSettings probeAdapterSettings,
+        std::vector<ProbeSettings> probeSettings,
+        RxSettings rxSettings,
+        std::optional<HVSettings> hvSettings,
+        std::vector<std::unordered_set<ChannelIdx>> channelsMask,
+        ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
+        std::optional<Ordinal> nUs4OEMs = std::nullopt,
+        std::vector<Ordinal> adapterToUs4RModuleNumber = {},
+        bool externalTrigger = false,
+        int txFrequencyRange = 1,
+        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
+        std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
+        std::optional<Us4RTxRxLimits> limits = std::nullopt
+    ) : probeAdapterSettings(std::move(probeAdapterSettings)),
+          probeSettings(std::move(probeSettings)),
+          rxSettings(std::move(rxSettings)),
+          hvSettings(std::move(hvSettings)),
+          channelsMask(std::move(channelsMask)),
+          reprogrammingMode(reprogrammingMode),
+          nUs4OEMs(nUs4OEMs),
+          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
+          externalTrigger(externalTrigger),
+          txFrequencyRange(txFrequencyRange),
+          digitalBackplaneSettings(std::move(digitalBackplaneSettings)),
+          bitstreams(std::move(bitstreams)),
+          limits(std::move(limits))
+    {}
 
     Us4RSettings(
         ProbeAdapterSettings probeAdapterSettings,
         ProbeSettings probeSettings,
         RxSettings rxSettings,
         std::optional<HVSettings> hvSettings,
-        std::vector<ChannelIdx> channelsMask,
-        std::vector<std::vector<uint8>> us4oemChannelsMask,
+        std::unordered_set<ChannelIdx> probe0ChannelsMask,
         ReprogrammingMode reprogrammingMode = ReprogrammingMode::SEQUENTIAL,
         std::optional<Ordinal> nUs4OEMs = std::nullopt,
         std::vector<Ordinal> adapterToUs4RModuleNumber = {},
         bool externalTrigger = false,
         int txFrequencyRange = 1,
-        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt
-    ) : probeAdapterSettings(std::move(probeAdapterSettings)),
-          probeSettings(std::move(probeSettings)),
-          rxSettings(std::move(rxSettings)),
-          hvSettings(std::move(hvSettings)),
-          channelsMask(std::move(channelsMask)),
-          us4oemChannelsMask(std::move(us4oemChannelsMask)),
-          reprogrammingMode(reprogrammingMode),
-          nUs4OEMs(nUs4OEMs),
-          adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
-          externalTrigger(externalTrigger),
-          txFrequencyRange(txFrequencyRange),
-          digitalBackplaneSettings(std::move(digitalBackplaneSettings))
+        std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
+        std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
+        std::optional<Us4RTxRxLimits> limits = std::nullopt
+        ) : Us4RSettings(
+                std::move(probeAdapterSettings),
+                std::vector<ProbeSettings>{std::move(probeSettings)},
+                std::move(rxSettings),
+                std::move(hvSettings),
+                {std::move(probe0ChannelsMask)},
+                reprogrammingMode,
+                nUs4OEMs,
+                std::move(adapterToUs4RModuleNumber),
+                externalTrigger,
+                txFrequencyRange,
+                std::move(digitalBackplaneSettings),
+                std::move(bitstreams),
+                std::move(limits)
+        )
     {}
 
     const std::vector<Us4OEMSettings> &getUs4OEMSettings() const {
@@ -66,8 +90,32 @@ public:
         return probeAdapterSettings;
     }
 
-    const std::optional<ProbeSettings> &getProbeSettings() const {
+    const ProbeSettings &getProbeSettings(size_t ordinal) const {
+        if(ordinal >= probeSettings.size()) {
+            throw IllegalArgumentException(
+                "There are no settings for probe: " + std::to_string(ordinal)
+                );
+        }
+        return probeSettings.at(ordinal);
+    }
+
+    const std::vector<ProbeSettings> &getProbeSettingsList() const {
         return probeSettings;
+    }
+
+    /**
+     * Returns probe settings for probe 0.
+     * TODO (ARRUS-276) deprecated, will be removed in v0.12.0
+     */
+    std::optional<ProbeSettings> getProbeSettings() const {
+        if(probeSettings.empty()) {
+            return std::nullopt;
+        }
+        return getProbeSettings(0);
+    }
+
+    Ordinal getNumberOfProbes() const {
+        return (Ordinal)probeSettings.size();
     }
 
     const std::optional<RxSettings> &getRxSettings() const {
@@ -78,12 +126,20 @@ public:
         return hvSettings;
     }
 
-    const std::vector<ChannelIdx> &getChannelsMask() const {
-        return channelsMask;
+    /**
+     * Returns channels mask to be applied for Probe:0 TX/RX apertures.
+     * DEPRECATED (v0.11.0): please use getChannelsMask(probeNr).
+     */
+    const std::unordered_set<ChannelIdx> &getChannelsMask() const {
+        return getChannelsMaskForProbe(0);
     }
 
-    const std::vector<std::vector<uint8>> &getUs4OEMChannelsMask() const {
-        return us4oemChannelsMask;
+    const std::unordered_set<ChannelIdx> &getChannelsMaskForProbe(Ordinal probeNr) const {
+        return channelsMask.at(probeNr);
+    }
+
+    const std::vector<std::unordered_set<ChannelIdx>> &getChannelsMaskForAllProbes() const {
+        return channelsMask;
     }
 
     ReprogrammingMode getReprogrammingMode() const {
@@ -110,6 +166,10 @@ public:
         return digitalBackplaneSettings;
     }
 
+    const std::vector<Bitstream> &getBitstreams() const { return bitstreams; }
+
+    const std::optional<Us4RTxRxLimits> &getTxRxLimits() const { return limits; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -118,21 +178,19 @@ private:
      *  Us4OEMSettings must be set. When is set, the list of Us4OEM
      *  settings should be empty. */
     std::optional<ProbeAdapterSettings> probeAdapterSettings{};
-    /** ProbeSettings to set. Optional - when is set, ProbeAdapterSettings also
+    /** List of ProbeSettings to set. Optional - when is set, ProbeAdapterSettings also
      * must be available.*/
-    std::optional<ProbeSettings> probeSettings{};
+    std::vector<ProbeSettings> probeSettings;
     /** Required when no Us4OEM settings are set. */
     std::optional<RxSettings> rxSettings;
     /** Optional (us4r devices may have externally controlled hv suppliers. */
     std::optional<HVSettings> hvSettings;
-    /** A list of channels that should be turned off in the us4r system.
+    /** A set of channels that should be turned off in the us4r system.
+     * This is list of lists; each list represents what channels of the
+     * ultrasound interface (probe) should be turned off.
+     * channelsMask[i] is a channels mask for the i-th probe (Probe:i).
      * Note that the **channel numbers start from 0**.*/
-    std::vector<ChannelIdx> channelsMask;
-    /** A list of channels masks to apply on given us4oems.
-     * Currently us4oem channels are used for double check only.
-     * The administrator has to provide us4oem channels masks that confirms to
-     * the system us4r channels, and this way we reduce the chance of mistake. */
-    std::vector<std::vector<uint8>> us4oemChannelsMask;
+    std::vector<std::unordered_set<ChannelIdx>> channelsMask;
     /** Reprogramming mode applied to all us4OEMs.
      * See Us4OEMSettings::ReprogrammingMode docs for more information. */
     ReprogrammingMode reprogrammingMode;
@@ -154,6 +212,14 @@ private:
      * Digital backplane ("DBAR") settings. If not provided, DBAR will be determined based on select HV supplier.
      */
      std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
+     /**
+      * Bitstream definitions.
+      */
+     std::vector<Bitstream> bitstreams;
+     /**
+      * TxRx limits to apply for in this session with us4R. Optional, by default the us4us-defined limits are applied.
+      */
+     std::optional<Us4RTxRxLimits> limits{std::nullopt};
 };
 
 }

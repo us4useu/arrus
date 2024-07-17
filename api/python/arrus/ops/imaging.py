@@ -95,6 +95,9 @@ class SimpleTxRxSequence:
     n_repeats: int = 1
     init_delay: str = "tx_start"
     rx_depth_range: tuple = None
+    name: str = None
+    rx_placement: str = "Probe:0"
+    tx_placement: str = "Probe:0"
 
     @property
     def excitation(self):

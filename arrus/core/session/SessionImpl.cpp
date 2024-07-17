@@ -11,14 +11,12 @@
 #include "arrus/core/devices/utils.h"
 
 #include "arrus/core/api/io/settings.h"
-#include "arrus/core/devices/probe/ProbeFactoryImpl.h"
 #include "arrus/core/devices/us4r/Us4RFactoryImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverterImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplierFactoryImpl.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplaneFactoryImpl.h"
-#include "arrus/core/devices/us4r/probeadapter/ProbeAdapterFactoryImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactoryImpl.h"
 #include "arrus/core/devices/file/FileFactoryImpl.h"
 #include "arrus/core/session/SessionSettings.h"
@@ -47,9 +45,10 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
     return std::make_unique<SessionImpl>(
         sessionSettings,
         std::make_unique<Us4RFactoryImpl>(
-            std::make_unique<Us4OEMFactoryImpl>(), std::make_unique<ProbeAdapterFactoryImpl>(),
-            std::make_unique<ProbeFactoryImpl>(), std::make_unique<IUs4OEMFactoryImpl>(),
-            std::make_unique<IUs4OEMInitializerImpl>(), std::make_unique<Us4RSettingsConverterImpl>(),
+            std::make_unique<Us4OEMFactoryImpl>(),
+            std::make_unique<IUs4OEMFactoryImpl>(),
+            std::make_unique<IUs4OEMInitializerImpl>(),
+            std::make_unique<Us4RSettingsConverterImpl>(),
             std::make_unique<HighVoltageSupplierFactoryImpl>(),
             std::make_unique<DigitalBackplaneFactoryImpl>()
             ),
@@ -147,9 +146,9 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
 
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
     this->verifyScheme(scheme);
-    auto[buffer, metadata] = ultrasound->upload(scheme);
+    auto[buffer, metadatas] = ultrasound->upload(scheme);
     currentScheme = scheme;
-    return UploadResult(buffer, metadata);
+    return UploadResult(buffer, metadatas);
 }
 
 void SessionImpl::startScheme() {
@@ -168,7 +167,7 @@ void SessionImpl::stopScheme() {
     getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
 }
 
-void SessionImpl::run() {
+void SessionImpl::run(bool sync, std::optional<long long> timeout) {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE_NOT(State::CLOSED);
 
@@ -177,10 +176,14 @@ void SessionImpl::run() {
     }
     if (state == State::STOPPED) {
         startScheme();
-    } else {
-        if (currentScheme.value().getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL) {
+        if(sync) {
             auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-            ultrasound->trigger();
+            ultrasound->sync(timeout); // wait for the first TX/RX to end
+        }
+    } else {
+        if (currentScheme.value().isWorkModeManual()) {
+            auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+            ultrasound->trigger(sync, timeout);
         } else {
             throw IllegalStateException("Scheme already started.");
         }
@@ -234,14 +237,8 @@ void SessionImpl::verifyScheme(const ops::us4r::Scheme &scheme) {
 
 Session::State SessionImpl::getCurrentState() { return state; }
 
-UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional<float> sri) {
-    std::lock_guard guard(stateMutex);
-    ASSERT_STATE(State::STOPPED);
-
-    auto ultrasound = (Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-    auto[buffer, metadata] = ultrasound->setSubsequence(start, end, sri);
-    return UploadResult(buffer, metadata);
-
+UploadResult SessionImpl::setSubsequence(uint16, uint16, std::optional<float>) {
+    throw std::runtime_error("Setting sub-sequence not implemented.");
 }
 
 }// namespace arrus::session

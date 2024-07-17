@@ -53,7 +53,7 @@ class File(Device, Ultrasound):
             sampling_frequency=self.sampling_frequency
         )
 
-    def get_data_description(self, upload_result, sequence):
+    def get_data_description(self, upload_result, sequence, array_id):
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
             custom={}
