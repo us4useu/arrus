@@ -131,7 +131,7 @@ private:
     /**
      * Returns the sample number that corresponds to the time of Tx.
      */
-    uint32_t getTxStartSampleNumberAfeDemod(float ddcDecimationFactor);
+    std::pair<uint32_t, float> getTxStartSampleNumberAfeDemod(float ddcDecimationFactor);
 
     // IUs4OEM AFE setters.
     void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
@@ -164,14 +164,15 @@ private:
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                        const std::vector<arrus::framework::NdArray> &txDelays,
                        const Us4OEMRxMappingRegister &rxMappingRegister);
-    size_t scheduleReceiveDDC(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
-                              const us4r::TxRxParameters &op, uint16 rxMapId,
-                              const std::optional<ops::us4r::DigitalDownConversion> &ddc);
+    std::pair<size_t, float> scheduleReceiveDDC(size_t outputAddress, 
+                                                uint32 startSample, uint32 endSample, uint16 entryId,
+                                                const us4r::TxRxParameters &op, uint16 rxMapId,
+                                                const std::optional<ops::us4r::DigitalDownConversion> &ddc);
     size_t scheduleReceiveRF(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
                              const us4r::TxRxParameters &op, uint16 rxMapId);
-    Us4OEMBuffer uploadAcquisition(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
-                                   const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                                   const Us4OEMRxMappingRegister &rxMappingRegister);
+    std::pair<Us4OEMBuffer, float> uploadAcquisition(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
+                                                     const std::optional<ops::us4r::DigitalDownConversion> &ddc,
+                                                     const Us4OEMRxMappingRegister &rxMappingRegister);
     void uploadTriggersIOBS(const us4r::TxParametersSequenceColl &sequences, uint16 rxBufferSize,
                             ops::us4r::Scheme::WorkMode workMode);
     void waitForIrq(unsigned int irq, std::optional<long long> timeout);

@@ -306,8 +306,8 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
-    auto [buffers, fcms] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
-                                           scheme.getDigitalDownConversion(), scheme.getConstants());
+    auto [buffers, fcms, rxTimeOffset] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+                                                          scheme.getDigitalDownConversion(), scheme.getConstants());
 
     // Cleanup.
     // If the output buffer already exists - remove it.
@@ -333,9 +333,10 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
         metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+        metadataBuilder.add<float>("rxOffset", std::make_shared<float>(rxTimeOffset));
         metadatas.emplace_back(metadataBuilder.buildPtr());
     }
-    return {this->buffer, metadatas};
+    return std::make_pair(this->buffer, metadatas);
 }
 
 void Us4RImpl::start() {
@@ -411,7 +412,7 @@ Us4RImpl::~Us4RImpl() {
     }
 }
 
-std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
+std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
@@ -474,6 +475,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<FrameChannelMapping::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
+    float rxTimeOffset;
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
         // TODO Consider implementing dynamic change of delay profiles
@@ -481,6 +483,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
                                                     std::vector<NdArray>{}, timeouts.getTimeouts());
         buffers.emplace_back(uploadResult.getBufferDescription());
         auto oemFCM = uploadResult.acquireFCMs();
+        if (oem==0) { rxTimeOffset = uploadResult.getRxTimeOffset(); }
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
             oemsFCMs.at(sId).emplace_back(std::move(oemFCM.at(sId)));
         }
@@ -491,7 +494,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_pair(std::move(buffers), std::move(fcms));
+    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
