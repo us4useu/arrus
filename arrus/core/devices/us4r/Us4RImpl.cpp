@@ -1110,7 +1110,8 @@ void Us4RImpl::registerPulserIRQCallback() {
         ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
             try{
                 ius4oem->LogPulsersInterruptRegister();
-                ius4oem->TriggerStop();
+                // TODO consider fail-safe device stopping (e.g. don't wait for pending interrupts, etc.).
+                this->stop();
             }
             catch(const std::exception &e) {
                 logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
