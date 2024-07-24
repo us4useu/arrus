@@ -494,7 +494,9 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
     auto nFirings = getNumberOfFirings(sequences);
     auto nTriggers = getNumberOfTriggers(sequences, rxBufferSize);
 
-    ARRUS_REQUIRES_AT_MOST(nFirings, 1024, format("Exceeded the maximum ({}) number of timeoutIds: {}", 1024, nFirings));
+    auto maxFirings = descriptor.getTxRxSequenceLimits().getMaxNumberOfFirings();
+
+    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, format("Exceeded the maximum ({}) number of timeoutIds: {}", maxFirings, nFirings));
     const auto maxSequenceSize = descriptor.getTxRxSequenceLimits().getSize().end();
     ARRUS_REQUIRES_AT_MOST(nTriggers, maxSequenceSize,
                            format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
