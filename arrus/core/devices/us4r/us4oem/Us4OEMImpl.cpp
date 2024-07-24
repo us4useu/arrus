@@ -262,17 +262,17 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxTime(rxTime, firingId);
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
                 ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
-                //TODO(pjarosik)
-                //if(customSequence) {
-                    //ius4oem->WriteCustomWaveform(firingId, wavefrom);
-                //else {
-                    ius4oem->BuildSequenceWaveform(firingId);
             }
         }
     }
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
+  
+    // Build sequence waveform.
+    for (OpId firing = 0; firing < ARRUS_SAFE_CAST(sequence.size(), OpId); ++firing) {
+        ius4oem->BuildSequenceWaveform(firing);
+    }
 }
 
 size_t Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
