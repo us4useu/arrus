@@ -237,6 +237,7 @@ public:
     MOCK_METHOD(void, SetTxVoltageLevel, (uint8_t level, uint16_t firing), (override));
     MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
     MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
+    MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
