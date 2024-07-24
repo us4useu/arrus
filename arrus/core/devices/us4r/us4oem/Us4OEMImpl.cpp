@@ -854,14 +854,16 @@ size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> 
 void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
                              size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx) {
     ARRUS_REQUIRES_EQUAL_IAE(txAperture.size(), delays.size());
+    std::vector<float> delaysToBeApplied(txAperture.size());
     for (uint8 ch = 0; ch < ARRUS_SAFE_CAST(txAperture.size(), uint8); ++ch) {
         bool bit = txAperture.at(ch);
         float delay = 0.0f;
         if (bit && !setContains(maskedChannelsTx, static_cast<ChannelIdx>(ch))) {
             delay = delays.at(ch);
         }
-        ius4oem->SetTxDelay(ch, delay, firingId, delaysId);
+        delaysToBeApplied.at(ch) = delay;
     }
+    ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId);
 }
 
 void Us4OEMImpl::clearCallbacks() {
