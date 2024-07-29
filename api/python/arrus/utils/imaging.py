@@ -1862,7 +1862,7 @@ class ScanConversion(Operation):
     Currently linear interpolation is used by default, values outside
     the input mesh will be set to 0.0.
 
-    Currently the op is (mostly) implemented for CPU only.
+    Currently, the op is (mostly) implemented for CPU only.
 
     Currently, the op is available only for convex probes.
     """
@@ -2015,16 +2015,38 @@ class ScanConversion(Operation):
             seq.tx_aperture_center_element, probe)
 
         element_pos_z = probe.element_pos_z.reshape(1, -1)
-        z_grid_moved = self.z_grid.T + probe.curvature_radius - self.num_pkg.max(element_pos_z)
+        self.radGridIn = ((start_sample / acq_fs + self.num_pkg.arange(0, n_samples)/fs) * c/2)
 
-        self.radGridIn = (
-                (start_sample / acq_fs + self.num_pkg.arange(0, n_samples) / fs)
-                * c / 2)
+        if probe.curvature_radius > 0:
+            # Convex
+            # Move the z_grid coordinates to coordinate system located in the
+            # probe curvature center.
+            self.z_grid = self.z_grid.T + probe.curvature_radius - self.num_pkg.max(element_pos_z)
+        elif probe.curvature_radius < 0:
+            # Concave
+            # Flip and move the coordinate system
+            # z_grid/x_grid
+            max_sampling_time = start_sample/acq_fs + n_samples/fs*c/2
+            self.z_grid = max_sampling_time + probe.curvature_radius + self.z_grid
+            self.z_grid = self.z_grid.T
+            self.x_grid = -self.x_grid
+            # radGridIn  -- max depth -> 0
+            self.radGridIn = np.flip(self.radGridIn)
 
         self.azimuthGridIn = tx_ap_cent_ang
-        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, z_grid_moved)
-        radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
+
+        print(self.azimuthGridIn)
+        print(self.radGridIn)
+        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, self.z_grid)
+        # radGridIn starts where the image should start, so w subtract r
+        radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + self.z_grid ** 2)
                       - probe.curvature_radius)
+
+        import matplotlib.pyplot as plt
+        plt.imshow(azimuthGridOut.get())
+        plt.show()
+        plt.imshow(radGridOut.get())
+        plt.show()
 
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
 
