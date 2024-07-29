@@ -2,22 +2,26 @@
 
 #define CUDART_PI_F 3.141592654f
 
+// The below values are stored for ALL probe elements.
 __constant__ float xElemConst[1024]; // [m]
+__constant__ float zElemConst[1024]; // [m]
+__constant__ float angleElemConst[1024]; // [rad]
 
 // Assumptions:
 // - TX and RX apertures have the same center position
-// - x/z/angle/Elem refers to the RX aperture (i.e. the first value is the position of first aperture element, relative
-// to the center of TX/RX aperture
 extern "C"
-__global__ void beamform(complex<float> *output, const complex<float> *input,
-                         const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
-                         const float *txAngles, // [rad]
-                         const float initDelay, const float startTime,
-                         const float c, const float fs, const float fc, float maxApodTang, const size_t xElemConstOffset
-) {
+    __global__ void beamform(complex<float> *output, const complex<float> *input,
+             const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
+             const float *txAngles, // [rad]
+             const float *xApCenters, const float *zApCenters, const float *angleApCenters, const unsigned *apOrigs,
+             const float initDelay, const float startTime,
+             const float c, const float fs, const float fc, float maxApodTang,
+             const size_t xElemConstOffset, const size_t zElemConstOffset, const size_t angleElemConstOffset,
+             const unsigned nElements
+             ) {
     complex<float> a, b;
-    float elementX, elementZ;
-    float rxTang, pixWgh = 0;
+    float elementX, elementZ, elementAngle;
+    float rxAng, rxTang, pixWgh = 0;
     float txDistance, rxDistance, time, s, txAngleSin, txAngleCos;
     float modSin, modCos;
     unsigned signalOffset;
@@ -33,13 +37,13 @@ __global__ void beamform(complex<float> *output, const complex<float> *input,
     if(sample >= nSamples || scanline >= nTx || frame >= nSeq) {
         return;
     }
-
     float txAngle = txAngles[scanline];
 
     float r = (sample/fs + startTime)*c/2;
     __sincosf(txAngle, &txAngleSin, &txAngleCos);
 
     // Note: relative to the center of aperture.
+    // coordinate system: aperture's center
     float pointX = r*txAngleSin;
     float pointZ = r*txAngleCos;
     txDistance = r;
@@ -47,19 +51,35 @@ __global__ void beamform(complex<float> *output, const complex<float> *input,
     unsigned txOffset = frame*nTx*nRx*nSamples + scanline*nRx*nSamples;
     float cInv = 1/c;
 
+    unsigned apOrig = apOrigs[scanline];
+    float xApCenter = xApCenters[scanline];
+    float zApCenter = zApCenters[scanline];
+    float angleApCenter = angleApCenters[scanline];
+
+    unsigned elementGlobal = 0;
+
     for(unsigned element = 0; element < nRx; ++element) {
-        // Note: relative to the center of aperture.
-        elementX = xElemConst[xElemConstOffset+element];
-        elementZ = 0; // Linear array.
+        elementGlobal = element + apOrig;
+        if(elementGlobal >= nElements) {
+            // element aperture outside the probe
+            continue;
+        }
+
+        elementX = xElemConst[xElemConstOffset + elementGlobal] - xApCenter;
+        elementZ = zElemConst[zElemConstOffset + elementGlobal] - zApCenter;
+        elementAngle = angleElemConst[angleElemConstOffset + elementGlobal] - angleApCenter;
 
         // RX apodization.
-        rxTang = (pointX-elementX)/(pointZ-elementZ);
+        rxAng = atan2f(pointX-elementX, pointZ-elementZ);
+        rxAng = rxAng-elementAngle;
+        rxTang = tanf(rxAng);
+
         if(fabs(rxTang) > maxApodTang) {
             continue;
         }
-        // RX distance and sample number for given RX element.
+        // RX distance and sample number for a given RX element.
         rxDistance = hypotf(elementX-pointX, elementZ-pointZ);
-        time = (txDistance+rxDistance) * cInv + initDelay;
+        time = (txDistance+rxDistance)*cInv + initDelay;
         s = time * fs;
         sInt = (int) s;
 

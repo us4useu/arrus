@@ -18,7 +18,6 @@ import queue
 import dataclasses
 import threading
 from collections import deque
-from collections.abc import Iterable
 from pathlib import Path
 import os
 import importlib.util
@@ -26,7 +25,7 @@ from enum import Enum
 import arrus.kernels.simple_tx_rx_sequence
 import arrus.kernels.tx_rx_sequence
 from numbers import Number
-from typing import Sequence, Dict, Callable, Union, Tuple, List, Optional, Set
+from typing import Sequence, Dict, Callable, Union, Tuple, List, Optional, Set, Iterable
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
 from arrus.ops.us4r import TxRxSequence
@@ -1482,10 +1481,14 @@ class RxBeamforming(Operation):
     Classical rx beamforming (reconstruct image scanline by scanline).
     """
     X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
+    Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 1024, np.float32)
+    ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 1024, np.float32)
 
     def close(self):
         # Clean-up pool.
         RxBeamforming.X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
+        RxBeamforming.Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 1024, np.float32)
+        RxBeamforming.ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 1024, np.float32)
 
     def __init__(self, num_pkg=None):
         import cupy as cp
@@ -1494,9 +1497,6 @@ class RxBeamforming(Operation):
     def prepare(self, const_metadata):
         import cupy as cp
         probe_model = get_unique_probe_model(const_metadata)
-        if probe_model.is_convex_array():
-            raise ValueError("RX beamforming is implemented for "
-                             "linear arrays only.")
 
         fs = const_metadata.data_description.sampling_frequency
         seq: Union[TxRxSequence, SimpleTxRxSequence] = const_metadata.context.sequence
@@ -1521,7 +1521,7 @@ class RxBeamforming(Operation):
                                  f"{seq.init_delay}")
             tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(
                 probe_model, seq)
-            rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
+            rx_aperture_center_elements = np.array(tx_rx_params["rx_ap_cent"])
             rx_aperture_size = seq.rx_aperture_size
             angles = np.array(tx_rx_params["tx_angle"])
         elif isinstance(seq, TxRxSequence):
@@ -1544,7 +1544,7 @@ class RxBeamforming(Operation):
             # Rx
             downsampling_factor = ref_rx.downsampling_factor
             rx_sample_range = ref_rx.sample_range
-            rx_aperture_center_element = ref_rx.aperture.center_element
+            rx_aperture_center_elements = [op.rx.aperture.center_element for op in seq.ops]
             rx_aperture_size = ref_rx.aperture.size
             if ref_rx.init_delay == "tx_start":
                 burst_factor = n_periods / (2 * fc)
@@ -1560,6 +1560,8 @@ class RxBeamforming(Operation):
         else:
             raise ValueError(f"Unrecognized sequence type: {type(seq)}")
 
+        # Validate
+        # TODO make sure, rx and tx aperture center elements and sizes are all the same
         self._kernel_module = RX_BEAMFORMING_KERNEL_MODULE
         self._kernel = self._kernel_module.get_function("beamform")
         medium = const_metadata.context.medium
@@ -1579,7 +1581,7 @@ class RxBeamforming(Operation):
         self.fs = cp.float32(fs)
         self.c = cp.float32(c)
         # the ACQ sampling frequency.
-        self.start_time = cp.float32(start_sample / acq_fs)
+        self.start_time = cp.float32(start_sample/acq_fs)
         self.init_delay = cp.float32(init_delay)
         self.max_tang = cp.float32(max_tang)
         sample_block_size = min(self.n_samples, 16)
@@ -1589,16 +1591,42 @@ class RxBeamforming(Operation):
         self.grid_size = (int((self.n_samples-1)//sample_block_size + 1),
                           int((self.n_tx-1)//scanline_block_size + 1),
                           int((self.n_seq-1)//n_seq_block_size + 1))
-        # xElemConst
-        # Get aperture origin (for the given aperture center element/aperture center)
-        # TODO zElemConst for convex arrays?
-        # There is a single TX and RX aperture center for all TX/RXs
-        rx_aperture_origin = _get_rx_aperture_origin(
-            rx_aperture_center_element, rx_aperture_size)
-        rx_aperture_offset = rx_aperture_center_element-rx_aperture_origin
-        x_elem = (np.arange(0, self.n_rx)-rx_aperture_offset)*probe_model.pitch
-        x_elem = x_elem.astype(np.float32)
+
+        x_elem = probe_model.element_pos_x
+        z_elem = probe_model.element_pos_z
+        angle_elem = probe_model.element_angle
+        # check if there is enough constant memory
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < 1024 * 3 * 4:  # 3 float32 arrays, 1024 elements max
+            raise ValueError("There is not enough constant memory available!")
         self.x_elem_const_offset = RxBeamforming.X_ELEM_CONST_POOL.reserve_new_array(np.squeeze(x_elem))
+        self.z_elem_const_offset = RxBeamforming.Z_ELEM_CONST_POOL.reserve_new_array(np.squeeze(z_elem))
+        self.angle_elem_const_offset = RxBeamforming.ANGLE_ELEM_CONST_POOL.reserve_new_array(np.squeeze(angle_elem))
+        # NOTE: we assume here, that all TX/RXs have the same RX/TX aperture centers
+        aperture_origins = _get_aperture_origin(rx_aperture_center_elements, rx_aperture_size)
+        aperture_origins = np.clip(aperture_origins, 0, probe_model.n_elements-1)
+        self.ap_origin = cp.asarray(aperture_origins, dtype=cp.uint32)
+        # Get aperture centers.
+        # Interpolate aperture center from the element idx to element position.
+        # extrapolation may be needed, because the rx aperture center element can be < 0 and > n_elements-1
+        self.n_elements = probe_model.n_elements
+        # Do not allow aperture centers < 0 or > n_elements - 1
+        ap_outside = np.logical_or(rx_aperture_center_elements < 0, rx_aperture_center_elements > self.n_elements-1)
+        if np.sum(ap_outside) > 0:
+            raise ValueError("RX beamforming requires all aperture center/center "
+                             "elements to be < 0 or > n_elements-1")
+
+        self.x_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements),
+                                     x_elem, left=np.nan, right=np.nan)
+        self.z_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements),
+                                     z_elem, left=np.nan, right=np.nan)
+        self.angle_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements),
+                                         angle_elem, left=np.nan, right=np.nan)
+
+        self.x_ap_center = cp.asarray(self.x_ap_center, dtype=cp.float32)
+        self.z_ap_center = cp.asarray(self.z_ap_center, dtype=cp.float32)
+        self.angle_ap_center = cp.asarray(self.angle_ap_center, dtype=cp.float32)
+        self.n_elements = cp.uint32(self.n_elements)
         return const_metadata.copy(input_shape=self.output_buffer.shape)
 
     def process(self, data):
@@ -1607,10 +1635,15 @@ class RxBeamforming(Operation):
             self.output_buffer, data,
             self.n_seq, self.n_tx, self.n_rx, self.n_samples,
             self.tx_angles,
+            self.x_ap_center, self.z_ap_center, self.angle_ap_center, self.ap_origin,
             self.init_delay, self.start_time,
             self.c, self.fs, self.fc,
             self.max_tang,
-            self.x_elem_const_offset)
+            self.x_elem_const_offset,
+            self.z_elem_const_offset,
+            self.angle_elem_const_offset,
+            self.n_elements
+        )
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
 
@@ -2876,7 +2909,7 @@ class Mean(Operation):
         return self.num_pkg.mean(data, axis=self.axis)
 
 
-def _get_rx_aperture_origin(aperture_center_element, aperture_size):
+def _get_aperture_origin(aperture_center_element, aperture_size):
     return np.round(aperture_center_element - (aperture_size - 1) / 2 + 1e-9)
 
 
