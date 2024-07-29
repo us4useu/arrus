@@ -1604,8 +1604,7 @@ class RxBeamforming(Operation):
         self.angle_elem_const_offset = RxBeamforming.ANGLE_ELEM_CONST_POOL.reserve_new_array(np.squeeze(angle_elem))
         # NOTE: we assume here, that all TX/RXs have the same RX/TX aperture centers
         aperture_origins = _get_aperture_origin(rx_aperture_center_elements, rx_aperture_size)
-        aperture_origins = np.clip(aperture_origins, 0, probe_model.n_elements-1)
-        self.ap_origin = cp.asarray(aperture_origins, dtype=cp.uint32)
+        self.ap_origin = cp.asarray(aperture_origins, dtype=cp.int32)
         # Get aperture centers.
         # Interpolate aperture center from the element idx to element position.
         # extrapolation may be needed, because the rx aperture center element can be < 0 and > n_elements-1
@@ -1616,12 +1615,9 @@ class RxBeamforming(Operation):
             raise ValueError("RX beamforming requires all aperture center/center "
                              "elements to be < 0 or > n_elements-1")
 
-        self.x_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements),
-                                     x_elem, left=np.nan, right=np.nan)
-        self.z_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements),
-                                     z_elem, left=np.nan, right=np.nan)
-        self.angle_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements),
-                                         angle_elem, left=np.nan, right=np.nan)
+        self.x_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements), np.squeeze(x_elem))
+        self.z_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements), np.squeeze(z_elem))
+        self.angle_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements), np.squeeze(angle_elem))
 
         self.x_ap_center = cp.asarray(self.x_ap_center, dtype=cp.float32)
         self.z_ap_center = cp.asarray(self.z_ap_center, dtype=cp.float32)
@@ -1717,7 +1713,7 @@ class RxBeamformingLin(Operation):
         rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
             op=seq, fs=fs, speed_of_sound=c)
         start_sample = rx_sample_range[0]
-        rx_aperture_origin = _get_rx_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
+        rx_aperture_origin = _get_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
         # -start_sample compensates the fact, that the data indices always
         # start from 0
         initial_delay = - start_sample / acq_fs
@@ -2023,8 +2019,8 @@ class ScanConversion(Operation):
         tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
 
-        z_grid_moved = self.z_grid.T + probe.curvature_radius \
-                       - self.num_pkg.max(probe.element_pos_z)
+        element_pos_z = probe.element_pos_z.reshape(1, -1)
+        z_grid_moved = self.z_grid.T + probe.curvature_radius - self.num_pkg.max(element_pos_z)
 
         self.radGridIn = (
                 (start_sample / acq_fs + self.num_pkg.arange(0, n_samples) / fs)

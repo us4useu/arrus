@@ -13,7 +13,7 @@ extern "C"
     __global__ void beamform(complex<float> *output, const complex<float> *input,
              const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
              const float *txAngles, // [rad]
-             const float *xApCenters, const float *zApCenters, const float *angleApCenters, const unsigned *apOrigs,
+             const float *xApCenters, const float *zApCenters, const float *angleApCenters, const int *apOrigs,
              const float initDelay, const float startTime,
              const float c, const float fs, const float fc, float maxApodTang,
              const size_t xElemConstOffset, const size_t zElemConstOffset, const size_t angleElemConstOffset,
@@ -56,11 +56,11 @@ extern "C"
     float zApCenter = zApCenters[scanline];
     float angleApCenter = angleApCenters[scanline];
 
-    unsigned elementGlobal = 0;
+    int elementGlobal = 0;
 
-    for(unsigned element = 0; element < nRx; ++element) {
+    for(int element = 0; element < nRx; ++element) {
         elementGlobal = element + apOrig;
-        if(elementGlobal >= nElements) {
+        if(elementGlobal < 0 || elementGlobal >= nElements) {
             // element aperture outside the probe
             continue;
         }
@@ -80,7 +80,7 @@ extern "C"
         // RX distance and sample number for a given RX element.
         rxDistance = hypotf(elementX-pointX, elementZ-pointZ);
         time = (txDistance+rxDistance)*cInv + initDelay;
-        s = time * fs;
+        s = time*fs;
         sInt = (int) s;
 
         signalOffset = txOffset + element*nSamples;
@@ -88,7 +88,7 @@ extern "C"
             float ratio = s - sInt;
             a = input[signalOffset + sInt];
             b = input[signalOffset + sInt + 1];
-            currentResult = (1.0f - ratio) * a + ratio * b;
+            currentResult = (1.0f - ratio)*a + ratio*b;
         }
         else if(sInt == nSamples-1) {
             currentResult = input[signalOffset + sInt];
