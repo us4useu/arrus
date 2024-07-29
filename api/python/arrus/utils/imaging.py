@@ -1479,16 +1479,21 @@ RX_BEAMFORMING_KERNEL_MODULE = _read_kernel_module("rx_beamforming.cu")
 class RxBeamforming(Operation):
     """
     Classical rx beamforming (reconstruct image scanline by scanline).
+
+    This operator assumes that:
+    - the distance between two consecutive elements is constant == pitch,
+    - tx and rx aperture sizes are equal and constant (i.e. doesn't change from TX/RX to TX/RX),
+    - tx and rx aperture centers are equal.
     """
-    X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
-    Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 1024, np.float32)
-    ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 1024, np.float32)
+    X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 256, np.float32)
+    Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 256, np.float32)
+    ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 256, np.float32)
 
     def close(self):
         # Clean-up pool.
-        RxBeamforming.X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
-        RxBeamforming.Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 1024, np.float32)
-        RxBeamforming.ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 1024, np.float32)
+        RxBeamforming.X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 256, np.float32)
+        RxBeamforming.Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 256, np.float32)
+        RxBeamforming.ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 256, np.float32)
 
     def __init__(self, num_pkg=None):
         import cupy as cp
@@ -1592,37 +1597,29 @@ class RxBeamforming(Operation):
                           int((self.n_tx-1)//scanline_block_size + 1),
                           int((self.n_seq-1)//n_seq_block_size + 1))
 
-        x_elem = probe_model.element_pos_x
-        z_elem = probe_model.element_pos_z
-        angle_elem = probe_model.element_angle
+        # Determine position of aperture elements, in the local coordinate
+        # system located in the center of the TX aperture.
+        element_position = np.arange(-(self.n_rx - 1) / 2, self.n_rx / 2)
+        element_position = element_position * probe_model.pitch
+        if not probe_model.is_convex_array():
+            x_elem = element_position
+            z_elem = np.zeros(self.n_rx)
+            angle_elem = np.zeros(self.n_rx)
+        else:
+            cr = probe_model.curvature_radius
+            angle_elem = element_position / cr
+            x_elem = cr * np.sin(angle_elem)
+            z_elem = cr * np.cos(angle_elem)
+            z_elem = z_elem - np.min(z_elem)
+
         # check if there is enough constant memory
         device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < 1024 * 3 * 4:  # 3 float32 arrays, 1024 elements max
+        if device_props["totalConstMem"] < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
             raise ValueError("There is not enough constant memory available!")
         self.x_elem_const_offset = RxBeamforming.X_ELEM_CONST_POOL.reserve_new_array(np.squeeze(x_elem))
         self.z_elem_const_offset = RxBeamforming.Z_ELEM_CONST_POOL.reserve_new_array(np.squeeze(z_elem))
         self.angle_elem_const_offset = RxBeamforming.ANGLE_ELEM_CONST_POOL.reserve_new_array(np.squeeze(angle_elem))
-        # NOTE: we assume here, that all TX/RXs have the same RX/TX aperture centers
-        aperture_origins = _get_aperture_origin(rx_aperture_center_elements, rx_aperture_size)
-        self.ap_origin = cp.asarray(aperture_origins, dtype=cp.int32)
-        # Get aperture centers.
-        # Interpolate aperture center from the element idx to element position.
-        # extrapolation may be needed, because the rx aperture center element can be < 0 and > n_elements-1
-        self.n_elements = probe_model.n_elements
-        # Do not allow aperture centers < 0 or > n_elements - 1
-        ap_outside = np.logical_or(rx_aperture_center_elements < 0, rx_aperture_center_elements > self.n_elements-1)
-        if np.sum(ap_outside) > 0:
-            raise ValueError("RX beamforming requires all aperture center/center "
-                             "elements to be < 0 or > n_elements-1")
 
-        self.x_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements), np.squeeze(x_elem))
-        self.z_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements), np.squeeze(z_elem))
-        self.angle_ap_center = np.interp(rx_aperture_center_elements, np.arange(self.n_elements), np.squeeze(angle_elem))
-
-        self.x_ap_center = cp.asarray(self.x_ap_center, dtype=cp.float32)
-        self.z_ap_center = cp.asarray(self.z_ap_center, dtype=cp.float32)
-        self.angle_ap_center = cp.asarray(self.angle_ap_center, dtype=cp.float32)
-        self.n_elements = cp.uint32(self.n_elements)
         return const_metadata.copy(input_shape=self.output_buffer.shape)
 
     def process(self, data):
@@ -1631,14 +1628,12 @@ class RxBeamforming(Operation):
             self.output_buffer, data,
             self.n_seq, self.n_tx, self.n_rx, self.n_samples,
             self.tx_angles,
-            self.x_ap_center, self.z_ap_center, self.angle_ap_center, self.ap_origin,
             self.init_delay, self.start_time,
             self.c, self.fs, self.fc,
             self.max_tang,
             self.x_elem_const_offset,
             self.z_elem_const_offset,
             self.angle_elem_const_offset,
-            self.n_elements
         )
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer

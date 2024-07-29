@@ -3,9 +3,9 @@
 #define CUDART_PI_F 3.141592654f
 
 // The below values are stored for ALL probe elements.
-__constant__ float xElemConst[1024]; // [m]
-__constant__ float zElemConst[1024]; // [m]
-__constant__ float angleElemConst[1024]; // [rad]
+__constant__ float xElemConst[256]; // [m]
+__constant__ float zElemConst[256]; // [m]
+__constant__ float angleElemConst[256]; // [rad]
 
 // Assumptions:
 // - TX and RX apertures have the same center position
@@ -13,12 +13,9 @@ extern "C"
     __global__ void beamform(complex<float> *output, const complex<float> *input,
              const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
              const float *txAngles, // [rad]
-             const float *xApCenters, const float *zApCenters, const float *angleApCenters, const int *apOrigs,
              const float initDelay, const float startTime,
              const float c, const float fs, const float fc, float maxApodTang,
-             const size_t xElemConstOffset, const size_t zElemConstOffset, const size_t angleElemConstOffset,
-             const unsigned nElements
-             ) {
+             const size_t xElemConstOffset, const size_t zElemConstOffset, const size_t angleElemConstOffset) {
     complex<float> a, b;
     float elementX, elementZ, elementAngle;
     float rxAng, rxTang, pixWgh = 0;
@@ -51,23 +48,10 @@ extern "C"
     unsigned txOffset = frame*nTx*nRx*nSamples + scanline*nRx*nSamples;
     float cInv = 1/c;
 
-    unsigned apOrig = apOrigs[scanline];
-    float xApCenter = xApCenters[scanline];
-    float zApCenter = zApCenters[scanline];
-    float angleApCenter = angleApCenters[scanline];
-
-    int elementGlobal = 0;
-
     for(int element = 0; element < nRx; ++element) {
-        elementGlobal = element + apOrig;
-        if(elementGlobal < 0 || elementGlobal >= nElements) {
-            // element aperture outside the probe
-            continue;
-        }
-
-        elementX = xElemConst[xElemConstOffset + elementGlobal] - xApCenter;
-        elementZ = zElemConst[zElemConstOffset + elementGlobal] - zApCenter;
-        elementAngle = angleElemConst[angleElemConstOffset + elementGlobal] - angleApCenter;
+        elementX = xElemConst[xElemConstOffset + element];
+        elementZ = zElemConst[zElemConstOffset + element];
+        elementAngle = angleElemConst[angleElemConstOffset + element];
 
         // RX apodization.
         rxAng = atan2f(pointX-elementX, pointZ-elementZ);
