@@ -1899,8 +1899,12 @@ class ScanConversion(Operation):
             data_desc=new_signal_description
         )
         if probe.is_convex_array():
-            self.process = self._process_convex
-            return self._prepare_convex(const_metadata)
+            if probe.curvature_radius > 0:
+                self.process = self._process_convex
+                return self._prepare_convex(const_metadata)
+            else:
+                self.process = self._process_concave
+                return self._prepare_concave(const_metadata)
         else:
             # linear array or phased array
             seq = const_metadata.context.sequence
@@ -1989,7 +1993,7 @@ class ScanConversion(Operation):
         probe = get_unique_probe_model(const_metadata)
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
-
+        
         if not self.num_pkg == np:
             import cupy as cp
             self.x_grid = self.num_pkg.asarray(self.x_grid).astype(cp.float32)
@@ -2017,36 +2021,15 @@ class ScanConversion(Operation):
         element_pos_z = probe.element_pos_z.reshape(1, -1)
         self.radGridIn = ((start_sample / acq_fs + self.num_pkg.arange(0, n_samples)/fs) * c/2)
 
-        if probe.curvature_radius > 0:
-            # Convex
-            # Move the z_grid coordinates to coordinate system located in the
-            # probe curvature center.
-            self.z_grid = self.z_grid.T + probe.curvature_radius - self.num_pkg.max(element_pos_z)
-        elif probe.curvature_radius < 0:
-            # Concave
-            # Flip and move the coordinate system
-            # z_grid/x_grid
-            max_sampling_time = start_sample/acq_fs + n_samples/fs*c/2
-            self.z_grid = max_sampling_time + probe.curvature_radius + self.z_grid
-            self.z_grid = self.z_grid.T
-            self.x_grid = -self.x_grid
-            # radGridIn  -- max depth -> 0
-            self.radGridIn = np.flip(self.radGridIn)
-
+        # Move the z_grid coordinates to coordinate system located in the
+        # probe curvature center.
+        self.z_grid = self.z_grid.T + probe.curvature_radius - self.num_pkg.max(element_pos_z)
         self.azimuthGridIn = tx_ap_cent_ang
 
-        print(self.azimuthGridIn)
-        print(self.radGridIn)
         azimuthGridOut = self.num_pkg.arctan2(self.x_grid, self.z_grid)
         # radGridIn starts where the image should start, so w subtract r
         radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + self.z_grid ** 2)
                       - probe.curvature_radius)
-
-        import matplotlib.pyplot as plt
-        plt.imshow(azimuthGridOut.get())
-        plt.show()
-        plt.imshow(radGridOut.get())
-        plt.show()
 
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
 
@@ -2080,6 +2063,65 @@ class ScanConversion(Operation):
                                                       self.dst_points,
                                                       order=1)
         return self.output_buffer
+
+    def _prepare_concave(self, const_metadata: arrus.metadata.ConstMetadata):
+        # Currently CPU processing is supported only
+        self.num_pkg = np  
+        probe = get_unique_probe_model(const_metadata)
+        medium = const_metadata.context.medium
+        data_desc = const_metadata.data_description
+        
+        self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = data_desc.sampling_frequency
+
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
+
+        tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
+            seq.tx_aperture_center_element, probe)
+
+        element_pos_z = probe.element_pos_z.reshape(1, -1)
+
+        max_sampling_time = (start_sample/acq_fs + n_samples/fs)*c/2
+        self.z_grid = max_sampling_time+abs(probe.curvature_radius)-self.z_grid
+        self.z_grid = self.z_grid.T
+
+        # 1 coord system: center of the circle determined by the curvature radius and the probe elements (arc)
+        self.azimuthGridIn = np.flip(tx_ap_cent_ang)
+        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, self.z_grid)
+        
+        # 2. coordinate system: aperture's center
+        self.radGridIn = ((start_sample / acq_fs + self.num_pkg.arange(0, n_samples)/fs) * c/2)
+        # Assume the 1st coord system
+        radGridOut = self.num_pkg.sqrt(self.x_grid**2 + self.z_grid**2)
+        # Move back to the 2nd coordinat system
+        radGridOut = abs(probe.curvature_radius)+max_sampling_time-radGridOut
+
+        self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        dst_points = self.num_pkg.dstack((radGridOut, azimuthGridOut))
+        self.dst_points = self.num_pkg.asarray(dst_points, dtype=self.num_pkg.float32)
+
+        self.output_buffer = self.num_pkg.zeros(self.dst_shape, dtype=np.float32)
+        return const_metadata.copy(input_shape=self.dst_shape)
+
+    def _process_concave(self, data):
+        import cupy as cp
+        if self.is_gpu:
+            data = data.get()
+        data[np.isnan(data)] = 0.0
+        self.interpolator = scipy.interpolate.RegularGridInterpolator(
+            (self.radGridIn, self.azimuthGridIn), np.squeeze(data), fill_value=0, bounds_error=False)
+        return cp.asarray(self.interpolator(self.dst_points).reshape(self.dst_shape))
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = get_unique_probe_model(const_metadata)
