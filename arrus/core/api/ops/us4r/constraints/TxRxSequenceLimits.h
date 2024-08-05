@@ -12,15 +12,23 @@ class TxRxSequenceLimitsBuilder;
  */
 class TxRxSequenceLimits {
 public:
-    TxRxSequenceLimits(const TxRxLimits &txrx, const Interval<uint32> &size) : txrx(txrx), size(size) {}
+    TxRxSequenceLimits(const TxRxLimits &txrx, const Interval<uint32> &size, uint32 maxNFirings)
+        : txrx(txrx), size(size), maxNFirings(maxNFirings) {}
+
+    /** Assumes that the sequence size == max number of firings. */
+    TxRxSequenceLimits(const TxRxLimits &txrx, const Interval<uint32> &size): TxRxSequenceLimits(txrx, size, size.end()) {}
 
     const TxRxLimits &getTxRx() const { return txrx; }
     const Interval<uint32> &getSize() const { return size; }
+    uint32 getMaxNumberOfFirings() const { return maxNFirings; }
 
 private:
     friend class TxRxSequenceLimitsBuilder;
     TxRxLimits txrx;
     Interval<uint32> size;
+    /** Maximum number of different TX/RX operators.
+     * It should be equal to the min(max rx apertures, max tx apertures, max tx delays). */
+    uint32 maxNFirings;
 };
 
 class TxRxSequenceLimitsBuilder {

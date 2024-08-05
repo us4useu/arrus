@@ -315,9 +315,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, DoesNothingWithAperturesWhenNoChannelMask) {
 
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
-    }
+    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4r::Span<float>(expectedTxDelays), 0, 0));
     upload(seq);
 }
 
@@ -353,9 +351,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannel) {
 
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
-    }
+    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4r::Span<float>(expectedTxDelays), 0, 0));
     auto result = upload(seq);
     auto fcm = result.getFCM(0);
 
