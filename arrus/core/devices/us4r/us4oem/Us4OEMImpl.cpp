@@ -25,6 +25,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
+#include "TxWaveformConverter.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -221,7 +222,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                ::arrus::toString(op)));
             // TX
             auto txAperture = arrus::toBitset<Us4OEMDescriptor::N_TX_CHANNELS>(op.getTxAperture());
-            auto nTxHalfPeriods = static_cast<uint32>(op.getTxPulse().getNPeriods() * 2);
             // RX
             auto rxAperture = rxMappingRegister.getRxAperture(sequenceId, opId);
             float decimationFactor = isDDCOn ? ddc->getDecimationFactor() : (float) op.getRxDecimationFactor();
@@ -242,7 +242,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
-            // Set delay defintion tables.
+            // Set delay definition tables.
             for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
                 auto delays = txDelays.at(delaysId).row(opId).toVector<float>();
                 setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx());
@@ -251,28 +251,34 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
             // and reduces the risk of causing new bugs in the whole mapping implementation.
             // This will be optimized in TODO(0.12.0).
-            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(),
-                        op.getMaskedChannelsTx());
-            ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firingId);
-            ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
-            ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firingId);
+            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx());
             if(isOEMPlus()) {
-                ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
+                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(op.getTxWaveform()));
+            }
+            else {
+                // Legacy OEM.
+                auto pulse = Pulse::fromWaveform(op.getTxWaveform());
+                ARRUS_REQUIRES_TRUE(
+                    pulse.has_value(),
+                    format("Couldn't get the correct TX pulse for the waveform declared in the firing {}", firingId));
+                ius4oem->SetTxFreqency(pulse.value().getCenterFrequency(), firingId);
+                auto nTxHalfPeriods = static_cast<uint32>(pulse.value().getNPeriods()*2);
+                ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
+                ius4oem->SetTxInvert(pulse.value().isInverse(), firingId);
             }
             ius4oem->SetRxTime(rxTime, firingId);
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
                 ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
         }
+        // Build sequence waveform.
+        for (OpId firing = 0; firing < ARRUS_SAFE_CAST(sequence.size(), OpId); ++firing) {
+            ius4oem->BuildSequenceWaveform(firing);
+        }
     }
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
-  
-    // Build sequence waveform.
-    for (OpId firing = 0; firing < ARRUS_SAFE_CAST(sequence.size(), OpId); ++firing) {
-        ius4oem->BuildSequenceWaveform(firing);
-    }
 }
 
 size_t Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
@@ -527,8 +533,8 @@ float Us4OEMImpl::getSamplingFrequency() { return descriptor.getSamplingFrequenc
 float Us4OEMImpl::getRxTime(const TxRxParameters &op, float samplingFrequency) {
     auto sampleRange = op.getRxSampleRange().asPair();
     float nSamples = static_cast<float>(std::get<1>(sampleRange));
-    auto &pulse = op.getTxPulse();
-    float txTime = pulse.getPulseLength();
+    auto &waveform = op.getTxWaveform();
+    float txTime = waveform.getTotalDuration();
     float rxTime = nSamples / samplingFrequency;
     // TODO consider txTime+rxTime
     rxTime = std::max(txTime, rxTime);

@@ -24,7 +24,7 @@ public:
             auto firingStr = format(" (firing {})", firing);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), nChannelsTx, firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), nChannelsTx, firingStr);
-            ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getCenterFrequency(), txFrequencyRange.start(),
+            ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxWaveform().getCenterFrequency(), txFrequencyRange.start(),
                                               txFrequencyRange.end(), firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), nChannelsRx, firingStr);
         }
