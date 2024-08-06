@@ -41,8 +41,8 @@ public:
 
     float getTotalDuration() const {
         float value = 0.0f;
-        for(const auto &segment: getSegments()) {
-            value += segment.getTotalDuration();
+        for(size_t i = 0; i < segments.size(); ++i) {
+            value += segments.at(i).getTotalDuration() * nRepetitions.at(i);
         }
         return value;
     }
