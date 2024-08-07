@@ -200,8 +200,9 @@ set(SRC_FILES
     api/devices/us4r/HVPSMeasurement.h
     api/devices/us4r/Us4RTxRxLimits.h
     devices/us4r/TxTimeoutRegister.h
-        api/ops/us4r/Waveform.h
-        devices/us4r/us4oem/TxWaveformConverter.h
+    api/ops/us4r/Waveform.h
+    devices/us4r/us4oem/TxWaveformConverter.h
+        devices/us4r/us4oem/TxWaveformConverterTest.cpp
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
@@ -315,6 +316,7 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
 
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/us4oem/TxWaveformConverterTest.cpp common/logging.cpp)
 endif ()
 
 ################################################################################
