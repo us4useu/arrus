@@ -141,7 +141,7 @@ public:
             if(waveform.getSegments().size() >= 2) {
                 // full cycle, 0.5, rest
                 const auto &seg1 = waveform.getSegments().at(1);
-                auto t1Update = getNCyclesFractional(seg1, true, signedState, period);
+                auto t1Update = getNCyclesFractional(seg1, signedState, period);
                 if(!t1Update.has_value()) {
                     return std::nullopt;
                 }
@@ -152,7 +152,7 @@ public:
 
                 if(waveform.getSegments().size() == 3) {
                     const auto &seg2 = waveform.getSegments().at(2);
-                    auto t2Update = getNCyclesFractional(seg2, false, -signedState, period);
+                    auto t2Update = getNCyclesFractional(seg2, -signedState, period);
                     if(!t2Update.has_value()) {
                         return std::nullopt;
                     }
@@ -209,7 +209,7 @@ private:
     }
 
     static std::optional<float> getNCyclesFractional(
-        const WaveformSegment &segment, bool roundHalf, int8 expectedState, float period) {
+        const WaveformSegment &segment, int8 expectedState, float period) {
         if(segment.getDuration().size() > 1) {
             // Each segment should contain a single state
             return std::nullopt;
