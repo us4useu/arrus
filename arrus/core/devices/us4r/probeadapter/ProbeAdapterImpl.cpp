@@ -302,7 +302,8 @@ ProbeAdapterImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const 
 
     // Create the copy of FCM.
     fullSequenceFCM = outFcBuilder.build();
-    this->resetSequencerPointer = true;
+    // Move the sequence to the beginning.
+    this->oemSequencerStartEntry = 0;
     this->isCurrentlyTriggerSync = triggerSync;
     // Return the copy of FCM.
     return {us4RBufferBuilder.build(), outFcBuilder.build()};
@@ -316,7 +317,7 @@ void ProbeAdapterImpl::start() {
         // Reset tx subsystem pointers.
         us4oem->getIUs4oem()->EnableTransmit();
         // Reset sequencer pointers.
-        us4oem->enableSequencer(resetSequencerPointer);
+        us4oem->enableSequencer(oemSequencerStartEntry);
     }
     this->us4oems[0]->startTrigger();
 }
@@ -418,7 +419,7 @@ ProbeAdapterImpl::setSubsequence(uint16_t start, uint16_t end, const std::option
         oem->setSubsequence(oemStart, oemEnd, syncMode, sri);
     }
     // Do not reset sequencer pointer -- the next ptr was already handled by the setSubsequence method.
-    this->resetSequencerPointer = false;
+    this->oemSequencerStartEntry = oemStart;
     return {us4RBufferBuilder.build(), outFCMBuilder.build()};
 }
 

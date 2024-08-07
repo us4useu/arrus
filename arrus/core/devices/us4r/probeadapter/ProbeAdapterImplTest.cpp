@@ -108,7 +108,7 @@ public:
     MOCK_METHOD(bool, isMaster, (), (override));
     MOCK_METHOD(void, setRxSettings, (const RxSettings &cfg), (override));
     MOCK_METHOD(Ius4OEMRawHandle, getIUs4oem, (), (override));
-    MOCK_METHOD(void, enableSequencer, (bool resetSequencerPointer), (override));
+    MOCK_METHOD(void, enableSequencer, (uint16 startEntry), (override));
     MOCK_METHOD(std::vector<uint8_t>, getChannelMapping, (), (override));
     MOCK_METHOD(float, getFPGATemperature, (), (override));
     MOCK_METHOD(void, setTestPattern, (Us4OEMImpl::RxTestPattern), (override));
