@@ -24,7 +24,7 @@ class Pulse:
     center_frequency: float
     n_periods: float
     inverse: bool
-    amplitude_level: int = 0
+    amplitude_level: int = 1
 
 
 @dataclass(frozen=True)

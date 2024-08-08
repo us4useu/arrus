@@ -25,7 +25,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
-#include "TxWaveformConverter.h"
+#include "arrus/core/devices/us4r/TxWaveformConverter.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace

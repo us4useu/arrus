@@ -25,6 +25,8 @@ public:
         }
         return value;
     }
+    bool operator==(const WaveformSegment &rhs) const { return duration == rhs.duration && state == rhs.state; }
+    bool operator!=(const WaveformSegment &rhs) const { return !(rhs == *this); }
 
 private:
     std::vector<float> duration;
@@ -46,6 +48,8 @@ public:
         }
         return value;
     }
+    bool operator==(const Waveform &rhs) const { return segments == rhs.segments && nRepetitions == rhs.nRepetitions; }
+    bool operator!=(const Waveform &rhs) const { return !(rhs == *this); }
 
 private:
     std::vector<WaveformSegment> segments;

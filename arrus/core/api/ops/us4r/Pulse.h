@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_OPS_US4R_PULSE_H
 
 #include <cmath>
+#include <algorithm>
 
 #include "Waveform.h"
 
@@ -23,10 +24,14 @@ public:
 	 * @param centerFrequency center frequency of the transmitted pulse
 	 * @param nPeriods pulse number of periods, should be a multiple of 0.5
 	 * @param inverse if set to true - inverse the pulse polarity
-	 * @param amplitudeLevel amplitude level to use, default: 0
+	 * @param amplitudeLevel amplitude level to use, default: 1
 	 */
-    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 0)
-        : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel) {}
+    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 1)
+        : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel) {
+        if(! (amplitudeLevel == 1 || amplitudeLevel == 2)) {
+            throw IllegalArgumentException("Pulse amplitude level should be 1 or 2");
+        }
+    }
 
     float getCenterFrequency() const {
         return centerFrequency;
