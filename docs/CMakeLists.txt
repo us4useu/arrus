@@ -73,6 +73,10 @@ function(CREATE_DOC_TARGET LANGUAGE FORMAT VENV_TARGET SPHINX_TARGET DEPS CUSTOM
                 ${CMAKE_CURRENT_SOURCE_DIR}/content
                 ${SPHINX_CURRENT_LANG_DIR}/content
         COMMAND
+            ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/_static
+            ${SPHINX_CURRENT_LANG_DIR}/_static
+        COMMAND
             ${CMAKE_COMMAND} -E copy
                 ${CMAKE_CURRENT_SOURCE_DIR}/index.rst
                 ${SPHINX_CURRENT_LANG_DIR}/index.rst

@@ -38,6 +38,9 @@ def is_package_available(package_name):
     return importlib.util.find_spec(package_name) is not None
 
 
+print(f"IS CUPY? {is_package_available('cupy')}")
+
+
 if is_package_available("cupy"):
     import cupy
     import re
@@ -55,6 +58,9 @@ else:
 
 
 def _read_kernel_module(path):
+    if not is_package_available("cupy"):
+        return None
+
     import cupy as cp
     current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
     kernel_src = Path(os.path.join(current_dir, path)).read_text()
@@ -62,6 +68,9 @@ def _read_kernel_module(path):
 
 
 def _get_const_memory_array(module, name, input_array):
+    if not is_package_available("cupy"):
+        return None
+
     import cupy as cp
     const_arr_ptr = module.get_global(name)
     const_arr = cp.ndarray(shape=input_array.shape, dtype=input_array.dtype,
@@ -85,10 +94,11 @@ def _assert_unique_property_for_rx_active_ops(seq: TxRxSequence, getter: Callabl
 class GpuConstMemoryPool:
 
     def __init__(self, kernel_module, variable_name, total_size: int, dtype):
-        import cupy as cp
-        device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
-            raise ValueError(f"There is not enough constant memory available for {variable_name}!")
+        if is_package_available("cupy"):
+            import cupy as cp
+            device_props = cp.cuda.runtime.getDeviceProperties(0)
+            if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
+                raise ValueError(f"There is not enough constant memory available for {variable_name}!")
         self.total_size = total_size
         self.variable_name = variable_name
         self.reference_array = np.zeros((self.total_size, ), dtype=dtype)  # Global memory
