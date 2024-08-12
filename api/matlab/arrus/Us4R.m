@@ -55,6 +55,7 @@ classdef Us4R < handle
             obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
             obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
             obj.sys.tgcInterv = 153; % [samp]
+            obj.sys.reloadTime = 43e-6; % [s]
             obj.logTime = logTime;
             
             % Check if valid GPU is available
@@ -935,7 +936,7 @@ classdef Us4R < handle
             end
             
             %% txPri
-            txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
+            txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + obj.sys.reloadTime;
             if isempty(obj.seq.txPri)
                 obj.seq.txPri = txPriMin;
             elseif obj.seq.txPri < txPriMin
