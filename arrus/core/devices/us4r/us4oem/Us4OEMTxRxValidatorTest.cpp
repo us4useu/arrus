@@ -177,10 +177,11 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsToLongPulse) {
 
 TEST_F(Us4OEMTxRxValidatorTest, PreventsTooHighFrequency) {
     const auto maxFreq = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx().getFrequency().end();
+    Pulse pulse(maxFreq+1e5, 1.0f, false);
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse =  Pulse(std::nextafter(maxFreq, maxFreq + 1e6f), 1.0f, false))
+            (x.pulse =  pulse)
         )
         .get()
     };
