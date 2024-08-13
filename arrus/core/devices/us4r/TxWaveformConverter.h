@@ -30,7 +30,7 @@ public:
         }
         if(nRepetitions > 1) {
             const uint32_t maxNRepetitions = (1 << (3 + 5*(segmentLength-1))) + 2 - 1;
-            if(nRepetitions >= maxNRepetitions) {
+            if(nRepetitions > maxNRepetitions) {
                 throw IllegalArgumentException(
                     arrus::format("Exceeded maximum number of repetitions: '{}', value: '{}'", maxNRepetitions, nRepetitions));
             }
@@ -63,15 +63,87 @@ public:
         return builder.build();
     }
 
+    using SegmentWithRepetitions = std::pair<::arrus::ops::us4r::WaveformSegment, size_t>;
+
+    static std::vector<SegmentWithRepetitions> preprocessSegment(const ::arrus::ops::us4r::WaveformSegment &segment, size_t nRepeats) {
+        // Strategy 1: two-element segment, and nRepeats >= 256 => convert to 4-element segment with ~ nRepeats/2
+        if(nRepeats >= 256 && segment.getState().size() == 2) {
+            if(nRepeats % 2 == 0) {
+                std::vector<SegmentWithRepetitions> result;
+                // Even number of repetitions: convert to 4-state repetitions
+                result.emplace_back(
+                    ::arrus::ops::us4r::WaveformSegment{
+                        {segment.getDuration().at(0), segment.getDuration().at(1), segment.getDuration().at(0), segment.getDuration().at(1)},
+                        {segment.getState().at(0), segment.getState().at(1), segment.getState().at(0), segment.getState().at(1)}},
+                        nRepeats / 2
+                );
+                return result;
+            } else {
+                // Odd number of repetitions convert to 4 state repetitions
+                if(nRepeats <= 513) {
+                    std::vector<SegmentWithRepetitions> result;
+                    // 2-state repetition + 2 state repetition = 4 entries
+                    constexpr size_t maxnRepeats = 257; // 2-state repetitions
+                    // 513 = 257 repetitions
+                    result.emplace_back(
+                        ::arrus::ops::us4r::WaveformSegment{
+                            {segment.getDuration().at(0), segment.getDuration().at(1)},
+                            {segment.getState().at(0), segment.getState().at(1)}},
+                        maxnRepeats
+                    );
+                    if(nRepeats > maxnRepeats) {
+                        // + the rest
+                        result.emplace_back(
+                            ::arrus::ops::us4r::WaveformSegment{
+                                {segment.getDuration().at(0), segment.getDuration().at(1)},
+                                {segment.getState().at(0), segment.getState().at(1)}},
+                            nRepeats-maxnRepeats
+                        );
+                    }
+                    return result;
+                } else {
+                    std::vector<SegmentWithRepetitions> result;
+                    // Even number of repetitions:
+                    // convert to 4-state repetitions (6 entries in total)
+                    result.emplace_back(
+                        ::arrus::ops::us4r::WaveformSegment{
+                            {segment.getDuration().at(0), segment.getDuration().at(1), segment.getDuration().at(0), segment.getDuration().at(1)},
+                            {segment.getState().at(0), segment.getState().at(1), segment.getState().at(0), segment.getState().at(1)}},
+                        nRepeats / 2
+                    );
+                    // +1
+                    result.emplace_back(
+                        ::arrus::ops::us4r::WaveformSegment{
+                            {segment.getDuration().at(0), segment.getDuration().at(1)},
+                            {segment.getState().at(0), segment.getState().at(1)}},
+                        1
+                    );
+                    return result;
+                }
+            }
+        }
+        else {
+            // anything else: copy as it is
+            // TODO: avoid copying?
+            std::vector<SegmentWithRepetitions> result = {{segment, nRepeats}};
+            return result;
+        }
+    }
+
     static std::vector<uint32_t> toPulser(const ::arrus::ops::us4r::Waveform &wf) {
         std::vector<uint32_t> result;
+        std::vector<SegmentWithRepetitions> preprocessedSegments;
         for(size_t s = 0; s < wf.getSegments().size(); ++s) {
+            // TODO avoid copying here?
             const auto &segment = wf.getSegments().at(s);
-            auto nRepetitions = ARRUS_SAFE_CAST(wf.getNRepetitions().at(s), uint32_t);
+            const auto nRepetitions = ARRUS_SAFE_CAST(wf.getNRepetitions().at(s), uint32_t);
+            const auto preprocessed = preprocessSegment(segment, nRepetitions);
+            preprocessedSegments.insert(std::end(preprocessedSegments), std::begin(preprocessed), std::end(preprocessed));
+        }
 
+        for(const auto &[segment, nRepetitions]: preprocessedSegments) {
             validateSegment(segment, nRepetitions);
 
-            auto repetitionType = getRepetitionType(segment);
             for(size_t i = 0; i < segment.getState().size(); ++i) {
                 uint32_t reg = 0;
 
@@ -97,6 +169,7 @@ public:
                 else {
                     // nRepetitions >= 2
                     uint32_t actualNRepetitions = nRepetitions - 2;
+                    auto repetitionType = getRepetitionType(segment);
                     if(i == 0) {
                         reg = setRepeatType(reg, repetitionType);
                         reg = setNRepetitionsPart(reg, actualNRepetitions, i);
@@ -129,15 +202,18 @@ private:
     static uint32_t setNRepetitionsPart(uint32_t input, uint32_t nRepetitions, size_t part) {
         uint32_t mask = 0;
         uint32_t size = 0;
+        uint32_t offset = 0;
         if(part == 0) {
+            offset = 0;
             mask = 0b111;
             size = 3;
         }
         else {
-            mask = 0b11111 << (3 + 5*(part-1));
+            offset = (3 + 5*(part-1));
+            mask = 0b11111 << offset;
             size = 5;
         }
-        return setBitField(input, 11, size, nRepetitions & mask);
+        return setBitField(input, 11, size, (nRepetitions & mask) >> offset);
     }
 
     static uint32_t getDeviceState(int8 apiState) {
@@ -145,13 +221,13 @@ private:
             case -1:
                 // HVM0
                 return 0b1010;
-                // HVP0
             case 1:
+                // HVP0
                 return 0b0101;
-            case 2:
+            case -2:
                 //HVM1
                 return 0b1001;
-            case -2:
+            case 2:
                 // HVP1
                 return 0b0110;
             case 0:

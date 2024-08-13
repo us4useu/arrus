@@ -8,7 +8,7 @@ namespace arrus::ops::us4r {
 /**
  * Us4R TX waveform segment.
  *
- * @param time:
+ * @param state: one of the following values: -2, -1, 0, 1, 2
  */
 class WaveformSegment {
 public:
