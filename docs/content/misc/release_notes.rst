@@ -4,6 +4,14 @@ Release notes
 0.10.x
 -----
 
+0.10.2
+
+- core:
+
+  - Fixed the subsequence selection in case of the start_scheme/stop_scheme sequence of calls #US4R-505
+  - us4R/us4R-lite systems with the external HV: added OEM+ bypass mode, enabled suport for DBAR rev3, fixed HV256 initialization procedure #US4R-535, #US4R-538.
+
+
 0.10.1
 
 - core (C++):
