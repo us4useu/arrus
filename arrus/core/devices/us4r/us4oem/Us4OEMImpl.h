@@ -124,7 +124,7 @@ public:
 
     Ius4OEMRawHandle getIUs4oem() override;
 
-    void enableSequencer(bool resetSequencerPointer) override;
+    void enableSequencer(uint16_t startEntry) override;
 
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
