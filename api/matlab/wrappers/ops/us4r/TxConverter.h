@@ -22,16 +22,15 @@ public:
 
     static TxConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
         ::matlab::data::ObjectArray pulse = getMatlabProperty(ctx, object, "pulse");
-        std::string pulseType = convertToString(ctx->getClass(pulse));
         std::optional<Waveform> wf;
-        if(pulseType == "arrus.ops.us4r.Pulse") {
+        if(ctx->isInstance(pulse, "arrus.ops.us4r.Pulse")) {
             wf = ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Pulse, PulseConverter, pulse, object).toWaveform();
         }
-        else if (pulseType == "arrus.ops.us4r.Waveform") {
+        else if (ctx->isInstance(pulse, "arrus.ops.us4r.Waveform")) {
             wf = ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Waveform, WaveformConverter, pulse, object);
         }
         else {
-            throw IllegalArgumentException(format("Unsupported pulse type: {}", pulseType));
+            throw IllegalArgumentException("Unsupported pulse type");
         }
         return TxConverter{
             ctx,

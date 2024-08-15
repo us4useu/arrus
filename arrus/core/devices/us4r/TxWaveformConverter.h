@@ -16,7 +16,7 @@ class TxWaveformConverter {
 public:
     constexpr static uint32_t END_STATE = 0b1110;
 
-    static void validateSegment(const ops::us4r::WaveformSegment &segment, const uint32_t nRepetitions) {
+    static void validateSegment(const ops::us4r::WaveformSegment &segment, const size_t nRepetitions) {
         auto segmentLength = segment.getState().size();
         if(segmentLength == 0) {
             throw IllegalArgumentException("Segment cannot be empty");
@@ -29,7 +29,7 @@ public:
             throw IllegalArgumentException("The repeated segment should have between 2 and 4 components.");
         }
         if(nRepetitions > 1) {
-            const uint32_t maxNRepetitions = (1 << (3 + 5*(segmentLength-1))) + 2 - 1;
+            const size_t maxNRepetitions = (1 << (3 + 5*(segmentLength-1))) + 2 - 1;
             if(nRepetitions > maxNRepetitions) {
                 throw IllegalArgumentException(
                     arrus::format("Exceeded maximum number of repetitions: '{}', value: '{}'", maxNRepetitions, nRepetitions));
@@ -136,7 +136,7 @@ public:
         for(size_t s = 0; s < wf.getSegments().size(); ++s) {
             // TODO avoid copying here?
             const auto &segment = wf.getSegments().at(s);
-            const auto nRepetitions = ARRUS_SAFE_CAST(wf.getNRepetitions().at(s), uint32_t);
+            const auto nRepetitions = ARRUS_SAFE_CAST(wf.getNRepetitions().at(s), size_t);
             const auto preprocessed = preprocessSegment(segment, nRepetitions);
             preprocessedSegments.insert(std::end(preprocessedSegments), std::begin(preprocessed), std::end(preprocessed));
         }
@@ -168,14 +168,14 @@ public:
                 }
                 else {
                     // nRepetitions >= 2
-                    uint32_t actualNRepetitions = nRepetitions - 2;
+                    uint32_t actualNRepetitions = ARRUS_SAFE_CAST(nRepetitions - 2, uint32_t);
                     auto repetitionType = getRepetitionType(segment);
                     if(i == 0) {
                         reg = setRepeatType(reg, repetitionType);
-                        reg = setNRepetitionsPart(reg, actualNRepetitions, i);
+                        reg = setNRepetitionsPart(reg, actualNRepetitions, ARRUS_SAFE_CAST(i, uint32_t));
                     }
                     else {
-                        reg = setNRepetitionsPart(reg, actualNRepetitions, i);
+                        reg = setNRepetitionsPart(reg, actualNRepetitions, ARRUS_SAFE_CAST(i, uint32_t));
                     }
                 }
 
@@ -199,7 +199,7 @@ private:
         return static_cast<float>(clk)/SAMPLING_FREQUENCY;
     }
 
-    static uint32_t setNRepetitionsPart(uint32_t input, uint32_t nRepetitions, size_t part) {
+    static uint32_t setNRepetitionsPart(uint32_t input, uint32_t nRepetitions, uint32_t part) {
         uint32_t mask = 0;
         uint32_t size = 0;
         uint32_t offset = 0;
@@ -239,7 +239,7 @@ private:
     }
 
     static uint32_t getRepetitionType(const ::arrus::ops::us4r::WaveformSegment &segment) {
-        auto repetitionType = segment.getState().size();
+        auto repetitionType = ARRUS_SAFE_CAST(segment.getState().size(), uint32_t);
         if(repetitionType == 0 || repetitionType > 4) {
             throw IllegalArgumentException("The repeated waveform segment must have between 1 and 4 components (inclusive).");
         }

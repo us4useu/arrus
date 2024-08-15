@@ -63,12 +63,14 @@ public:
         }
     }
 
-    ::matlab::data::TypedArray<::matlab::data::MATLABString> getClass(const ::matlab::data::ObjectArray &object) {
+    bool isInstance(const ::matlab::data::ObjectArray &object, const std::string& className) {
         try {
-            return matlabEngine->feval("class", object)[0];
+            return matlabEngine->feval(u"isa",
+             std::vector<::matlab::data::Array>({object, factory.createScalar(className)})
+             )[0];
         } catch (const std::exception &e) {
             throw ::arrus::IllegalArgumentException(
-                ::arrus::format("Exception while get class of object: {}", e.what()));
+                ::arrus::format("Exception while calling 'isa': {}", e.what()));
         }
     }
 
