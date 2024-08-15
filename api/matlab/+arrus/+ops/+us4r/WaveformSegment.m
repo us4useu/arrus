@@ -19,5 +19,9 @@ classdef WaveformSegment
         function obj = WaveformSegment(varargin)
             obj = arrus.utils.setArgs(obj, varargin, obj.REQUIRED_PARAMS);
         end
+
+        function duration = getTotalDuration(obj)
+            duration = sum(obj.duration);
+        end
     end
 end

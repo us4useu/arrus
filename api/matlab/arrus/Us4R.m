@@ -186,7 +186,8 @@ classdef Us4R < handle
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
-                'bufferSize', sequenceOperation.bufferSize);
+                'bufferSize', sequenceOperation.bufferSize, ...
+                'txWaveform', sequenceOperation.txWaveform);
 
             obj.seq.seqLim = [1 numel(obj.seq.txAng)];
             
@@ -859,7 +860,8 @@ classdef Us4R < handle
                                 'txInvert',         'txInvert'; ...
                                 'workMode',         'workMode'; ...
                                 'sri',              'sri'; ...
-                                'bufferSize',       'bufferSize'};
+                                'bufferSize',       'bufferSize';...
+                                'txWaveform',        'txWaveform'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -984,8 +986,12 @@ classdef Us4R < handle
             %% Aperture masks & delays
             obj.calcTxRxApMask;
             obj.calcTxDelays;
-            
-            obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
+            if ~isempty(obj.seq.txWaveform)
+                duration = obj.seq.txWaveform.getTotalDuration();
+            else
+                duration = obj.seq.txNPer./obj.seq.txFreq;
+            end
+            obj.seq.nSampOmit = (max(obj.seq.txDel) + duration) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
 
             if obj.seq.hwDdcEnable
@@ -1284,7 +1290,11 @@ classdef Us4R < handle
             % Tx/Rx sequence
             nTx = obj.seq.nTx;
             for iTx=1:nTx
-                pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                if ~isempty(obj.seq.txWaveform)
+                    pulse = obj.seq.txWaveform;
+                else
+                    pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                end
                 txObj = Tx("aperture", obj.seq.txApMask(:,iTx).', 'delays', obj.seq.txDel(:,iTx).', "pulse", pulse);
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);

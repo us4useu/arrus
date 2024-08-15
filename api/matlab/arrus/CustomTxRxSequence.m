@@ -34,6 +34,7 @@ classdef CustomTxRxSequence
     % :param sri: sequence repeting interval [s]
     % :param bufferSize: number of buffer elements (each element contains 
     %   data for a single sequence execution)
+    % :param txWaveform: TX waveform to use, an instance of arrus.ops.us4r.Waveform
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
@@ -50,8 +51,8 @@ classdef CustomTxRxSequence
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
         txVoltage (1,1) {mustBeNonnegative} = 0;
-        txFrequency (1,:) {mustBeProperNumber}
-        txNPeriods (1,:) {mustBeProperNumber}
+        txFrequency (1,:) = []
+        txNPeriods (1,:) = []
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         hwDdcEnable (1,1) {mustBeLogical} = true
@@ -64,6 +65,7 @@ classdef CustomTxRxSequence
         workMode {mustBeTextScalar} = "MANUAL"
         sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
         bufferSize (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 2
+        txWaveform = []
     end
     
     methods
@@ -95,6 +97,11 @@ classdef CustomTxRxSequence
                 error("ARRUS:IllegalArgument", ...
                       "workMode must be one of the following: MANUAL, HOST, SYNC, or ASYNC.");
             end
+
+            if ~xor(isempty(obj.txWaveform), or(isempty(obj.txFrequency), isempty(obj.txNPeriods)))
+                error("ARRUS:IllegalArgument", ...
+                "Exactly one of the following should be provided: txWaveform or (frequency and nPeriods)");
+            end
             
             %% Check size compatibility of aperture/focus/angle parameters
             nTx = max([	length(obj.txCenterElement) ...
@@ -103,10 +110,11 @@ classdef CustomTxRxSequence
                         length(obj.rxApertureCenter) ...
                         length(obj.txApertureSize) ...
                         length(obj.txFocus) ...
-                        length(obj.txAngle) ...
-                        length(obj.txFrequency) ...
-                        length(obj.txNPeriods) ...
-                        length(obj.txInvert) ]);
+                        length(obj.txAngle)]);
+
+            if isempty(obj.txWaveform)
+                nTx = max([nTx length(obj.txFrequency) length(obj.txNPeriods) length(obj.txInvert)]);
+            end
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
             obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
@@ -114,15 +122,17 @@ classdef CustomTxRxSequence
             obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
-            obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
-            obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
-            obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
+            if isempty(obj.txWaveform)
+                obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
+                obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
+                obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
+                obj.txInvert = double(obj.txInvert);
+            end
             if ~isstring(obj.txApertureSize)
                 obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
             end
 
-            obj.txInvert = double(obj.txInvert);
-            
+
         end
     end
 end

@@ -19,6 +19,15 @@ classdef Waveform
         function obj = Waveform(varargin)
             obj = arrus.utils.setArgs(obj, varargin, obj.REQUIRED_PARAMS);
         end
+
+        function duration = getTotalDuration(obj)
+            nSegments = length(obj.segments);
+            duration = 0;
+            for i=1:nSegments
+                duration = duration + obj.segments(i).getTotalDuration()*obj.nRepeats(i);
+            end
+        end
+        
     end
 
 end
