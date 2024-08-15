@@ -42,6 +42,9 @@ def convert_to_core_sequence(seq):
         elif isinstance(excitation, arrus.ops.us4r.Waveform):
             waveformBuilder = arrus.core.WaveformBuilder()
             for segment, n_repeats in zip(excitation.segments, excitation.n_repeats):
+                duration = arrus.core.VectorFloat(np.asarray(segment.duration).tolist())
+                state = arrus.core.VectorInt8(np.asarray(segment.state).tolist())
+                segment = arrus.core.WaveformSegment(duration, state)
                 waveformBuilder.add(segment, n_repeats)
             core_excitation = waveformBuilder.build()
         else:

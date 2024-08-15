@@ -271,10 +271,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
         }
-        // Build sequence waveform.
-        for (OpId firing = 0; firing < ARRUS_SAFE_CAST(sequence.size(), OpId); ++firing) {
-            ius4oem->BuildSequenceWaveform(firing);
-        }
     }
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).

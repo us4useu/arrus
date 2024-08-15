@@ -32,11 +32,11 @@ class WaveformSegment:
     """
     A single waveform segment.
 
-    :param duration: 1D vector of float values, each duration[i] defines how long the state[i] should last
+    :param duration: 1D vector of float values, each duration[i] defines how long the state[i] should last [seconds]
     :param state: 1D vector of integer values, subsequent states to apply.
     """
-    duration: np.ndarray
-    state: np.ndarray
+    duration: Iterable[float]
+    state: Iterable[int]
 
 
 @dataclass(frozen=True)
@@ -47,13 +47,21 @@ class Waveform:
     :param segments: subsequent segments of the waveform
     :param n_repeats: how many times the segments[i] should be repeated
     """
-    segments: Sized[WaveformSegment]
+    segments: Iterable[WaveformSegment]
     n_repeats: np.ndarray
+
+    @classmethod
+    def create(cls, duration: Iterable[float], state: Iterable[int]):
+        return Waveform(
+            segments=[WaveformSegment(duration=duration, state=state)],
+            n_repeats=[1]
+        )
 
     def __post_init__(self):
         # Validate.
         if len(self.segments) != len(self.n_repeats):
-            raise ValueError("The list segments should have the same length as the list of number of repeats")
+            raise ValueError("The list segments should have the same length "
+                             "as the list of number of repeats")
 
 
 class WaveformBuilder:
@@ -65,8 +73,11 @@ class WaveformBuilder:
         self.segments = []
         self.n_repeats = []
 
-    def add(self, segment: WaveformSegment, n: int = 1):
-        self.segments.append(segment)
+    def add(self, duration: Iterable[float], state: Iterable[int], n: int = 1):
+        self.segments.append(WaveformSegment(
+            duration=duration,
+            state=state
+        ))
         self.n_repeats.append(n)
         return self
 

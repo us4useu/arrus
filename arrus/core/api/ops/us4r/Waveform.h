@@ -63,6 +63,7 @@ private:
 
 class WaveformBuilder {
 public:
+    WaveformBuilder() = default;
 
     WaveformBuilder& add(WaveformSegment segment, size_t nRepetitions = 1) {
         segments.emplace_back(std::move(segment));
