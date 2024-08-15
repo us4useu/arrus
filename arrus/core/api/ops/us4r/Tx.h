@@ -41,6 +41,10 @@ public:
         : aperture(std::move(aperture)), delays(std::move(delays)), excitation(excitation.toWaveform()),
           placement(devices::DeviceId(devices::DeviceType::Probe, 0)) {}
 
+    Tx(std::vector<bool> aperture, std::vector<float> delays, const Waveform &waveform)
+        : aperture(std::move(aperture)), delays(std::move(delays)), excitation(waveform),
+          placement(devices::DeviceId(devices::DeviceType::Probe, 0)) {}
+
     const std::vector<bool> &getAperture() const { return aperture; }
 
     const std::vector<float> &getDelays() const { return delays; }

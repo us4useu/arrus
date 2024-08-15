@@ -63,6 +63,15 @@ public:
         }
     }
 
+    ::matlab::data::TypedArray<::matlab::data::MATLABString> getClass(const ::matlab::data::ObjectArray &object) {
+        try {
+            return matlabEngine->feval("class", object)[0];
+        } catch (const std::exception &e) {
+            throw ::arrus::IllegalArgumentException(
+                ::arrus::format("Exception while get class of object: {}", e.what()));
+        }
+    }
+
     template<typename T>::matlab::data::TypedArray<T> createScalar(const T &value) {
         try {
             return getArrayFactory().createScalar<T>(value);
