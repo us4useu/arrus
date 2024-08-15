@@ -477,6 +477,7 @@ float arrusUs4OEMGetUCDExternalTemperature(::arrus::devices::Us4OEM *us4oem) {
 %{
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/core/api/ops/us4r/Waveform.h"
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
@@ -490,6 +491,7 @@ using namespace arrus::ops::us4r;
 %feature("valuewrapper") TxRx;
 %include "arrus/core/api/ops/us4r/tgc.h"
 %include "arrus/core/api/ops/us4r/Pulse.h"
+%include "arrus/core/api/ops/us4r/Waveform.h"
 %include "arrus/core/api/ops/us4r/Rx.h"
 %include "arrus/core/api/ops/us4r/Tx.h"
 %include "arrus/core/api/ops/us4r/TxRxSequence.h"

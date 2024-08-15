@@ -5,7 +5,7 @@ from arrus.ops.operation import Operation
 from typing import Iterable
 from arrus.framework import Constant
 import dataclasses
-from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Set
+from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Set, Sized
 from arrus.devices.device import parse_device_id, DeviceId
 
 
@@ -25,6 +25,54 @@ class Pulse:
     n_periods: float
     inverse: bool
     amplitude_level: int = 1
+
+
+@dataclass(frozen=True)
+class WaveformSegment:
+    """
+    A single waveform segment.
+
+    :param duration: 1D vector of float values, each duration[i] defines how long the state[i] should last
+    :param state: 1D vector of integer values, subsequent states to apply.
+    """
+    duration: np.ndarray
+    state: np.ndarray
+
+
+@dataclass(frozen=True)
+class Waveform:
+    """
+    A complete Tx waveform to be applied.
+
+    :param segments: subsequent segments of the waveform
+    :param n_repeats: how many times the segments[i] should be repeated
+    """
+    segments: Sized[WaveformSegment]
+    n_repeats: np.ndarray
+
+    def __post_init__(self):
+        # Validate.
+        if len(self.segments) != len(self.n_repeats):
+            raise ValueError("The list segments should have the same length as the list of number of repeats")
+
+
+class WaveformBuilder:
+    """
+    TX waveform builder.
+    """
+
+    def __init__(self):
+        self.segments = []
+        self.n_repeats = []
+
+    def add(self, segment: WaveformSegment, n: int = 1):
+        self.segments.append(segment)
+        self.n_repeats.append(n)
+        return self
+
+    def build(self) -> Waveform:
+        return Waveform(segments=self.segments, n_repeats=self.n_repeats)
+
 
 
 @dataclass(frozen=True)

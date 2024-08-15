@@ -36,7 +36,12 @@ private:
 class Waveform {
 public:
     Waveform(const std::vector<WaveformSegment> &segments, const std::vector<size_t> &nRepetitions)
-        : segments(segments), nRepetitions(nRepetitions) {}
+        : segments(segments), nRepetitions(nRepetitions) {
+        if(segments.size() != nRepetitions.size()) {
+            throw IllegalArgumentException("The list of waveform segments should have the same length as the list "
+                                           "of repetitions.");
+        }
+    }
 
     const std::vector<WaveformSegment> &getSegments() const { return segments; }
     const std::vector<size_t> &getNRepetitions() const { return nRepetitions; }
