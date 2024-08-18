@@ -162,6 +162,7 @@ private:
     std::tuple<
         std::vector<Us4OEMBuffer>,
         std::vector<FrameChannelMapping::Handle>,
+        float,
         std::vector<LogicalToPhysicalOp>,
         std::vector<::arrus::devices::us4r::TxRxParametersSequence>
     >
@@ -226,7 +227,7 @@ private:
     // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
-    std::optional<Ordinal> frameMetadataOEM{0};
+    std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
     std::optional<Us4RSubsequenceFactory> subsequenceFactory;
     std::optional<Us4RSubsequence> currentSubsequenceParams;
     /** The currently uploaded scheme */

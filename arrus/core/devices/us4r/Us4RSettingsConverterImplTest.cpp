@@ -99,7 +99,7 @@ INSTANTIATE_TEST_CASE_P
          // Two modules, 0: 0-32, 1: 0-32
          ARRUS_STRUCT_INIT_LIST(Mappings, (
                  x.adapterMapping = generate<ChannelAddress>(64, [](size_t i) {
-                     return ChannelAddress{i / 32, i % 32};
+                     return ChannelAddress{Ordinal(i / 32), ChannelIdx(i % 32)};
                  }),
                  x.expectedUs4OEMMappings = {
                          // 0:
@@ -110,13 +110,13 @@ INSTANTIATE_TEST_CASE_P
 // The same as the input adapter mapping
                  x.expectedAdapterMapping =
                  generate<ChannelAddress>(64, [](size_t i) {
-                     return ChannelAddress{i / 32, i % 32};
+                     return ChannelAddress{Ordinal(i / 32), ChannelIdx(i % 32)};
                  })
          )),
 // Two modules, 0: 0-128, 1: 0-64
          ARRUS_STRUCT_INIT_LIST(Mappings, (
                  x.adapterMapping = generate<ChannelAddress>(192, [](size_t i) {
-                     return ChannelAddress{i / 128, i % 128};
+                     return ChannelAddress{Ordinal(i / 128), ChannelIdx(i % 128)};
                  }),
                  x.expectedUs4OEMMappings = {
                          // 0:
@@ -127,7 +127,7 @@ INSTANTIATE_TEST_CASE_P
 // The same as the input adapter mapping
                  x.expectedAdapterMapping =
                  generate<ChannelAddress>(192, [](size_t i) {
-                     return ChannelAddress{i / 128, i % 128};
+                     return ChannelAddress{Ordinal(i / 128), ChannelIdx(i % 128)};
                  })
          )),
 // Two modules, 0: 0-31, 1: 63-32, 0: 64-95, 1: 127-96
@@ -233,7 +233,7 @@ INSTANTIATE_TEST_CASE_P
 // Two modules, 0: 0, 1: 0, 0: 1, 1: 1, ..., 0:31, 1:31
          ARRUS_STRUCT_INIT_LIST(Mappings, (
                  x.adapterMapping = generate<ChannelAddress>(64, [](size_t i) {
-                     return ChannelAddress{i % 2, i / 2};
+                     return ChannelAddress{Ordinal(i % 2), ChannelIdx(i / 2)};
                  }),
                  x.expectedUs4OEMMappings = {
                          // 0:
@@ -243,7 +243,7 @@ INSTANTIATE_TEST_CASE_P
                  },
                  x.expectedAdapterMapping =
                  generate<ChannelAddress>(64, [](size_t i) {
-                     return ChannelAddress{i % 2, i / 2};
+                     return ChannelAddress{Ordinal(i % 2), ChannelIdx(i / 2)};
                  })
          )),
 // Two modules, some randomly generated permutation
@@ -349,7 +349,7 @@ INSTANTIATE_TEST_CASE_P
                  },
                  x.expectedAdapterMapping =
                  generate<ChannelAddress>(64, [](size_t i) {
-                     return ChannelAddress{i % 2, i / 2};
+                     return ChannelAddress{Ordinal(i % 2), ChannelIdx(i / 2)};
                  })
          ))
  ));

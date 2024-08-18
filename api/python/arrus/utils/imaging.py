@@ -55,6 +55,9 @@ else:
 
 
 def _read_kernel_module(path):
+    if not is_package_available("cupy"):
+        return None
+
     import cupy as cp
     current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
     kernel_src = Path(os.path.join(current_dir, path)).read_text()
@@ -62,6 +65,9 @@ def _read_kernel_module(path):
 
 
 def _get_const_memory_array(module, name, input_array):
+    if not is_package_available("cupy"):
+        return None
+
     import cupy as cp
     const_arr_ptr = module.get_global(name)
     const_arr = cp.ndarray(shape=input_array.shape, dtype=input_array.dtype,
@@ -70,10 +76,14 @@ def _get_const_memory_array(module, name, input_array):
     return const_arr
 
 
-def _assert_unique_property(seq: TxRxSequence, getter: Callable, name: str):
-    s = {getter(op) for op in seq.ops}
+def _assert_unique_property_for_rx_active_ops(seq: TxRxSequence, getter: Callable, name: str):
+    """
+    Asserts if the given sequence has a given unique property (determined by
+    the user-defined `getter`).
+    """
+    s = {getter(op) for op in seq.ops if not op.rx.is_nop()}
     if len(s) > 1:
-        raise ValueError("The following property should be unique "
+        raise ValueError("The following property should be unique for RX active ops "
                          f"in the sequence: {name}, found values: "
                          f"{s}")
 
@@ -81,10 +91,11 @@ def _assert_unique_property(seq: TxRxSequence, getter: Callable, name: str):
 class GpuConstMemoryPool:
 
     def __init__(self, kernel_module, variable_name, total_size: int, dtype):
-        import cupy as cp
-        device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
-            raise ValueError(f"There is not enough constant memory available for {variable_name}!")
+        if is_package_available("cupy"):
+            import cupy as cp
+            device_props = cp.cuda.runtime.getDeviceProperties(0)
+            if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
+                raise ValueError(f"There is not enough constant memory available for {variable_name}!")
         self.total_size = total_size
         self.variable_name = variable_name
         self.reference_array = np.zeros((self.total_size, ), dtype=dtype)  # Global memory
@@ -914,7 +925,7 @@ class Pipeline:
         return self.process(data)
 
     def process(self, data):
-        if len(data) == 1:
+        if (isinstance(data, tuple) or isinstance(data, list)) and len(data) == 1:
             # Backward compatibility
             data = data[0]
         outputs = deque()  # TODO avoid creating deque on each processing step
@@ -1161,7 +1172,11 @@ def _get_unique_center_frequency(sequence):
     if isinstance(sequence, arrus.ops.imaging.SimpleTxRxSequence):
         return sequence.pulse.center_frequency
     elif isinstance(sequence, arrus.ops.us4r.TxRxSequence):
-        cfs = {tx_rx.tx.excitation.center_frequency for tx_rx in sequence.ops}
+        cfs = {
+            tx_rx.tx.excitation.center_frequency
+            for tx_rx in sequence.ops
+            if not tx_rx.rx.is_nop()
+        }
         if len(cfs) > 1:
             raise ValueError("Each TX/RX should have exactly the same "
                              "definition of transmit pulse.")
@@ -1517,12 +1532,12 @@ class RxBeamforming(Operation):
             rx_aperture_size = seq.rx_aperture_size
             angles = np.array(tx_rx_params["tx_angle"])
         elif isinstance(seq, TxRxSequence):
-            _assert_unique_property(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
-            _assert_unique_property(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
-            _assert_unique_property(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
-            _assert_unique_property(seq, lambda op: op.rx.sample_range, "sample_range")
-            _assert_unique_property(seq, lambda op: op.rx.init_delay, "init_delay")
-            _assert_unique_property(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.sample_range, "sample_range")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.init_delay, "init_delay")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
             ref_tx = seq.ops[0].tx
             ref_rx = seq.ops[0].rx
             # Tx
@@ -1855,7 +1870,7 @@ class ScanConversion(Operation):
         self.num_pkg = num_pkg
 
     def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
 
         new_signal_description = dataclasses.replace(
             const_metadata.data_description,
@@ -1907,7 +1922,7 @@ class ScanConversion(Operation):
         if not isinstance(seq, arrus.ops.imaging.LinSequence):
             raise ValueError("Scan conversion works only with LinSequence.")
         medium = const_metadata.context.medium
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(probe, seq)
         tx_aperture_center_element = tx_rx_params["tx_ap_cent"]
         n_elements = probe.n_elements
@@ -1954,7 +1969,7 @@ class ScanConversion(Operation):
         else:
             import cupyx.scipy.ndimage
             self.interpolator = cupyx.scipy.ndimage.map_coordinates
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
 
@@ -2028,7 +2043,7 @@ class ScanConversion(Operation):
         return self.output_buffer
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
-        probe = const_metadata.context.device.probe.model
+        probe = get_unique_probe_model(const_metadata)
         data_desc = const_metadata.data_description
 
         self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
@@ -2663,11 +2678,11 @@ class ReconstructLri(Operation):
             ops = [op for op in seq.ops
                    if op.rx.aperture.size is None or op.rx.aperture.size > 0]
             seq = dataclasses.replace(seq, ops=ops)
-            _assert_unique_property(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
-            _assert_unique_property(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
-            _assert_unique_property(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
-            _assert_unique_property(seq, lambda op: op.rx.sample_range, "sample_range")
-            _assert_unique_property(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.downsampling_factor, "downsampling_factor")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.sample_range, "sample_range")
+            _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
 
             rx_op = ops[0].rx
             tx_op = ops[0].tx

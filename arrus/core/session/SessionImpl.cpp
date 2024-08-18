@@ -146,7 +146,7 @@ UploadResult SessionImpl::upload(const ops::us4r::Scheme &scheme) {
 
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
     this->verifyScheme(scheme);
-    auto[buffer, metadatas] = ultrasound->upload(scheme);
+    auto [buffer, metadatas] = ultrasound->upload(scheme);
     currentScheme = scheme;
     return UploadResult(buffer, metadatas);
 }

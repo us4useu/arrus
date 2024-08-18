@@ -123,7 +123,7 @@ public:
         using namespace arrus::devices;
         using FCM = FrameChannelMapping;
         using FCMA = FrameChannelMappingAddress;
-        auto fcm = uploadResult.getConstMetadata()->get<FCM>("frameChannelMapping");
+        auto fcm = uploadResult.getConstMetadata(0)->get<FCM>("frameChannelMapping");
         auto frameOffsets = fcm->getFrameOffsets();
         auto numberOfFrames = fcm->getNumberOfFrames();
 
@@ -159,11 +159,15 @@ public:
         auto framesArr = ctx->createTypedArray<FrameNr>(frames, fcmArrayShape);
         auto channelsArr = ctx->createTypedArray<Us4OEMChannelNr>(channels, fcmArrayShape);
 
+        auto rxOffsetPtr = uploadResult.getConstMetadata(0)->get<float>("rxOffset");
+        auto rxOffset = ctx->createScalar<float>(*rxOffsetPtr);
+
         outputs[1] = frameOffsetsArr;
         outputs[2] = numberOfFramesArr;
         outputs[3] = us4oemsArr;
         outputs[4] = framesArr;
         outputs[5] = channelsArr;
+        outputs[6] = rxOffset;
     }
 
     void startScheme(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {

@@ -16,6 +16,8 @@
         throw std::runtime_error("Us4RImpl object has no rx setting set.");                                            \
     }
 
+#undef ERROR
+
 namespace arrus::devices {
 
 using namespace ::std;
@@ -304,7 +306,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
-    auto [buffers, fcms, l2pMapping, masterOEMSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+    auto [buffers, fcms, rxTimeOffset, l2pMapping, masterOEMSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
     currentScheme = scheme;
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(),
@@ -324,6 +326,7 @@ vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMappi
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
         metadataBuilder.add<FrameChannelMapping>("frameChannelMapping", std::move(fcm));
+        metadataBuilder.add<float>("rxOffset", std::make_shared<float>(rxTimeOffset));
         metadatas.emplace_back(metadataBuilder.buildPtr());
     }
     return metadatas;
@@ -431,6 +434,7 @@ Us4RImpl::~Us4RImpl() {
 std::tuple<
     std::vector<Us4OEMBuffer>,
     std::vector<FrameChannelMapping::Handle>,
+    float,
     std::vector<LogicalToPhysicalOp>,
     std::vector<TxRxParametersSequence>
 >
@@ -503,6 +507,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<FrameChannelMapping::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
+    float rxTimeOffset;
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
         // TODO Consider implementing dynamic change of delay profiles
@@ -510,6 +515,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
                                                     std::vector<NdArray>{}, timeouts.getTimeouts());
         buffers.emplace_back(uploadResult.getBufferDescription());
         auto oemFCM = uploadResult.acquireFCMs();
+        if (oem==0) { rxTimeOffset = uploadResult.getRxTimeOffset(); }
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
             oemsFCMs.at(sId).emplace_back(std::move(oemFCM.at(sId)));
         }
@@ -520,7 +526,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_tuple(std::move(buffers), std::move(fcms), logicalToPhysicalMapping);
+    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset, logicalToPhysicalMapping);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
@@ -1075,7 +1081,9 @@ std::vector<unsigned short> Us4RImpl::getChannelsMask(Ordinal probeNumber) {
     return vec;
 }
 
-int Us4RImpl::getNumberOfProbes() const { return probeSettings.size(); }
+int Us4RImpl::getNumberOfProbes() const {
+    return static_cast<int>(probeSettings.size());
+}
 
 /**
  * Calculates RX delay as the maximum TX delay of the TX/RX + burst time
@@ -1158,7 +1166,8 @@ void Us4RImpl::registerPulserIRQCallback() {
         ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
             try{
                 ius4oem->LogPulsersInterruptRegister();
-                ius4oem->TriggerStop();
+                // TODO consider fail-safe device stopping (e.g. don't wait for pending interrupts, etc.).
+                this->stop();
             }
             catch(const std::exception &e) {
                 logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
@@ -1169,4 +1178,5 @@ void Us4RImpl::registerPulserIRQCallback() {
         });
     }
 }
+
 }// namespace arrus::devices

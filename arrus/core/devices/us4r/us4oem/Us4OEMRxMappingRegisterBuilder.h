@@ -87,7 +87,7 @@ public:
 
     void add(const std::vector<us4r::TxRxParametersSequence> &sequences) {
         for (size_t sequenceId = 0; sequenceId < sequences.size(); ++sequenceId) {
-            add(sequenceId, sequences.at(sequenceId));
+            add(ARRUS_SAFE_CAST(sequenceId, SequenceId), sequences.at(sequenceId));
         }
     }
 

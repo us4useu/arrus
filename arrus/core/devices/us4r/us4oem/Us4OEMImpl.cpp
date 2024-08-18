@@ -146,38 +146,37 @@ Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltag
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
-Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
-                                      ops::us4r::Scheme::WorkMode workMode,
+Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
+                                      uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                                       const std::vector<arrus::framework::NdArray> &txDelays,
-                                      const std::vector<TxTimeout> &/*txTimeouts*/) {
+                                      const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
     setTgcCurve(sequences);
     ius4oem->ResetSequencer();
-    ius4oem->SetNumberOfFirings(getNumberOfFirings(sequences));
+    ius4oem->SetNumberOfFirings(ARRUS_SAFE_CAST(getNumberOfFirings(sequences), uint16_t));
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
-    // setTxTimeouts(txTimeouts);
+    setTxTimeouts(txTimeouts);
     uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
-    ius4oem->SetNTriggers(getNumberOfTriggers(sequences, rxBufferSize));
-    auto bufferDef = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
+    ius4oem->SetNTriggers(ARRUS_SAFE_CAST(getNumberOfTriggers(sequences, rxBufferSize), uint16_t));
+    auto [bufferDef, rxTimeOffset] = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
     uploadTriggersIOBS(sequences, rxBufferSize, workMode);
     setAfeDemod(ddc);
     if(workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP) {
         setWaitForEventDone();
     }
-    return Us4OEMUploadResult{bufferDef, rxMappingRegister.acquireFCMs()};
+    return Us4OEMUploadResult{bufferDef, rxMappingRegister.acquireFCMs(), rxTimeOffset};
 }
 void Us4OEMImpl::setTxTimeouts(const std::vector<TxTimeout> &txTimeouts) {
     if(!txTimeouts.empty()) {
         ius4oem->EnableTxTimeout();
-        TxTimeoutId id = 0;
-        for(auto &t: txTimeouts) {
-            ius4oem->SetTxTimeout(id, t);
+        for(size_t n = 0; n < txTimeouts.size(); ++n) {
+            ius4oem->SetTxTimeout((uint8_t)n, txTimeouts[n]);
         }
     }
 }
@@ -257,11 +256,13 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetTxFreqency(op.getTxPulse().getCenterFrequency(), firingId);
             ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firingId);
-            ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
+            if(isOEMPlus()) {
+                ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
+            }
             ius4oem->SetRxTime(rxTime, firingId);
-            ius4oem->SetRxDelay(op.getRxDelay(), firingId);
-            if(op.getTxTimeoutId().has_value()) {
-                //ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
+            ius4oem->SetRxDelay(0.0f, firingId);
+            if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
+                ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
         }
     }
@@ -270,13 +271,14 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     ius4oem->SetTxDelays(txDelays.size());
 }
 
-size_t Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, uint16 startSample, uint16 endSample, uint16 entryId,
-                                      const TxRxParameters &op, uint16 rxMapId,
-                                      const std::optional<DigitalDownConversion> &ddc) {
+std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
+                                                        uint32 startSample, uint32 endSample, uint16 entryId,
+                                                        const TxRxParameters &op, uint16 rxMapId,
+                                                        const std::optional<DigitalDownConversion> &ddc) {
     float decInt = 0;
     float decFloat = modf(ddc->getDecimationFactor(), &decInt);
 
-    uint32_t div = 1;
+    uint32 div = 1;
     if (decFloat == 0.5f) {
         div = 2;
     } else if (decFloat == 0.25f || decFloat == 0.75f) {
@@ -294,8 +296,9 @@ size_t Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, uint16 startSample, 
     // The start sample should be provided to the us4r-api
     // as for the nominal sampling frequency of us4OEM, i.e. 65 MHz.
     const uint32 startSampleRaw = startSample * (uint32_t) ddc->getDecimationFactor();
-    // RX offset to the moment tx delay = 0.
-    const uint32 sampleOffset = getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor());
+    // Sample RX offset closest (and <= if possible) to the moment tx delay = 0,
+    // and sample RX offset time residue (time difference between sampleRxOffset and the moment tx delay = 0).
+    const auto [sampleRxOffset, sampleRxOffsetTimeResidue] = getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor());
     // Number of samples to acquire per channel.
     const size_t nSamples = endSample - startSample;
     // Number of samples to be set on IUs4OEM::ScheduleReceive
@@ -306,22 +309,23 @@ size_t Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, uint16 startSample, 
 
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
-    ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
+    ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
-    return nBytes;
+
+    return std::make_pair(nBytes, sampleRxOffsetTimeResidue);
 }
 
-size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint16 startSample, uint16 endSample, uint16 entryId,
+size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
                                      const TxRxParameters &op, uint16 rxMapId) {
     const uint32 startSampleRaw = startSample * op.getRxDecimationFactor();
-    const uint32 sampleOffset = ius4oem->GetTxOffset();
+    const uint32 sampleRxOffset = ius4oem->GetTxOffset();
     const size_t nSamples = endSample - startSample;
     const size_t nSamplesRaw = nSamples;
     const size_t sampleSize = sizeof(RawDataType);
     const size_t nBytes = nSamples * descriptor.getNRxChannels() * sampleSize;
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
-    ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleOffset + startSampleRaw,
+    ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
     return nBytes;
 }
@@ -333,9 +337,9 @@ size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint16 startSample, u
  * This method programs us4OEM sequencer to fill the us4OEM memory with the acquired data
  * us4oem RXDMA output address.
 */
-Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
-                                           const std::optional<DigitalDownConversion> &ddc,
-                                           const Us4OEMRxMappingRegister &rxMappingRegister) {
+std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
+                                                             const std::optional<DigitalDownConversion> &ddc,
+                                                             const Us4OEMRxMappingRegister &rxMappingRegister) {
     bool isDDCOn = ddc.has_value();
 
     using BatchId = uint16;
@@ -350,6 +354,8 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
     size_t arrayStartAddress = 0;
     size_t elementStartAddress = 0;
     uint16 entryId = 0;
+    float rxTimeOffset = 0; // actually, rxOffsetTimeResidue, but rxOffset (sampleRxOffset) is already compensated in scheduleReceiveDDC,
+                            // so the rxOffsetTimeResidue is the only remaining offset. Now it's named rxTimeOffset for simplicity.
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
         for (SequenceId seqId = 0; seqId < nSequences; ++seqId) {
@@ -368,7 +374,9 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
                     auto rxMapId = rxMappingRegister.getMapId(seqId, opId);
                     size_t nBytes = 0;
                     if (isDDCOn) {
-                        nBytes = scheduleReceiveDDC(outputAddress, startSample, endSample, entryId, op, rxMapId, ddc);
+                        auto res = scheduleReceiveDDC(outputAddress, startSample, endSample, entryId, op, rxMapId, ddc);
+                        nBytes = res.first;
+                        rxTimeOffset = res.second;
                     } else {
                         nBytes = scheduleReceiveRF(outputAddress, startSample, endSample, entryId, op, rxMapId);
                     }
@@ -409,7 +417,7 @@ Us4OEMBuffer Us4OEMImpl::uploadAcquisition(const TxParametersSequenceColl &seque
             Us4OEMBufferElement{elementStartAddress, outputAddress - elementStartAddress, (uint16) (entryId - 1)});
         elementStartAddress = outputAddress;
     }
-    return builder.build();
+    return std::make_pair(std::move(builder.build()), rxTimeOffset);
 }
 
 void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
@@ -487,7 +495,7 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
     auto nFirings = getNumberOfFirings(sequences);
     auto nTriggers = getNumberOfTriggers(sequences, rxBufferSize);
 
-    ARRUS_REQUIRES_AT_MOST(nFirings, 1024, format("Exceeded the maximum ({}) number of timeoutIds: {}", 1024, nFirings));
+    ARRUS_REQUIRES_AT_MOST(nFirings, 1024, format("Exceeded the maximum ({}) number of firings: {}", 1024, nFirings));
     const auto maxSequenceSize = descriptor.getTxRxSequenceLimits().getSize().end();
     ARRUS_REQUIRES_AT_MOST(nTriggers, maxSequenceSize,
                            format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
@@ -705,11 +713,11 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     }
 }
 
-uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
-    //DDC valid data offset
+std::pair<uint32_t, float> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
+    //DDC RX offset (valid data offset)
     uint32_t txOffset = ius4oem->GetTxOffset();
-    uint32_t offset = 34u + (uint32_t)(16 * ddcDecimationFactor);
-    uint32_t offsetCorrection = 0;
+    uint32_t rxOffset = 34u + (uint32_t)(16 * ddcDecimationFactor);
+    uint32_t filterDelay = (uint32_t)(8 * ddcDecimationFactor);
 
     float decInt = 0;
     float decFloat = modf(ddcDecimationFactor, &decInt);
@@ -721,29 +729,25 @@ uint32_t Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
         dataStep = (uint32_t)(4.0f * ddcDecimationFactor);
     }
 
-     if(ddcDecimationFactor == 4.0f) {
-        // Note: for some reason us4OEM AFE has a different offset for
-        // decimation factor = 4; the below value was determined
-        // experimentally (TX starts at 266 RX sample offset).
-        offsetCorrection = (4 * 7);
-    }
-
-    //Check if data valid offset is higher than TX offset
-    if (offset > txOffset) {
-        //If TX offset is lower than data valid offset return just data valid offset and log warning
+    //Check if RX offset is higher than TX offset + filter delay
+    if (rxOffset > txOffset + filterDelay) {
+        //If so, do not adjust RX offset and log warning
         if(!this->isDecimationFactorAdjustmentLogged) {
             this->logger->log(LogSeverity::INFO,
                           ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} microseconds to align start of RX data with start of TX.",
-                                          ddcDecimationFactor, (float)(offset - txOffset + offsetCorrection)/65.0f));
+                                          ddcDecimationFactor, (float)(rxOffset - txOffset - filterDelay)/65.0f));
             this->isDecimationFactorAdjustmentLogged = true;
         }
-        return offset;
     } else {
-        //Calculate offset pointing to DDC sample closest but lower than 240 cycles (TX offset)
-        offset += ((txOffset - offset) / dataStep) * dataStep;
-        return (offset + offsetCorrection);
+        //Calculate RX offset pointing to DDC sample closest but lower than TX offset + filter delay
+        rxOffset += ((txOffset + filterDelay - rxOffset) / dataStep) * dataStep;
     }
+
+    float rxOffsetResidue = (float)(txOffset + filterDelay) - (float)(rxOffset);
+    float rxOffsetTimeResidue = rxOffsetResidue / descriptor.getSamplingFrequency();
+
+    return std::make_pair(rxOffset, rxOffsetTimeResidue);
 }
 
 float Us4OEMImpl::getCurrentSamplingFrequency() const {
@@ -839,12 +843,12 @@ void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vect
 }
 
 size_t Us4OEMImpl::getNumberOfTriggers(const TxParametersSequenceColl &sequences, uint16 rxBufferSize) {
-    return std::accumulate(std::begin(sequences), std::end(sequences), 0,
+    return std::accumulate(std::begin(sequences), std::end(sequences), size_t(0),
                            [=](const auto &a, const auto &b) { return a + b.size() * b.getNRepeats() * rxBufferSize; });
 }
 
 size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> &sequences) {
-    return std::accumulate(std::begin(sequences), std::end(sequences), 0,
+    return std::accumulate(std::begin(sequences), std::end(sequences), size_t(0),
                            [](const auto &a, const auto &b) { return a + b.size(); });
 }
 
