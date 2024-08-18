@@ -250,7 +250,7 @@ public:
                     }
                     else {
                         throw IllegalArgumentException(
-                            format("The TX waveform includes to long single state duration: {}", d)
+                            format("The TX waveform includes too long single state duration: {}", d)
                        );
                     }
                 }
