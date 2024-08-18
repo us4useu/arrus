@@ -36,7 +36,7 @@ public:
     FrameChannelMappingImpl::Handle buildFCM() const { return fcm.build(); }
 
 private:
-    /** Physical firing [start, end] NOTE: bothe inclusive */
+    /** Physical firing [start, end] NOTE: both inclusive */
     uint16_t start, end;
     uint32_t timeToNextTrigger;
     /** OEM buffers for the selected sub-sequence. */

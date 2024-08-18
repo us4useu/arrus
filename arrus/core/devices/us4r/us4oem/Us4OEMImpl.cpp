@@ -967,8 +967,10 @@ void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_
     this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
 }
 
-void Us4OEMImpl::clearCallbacks(IUs4OEM::MSINumber irq) {
-    this->ius4oem->ClearCallbacks(irq);
+void Us4OEMImpl::clearCallbacks(IUs4OEM::MSINumber ) {
+    // TODO(US4R-395)
+//    this->ius4oem->ClearCallbacks(irq);
+    this->ius4oem->ClearCallbacks();
 }
 
 
