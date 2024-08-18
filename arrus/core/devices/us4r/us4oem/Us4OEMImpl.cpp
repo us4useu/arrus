@@ -935,22 +935,23 @@ void Us4OEMImpl::sync(std::optional<long long> timeout) {
     this->waitForIrq(eventDoneIrq, timeout);
 }
 
-void Us4OEMImpl::setWaitForEventDone() {
-    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
-    irqEvents.at(eventDoneIrq).resetCounters();
-    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
-        this->irqEvents.at(eventDoneIrq).notifyOne();
-    });
-}
-
-void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
-    ius4oem->EnableHVPSMeasurementReadyIRQ();
-    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
-    irqEvents.at(measurementDoneIrq).resetCounters();
-    ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
-        this->irqEvents.at(measurementDoneIrq).notifyOne();
-    });
-}
+// TODO to be unlocked in the near future (after merging new probe check to v0.11.0-dev)
+//void Us4OEMImpl::setWaitForEventDone() {
+//    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
+//    irqEvents.at(eventDoneIrq).resetCounters();
+//    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
+//        this->irqEvents.at(eventDoneIrq).notifyOne();
+//    });
+//}
+//
+//void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
+//    ius4oem->EnableHVPSMeasurementReadyIRQ();
+//    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
+//    irqEvents.at(measurementDoneIrq).resetCounters();
+//    ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
+//        this->irqEvents.at(measurementDoneIrq).notifyOne();
+//    });
+//}
 
 void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
     logger->log(LogSeverity::TRACE, "Waiting for HVPS Measurement done IRQ");
