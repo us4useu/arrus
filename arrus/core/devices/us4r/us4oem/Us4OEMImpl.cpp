@@ -382,13 +382,15 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
                     }
                     if (batchId == 0) {
                         size_t partSize = 0;
+                        size_t actualNumberOfSamples = 0;
                         if (!op.isRxNOP() || acceptRxNops) {
                             partSize = nBytes;
+                            actualNumberOfSamples = nSamples;
                         }
                         // Otherwise, make an empty part (i.e. partSize = 0).
                         // (note: the firing number will be needed for transfer configuration to release element in
                         // us4oem sequencer).
-                        parts.emplace_back(outputAddress, partSize, seqId, entryId);
+                        parts.emplace_back(outputAddress, partSize, seqId, entryId, actualNumberOfSamples);
                     }
                     if (!op.isRxNOP() || acceptRxNops) {
                         // Also, allows rx nops for OEM that is acceptable, in order to acquire frame metadata.

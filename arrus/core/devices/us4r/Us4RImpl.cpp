@@ -487,9 +487,13 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     // OEM -> list of sequences to upload on the OEM
     auto sequencesByOEM = std::vector{noems, OEMSequences{}};
     // sequence -> op -> a range of physical TX/RXs [start, end]
+    // NOTE: start and end are local per sequence, i.e. logicalToPhysicalMapping.at(i).at(0) is counted
+    // from te beginning of the i-th sequence.
     std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
+    // The physical list of sequences applied on the master OEM. See the Us4RSubsequenceFactory for the usage.
     std::vector<TxRxParametersSequence> masterSequences;
     // Convert probe sequence -> OEM Sequences
+
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
         auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
@@ -526,7 +530,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset, logicalToPhysicalMapping);
+    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset, logicalToPhysicalMapping, masterSequences);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
@@ -835,7 +839,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     uint16 startFiring = 0;
     for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
-        uint16 endFiring = srcElement.getFiring();
+        uint16 endFiring = srcElement.getGlobalFiring();
         for (size_t j = 0; j < nRepeats; ++j) {
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);

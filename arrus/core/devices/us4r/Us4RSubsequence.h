@@ -47,7 +47,13 @@ private:
 
 class Us4RSubsequenceFactory {
 public:
-
+    /**
+     * NOTE: regarding the mapping parameter start and end are assumed to be local per sequence,
+     * i.e. logicalToPhysicalMapping.at(i).at(0) is counted from te beginning of the i-th sequence.
+     *
+     * @param mapping
+     * @param masterSequences
+     */
     Us4RSubsequenceFactory(
         const std::vector<LogicalToPhysicalOp> &mapping,
         const std::vector<::arrus::devices::us4r::TxRxParametersSequence> &masterSequences
@@ -56,7 +62,8 @@ public:
         this->masterSequences = masterSequences;
     }
 
-
+    // TODO zaimplementowanc oemBuffer.getView(sequenceId)
+    // TODO physicalOpToNextFrame:
     Us4RSubsequence get(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float>& pri) {
         validate(sequenceId, start, end);
         // physical [start, end]
@@ -69,15 +76,14 @@ public:
         // for creating new host buffer).
         // We do not recalculate firing numbers! This way transfer registrar will use the proper firing numbers.
         for (const auto &oemBuffer : oemBuffers) {
-            // TODO implement
-            views.push_back(oemBuffer.getView(sequenceId, oemStart, oemEnd));
+            views.push_back(getOEMBufferView(oemBuffer, sequenceId, oemStart, oemEnd));
         }
         // Update FCM.
         FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*(fcm.at(sequenceId)));
         outFCMBuilder.slice(start, end);// slice to logical frames to [start, end]
         // OEM nr -> number of frames
         std::vector<uint32> nFrames;
-        for (size_t oem = 0; oem < fullSequenceOEMBuffers.size(); ++oem) {
+        for (size_t oem = 0; oem < oemBuffers.size(); ++oem) {
             auto nextFrameNumber = physicalOpToNextFrame.at(oem).getNextFrame(oemStart);
             auto n = physicalOpToNextFrame.at(oem).getNumberOfFrames(oemStart, oemEnd);
             nFrames.push_back(n);
@@ -97,6 +103,9 @@ public:
     }
 
 private:
+    /**
+     * Converts input mapping (with the per-sequence local [start, end] to the global TX/RX numbers.
+     */
     std::vector<LogicalToPhysicalOp> createGlobalMapping(const std::vector<LogicalToPhysicalOp> &localMap) {
         // NOTE: ASSUMING that subsequence OEMs are programmed sequentially, and there are no gaps, etc.
         // between subsequent ops.
@@ -111,7 +120,12 @@ private:
                 }
             );
             result.push_back(newMap);
-            offset += map.size();
+            if(!map.empty()) {
+                // The physical end of the last TX/RX
+                const auto &lastTxRx = (std::end(map)-1)->second;
+                const auto sequenceSize = lastTxRx+1; // NOTE: end is the end of the range, inclusive
+                offset += sequenceSize;
+            }
         }
         return result;
     }
@@ -148,16 +162,76 @@ private:
         }
     }
 
-    /** TX/RX sequences from the  full scheme, i.e. right after upload method was called */
+    /**
+     * Returns the view of this buffer for slice [start, end] (note: end is inclusive) of the given array.
+     */
+    Us4OEMBuffer getOEMBufferView(const Us4OEMBuffer &buffer, ArrayId arrayId, uint16 start, uint16 end) const {
+        if (start > end) {
+            throw IllegalArgumentException("Us4OEMBufferView: start cannot exceed end");
+        }
+        const auto& arrayDef = buffer.getArrayDef(arrayId);
+        const auto& parts = arrayDef.getParts();
+
+        if (end >= parts.size()) {
+            throw IllegalArgumentException(
+                format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})",
+                       end, parts.size()));
+        }
+        auto b = std::begin(parts);
+        // NEW ARRAY DEF (A SINGLE ARRAY SHOULD BE DEFINED)
+        Us4OEMBufferArrayParts newParts(b+start, b+end+1); // NOTE: +1 because end is inclusive
+        // Calculate new shape of the array.
+        auto oldShape = arrayDef.getDefinition().getShape();
+        // Compute total number of samples acquired by this OEM
+        unsigned newNSamples = std::accumulate(
+            std::begin(newParts), std::end(newParts), 0,
+            [](const auto &a, const auto &b){return a + b.getNSamples();});
+        auto newShape = updateShape(oldShape, newNSamples);
+        auto newDefinition = framework::NdArrayDef{newShape, arrayDef.getDefinition().getDataType()};
+        // Calculate new address of the array.
+        // The new address is the current address + offset caused by the start part.
+        auto newAddress = arrayDef.getAddress() + std::begin(newParts)->getAddress();
+        Us4OEMBufferArrayDef newArrayDef{
+            newAddress,
+            newDefinition,
+            newParts
+        };
+        // NEW ELEMENTS -- RECALCULATE ELEMENT SIZE.
+        std::vector<Us4OEMBufferElement> newElements;
+        for(const auto &oldElement: buffer.getElements()) {
+            newElements.emplace_back(
+                oldElement.getAddress() + newArrayDef.getAddress(),
+                newArrayDef.getSize(),
+                oldElement.getGlobalFiring()
+            );
+        }
+        return Us4OEMBuffer(newElements, {newArrayDef});
+    }
+
+    static framework::NdArray::Shape updateShape(const framework::NdArray::Shape &currentShape, unsigned int totalNSamples) {
+        if(currentShape.size() != 2 && currentShape.size() != 3) {
+            throw std::runtime_error("Illegal us4OEM output buffer element shape order: " + std::to_string(currentShape.size()));
+        }
+        auto channelsAx = currentShape.size() == 0 ? uint32_t(0) : static_cast<uint32_t>(currentShape.size()-1);
+        bool isDDCOn = currentShape.size() == 3;
+        auto nChannels = static_cast<uint32_t>(currentShape.get(channelsAx));
+        if(isDDCOn) {
+            return {totalNSamples, 2, nChannels};
+        } else {
+            return {totalNSamples, nChannels};
+        }
+    }
+
+    /** TX/RX sequences from the complete, input scheme, i.e. right after upload method was called */
     std::vector<::arrus::ops::us4r::TxRxSequence> sequences;
     /** Master OEM sequence (with physical ops) */
     std::vector<::arrus::devices::us4r::TxRxParametersSequence> masterSequences;
-    /** OEM buffers for the full scheme, i.e. right after upload method was called */
+    /** OEM buffers for the complete, input scheme, i.e. right after upload method was called */
     std::vector<Us4OEMBuffer> oemBuffers;
-    /** Frame channel mappings for the full scheme, i.e. right after upload method was called */
+    /** Frame channel mappings for the complete, input scheme, i.e. right after upload method was called */
     std::vector<FrameChannelMappingImpl::Handle> fcm;
     ::arrus::ops::us4r::Scheme::WorkMode workMode;
-    /** sequence, op id -> GLOBAL firing start, end */
+    /** sequence id -> op id -> GLOBAL firing start, end */
     std::vector<LogicalToPhysicalOp> logicalToPhysicalOp;
 };
 
