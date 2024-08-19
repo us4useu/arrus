@@ -237,7 +237,7 @@ public:
             result.emplace_back(b.build());
         }
         if (areConsecutive(srcOpIdx) || delayProfiles.empty()) {
-            return Result{result, opDestOp, opDestChannel, delayProfiles};
+            return Result{result, opDestOp, opDestChannel, delayProfiles,logical2PhysicalMap};
         } else {
             for (size_t seqIdx = 0; seqIdx < result.size(); ++seqIdx) {
                 size_t nOps = result[seqIdx].size();

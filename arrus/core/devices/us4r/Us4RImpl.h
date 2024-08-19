@@ -161,10 +161,10 @@ private:
 
     std::tuple<
         std::vector<Us4OEMBuffer>,
-        std::vector<FrameChannelMapping::Handle>,
+        std::vector<FrameChannelMappingImpl::Handle>,
         float,
         std::vector<LogicalToPhysicalOp>,
-        std::vector<::arrus::devices::us4r::TxRxParametersSequence>
+        std::vector<std::vector<::arrus::devices::us4r::TxRxParametersSequence>>
     >
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
@@ -203,7 +203,7 @@ private:
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode,
                            std::vector<Us4OEMBuffer> buffers);
     std::vector<arrus::session::Metadata::SharedHandle>
-    createMetadata(std::vector<FrameChannelMapping::Handle> fcms) const;
+    createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;
@@ -232,6 +232,7 @@ private:
     std::optional<Us4RSubsequence> currentSubsequenceParams;
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
+    std::optional<float> currentRxTimeOffset;
 
 };
 

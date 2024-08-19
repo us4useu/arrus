@@ -242,8 +242,8 @@ UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional
     ASSERT_STATE(State::STOPPED);
 
     auto ultrasound = (Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-    auto[buffer, metadata] = ultrasound->setSubsequence(start, end, sri, arrayId);
-    return UploadResult(buffer, metadata);
+    auto[buffer, metadata] = ultrasound->setSubsequence(arrayId, start, end, sri);
+    return UploadResult(buffer, {metadata});
 }
 
 }// namespace arrus::session

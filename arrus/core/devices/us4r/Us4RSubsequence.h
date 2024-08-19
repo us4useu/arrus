@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <utility>
 
 #include "FrameChannelMappingImpl.h"
 #include "arrus/common/format.h"
@@ -24,9 +25,9 @@ class Us4RSubsequence {
 
 public:
     Us4RSubsequence(uint16_t start, uint16_t anEnd, uint32_t timeToNextTrigger,
-                    const std::vector<Us4OEMBuffer> &oemBuffers, const FrameChannelMappingBuilder &fcm)
+                    const std::vector<Us4OEMBuffer> &oemBuffers, FrameChannelMappingBuilder fcm)
         : start(start), end(anEnd), timeToNextTrigger(timeToNextTrigger), oemBuffers(oemBuffers),
-          fcm(fcm) {}
+          fcm(std::move(fcm)) {}
 
     uint16_t getStart() const { return start; }
     uint16_t getEnd() const { return end; }
@@ -45,6 +46,8 @@ private:
     FrameChannelMappingBuilder fcm;
 };
 
+
+
 class Us4RSubsequenceFactory {
 public:
     /**
@@ -52,19 +55,42 @@ public:
      * i.e. logicalToPhysicalMapping.at(i).at(0) is counted from te beginning of the i-th sequence.
      *
      * @param mapping
-     * @param masterSequences
+     * @param oemSequences actual TX/RX sequences on each OEM; sequence id -> OEM -> op
+     * @param oemBuffers OEM buffers; OEM -> buffer
+     * @param fcms frame channel mappings; sequence id -> FCM
      */
     Us4RSubsequenceFactory(
+        const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences,
         const std::vector<LogicalToPhysicalOp> &mapping,
-        const std::vector<::arrus::devices::us4r::TxRxParametersSequence> &masterSequences
+        const std::vector<std::vector<::arrus::devices::us4r::TxRxParametersSequence>> &oemSequences,
+        const std::vector<Us4OEMBuffer> &oemBuffers,
+        const std::vector<FrameChannelMappingImpl::Handle> &fcms
     ) {
+        this->sequences = sequences;
         this->logicalToPhysicalOp = createGlobalMapping(mapping);
-        this->masterSequences = masterSequences;
+        this->oemSequences = oemSequences;
+        this->oemBuffers = oemBuffers;
+        for(const auto &m: fcms) {
+            this->fcm.emplace_back(
+                FrameChannelMappingBuilder::copy(*m).build()
+            );
+        }
+        // Create OpToNextFrameMappings
+        for(const auto &sequence: this->oemSequences) {
+            std::vector<OpToNextFrameMapping> seqMapping;
+            ARRUS_REQUIRES_EQUAL_IAE(this->oemBuffers.size(), this->oemSequences.size());
+            for(size_t i = 0; i < sequence.size(); ++i) {
+                const auto &oemSequence = sequence.at(i);
+                const auto &buffer = this->oemBuffers.at(i);
+                seqMapping.emplace_back(
+                    oemSequence.size(),
+                    buffer.getArrayDef(i).getParts()
+                );
+            }
+        }
     }
 
-    // TODO zaimplementowanc oemBuffer.getView(sequenceId)
-    // TODO physicalOpToNextFrame:
-    Us4RSubsequence get(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float>& pri) {
+    Us4RSubsequence get(SequenceId sequenceId, uint16_t start, uint16_t end, std::optional<float> sri) {
         validate(sequenceId, start, end);
         // physical [start, end]
         uint16_t oemStart = logicalToPhysicalOp.at(sequenceId).at(start).first;
@@ -84,8 +110,8 @@ public:
         // OEM nr -> number of frames
         std::vector<uint32> nFrames;
         for (size_t oem = 0; oem < oemBuffers.size(); ++oem) {
-            auto nextFrameNumber = physicalOpToNextFrame.at(oem).getNextFrame(oemStart);
-            auto n = physicalOpToNextFrame.at(oem).getNumberOfFrames(oemStart, oemEnd);
+            auto nextFrameNumber = opToNextFrame.at(sequenceId).at(oem).getNextFrame(oemStart);
+            auto n = opToNextFrame.at(sequenceId).at(oem).getNumberOfFrames(oemStart, oemEnd);
             nFrames.push_back(n);
             if (nextFrameNumber.has_value()) {
                 // Subtract from the physical frame numbers, the number of preceeding frames (e.g. move frame 3 to 0).
@@ -97,12 +123,74 @@ public:
         outFCMBuilder.recalculateOffsets();
         return Us4RSubsequence{
             oemStart, oemEnd,
-            getTimeToNextTrigger(sequenceId, oemStart, oemEnd),
+            getTimeToNextTrigger(sequenceId, oemStart, oemEnd, sri),
             views, outFCMBuilder
         };
     }
 
 private:
+    struct OpToNextFrameMapping {
+
+        OpToNextFrameMapping(uint16_t nFirings, const std::vector<Us4OEMBufferArrayPart> &frames) {
+            std::optional<uint16_t> currentFrameNr = std::nullopt;
+            opToNextFrame = std::vector<std::optional<uint16_t>>(nFirings, std::nullopt);
+            isRxOp = std::vector<bool>(nFirings, false);
+            for (int firing = nFirings - 1; firing >= 0; --firing) {
+                const auto &frame = frames.at(firing);
+                if (frame.getSize() > 0) {
+                    if (!currentFrameNr.has_value()) {
+                        currentFrameNr = (uint16_t)0;
+                    } else {
+                        currentFrameNr = static_cast<uint16_t>(currentFrameNr.value() + 1);
+                    }
+                    isRxOp.at(firing) = true;
+                }
+                opToNextFrame.at(firing) = currentFrameNr;
+            }
+            // Reverse the numbering.
+            // e.g.
+            // 0 -> 1, 1 -> 1, 2 -> 0, 3 -> 0
+            // =>
+            // 0 -> 0, 1 -> 0, 2 -> 1, 3 -> 1
+            if (currentFrameNr.has_value()) {
+                auto maxFrameNr = currentFrameNr.value();
+                for (auto &nextFrame : opToNextFrame) {
+                    if (nextFrame.has_value()) {
+                        nextFrame.value() = maxFrameNr - nextFrame.value();
+                    }
+                }
+            } // otherwise opToNextFrame is all of nullopts, nothing to update
+        }
+
+        std::optional<uint16> getNextFrame(uint16 op) {
+            if(op >= opToNextFrame.size()) {
+                throw IllegalArgumentException("Accessing mapping outside the avialable range.");
+            }
+            return opToNextFrame.at(op);
+        }
+
+        /**
+         * Returns the number of frames acquired by ops with numbers between [start, end] (both inclusive).
+         */
+        long getNumberOfFrames(uint16 start, uint16 end) {
+            if(start > end || end >= isRxOp.size()) {
+                throw std::runtime_error("Accessing isRxOp outside the available range.");
+            }
+            long result = 0;
+            for(uint16 i = start; i <= end; ++i) {
+                if(isRxOp.at(i)) {
+                    ++result;
+                }
+            }
+            return result;
+        }
+        // op (firing) number -> next frame number, relative to the full sequence.
+        std::vector<std::optional<uint16_t>> opToNextFrame;
+        // op (firing) number -> whether there is some data acquisition done by this op
+        std::vector<bool> isRxOp;
+    };
+
+
     /**
      * Converts input mapping (with the per-sequence local [start, end] to the global TX/RX numbers.
      */
@@ -144,13 +232,12 @@ private:
         }
     }
 
-    unsigned int getTimeToNextTrigger(SequenceId sid, uint16 start, uint16 end) const {
-        const auto &masterSeq = masterSequences.at(sid);
-        auto sri = masterSeq.getSri();
+    unsigned int getTimeToNextTrigger(SequenceId sid, uint16 start, uint16 end, std::optional<float> sri) const {
+        const auto &referenceOEMSequence = oemSequences.at(sid).at(0);
         // NOTE: end is inclusive (and the below method expects [start, end) range.
         std::optional<float> lastPri = getSRIExtend(
-            std::begin(masterSeq)+start,
-            std::begin(masterSeq)+end+1,
+            std::begin(referenceOEMSequence)+start,
+            std::begin(referenceOEMSequence)+end+1,
             sri
         );
         if(lastPri.has_value()) {
@@ -158,7 +245,7 @@ private:
         }
         else {
             // Just use the PRI of the end TX/RX.
-            return getPRIMicroseconds(masterSeq.at(end).getPri());
+            return getPRIMicroseconds(referenceOEMSequence.at(end).getPri());
         }
     }
 
@@ -224,15 +311,17 @@ private:
 
     /** TX/RX sequences from the complete, input scheme, i.e. right after upload method was called */
     std::vector<::arrus::ops::us4r::TxRxSequence> sequences;
-    /** Master OEM sequence (with physical ops) */
-    std::vector<::arrus::devices::us4r::TxRxParametersSequence> masterSequences;
+    /** OEM sequences (with physical ops) */
+    std::vector<std::vector<::arrus::devices::us4r::TxRxParametersSequence>> oemSequences;
     /** OEM buffers for the complete, input scheme, i.e. right after upload method was called */
     std::vector<Us4OEMBuffer> oemBuffers;
     /** Frame channel mappings for the complete, input scheme, i.e. right after upload method was called */
     std::vector<FrameChannelMappingImpl::Handle> fcm;
-    ::arrus::ops::us4r::Scheme::WorkMode workMode;
     /** sequence id -> op id -> GLOBAL firing start, end */
     std::vector<LogicalToPhysicalOp> logicalToPhysicalOp;
+    /** sequence id -> OEM id -> op to next RF
+     * frame */
+    std::vector<std::vector<OpToNextFrameMapping>> opToNextFrame;
 };
 
 }

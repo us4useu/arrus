@@ -6,13 +6,13 @@ namespace arrus::devices {
 
 
 /** Converts PRI from the float value [s] to uint32_t value [us] */
-uint32_t getPRIMicroseconds(float pri) {
+inline uint32_t getPRIMicroseconds(float pri) {
     return static_cast<uint32_t>(std::round(pri * 1e6));
 }
 
 /** Returns how much to extend the last TX/RX to achieve the given SRI; returns std::nullopt in cas when
   * sri is nullopt.*/
-std::optional<float> getSRIExtend(
+inline std::optional<float> getSRIExtend(
     const std::vector<::arrus::devices::us4r::TxRxParameters>::const_iterator &start,
     const std::vector<::arrus::devices::us4r::TxRxParameters>::const_iterator &end,
     std::optional<float> sri
@@ -20,7 +20,8 @@ std::optional<float> getSRIExtend(
     std::optional<float> lastPriExtend = std::nullopt;
     // Sequence repetition interval.
     if (sri.has_value()) {
-        float totalPri = std::accumulate(start, end, 0.0f, [](const auto &a, const auto &b) {return a + b.getPri();});
+        float totalPri = std::accumulate(start, end, 0.0f,
+                                         [](const auto &a, const auto &b) {return a + b.getPri();});
         if (totalPri < sri.value()) {
             lastPriExtend = sri.value() - totalPri;
         } else {
@@ -32,8 +33,8 @@ std::optional<float> getSRIExtend(
     return lastPriExtend;
 }
 
-bool isWaitForSoftMode(arrus::ops::us4r::Scheme::WorkMode workMode) {
-    arrus::ops::us4r::Scheme::isWorkModeManual(workMode) || workMode == ops::us4r::Scheme::WorkMode::HOST;
+inline bool isWaitForSoftMode(arrus::ops::us4r::Scheme::WorkMode workMode) {
+    return arrus::ops::us4r::Scheme::isWorkModeManual(workMode) || workMode == ops::us4r::Scheme::WorkMode::HOST;
 }
 
 

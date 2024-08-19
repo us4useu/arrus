@@ -306,22 +306,33 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
-    auto [buffers, fcms, rxTimeOffset, l2pMapping, masterOEMSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+    auto [buffers,
+          fcms,
+          rxTimeOffset,
+          l2pMapping,
+          oemSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
     currentScheme = scheme;
+    currentRxTimeOffset = rxTimeOffset;
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(),
                       std::move(buffers));
     // Metadata
-    std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms));
+    std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
 
     // Reset sub-sequence factory and params.
     currentSubsequenceParams.reset();
-    subsequenceFactory = Us4RSubsequenceFactory{l2pMapping, masterOEMSequences};
+    subsequenceFactory = Us4RSubsequenceFactory{
+        scheme.getTxRxSequences(),
+        l2pMapping,
+        oemSequences,
+        buffers,
+        fcms
+    };
 
     return {this->buffer, metadatas};
 }
 
-vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMapping::Handle> fcms) const {
+vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const {
     std::vector<Metadata::SharedHandle> metadatas;
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
@@ -433,10 +444,10 @@ Us4RImpl::~Us4RImpl() {
 
 std::tuple<
     std::vector<Us4OEMBuffer>,
-    std::vector<FrameChannelMapping::Handle>,
+    std::vector<FrameChannelMappingImpl::Handle>,
     float,
     std::vector<LogicalToPhysicalOp>,
-    std::vector<TxRxParametersSequence>
+    std::vector<std::vector<TxRxParametersSequence>>
 >
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
@@ -490,8 +501,8 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     // NOTE: start and end are local per sequence, i.e. logicalToPhysicalMapping.at(i).at(0) is counted
     // from te beginning of the i-th sequence.
     std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
-    // The physical list of sequences applied on the master OEM. See the Us4RSubsequenceFactory for the usage.
-    std::vector<TxRxParametersSequence> masterSequences;
+    // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
+    std::vector<std::vector<TxRxParametersSequence>> oemSequences;
     // Convert probe sequence -> OEM Sequences
 
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -500,7 +511,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
 
         logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
-        masterSequences.push_back(oemSeqs.at(getMasterOEM()->getDeviceId().getOrdinal()));
+        oemSequences.push_back(oemSeqs);
 
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
@@ -508,7 +519,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     }
     std::vector<Us4OEMBuffer> buffers;
     // Sequence id -> the probe-level FCM.
-    std::vector<FrameChannelMapping::Handle> fcms;
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
     float rxTimeOffset;
@@ -530,7 +541,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset, logicalToPhysicalMapping, masterSequences);
+    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset, logicalToPhysicalMapping, oemSequences);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
@@ -1131,7 +1142,7 @@ Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, co
     }
     // Clear callback (the new one will be registered later, in the prepareHostBuffer
     for(auto &us4oem: us4oems) {
-        // TODO(395)
+        // TODO US4R-395
         us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIDMA);
 //        us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
 //        us4oem->clearCallbacks(IUs4OEM::MSINumber::RXDMAOVERFLOW);
@@ -1148,9 +1159,9 @@ Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, co
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
                       currentScheme->getWorkMode(), params.getOemBuffers());
     // Create metadata
-    std::vector<FrameChannelMapping::Handle> fcms;
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
     fcms.emplace_back(params.buildFCM());
-    auto metadatas = createMetadata(std::move(fcms));
+    auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     // A single metadata is assumed here.
     return {this->buffer, metadatas.at(0)};
 }

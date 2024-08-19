@@ -28,7 +28,6 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMSubsequence.h"
 
 namespace arrus::devices {
 
@@ -214,7 +213,6 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
-    void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
 };
 
 }// namespace arrus::devices

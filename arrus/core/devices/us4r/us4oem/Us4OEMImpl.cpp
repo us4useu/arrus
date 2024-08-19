@@ -472,8 +472,8 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                         }
                     }
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
-                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
-                                        triggerSyncPerTxRx);
+                    // TODO US4R-395
+                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger); // triggerSyncPerTxRx);
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
@@ -938,6 +938,7 @@ void Us4OEMImpl::sync(std::optional<long long> timeout) {
 }
 
 // TODO to be unlocked in the near future (after merging new probe check to v0.11.0-dev)
+// TODO US4R-395
 //void Us4OEMImpl::setWaitForEventDone() {
 //    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
 //    irqEvents.at(eventDoneIrq).resetCounters();
@@ -974,6 +975,11 @@ void Us4OEMImpl::clearCallbacks(IUs4OEM::MSINumber ) {
 //    this->ius4oem->ClearCallbacks(irq);
     this->ius4oem->ClearCallbacks();
 }
-
+void Us4OEMImpl::setWaitForEventDone() {
+    // TODO(US4R-395)
+}
+void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
+    // TODO(US4R-395)
+}
 
 }// namespace arrus::devices
