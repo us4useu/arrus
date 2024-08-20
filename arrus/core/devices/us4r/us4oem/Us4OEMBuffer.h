@@ -31,7 +31,9 @@ public:
 
     uint16 getArrayId() const { return arrayId; }
 
-    /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries) */
+    /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries for a given element)
+     * Global per sequence and number of repetitions. Local per element (i.e., calculated as for the first buffer
+     * element). */
     uint16 getEntryId() const { return entryId; }
 
     unsigned int getNSamples() const { return nSamples; }
@@ -133,7 +135,7 @@ public:
     [[nodiscard]] const std::vector<Us4OEMBufferArrayDef> &getArrayDefs() const { return arrayDefs; }
 
     [[nodiscard]] const Us4OEMBufferArrayDef &getArrayDef(size_t i) const {
-        if(i > arrayDefs.size()) {
+        if(i >= arrayDefs.size()) {
             throw IllegalArgumentException(format(
                 "Us4OEMBufferView: array id exceeds the number of arrays defined for "
                 "the given OEM buffer, got: {}, number of arrays: {}.", i, getArrayDefs().size()));

@@ -5,6 +5,8 @@
 #include <numeric>
 #include <ostream>
 
+#include "exceptions.h"
+
 namespace arrus {
 
 /**
@@ -89,8 +91,7 @@ public:
 
     std::pair<T, T> asPair() const {
         if(values.size() != 2) {
-            throw IllegalArgumentException("The tuple must be a pair, "
-                                           "actual number of elements: " + std::to_string(values.size()));
+            throw IllegalArgumentException("The tuple must be a pair, actual number of elements: " + std::to_string(values.size()));
         }
         return std::make_pair(values.at(0), values.at(1));
     }

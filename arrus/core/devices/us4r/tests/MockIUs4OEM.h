@@ -68,7 +68,7 @@ public:
     MOCK_METHOD(void, SetRxDelay,
             (const float delay, const unsigned short firing), (override));
     MOCK_METHOD(void, EnableTransmit, (), (override));
-    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, bool resetSequencerPointer), (override));
+    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, uint16_t startEntry), (override));
     MOCK_METHOD(void, SetRxChannelMapping,
             ( const std::vector<uint8_t> & mapping, const uint16_t rxMapId),
     (override));
@@ -85,7 +85,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode, bool irqDone),
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode), // , bool irqDone), TODO US4R-395
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
@@ -231,8 +231,8 @@ public:
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
     MOCK_METHOD(void, ClearCallbacks, (), (override));
-    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
-    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
+//    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override)); TODO US4R-395
+//    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override)); TODO US4R-395
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
     MOCK_METHOD(void, VerifyTxWaveform, (), (override));
     MOCK_METHOD(void, EnableTxTimeout, (), (override));

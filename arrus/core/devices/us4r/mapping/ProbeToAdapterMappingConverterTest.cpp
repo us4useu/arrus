@@ -73,7 +73,7 @@ protected:
         return builder.build();
     }
 
-    void expectEqual(const FrameChannelMapping::Handle &a, const FrameChannelMapping::Handle &b) {
+    void expectEqual(const FrameChannelMapping::Handle &a, const FrameChannelMappingImpl::Handle &b) {
         EXPECT_EQ(a->getNumberOfLogicalChannels(), b->getNumberOfLogicalChannels());
         EXPECT_EQ(a->getNumberOfLogicalFrames(), b->getNumberOfLogicalFrames());
         for(size_t frame = 0; frame < a->getNumberOfLogicalFrames(); ++frame) {

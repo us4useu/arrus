@@ -47,7 +47,6 @@ private:
 };
 
 
-
 class Us4RSubsequenceFactory {
 public:
     /**
@@ -55,7 +54,8 @@ public:
      * i.e. logicalToPhysicalMapping.at(i).at(0) is counted from te beginning of the i-th sequence.
      *
      * @param mapping
-     * @param oemSequences actual TX/RX sequences on each OEM; sequence id -> OEM -> op
+     * @param oemSequences actual TX/RX sequences on each OEM; sequence id -> OEM -> op. NOTE: these are sequences after
+     *   splitting RXs into subapertures (i.e. max 32 active elements)!
      * @param oemBuffers OEM buffers; OEM -> buffer
      * @param fcms frame channel mappings; sequence id -> FCM
      */
@@ -76,17 +76,19 @@ public:
             );
         }
         // Create OpToNextFrameMappings
-        for(const auto &sequence: this->oemSequences) {
+        for(size_t seqId = 0; seqId < this->oemSequences.size(); ++seqId) {
+            const auto &oemSeq = this->oemSequences.at(seqId);
             std::vector<OpToNextFrameMapping> seqMapping;
-            ARRUS_REQUIRES_EQUAL_IAE(this->oemBuffers.size(), this->oemSequences.size());
-            for(size_t i = 0; i < sequence.size(); ++i) {
-                const auto &oemSequence = sequence.at(i);
+            ARRUS_REQUIRES_EQUAL_IAE(this->oemBuffers.size(), oemSeq.size());
+            for(size_t i = 0; i < oemSeq.size(); ++i) {
+                const auto &oemSequence = oemSeq.at(i);
                 const auto &buffer = this->oemBuffers.at(i);
                 seqMapping.emplace_back(
                     oemSequence.size(),
-                    buffer.getArrayDef(i).getParts()
+                    buffer.getArrayDef(seqId).getParts()
                 );
             }
+            this->opToNextFrame.push_back(seqMapping);
         }
     }
 
@@ -319,8 +321,7 @@ private:
     std::vector<FrameChannelMappingImpl::Handle> fcm;
     /** sequence id -> op id -> GLOBAL firing start, end */
     std::vector<LogicalToPhysicalOp> logicalToPhysicalOp;
-    /** sequence id -> OEM id -> op to next RF
-     * frame */
+    /** sequence id -> OEM id -> op to next RF frame */
     std::vector<std::vector<OpToNextFrameMapping>> opToNextFrame;
 };
 
