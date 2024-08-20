@@ -98,7 +98,7 @@ classdef CustomTxRxSequence
                 "Exactly one of the following should be provided: txWaveform or (txFrequency, txNPeriods, and txInvert)");
             end
 
-            if ~isempty(obj.txWaveform) && hwDdcEnable
+            if ~isempty(obj.txWaveform) && obj.hwDdcEnable
                 error("ARRUS:IllegalArgument", ...
                 "hwDdcEnable must be set to false if txWaveform is provided");
             end
