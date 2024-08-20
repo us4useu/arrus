@@ -321,7 +321,7 @@ class Session(AbstractSession):
         :return: the new data buffer and metadata
         """
         metadata = self.metadatas[array_id]
-        upload_result = self._session_handle.setSubsequence(start, end, sri)
+        upload_result = self._session_handle.setSubsequence(start, end, sri, array_id)
         # Get the new buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
