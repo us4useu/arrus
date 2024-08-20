@@ -124,6 +124,10 @@ classdef CustomTxRxSequence
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             if isempty(obj.txWaveform)
+                if isempty(obj.txInvert)
+                    obj.txInvert = false;
+                end
+                
                 obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
                 obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
                 obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
