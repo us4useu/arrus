@@ -23,8 +23,7 @@ classdef CustomTxRxSequence
     % :param decimation: decimation factor, for real output (hwDdcEnable==false) \
     %   it must be positive integer, for complex output (hwDdcEnable==true) \
     %   it must be multiple of 0.25 and be >=2
-    % :param nRepetitions: number of repetitions of the sequence (positive \
-    %   integer).
+    % :param nRepetitions: number of repetitions of the sequence (positive integer).
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
@@ -78,10 +77,6 @@ classdef CustomTxRxSequence
                 obj.(varargin{i}) = varargin{i+1};
             end
             
-            if ischar(obj.nRepetitions)
-                obj.nRepetitions = convertCharsToStrings(obj.nRepetitions);
-            end
-            
             % Validate.
             mustBeXor(obj,{'txCenterElement','txApertureCenter'});
             if ~isempty(obj.rxCenterElement) || ~isempty(obj.rxApertureCenter)
@@ -117,21 +112,18 @@ classdef CustomTxRxSequence
             end
             
             obj.txCenterElement     = mustBeProperLength(obj.txCenterElement,nTx);
-            obj.txApertureCenter	= mustBeProperLength(obj.txApertureCenter,nTx);
+            obj.txApertureCenter    = mustBeProperLength(obj.txApertureCenter,nTx);
+            obj.txApertureSize      = mustBeProperLength(obj.txApertureSize,nTx);
             obj.rxCenterElement     = mustBeProperLength(obj.rxCenterElement,nTx);
-            obj.rxApertureCenter	= mustBeProperLength(obj.rxApertureCenter,nTx);
+            obj.rxApertureCenter    = mustBeProperLength(obj.rxApertureCenter,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             if isempty(obj.txWaveform)
                 obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
                 obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
                 obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
-                obj.txInvert = double(obj.txInvert);
+                obj.txInvert            = double(obj.txInvert);
             end
-            if ~isstring(obj.txApertureSize)
-                obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
-            end
-
 
         end
     end
