@@ -60,7 +60,7 @@ classdef CustomTxRxSequence
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
         tgcSlope (1,:) = 0
-        txInvert (1,:) {mustBeLogical} = false
+        txInvert (1,:) {mustBeLogical} = []
         workMode {mustBeTextScalar} = "MANUAL"
         sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
         bufferSize (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 2
@@ -93,9 +93,14 @@ classdef CustomTxRxSequence
                       "workMode must be one of the following: MANUAL, HOST, SYNC, or ASYNC.");
             end
 
-            if ~xor(isempty(obj.txWaveform), or(isempty(obj.txFrequency), isempty(obj.txNPeriods)))
+            if ~xor(isempty(obj.txWaveform), isempty(obj.txFrequency) && isempty(obj.txNPeriods) && isempty(obj.txInvert))
                 error("ARRUS:IllegalArgument", ...
-                "Exactly one of the following should be provided: txWaveform or (frequency and nPeriods)");
+                "Exactly one of the following should be provided: txWaveform or (txFrequency, txNPeriods, and txInvert)");
+            end
+
+            if ~isempty(obj.txWaveform) && hwDdcEnable
+                error("ARRUS:IllegalArgument", ...
+                "hwDdcEnable must be set to false if txWaveform is provided");
             end
             
             %% Check size compatibility of aperture/focus/angle parameters
