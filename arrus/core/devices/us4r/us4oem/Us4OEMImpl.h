@@ -74,7 +74,7 @@ public:
     void stop() override;
     void setTgcCurve(const RxSettings &cfg);
     Ius4OEMRawHandle getIUs4OEM() override;
-    void enableSequencer(bool resetSequencerPointer) override;
+    void enableSequencer(uint16 startEntry) override;
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;

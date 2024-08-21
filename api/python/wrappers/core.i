@@ -56,28 +56,7 @@ namespace std {
 
 // ------------------------------------------ EXCEPTION HANDLING
 %exception {
-    try {
         $action
-    }
-    // TODO throw arrus specific exceptions
-    catch(const ::arrus::DeviceNotFoundException& e) {
-        SWIG_exception(SWIG_ValueError, e.what());
-    }
-    catch(const ::arrus::IllegalArgumentException& e) {
-        SWIG_exception(SWIG_ValueError, e.what());
-    }
-    catch(const ::arrus::IllegalStateException& e) {
-        SWIG_exception(SWIG_RuntimeError, e.what());
-    }
-    catch(const ::arrus::TimeoutException& e) {
-        SWIG_exception(SWIG_RuntimeError, e.what());
-    }
-    catch(const std::exception &e) {
-        SWIG_exception(SWIG_RuntimeError, e.what());
-    }
-    catch(...) {
-        SWIG_exception(SWIG_UnknownError, "Unknown exception.");
-    }
 }
 
 

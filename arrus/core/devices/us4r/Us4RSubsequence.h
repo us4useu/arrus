@@ -237,18 +237,13 @@ private:
     unsigned int getTimeToNextTrigger(SequenceId sid, uint16 start, uint16 end, std::optional<float> sri) const {
         const auto &referenceOEMSequence = oemSequences.at(sid).at(0);
         // NOTE: end is inclusive (and the below method expects [start, end) range.
-        std::optional<float> lastPri = getSRIExtend(
+        std::optional<float> extend = getSRIExtend(
             std::begin(referenceOEMSequence)+start,
             std::begin(referenceOEMSequence)+end+1,
             sri
         );
-        if(lastPri.has_value()) {
-            return getPRIMicroseconds(lastPri.value());
-        }
-        else {
-            // Just use the PRI of the end TX/RX.
-            return getPRIMicroseconds(referenceOEMSequence.at(end).getPri());
-        }
+        auto lastOpPri = referenceOEMSequence.at(end).getPri() + extend.value_or(0);
+        return getPRIMicroseconds(lastOpPri);
     }
 
     /**

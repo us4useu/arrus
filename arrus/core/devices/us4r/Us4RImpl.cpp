@@ -279,12 +279,12 @@ void Us4RImpl::disableHV() {
     }
 }
 
-void Us4RImpl::cleanupBuffers() {
+void Us4RImpl::cleanupBuffers(bool cleanupSequencerTransfers) {
     // The buffer should be already unregistered (after stopping the device).
     this->buffer->shutdown();
     // We must be sure here, that there is no thread working on the us4rBuffer here.
     if (!this->oemBuffers.empty()) {
-        unregisterOutputBuffer(false);
+        unregisterOutputBuffer(cleanupSequencerTransfers);
         this->oemBuffers.clear();
     }
     this->buffer.reset();
@@ -314,11 +314,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
     currentScheme = scheme;
     currentRxTimeOffset = rxTimeOffset;
-    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(),
-                      std::move(buffers));
-    // Metadata
-    std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
-
+    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(), buffers);
     // Reset sub-sequence factory and params.
     currentSubsequenceParams.reset();
     subsequenceFactory = Us4RSubsequenceFactory{
@@ -328,7 +324,8 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
         buffers,
         fcms
     };
-
+    // Metadata
+    std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     return {this->buffer, metadatas};
 }
 
@@ -343,11 +340,12 @@ vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMappi
     return metadatas;
 }
 
-void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode workMode, vector<Us4OEMBuffer> buffers) {
+void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode workMode, vector<Us4OEMBuffer> buffers,
+                                 bool cleanupSequencerTransfers) {
     // Cleanup.
     // If the output buffer already exists - remove it.
     if (buffer) {
-        cleanupBuffers();
+        cleanupBuffers(cleanupSequencerTransfers);
     }
     // Reset previously set properties for buffer handling.
     for(auto &us4oem: us4oems) {
@@ -390,8 +388,8 @@ void Us4RImpl::start() {
         // The sequencer pointer (the entry from which sequencer starts) should not be reset when
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
         // the sequencer pointers will appropriately set to the start param value.
-        bool shouldResetSequencerPointers = currentSubsequenceParams.has_value();
-        us4oem->enableSequencer(shouldResetSequencerPointers);
+        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
+        us4oem->enableSequencer(startEntry);
     }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
@@ -541,7 +539,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset, logicalToPhysicalMapping, oemSequences);
+    return std::make_tuple(buffers, std::move(fcms), rxTimeOffset, logicalToPhysicalMapping, oemSequences);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
@@ -897,6 +895,7 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     switch (workMode) {
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
+            std::cout << "RELEASE!" << std::endl;
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
@@ -1142,22 +1141,19 @@ Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, co
     }
     // Clear callback (the new one will be registered later, in the prepareHostBuffer
     for(auto &us4oem: us4oems) {
-        // TODO US4R-395
         us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIDMA);
-//        us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
-//        us4oem->clearCallbacks(IUs4OEM::MSINumber::RXDMAOVERFLOW);
-
+        us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
+        us4oem->clearCallbacks(IUs4OEM::MSINumber::RXDMAOVERFLOW);
     }
     auto params = subsequenceFactory->get(sequenceId, start, end, sri);
     bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
     for (auto &oem : us4oems) {
-        oem->setSubsequence(params.getStart(), params.getEnd(),
-                            isSyncMode, params.getTimeToNextTrigger());
+        oem->setSubsequence(params.getStart(), params.getEnd(), isSyncMode, params.getTimeToNextTrigger());
     }
     currentSubsequenceParams = params;
 
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
-                      currentScheme->getWorkMode(), params.getOemBuffers());
+                      currentScheme->getWorkMode(), params.getOemBuffers(), true);
     // Create metadata
     std::vector<FrameChannelMappingImpl::Handle> fcms;
     fcms.emplace_back(params.buildFCM());
@@ -1178,7 +1174,7 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 }
 
 void Us4RImpl::registerPulserIRQCallback() {
-    for(auto &oem: us4oems) {
+    /*for(auto &oem: us4oems) {
         const auto &ius4oem = oem->getIUs4OEM();
         ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
             try{
@@ -1193,7 +1189,7 @@ void Us4RImpl::registerPulserIRQCallback() {
                 logger->log(LogSeverity::ERROR, "Unknown exception on handling pulser IRQ.");
             }
         });
-    }
+    }*/
 }
 
 }// namespace arrus::devices

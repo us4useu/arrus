@@ -118,7 +118,7 @@ public:
      * @param arrayId id array to select, default: array with id 0
      * @return the new data buffer and metadata
      */
-    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, ArrayId arrayId = 0) = 0;
+    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) = 0;
 
     virtual ~Session() = default;
 

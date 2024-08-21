@@ -88,7 +88,7 @@ public:
     void setVoltage(const std::vector<HVVoltage> &voltages) override;
 
     void disableHV() override;
-    void cleanupBuffers();
+    void cleanupBuffers(bool cleanupSequencerTransfers = false);
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
     void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
@@ -200,8 +200,8 @@ private:
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
     void registerPulserIRQCallback();
-    void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode,
-                           std::vector<Us4OEMBuffer> buffers);
+    void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
+                                     bool cleanupSequencerTransfers = false);
     std::vector<arrus::session::Metadata::SharedHandle>
     createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
 
