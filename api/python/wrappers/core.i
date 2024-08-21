@@ -336,6 +336,12 @@ void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
     session->stopScheme();
 }
 
+void arrusSessionSetParameters(std::shared_ptr<arrus::session::Session> session, const arrus::Parameters &params) {
+    ArrusPythonGILUnlock unlock;
+    session->setParameters(params);
+}
+
+
 
 %};
 // ------------------------------------------ DEVICES

@@ -229,7 +229,7 @@ class Session(AbstractSession):
             self._handle_py_params(params)
             params = self._remove_py_params(params)
         core_params = arrus.utils.core.convert_to_core_parameters(params)
-        self._session_handle.setParameters(core_params)
+        arrus.core.arrusSessionSetParameters(self._session_handle, core_params)
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
