@@ -470,8 +470,8 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                         }
                     }
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
-                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
-                                        triggerSyncPerTxRx);
+                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger);
+                                        // TODO US4R-395 triggerSyncPerTxRx);
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
@@ -944,12 +944,13 @@ void Us4OEMImpl::setWaitForEventDone() {
 }
 
 void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
-    ius4oem->EnableHVPSMeasurementReadyIRQ();
+    // TODO US4R-395
+    /*ius4oem->EnableHVPSMeasurementReadyIRQ();
     auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
     irqEvents.at(measurementDoneIrq).resetCounters();
     ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
         this->irqEvents.at(measurementDoneIrq).notifyOne();
-    });
+    });*/
 }
 
 void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
