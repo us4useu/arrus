@@ -1,6 +1,15 @@
 Release notes
 =============
 
+0.12.x
+------
+
+0.12.0
+
+- core (C++):
+
+    - note: the Pulser(amplitudeLevel = 0) NOW BECOMES CLAMP, NOT THE HVP0/HVM0. HVP0/HVM0 is amplitudeLevel == 1, HVP1/HVM1 is amplitude level == 2.
+
 0.11.x
 -----
 

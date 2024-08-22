@@ -243,6 +243,7 @@ public:
     MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
     MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short  firing), (override));
+    MOCK_METHOD(void, SetCustomSequenceWaveform, (short unsigned int, const std::vector<unsigned int>&), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

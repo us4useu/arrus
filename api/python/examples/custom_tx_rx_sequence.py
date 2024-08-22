@@ -50,26 +50,6 @@ def main():
             ops=[
                 TxRx(
                     Tx(aperture=[True]*n_elements,
-                       excitation=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
-                       # Custom delays 1.
-                       focus=10e-3, speed_of_sound=1540, angle=0),
-                    Rx(aperture=[False]*n_elements,
-                       sample_range=(0, 4096),
-                       downsampling_factor=1),
-                    pri=1000e-6
-                ),
-                TxRx(
-                    Tx(aperture=[True]*n_elements,
-                       excitation=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
-                       # Custom delays 1.
-                       focus=5e-3, speed_of_sound=1540, angle=0),
-                    Rx(aperture=[False]*n_elements,
-                       sample_range=(0, 4096),
-                       downsampling_factor=1),
-                    pri=1000e-6
-                ),
-                TxRx(
-                    Tx(aperture=[True]*n_elements,
                        excitation=Pulse(center_frequency=6e6, n_periods=2,
                                         inverse=False),
                        # Custom delays 1.
@@ -116,13 +96,13 @@ def main():
         buffer, metadata = sess.upload(scheme)
         us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
         # Created 2D image display.
-        #display = Display2D(metadata=metadata, value_range=(-100, 100))
+        display = Display2D(metadata=metadata, value_range=(-100, 100))
         # Start the scheme.
-        #sess.start_scheme()
+        sess.start_scheme()
         # Start the 2D display.
         # The 2D display will consume data put the the input queue.
         # The below function blocks current thread until the window is closed.
-        #display.start(buffer)
+        display.start(buffer)
 
         print("Display closed, stopping the script.")
 

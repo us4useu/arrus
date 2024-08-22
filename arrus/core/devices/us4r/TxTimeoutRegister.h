@@ -7,7 +7,9 @@
 #include <vector>
 #include <optional>
 
+#include "TxWaveformConverter.h"
 #include "arrus/core/api/common/types.h"
+
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/common/hash.h"
 #include "arrus/common/format.h"
@@ -138,9 +140,9 @@ private:
     [[nodiscard]] TxTimeout getTxTimeUs(const ops::us4r::TxRx &op) const {
         const auto &delays = op.getTx().getDelaysApertureOnly();
         float maxDelay = *std::max_element(std::begin(delays), std::end(delays));
-        float frequency = actualTxFunc(op.getTx().getExcitation().getCenterFrequency());
-        float nPeriods = op.getTx().getExcitation().getNPeriods();
-        float burstTime = 1.0f/frequency*nPeriods;
+        // TODO avoid doing all the below conversion here, on the TX timeout calculations, and when setting the waveform.
+        // This should be done only once, in the Us4R::upload method.
+        float burstTime = TxWaveformConverter::getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
         auto txTimeUs = ARRUS_SAFE_CAST(std::roundf((maxDelay + burstTime)*1e6f), TxTimeout);
         return txTimeUs;
     }

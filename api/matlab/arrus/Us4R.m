@@ -186,7 +186,8 @@ classdef Us4R < handle
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
-                'bufferSize', sequenceOperation.bufferSize);
+                'bufferSize', sequenceOperation.bufferSize, ...
+                'txWaveform', sequenceOperation.txWaveform);
 
             obj.seq.seqLim = [1 numel(obj.seq.txAng)];
             
@@ -279,7 +280,8 @@ classdef Us4R < handle
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
-                'bufferSize', sequenceOperation.bufferSize);
+                'bufferSize', sequenceOperation.bufferSize, ...
+                'txWaveform', sequenceOperation.txWaveform);
 
             % Program hardware
             if nargin<3 || enableHardwareProgramming
@@ -753,7 +755,8 @@ classdef Us4R < handle
     end
     
     methods(Access = private)
-
+        
+        % txWaveform must be handled properly here!!!
         function seqOut = mergeSequences(obj,seqIn)
 
             obj.seq.nSeq = numel(seqIn);
@@ -859,7 +862,8 @@ classdef Us4R < handle
                                 'txInvert',         'txInvert'; ...
                                 'workMode',         'workMode'; ...
                                 'sri',              'sri'; ...
-                                'bufferSize',       'bufferSize'};
+                                'bufferSize',       'bufferSize';...
+                                'txWaveform',       'txWaveform'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -977,16 +981,24 @@ classdef Us4R < handle
                 error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
             end
             
-            if obj.sys.interfEnable && (numel(unique(obj.seq.txFreq)) > 1 || numel(unique(obj.seq.txNPer)) > 1)
-                error("setSeqParams: txFrequency and txNPeriods must be constant when wedge interface is used");
+            if obj.sys.interfEnable
+                if ~isempty(obj.seq.txWaveform)
+                    error("setSeqParams: txWaveform cannot be used together with wedge interface");
+                elseif numel(unique(obj.seq.txFreq)) > 1 || numel(unique(obj.seq.txNPer)) > 1
+                    error("setSeqParams: txFrequency and txNPeriods must be constant when wedge interface is used");
+                end
             end
             
             %% Aperture masks & delays
             obj.calcTxRxApMask;
             obj.calcTxDelays;
-            
-            obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
-            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
+            if ~isempty(obj.seq.txWaveform)
+                txDuration = obj.seq.txWaveform.getTotalDuration();
+            else
+                txDuration = obj.seq.txNPer./obj.seq.txFreq;
+            end
+            obj.seq.nSampOmit = (max(obj.seq.txDel) + txDuration) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
+            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + txDuration / 2;
 
             if obj.seq.hwDdcEnable
                 obj.seq.initDel   = obj.seq.initDel + (8+1)/obj.seq.rxSampFreq;
@@ -1036,6 +1048,11 @@ classdef Us4R < handle
                 obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
+            %% Check if txWaveform is used - it is not supported in reconstruction
+            if ~isempty(obj.subSeq.txWaveform)
+                error("setRecParams: reconstruction cannot be performed when txWaveform is used");
+            end
+
             %% Software DDC parameters
             if isempty(obj.rec.swDdcEnable)
                 obj.rec.swDdcEnable = ~obj.subSeq.hwDdcEnable;
@@ -1284,7 +1301,11 @@ classdef Us4R < handle
             % Tx/Rx sequence
             nTx = obj.seq.nTx;
             for iTx=1:nTx
-                pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                if ~isempty(obj.seq.txWaveform)
+                    pulse = obj.seq.txWaveform;
+                else
+                    pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                end
                 txObj = Tx("aperture", obj.seq.txApMask(:,iTx).', 'delays', obj.seq.txDel(:,iTx).', "pulse", pulse);
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
@@ -1319,7 +1340,8 @@ classdef Us4R < handle
             % reorganization addresses. Since subSequences are supported,
             % the corresponding data is obtained during setSubsequence call.
         end
-
+        
+        % txWaveform must be handled properly here!!!
         function selSubSeq(obj, seqId, sri)
             
             % Sub-sequence fuctionality is temporarily suspended

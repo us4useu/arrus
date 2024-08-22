@@ -34,18 +34,24 @@ namespace arrus::devices {
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits.getDelay(), firingStr);
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getAmplitudeLevel(),
-                                                  static_cast<ops::us4r::Pulse::AmplitudeLevel>(0),
-                                                  static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
-                                                  firingStr);
+                auto pulse = arrus::ops::us4r::Pulse::fromWaveform(op.getTxWaveform());
+                if(pulse.has_value()) {
+                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(pulse.value().getAmplitudeLevel(),
+                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(0),
+                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
+                                                      firingStr);
+                    // Tx - pulse
+                    ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(pulse.value().getCenterFrequency(), txLimits.getFrequency(), firingStr);
+                    float pulseLength = pulse.value().getNPeriods()/ pulse.value().getCenterFrequency();
+                    ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(pulseLength, txLimits.getPulseLength(), firingStr);
+                    float ignore = 0.0f;
+                    float fractional = std::modf(pulse.value().getNPeriods(), &ignore);
+                    ARRUS_VALIDATOR_EXPECT_TRUE_M((fractional == 0.0f || fractional == 0.5f), (firingStr + ", n periods"));
+                } else {
+                    // custom waveform
+                    // TODO: what conditions should be satisifed?
+                }
 
-                // Tx - pulse
-                ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(op.getTxPulse().getCenterFrequency(), txLimits.getFrequency(), firingStr);
-                float pulseLength = op.getTxPulse().getNPeriods()/op.getTxPulse().getCenterFrequency();
-                ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(pulseLength, txLimits.getPulseLength(), firingStr);
-                float ignore = 0.0f;
-                float fractional = std::modf(op.getTxPulse().getNPeriods(), &ignore);
-                ARRUS_VALIDATOR_EXPECT_TRUE_M((fractional == 0.0f || fractional == 0.5f), (firingStr + ", n periods"));
                 // Rx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(descriptor.getNAddressableRxChannels()), firingStr);
                 size_t numberOfActiveRxChannels =
