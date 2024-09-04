@@ -361,7 +361,7 @@ void Us4RImpl::start() {
         // Reset tx subsystem pointers.
         us4oem->getIUs4OEM()->EnableTransmit();
         // Reset sequencer pointers.
-        us4oem->enableSequencer(true);
+        us4oem->enableSequencer(0);
     }
     this->getMasterOEM()->start();
     this->state = State::STARTED;

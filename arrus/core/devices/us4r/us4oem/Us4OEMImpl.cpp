@@ -564,13 +564,13 @@ void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequence
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer(bool resetSequencerPointer) {
+void Us4OEMImpl::enableSequencer(uint16 startEntry) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger, resetSequencerPointer);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
