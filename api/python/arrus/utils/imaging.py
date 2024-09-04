@@ -38,9 +38,6 @@ def is_package_available(package_name):
     return importlib.util.find_spec(package_name) is not None
 
 
-print(f"IS CUPY? {is_package_available('cupy')}")
-
-
 if is_package_available("cupy"):
     import cupy
     import re
@@ -1099,8 +1096,10 @@ class Processing:
             callback: Callable[[Sequence[Union[BufferElement, BufferElementLockBased]]], None] = None,
             input_buffer: ProcessingBufferDef = None,
             output_buffer: ProcessingBufferDef = None,
-            on_buffer_overflow_callback=None):
-        self.graph = graph
+            on_buffer_overflow_callback=None,
+            input_name: str=None
+        ):
+        self.graph = self._get_graph(processing=graph, input_name=input_name)
         self.callback = callback
         self.input_buffer = input_buffer if input_buffer is not None else ProcessingBufferDef(size=2, type="locked")
         self.output_buffer = output_buffer if output_buffer is not None else ProcessingBufferDef(size=2, type="locked")
@@ -1108,6 +1107,32 @@ class Processing:
         self._pipeline_name = _get_default_op_name(self.graph, 0)
         self._graph_op_by_name = self.graph.get_ops_by_name()
         self._param_defs = self._determine_params()
+
+    def _get_graph(self, processing: Union[Graph, Pipeline], input_name):
+        if isinstance(processing, Pipeline):
+            # Wrap Pipeline into the Processing object.
+            if processing.name is None:
+                processing.name = f"Pipeline:0"
+
+            n_outputs = processing._get_n_outputs()
+            operations = {processing}
+            if input_name is None:
+                input_name = "TxRxSequence:0"
+            dependencies = {
+                processing.name: input_name,
+            }
+            for i in range(n_outputs):
+                dependencies[f"Output:{i}"] = f"{processing.name}/Output:{i}"
+
+            graph = Graph(
+                operations=operations,
+                dependencies=dependencies
+            )
+            return graph
+        if isinstance(processing, Graph):
+            return processing
+        else:
+            raise ValueError(f"Unsupported type of processing: {type(processing)}")
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
