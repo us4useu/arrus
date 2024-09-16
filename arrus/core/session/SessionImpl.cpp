@@ -168,7 +168,7 @@ void SessionImpl::stopScheme() {
     getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
 }
 
-void SessionImpl::run() {
+void SessionImpl::run(bool sync, std::optional<long long> timeout) {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE_NOT(State::CLOSED);
 
@@ -177,10 +177,14 @@ void SessionImpl::run() {
     }
     if (state == State::STOPPED) {
         startScheme();
-    } else {
-        if (currentScheme.value().getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL) {
+        if(sync) {
             auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-            ultrasound->trigger();
+            ultrasound->sync(timeout); // wait for the first TX/RX to end
+        }
+    } else {
+        if (currentScheme.value().isWorkModeManual()) {
+            auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+            ultrasound->trigger(sync, timeout);
         } else {
             throw IllegalStateException("Scheme already started.");
         }
