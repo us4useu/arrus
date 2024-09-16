@@ -676,13 +676,13 @@ void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4oem() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer(bool resetSequencerPointer) {
+void Us4OEMImpl::enableSequencer(uint16_t startEntry) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger, resetSequencerPointer);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
