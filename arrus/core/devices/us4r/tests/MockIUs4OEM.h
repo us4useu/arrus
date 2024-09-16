@@ -228,6 +228,7 @@ public:
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
     MOCK_METHOD(void, ClearCallbacks, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (size_t firing), (override));
+    MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short  firing), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
