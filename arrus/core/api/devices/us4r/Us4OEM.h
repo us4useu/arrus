@@ -58,6 +58,20 @@ public:
     virtual float getUCDMeasuredVoltage(uint8_t rail) = 0;
 
     /**
+     * Returns rail voltage measured by Us4OEM's UCD [V].
+     *
+     * @param rail UCD rail number
+     */
+    virtual float getMeasuredHVPVoltage() = 0;
+
+    /**
+     * Returns rail voltage measured by Us4OEM's UCD [V].
+     *
+     * @param rail UCD rail number
+     */
+    virtual float getMeasuredHVMVoltage() = 0;
+
+    /**
     * Reads AFE register
     *
     * @param address: register address

@@ -799,6 +799,9 @@ float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->GetUCDExtTemp();
 
 float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
 
+float Us4OEMImpl::getMeasuredHVPVoltage() { return ius4oem->GetMeasuredHVPVoltage(); }
+float Us4OEMImpl::getMeasuredHVMVoltage() { return ius4oem->GetMeasuredHVMVoltage(); }
+
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
         ius4oem->CheckFirmwareVersion();

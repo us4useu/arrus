@@ -83,10 +83,10 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
     if(ver == 1) {
         //Verify measured voltages on OEMs
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-            voltage = this->getUCDMeasuredHVPVoltage(i);
+            voltage = this->getMeasuredHVPVoltage(i);
             temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
             voltages.push_back(temp);
-            voltage = this->getUCDMeasuredHVMVoltage(i);
+            voltage = this->getMeasuredHVMVoltage(i);
             temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
             voltages.push_back(temp);
         }
@@ -218,14 +218,12 @@ float Us4RImpl::getMeasuredMVoltage() {
     return hv[0]->getMeasuredMVoltage();
 }
 
-float Us4RImpl::getUCDMeasuredHVPVoltage(uint8_t oemId) {
-    //UCD rail 19 = HVP
-    return us4oems[oemId]->getUCDMeasuredVoltage(19);
+float Us4RImpl::getMeasuredHVPVoltage(uint8_t oemId) {
+    return us4oems[oemId]->getMeasuredHVPVoltage();
 }
 
-float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
-    //UCD rail 20 = HVM}
-    return us4oems[oemId]->getUCDMeasuredVoltage(20);
+float Us4RImpl::getMeasuredHVMVoltage(uint8_t oemId) {
+    return us4oems[oemId]->getMeasuredHVMVoltage();
 }
 
 void Us4RImpl::disableHV() {
