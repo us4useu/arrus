@@ -222,7 +222,7 @@ def print_health_info(report):
                 result = f_el_desc.validation_result
                 print(f"channel# {nr}, state: {state}, "
                       f"verdict: {result.verdict}, "
-                      f"value: {np.round(f_el_desc.value, 2)}, "
+                      f"value: {f_el_desc.value}, "
                       f"valid range: {result.valid_range}.")
 
 
