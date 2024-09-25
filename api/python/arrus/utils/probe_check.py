@@ -321,6 +321,12 @@ class MaxHVPSCurrentExtractor(ProbeElementFeatureExtractor):
     Feature extractor class for extracting maximal P current from
     HVPS current measurement.
 
+    NOTE! this feature extractor removes the hardware-specific bias
+    by removing the average HVPS amplitude per oem. The "normalization"
+    procedure causes that the lowest measured current will be always zero.
+    Therefore, values returned by this extractor should be
+    considered in arbitrary units.
+
     :param polarity: signal polarity:  0: MINUS, 1: PLUS
     :param level: rail level
     """
@@ -342,14 +348,15 @@ class MaxHVPSCurrentExtractor(ProbeElementFeatureExtractor):
         n_skipped_samples = 10
         # n_repeats, ntx, nsamples
         current = measurement[:, :, self.polarity, self.level, 1, n_skipped_samples:]
+        current = np.max(current, axis=-1)  # (n repeats, ntx)
 
         # Subtract hardware specific bias.
         for oem in range(max_oem_nr + 1):
-            med_bias = np.median(np.min(current[:, us4oems == oem, :], axis=-1))
-            current[:, us4oems == oem, :] -= med_bias
-
-        current = np.max(current, axis=-1)  # (n repeats, ntx)
+            bias = np.median(current[:, us4oems == oem])
+            current[:, us4oems == oem] -= bias
         current = np.median(current, axis=0)  # (n tx)
+        # Make all the values non-zero.
+        current = current - np.min(current)
         return current
 
 
