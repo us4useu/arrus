@@ -43,7 +43,8 @@ public:
                         },
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
-                    Interval<uint32>{0, 16384} // sequence length
+                    Interval<uint32>{0, 16384}, // sequence length,
+                    1024 // maximum number of different TX/RXs
                 },
                 0 // maximum number of TX timeouts
             };
@@ -73,7 +74,8 @@ public:
                         },
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
-                    Interval<uint32>{0, 4096} // sequence length
+                    Interval<uint32>{0, 4096}, // sequence length
+                    4096 // maximum number of different TX/RXs
                 },
                 4 // maximum number of timeouts
             };

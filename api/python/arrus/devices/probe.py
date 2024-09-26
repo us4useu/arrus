@@ -36,7 +36,7 @@ class ProbeModel:
 
         if not self.is_convex_array():
             x_pos = element_position
-            z_pos = np.zeros((1, self.n_elements))
+            z_pos = np.zeros(self.n_elements)
             angle = np.zeros(self.n_elements)
         else:
             angle = element_position / self.curvature_radius
