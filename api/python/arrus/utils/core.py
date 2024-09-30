@@ -2,10 +2,16 @@ import numpy as np
 import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
-from typing import Dict, Any
+from arrus.devices.device import parse_device_id, DeviceId
+from typing import Dict, Any, Iterable, Tuple, Union, List
 
 _UINT16_MIN = 0
 _UINT16_MAX = 2**16-1
+
+
+def to_core_device_id(tx_placement):
+    core_type = arrus.core.parseToDeviceTypeEnum(tx_placement.device_type.type)
+    return arrus.core.DeviceId(core_type, tx_placement.ordinal)
 
 
 def convert_to_core_sequence(seq):
@@ -27,19 +33,26 @@ def convert_to_core_sequence(seq):
         core_excitation = arrus.core.Pulse(
             centerFrequency=tx.excitation.center_frequency,
             nPeriods=tx.excitation.n_periods,
-            inverse=tx.excitation.inverse
+            inverse=tx.excitation.inverse,
+            amplitudeLevel=tx.excitation.amplitude_level
         )
+        tx_placement = parse_device_id(tx.placement)
+        tx_placement = to_core_device_id(tx_placement)
         core_tx = arrus.core.Tx(
-            aperture=arrus.core.VectorBool(tx.aperture.tolist()),
-            delays=arrus.core.VectorFloat(core_delays.tolist()),
-            excitation=core_excitation
+            arrus.core.VectorBool(tx.aperture.tolist()),
+            arrus.core.VectorFloat(core_delays.tolist()),
+            core_excitation,
+            tx_placement
         )
         # RX
+        rx_placement = parse_device_id(rx.placement)
+        rx_placement = to_core_device_id(rx_placement)
         core_rx = arrus.core.Rx(
             arrus.core.VectorBool(rx.aperture.tolist()),
             arrus.core.PairUint32(int(rx.sample_range[0]), int(rx.sample_range[1])),
             rx.downsampling_factor,
-            arrus.core.PairChannelIdx(int(rx.padding[0]), int(rx.padding[1]))
+            arrus.core.PairChannelIdx(int(rx.padding[0]), int(rx.padding[1])),
+            rx_placement
         )
         core_txrx = arrus.core.TxRx(core_tx, core_rx, op.pri)
         arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
@@ -122,7 +135,10 @@ def convert_array_to_vector_float(array):
 
 
 def convert_to_core_scheme(scheme):
-    seq = scheme.tx_rx_sequence
+    builder = arrus.core.SchemeBuilder()
+    seqs = scheme.tx_rx_sequence
+    if not isinstance(seqs, Iterable):
+        seqs = (seqs, )
     rx_buffer_size = scheme.rx_buffer_size
     output_buffer = scheme.output_buffer
 
@@ -132,31 +148,31 @@ def convert_to_core_scheme(scheme):
     }[output_buffer.type]
     data_buffer_spec = arrus.core.DataBufferSpec(core_buffer_type,
                                                  output_buffer.n_elements)
-
+    builder.withRxBufferSize(rx_buffer_size)
+    builder.withOutputBufferDefinition(data_buffer_spec)
     # Convert sequence to core sequence.
-    core_seq = arrus.utils.core.convert_to_core_sequence(seq)
+    for s in seqs:
+        core_seq = arrus.utils.core.convert_to_core_sequence(s)
+        builder.addSequence(core_seq)
 
     core_work_mode = {
         "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
         "SYNC": arrus.core.Scheme.WorkMode_SYNC,
         "HOST": arrus.core.Scheme.WorkMode_HOST,
-        "MANUAL": arrus.core.Scheme.WorkMode_MANUAL
+        "MANUAL": arrus.core.Scheme.WorkMode_MANUAL,
+        "MANUAL_OP": arrus.core.Scheme.WorkMode_MANUAL_OP
     }[scheme.work_mode]
+    builder.withWorkMode(core_work_mode)
     ddc = scheme.digital_down_conversion
-
-    constants = convert_constants_to_arrus_ndarray(scheme.constants)
-
-    if scheme.digital_down_conversion is not None:
+    # TODO constants
+    if(scheme.digital_down_conversion is not None):
         ddc = arrus.core.DigitalDownConversion(
             ddc.demodulation_frequency,
             convert_array_to_vector_float(ddc.fir_coefficients),
             ddc.decimation_factor
         )
-        return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 core_work_mode, ddc, constants)
-    else:
-        return arrus.core.Scheme(core_seq, rx_buffer_size, data_buffer_spec,
-                                 core_work_mode, constants)
+        builder.withDigitalDownConversion(ddc)
+    return builder.build()
 
 
 def convert_to_test_pattern(test_pattern_str):
@@ -204,3 +220,25 @@ def convert_constants_to_arrus_ndarray(py_constants):
             py_const.name
         )
     return result
+
+
+def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
+    result = []
+    for v in values:
+        if isinstance(v, tuple):
+            vm, vp = v
+            if not isinstance(vm, int) or not isinstance(vp, int):
+                raise ValueError("Voltages are expected to be integers")
+        elif isinstance(v, int):
+            vm, vp = v, v
+        else:
+            raise ValueError("Voltages are expected to be integers "
+                             "or pair of integers.")
+
+        min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
+        if not (min_v <= vm <= max_v) or not (min_v <= vp <= max_v):
+            raise ValueError("Voltages are expected to be values in range "
+                             f"[{min_v}, {max_v}]")
+        result.append(arrus.core.HVVoltage(vm, vp))
+    return arrus.core.VectorHVVoltage(result)
+

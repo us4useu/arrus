@@ -269,6 +269,13 @@ private:
 
 #define ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(value, divider, msg) \
     expectDivisible(#value, value, divider, msg)
+
+#define ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(vector, interval, msg) \
+    ARRUS_VALIDATOR_EXPECT_ALL_IN_RANGE_VM(vector, interval.start(), interval.end(), msg)
+
+#define ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(vector, interval, msg) \
+    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(vector, interval.start(), interval.end(), msg)
 }
+
 
 #endif //ARRUS_CORE_COMMON_VALIDATION_H

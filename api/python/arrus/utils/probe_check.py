@@ -4,7 +4,8 @@ import enum
 import math
 import time
 from abc import ABC, abstractmethod
-from typing import Set, List, Iterable, Tuple, Dict
+from typing import Set, List, Iterable, Tuple, Dict, Any
+import threading
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -14,8 +15,8 @@ import arrus.session
 import arrus.logging
 import arrus.utils.us4r
 from arrus.ops.imaging import LinSequence
-from arrus.ops.us4r import Pulse, Scheme
-from arrus.utils.imaging import Pipeline, RemapToLogicalOrder
+from arrus.ops.us4r import Pulse, Scheme, TxRxSequence, Tx, Rx, TxRx, DataBufferSpec
+from arrus.utils.imaging import Pipeline, RemapToLogicalOrder, Squeeze, Lambda
 from arrus.metadata import Metadata
 
 
@@ -147,6 +148,7 @@ class FeatureDescriptor:
     name: str
     active_range: tuple
     masked_elements_range: tuple
+    params: Dict[str, Any] = dataclasses.field(default_factory=lambda: {})
 
 
 class ElementValidationVerdict(enum.Enum):
@@ -259,6 +261,7 @@ class ProbeHealthReport:
     data: np.ndarray
     footprint: np.ndarray
     validator: ProbeElementValidator
+    aux: Dict[str, Any]
 
     @property
     def characteristics(self) -> Dict[str, np.ndarray]:
@@ -291,15 +294,14 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
     """
     Feature extractor class for extracting maximal amplitudes from array of
     rf signals.
-    Returns vector of lenght equal to number of transmissions (ntx), where
+    Returns vector of length equal to number of transmissions (ntx), where
     each element is a median over the frames of maximum amplitudes (absolute values)
-    occurred in each of the tramissions.
+    occurred in each of the transmissions.
     """
     feature = "amplitude"
 
     def extract(self, rf: np.ndarray) -> np.ndarray:
-        rf = rf.copy()
-        # Highpass filter data 
+        # Highpass filter data
         # with cutoff frequency equal 50% of tx_frequency.
         tx_frequency = self.metadata.context.sequence.pulse.center_frequency
         cutoff = tx_frequency/2
@@ -312,6 +314,43 @@ class MaxAmplitudeExtractor(ProbeElementFeatureExtractor):
         # Choose median of a list of Tx/Rxs sequences.
         frame_max = np.median(frame_max, axis=0)
         return frame_max
+
+
+class MaxHVPSCurrentExtractor(ProbeElementFeatureExtractor):
+    """
+    Feature extractor class for extracting maximal P current from
+    HVPS current measurement.
+
+    :param polarity: signal polarity:  0: MINUS, 1: PLUS
+    :param level: rail level
+    """
+    feature = "current"
+
+    def __init__(self, metadata, polarity=1, level=0):
+        super().__init__(metadata)
+        self.polarity = polarity
+        self.level = level
+
+    def extract(self, measurement: np.ndarray) -> np.ndarray:
+        n_repeats, n_tx, p, l, unit, sample = measurement.shape
+        fcm = self.metadata.data_description.custom["frame_channel_mapping"]
+        us4oems = fcm.us4oems.squeeze()
+        max_oem_nr = np.max(us4oems)
+
+        # Skip the first 10 samples due to the initial noise in the voltage
+        # and current measurements.
+        n_skipped_samples = 10
+        # n_repeats, ntx, nsamples
+        current = measurement[:, :, self.polarity, self.level, 1, n_skipped_samples:]
+
+        # Subtract hardware specific bias.
+        for oem in range(max_oem_nr + 1):
+            med_bias = np.median(np.min(current[:, us4oems == oem, :], axis=-1))
+            current[:, us4oems == oem, :] -= med_bias
+
+        current = np.max(current, axis=-1)  # (n repeats, ntx)
+        current = np.median(current, axis=0)  # (n tx)
+        return current
 
 
 class EnergyExtractor(ProbeElementFeatureExtractor):
@@ -346,7 +385,6 @@ class EnergyExtractor(ProbeElementFeatureExtractor):
             mean_energy = np.mean(frames_energies)
             energies.append(mean_energy)
         return np.array(energies)
-
 
     def __get_signal_energy(self, rf: np.ndarray) -> float:
         """
@@ -642,11 +680,15 @@ class ByNeighborhoodValidator(ProbeElementValidator):
         return results
 
 
-EXTRACTORS = dict([(e.feature, e) for e in
+EXTRACTORS = {
+    "rf": dict([(e.feature, e) for e in
                    [MaxAmplitudeExtractor,
                     SignalDurationTimeExtractor,
                     EnergyExtractor,
-                    FootprintSimilarityPCCExtractor]])
+                    FootprintSimilarityPCCExtractor]]),
+    "hvps": dict([(e.feature, e) for e in
+                        [MaxHVPSCurrentExtractor]]),
+}
 
 
 class ProbeHealthVerifier:
@@ -660,6 +702,7 @@ class ProbeHealthVerifier:
             tx_frequency: float,
             nrx: int=32,
             voltage: int=_VOLTAGE,
+            probe_nr: int = 0
     )-> Footprint:
         """
         Creates and returns Footprint object.
@@ -689,6 +732,9 @@ class ProbeHealthVerifier:
             nrx: int=32,
             voltage: int=_VOLTAGE,
             footprint: Footprint=None,
+            signal_type: str="rf",
+            probe_nr: int = 0,
+            hpf_corner_frequency: float = None
     )-> ProbeHealthReport:
         """
         Checks probe elements by validating selected features
@@ -697,11 +743,16 @@ class ProbeHealthVerifier:
         - runs data acquisition,
         - computes signal features,
         - tries to determine which elements are valid or not.
-        Available features are:
+
+        RF data features are:
+
             1. amplitude
             2. energy
             3. signal_duration_time
             4. footprint_pcc
+
+        HVPS current features are:
+            1. amplitude
 
         :param cfg_path: a path to the system configuration file
         :param n: number of TX/RX sequences to execute (this may improve
@@ -711,59 +762,84 @@ class ProbeHealthVerifier:
         :param validator: ProbeElementValidator object, i.e. a validator
                           that should be used to determine if given parameter
                           have value within valid range
-        :param nrx: size of the receiving aperture
+        :param nrx: size of the receiving aperture. This parameter will be ignored if signal_type = hvps_current
         :param voltage: voltage to be used in tx/rx scheme
         :param footprint: object of the Footprint class;
                           if given, footprint tx/rx scheme will be used
+        :param signal_type: type of signal to be verified; available values: rf, hvps.
+                           NOTE: hvps is only available for the us4OEM+ rev 1 or later.
+        :param probe_nr: number of the probe to verify
+        :param hpf_corner_frequency: HPF corner frequency to apply (see Us4R documentation). Doesn't matter when signal_type == 'hvps'
+
         :return: an instance of the ProbeHealthReport
         """
-        rfs, metadata, masked_elements = self._acquire_rf_data(
-            cfg_path=cfg_path,
-            n=n,
-            tx_frequency=tx_frequency,
-            nrx=nrx,
-            voltage=voltage,
-            footprint=footprint,
-        )
+        if signal_type == "rf":
+            data, metadata, masked_elements, aux = self._acquire_rf_data(
+                cfg_path=cfg_path,
+                n=n,
+                tx_frequency=tx_frequency,
+                nrx=nrx,
+                voltage=voltage,
+                footprint=footprint,
+                probe_nr=probe_nr,
+                hpf_corner_frequency=hpf_corner_frequency
+            )
+        elif signal_type == "hvps":
+            data, metadata, masked_elements, aux = self._acquire_hvps_current(
+                cfg_path=cfg_path,
+                n=n,
+                tx_frequency=tx_frequency,
+                voltage=voltage,
+                footprint=footprint,
+                probe_nr=probe_nr,
+            )
+        else:
+            raise ValueError(f"Unsupported signal type: {signal_type}")
         health_report = self._check_probe_data(
-            rfs=rfs,
+            data=data,
             footprint=footprint,
             metadata=metadata,
             masked_elements=masked_elements,
             features=features,
-            validator=validator
+            validator=validator,
+            signal_type=signal_type,
+            aux=aux
         )
         return health_report
 
     def _check_probe_data(
             self,
-            rfs: np.ndarray,
+            data: np.ndarray,
             metadata: arrus.metadata.ConstMetadata,
             footprint: Footprint,
             masked_elements: Set[int],
             features: List[FeatureDescriptor],
-            validator: ProbeElementValidator
+            validator: ProbeElementValidator,
+            signal_type: str="rf",
+            aux: Dict[str, Any]=None
     ) -> ProbeHealthReport:
         """
         Creates probe health report.
         """
-        _, ntx, _, _ = rfs.shape
+        if aux is None:
+            aux = {}
+        n_repeats, ntx = data.shape[0], data.shape[1]
 
         # Compute feature values, verify the values according to given
         # validator.
         results = {}
         for feature in features:
-            extractor = EXTRACTORS[feature.name](metadata)
+            extractor = EXTRACTORS[signal_type][feature.name](metadata, **feature.params)
             if feature.name == "footprint_pcc":
                 try:
-                    extractor_result = extractor.extract(rfs, footprint.rf)
+                    extractor_result = extractor.extract(data, footprint.rf)
                 except:
                     raise ValueError(
                         "The footprint must by of a class Footprint. "
                         "Check if appropriate footprint is given."
                     )
             else:
-                extractor_result = extractor.extract(rfs)
+                extractor_result = extractor.extract(data)
 
             validator_result = validator.validate(
                 values=extractor_result,
@@ -807,9 +883,10 @@ class ProbeHealthVerifier:
             ),
             elements=elements_descriptors,
             sequence_metadata=metadata,
-            data=rfs,
+            data=data,
             footprint=footprint,
             validator=validator,
+            aux=aux
         )
         return report
 
@@ -821,6 +898,8 @@ class ProbeHealthVerifier:
             nrx,
             voltage,
             footprint=None,
+            probe_nr: int = 0,
+            hpf_corner_frequency: float = None
     ):
         """
         Acquires rf data. If footprint is given the footprint sequence is used,
@@ -833,8 +912,10 @@ class ProbeHealthVerifier:
                 placement="/GPU:0"
             )
             us4r = sess.get_device("/Us4R:0")
-            n_elements = us4r.get_probe_model().n_elements
-            masked_elements = us4r.channels_mask
+            if hpf_corner_frequency is not None:
+                us4r.set_hpf_corner_frequency(hpf_corner_frequency)
+            n_elements = us4r.get_probe_model(probe_nr).n_elements
+            masked_elements = us4r.get_channels_mask(probe_nr)
             if footprint is None:
                 seq = LinSequence(
                     tx_aperture_center_element=np.arange(0, n_elements),
@@ -853,6 +934,8 @@ class ProbeHealthVerifier:
                     tgc_slope=0,
                     downsampling_factor=1,
                     speed_of_sound=1490,
+                    tx_placement=f"Probe:{probe_nr}",
+                    rx_placement=f"Probe:{probe_nr}",
                 )
             else:
                 seq = footprint.get_sequence()
@@ -887,5 +970,98 @@ class ProbeHealthVerifier:
                 data = buffer.get()[0]
                 rfs.append(np.squeeze(data.copy()))
             rfs = np.stack(rfs)
-        return rfs, const_metadata, masked_elements
+        return rfs, const_metadata, masked_elements, {}
+
+    def _acquire_hvps_current(
+            self,
+            cfg_path,
+            n,
+            tx_frequency,
+            voltage,
+            footprint=None,
+            acquisition_parameters: Dict[str, Any]=None,
+            probe_nr: int = 0,
+    ):
+        if voltage > 15:
+            raise ValueError("The voltage can not be higher than 15V for probe check")
+
+        if acquisition_parameters is None:
+            acquisition_parameters = {}
+
+        pulse_length = acquisition_parameters.get("pulse_length", 150e-6)
+
+        with arrus.session.Session(cfg_path) as sess:
+            us4r = sess.get_device("/Us4R:0")
+            LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
+            us4r.set_maximum_pulse_length(200e-6)
+            us4r.set_hv_voltage(voltage)
+            ncycles = pulse_length*tx_frequency
+            n_elements = us4r.get_probe_model().n_elements
+            masked_elements = us4r.channels_mask
+            if footprint is None:
+                ops = []
+                for ch in range(n_elements):
+                    aperture = np.zeros(n_elements).astype(bool)
+                    aperture[ch] = True
+                    op = TxRx(
+                        Tx(aperture=aperture,
+                           excitation=Pulse(center_frequency=tx_frequency, n_periods=ncycles, inverse=False),
+                           delays=[0],
+                           placement=f"Probe:{probe_nr}"),
+                        Rx(aperture=aperture, sample_range=(0, 4096),
+                           downsampling_factor=1,
+                           placement=f"Probe:{probe_nr}"),
+                        pri=20e-3
+                    )
+                    ops.append(op)
+                seq = TxRxSequence(ops)
+            else:
+                seq = footprint.get_sequence()
+                n = footprint.get_number_of_frames()
+                LOGGER.info("Sequence loaded from footprint.")
+            scheme = Scheme(
+                tx_rx_sequence=seq,
+                work_mode="MANUAL_OP",
+            )
+            buffer, metadata = sess.upload(scheme)
+            fcm = metadata.data_description.custom["frame_channel_mapping"]
+            oem_mapping = fcm.us4oems  # TX/RX -> OEM mapping
+            buffer.append_on_new_data_callback(lambda element: element.release())
+            oem_nrs = []
+            if voltage > 15:
+                raise ValueError("The voltage can not be higher than 15V "
+                                 "for probe check")
+            # Wait for the voltage to stabilize.
+            time.sleep(0.1)
+            LOGGER.log(arrus.logging.INFO, "Starting TX/RX")
+            measurements = []
+            for oem_nr in range(us4r.n_us4oems):
+                oem = us4r.get_us4oem(oem_nr)
+                oem.set_hvps_sync_measurement(n_samples=509, frequency=1e6)
+                oem.set_wait_for_hvps_measurement_done()
+
+            for i in range(n):
+                for ch in range(n_elements):
+                    LOGGER.log(arrus.logging.DEBUG, f"Performing TX/RX op: {ch}")
+                    oem_nr = int(oem_mapping[ch, 0])  # (TX/RX = ch, transmitting channel)
+                    oem_nrs.append(oem_nr)
+                    oem = us4r.get_us4oem(oem_nr)
+                    sess.run(sync=True, timeout=5000)
+
+                    # Wait for the measurement to be finished on all OEMs (we turned on HVPS
+                    # measurement on all OEMs, so to avoid unhandled IRQs error, just wait for
+                    # all OEMs to finish the measurement).
+                    for nr in range(us4r.n_us4oems):
+                        us4r.get_us4oem(nr).wait_for_hvps_measurement_done(timeout=5000)
+
+                    measurement = us4r.get_us4oem(oem_nr).get_hvps_measurement().get_array()
+                    measurements.append(measurement)
+            measurements = np.stack(measurements)
+            measurements_shape = (n, n_elements) + measurements.shape[1:]
+            measurements = measurements.reshape(measurements_shape)
+            # polarity == 0 => minus
+            # unit == 1 => current
+            hvm0_current = measurements[:, :, 0, 0, 1, :]
+            hvm0_current = hvm0_current[:, :, :, np.newaxis]  # (n repeats, ntx, nsamples, nrx)
+        return measurements, metadata, masked_elements, {"oem_nrs": np.stack(oem_nrs)}
 

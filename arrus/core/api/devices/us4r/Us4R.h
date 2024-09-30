@@ -5,8 +5,6 @@
 
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
-#include "arrus/core/api/devices/probe/Probe.h"
-#include "arrus/core/api/devices/us4r/ProbeAdapter.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/framework/Buffer.h"
@@ -17,6 +15,7 @@
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/Ultrasound.h"
 #include "arrus/core/api/session/Metadata.h"
+#include "arrus/core/api/devices/us4r/HVVoltage.h"
 
 namespace arrus::devices {
 
@@ -42,26 +41,7 @@ public:
      */
     virtual Us4OEM *getUs4OEM(Ordinal ordinal) = 0;
 
-    /**
-     * Returns a handle to an adapter identified by given ordinal number.
-     *
-     * @param ordinal ordinal number of the adapter to get
-     * @return a handle to the adapter device
-     */
-    virtual ProbeAdapter::RawHandle getProbeAdapter(Ordinal ordinal) = 0;
-
-    /**
-     * Returns a handle to a probe identified by given ordinal number.
-     *
-     * @param ordinal ordinal number of the probe to get
-     * @return a handle to the probe
-     */
-    virtual arrus::devices::Probe *getProbe(Ordinal ordinal) = 0;
-
-    virtual std::pair<
-        std::shared_ptr<arrus::framework::Buffer>,
-        std::shared_ptr<arrus::session::Metadata>
-    >
+    std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override = 0;
 
     /**
@@ -70,6 +50,15 @@ public:
      * @param voltage voltage to set [V]
      */
     virtual void setVoltage(Voltage voltage) = 0;
+
+    /**
+     * Sets HV voltage.
+    *  The input vector describes what voltages should be set for each tx voltage level (rail).
+    *  voltages[0] is for the tx voltage level 0, voltage[1] is for tx voltage level 1 and so on.
+     *
+     * @param voltages voltages to set [V]
+     */
+    virtual void setVoltage(const std::vector<HVVoltage> &voltages) = 0;
 
     /**
      * Returns configured HV voltage.
@@ -226,14 +215,29 @@ public:
 
     virtual void start() override = 0;
     virtual void stop() override = 0;
-    virtual void trigger() override = 0;
+    virtual void trigger(bool sync, std::optional<long long> timeout) override = 0;
 
-    virtual std::vector<unsigned short> getChannelsMask() = 0;
+    /**
+     * Synchronization point with us4R system. After returning from this method, the last "TX/RX" (triggered by the
+     * trigger method will be  fully executed by the system.
+     *
+     * Sync with "SEQ_IRQ" interrupt (i.e. wait until the SEQ IRQ will occur).
+     *
+     * @param timeout timeout in number of milliseconds
+     */
+    virtual void sync(std::optional<long long> timeout) override = 0;
+
+    virtual std::vector<unsigned short> getChannelsMask(Ordinal probeNumber) = 0;
 
     /**
      * Returns the number of us4OEM modules that are used in this us4R system.
      */
     virtual uint8_t getNumberOfUs4OEMs() = 0;
+
+    /**
+     * Returns the number of probes that are connected to the system.
+     */
+    int getNumberOfProbes() const override = 0;
 
     /**
      * Returns NOMINAL us4R device sampling frequency.
@@ -324,7 +328,37 @@ public:
     /**
      * Returns serial number of the backplane (if available).
      */
-    virtual const char* getBackplaneRevision() = 0;
+    virtual const char *getBackplaneRevision() = 0;
+
+    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+
+    virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
+
+    /**
+     * Returns probe identified by given ordinal number.
+     *
+     * @param ordinal ordinal number of the probe to get
+     * @return probe handle
+     */
+    Probe* getProbe(Ordinal ordinal) override = 0;
+
+    /**
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * std::nullopt means to use up to 32 TX cycles.
+     *
+     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     */
+    virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
+
+    /**
+     * Return the system TX frequency that would be actually set for the given TX frequency.
+     * The output frequency depends on the frequency discretization performed by the driver.
+     *
+     * @param frequency input frequency
+     * @return the actual frequency that will be set
+     */
+    virtual float getActualTxFrequency(float frequency) = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

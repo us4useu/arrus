@@ -2,9 +2,9 @@
 
 #define CUDART_PI_F 3.141592654f
 
-__constant__ float zElemConst[256];
-__constant__ float xElemConst[256];
-__constant__ float tangElemConst[256];
+__constant__ float zElemConst[1024];
+__constant__ float xElemConst[1024];
+__constant__ float tangElemConst[1024];
 
 extern "C"
 __global__ void
@@ -19,7 +19,11 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
           const int *txApFstElem, const int *txApLstElem,
           const int *rxApOrigElem, const int nRx,
           const float minRxTang, const float maxRxTang,
-          float const initDel) {
+          float const initDel,
+          const int zElemConstOffset,
+          const int xElemConstOffset,
+          const int tangElemConstOffset
+) {
 
     int z = blockIdx.x * blockDim.x + threadIdx.x;
     int x = blockIdx.y * blockDim.y + threadIdx.y;
@@ -29,6 +33,10 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
         return;
     }
     int iTx = iGlobalTx % nTx;
+
+    float *zElemConstLocal = zElemConst + zElemConstOffset;
+    float *xElemConstLocal = xElemConst + xElemConstOffset;
+    float *tangElemConstLocal = tangElemConst + tangElemConstOffset;
 
     int iElem, offset;
     float interpWgh;
@@ -69,10 +77,10 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
         // Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
         // to determine if the pixel is in the sonified area (dot product >= 0).
         // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
-        txApod = (((-(xElemConst[txApFstElem[iTx]] - xFoc) * (zPix[z] - zFoc) +
-                    (zElemConst[txApFstElem[iTx]] - zFoc) * (xPix[x] - xFoc)) * pixFocArrang >= 0.f) &&
-                  (((xElemConst[txApLstElem[iTx]] - xFoc) * (zPix[z] - zFoc) -
-                    (zElemConst[txApLstElem[iTx]] - zFoc) * (xPix[x] - xFoc)) * pixFocArrang >= 0.f)) ? 1.f : 0.f;
+        txApod = (((-(xElemConstLocal[txApFstElem[iTx]] - xFoc) * (zPix[z] - zFoc) +
+                    (zElemConstLocal[txApFstElem[iTx]] - zFoc) * (xPix[x] - xFoc)) * pixFocArrang >= 0.f) &&
+                  (((xElemConstLocal[txApLstElem[iTx]] - xFoc) * (zPix[z] - zFoc) -
+                    (zElemConstLocal[txApLstElem[iTx]] - zFoc) * (xPix[x] - xFoc)) * pixFocArrang >= 0.f)) ? 1.f : 0.f;
     } else {
         /* PWI */
         txDist = (zPix[z] - txApCentZ[iTx]) * cosf(txAngZX[iTx]) +
@@ -81,10 +89,10 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
         // Projections of ApEdge-Pix vector on the rotated unit vector of tx direction (dot products) ...
         // to determine if the pixel is in the sonified area (dot product >= 0).
         // For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
-        txApod = (((-(zPix[z] - zElemConst[txApFstElem[iTx]]) * sinf(txAngZX[iTx]) +
-                    (xPix[x] - xElemConst[txApFstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f) &&
-                  (((zPix[z] - zElemConst[txApLstElem[iTx]]) * sinf(txAngZX[iTx]) -
-                    (xPix[x] - xElemConst[txApLstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f)) ? 1.f : 0.f;
+        txApod = (((-(zPix[z] - zElemConstLocal[txApFstElem[iTx]]) * sinf(txAngZX[iTx]) +
+                    (xPix[x] - xElemConstLocal[txApFstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f) &&
+                  (((zPix[z] - zElemConstLocal[txApLstElem[iTx]]) * sinf(txAngZX[iTx]) -
+                    (xPix[x] - xElemConstLocal[txApLstElem[iTx]]) * cosf(txAngZX[iTx])) >= 0.f)) ? 1.f : 0.f;
     }
     pixWgh = 0.0f;
     pix.real(0.0f);
@@ -95,9 +103,9 @@ iqRaw2Lri(complex<float> *iqLri, const complex<float> *iqRaw,
             iElem = iRx + rxApOrigElem[iTx];
             if(iElem < 0 || iElem >= nElem) continue;
 
-            rxDist = hypotf(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-            rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-            rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang * tangElemConst[iElem]);
+            rxDist = hypotf(xPix[x] - xElemConstLocal[iElem], zPix[z] - zElemConstLocal[iElem]);
+            rxTang = __fdividef(xPix[x] - xElemConstLocal[iElem], zPix[z] - zElemConstLocal[iElem]);
+            rxTang = __fdividef(rxTang - tangElemConstLocal[iElem], 1.f + rxTang * tangElemConstLocal[iElem]);
             if(rxTang < minRxTang || rxTang > maxRxTang) continue;
 
             rxApod = (rxTang - centRxTang) * rngRxTangInv;

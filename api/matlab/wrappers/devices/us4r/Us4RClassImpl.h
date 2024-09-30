@@ -64,7 +64,7 @@ public:
     }
 
     void getChannelsMask(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        auto channelsMask = get(obj)->getChannelsMask();
+        auto channelsMask = get(obj)->getChannelsMask(0);
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_VECTOR(ctx, unsigned short, channelsMask);
     }
 

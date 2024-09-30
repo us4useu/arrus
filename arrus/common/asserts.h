@@ -10,6 +10,13 @@ do {                                        \
     }                                       \
 } while(0)
 
+#define ARRUS_REQUIRES_TRUE_IAE(CONDITION, MSG) \
+do {                                        \
+    if (!(CONDITION)) {                     \
+        throw ::arrus::IllegalArgumentException((MSG)); \
+    }                                       \
+} while(0)
+
 
 #define ARRUS_REQUIRES_TRUE_E(CONDITION, EXCEPTION) \
 do {                                        \

@@ -24,9 +24,7 @@ public:
     virtual
     std::pair<std::vector<Us4OEMSettings>, ProbeAdapterSettings>
     convertToUs4OEMSettings(const ProbeAdapterSettings &probeAdapterSettings,
-                            const ProbeSettings &probeSettings,
                             const RxSettings &rxSettings,
-                            const std::vector<ChannelIdx> &channelsMask,
                             Us4OEMSettings::ReprogrammingMode reprogrammingMode,
                             std::optional<Ordinal> nUs4OEMs,
                             const std::vector<Ordinal> &adapterToUs4RModuleNr,

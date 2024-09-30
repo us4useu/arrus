@@ -68,7 +68,7 @@ public:
     MOCK_METHOD(void, SetRxDelay,
             (const float delay, const unsigned short firing), (override));
     MOCK_METHOD(void, EnableTransmit, (), (override));
-    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger), (override));
+    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, bool resetSequencerPointer), (override));
     MOCK_METHOD(void, SetRxChannelMapping,
             ( const std::vector<uint8_t> & mapping, const uint16_t rxMapId),
     (override));
@@ -85,7 +85,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode),
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode, bool irqDone),
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
@@ -113,6 +113,7 @@ public:
     MOCK_METHOD(void, MarkEntriesAsReadyForTransfer, (unsigned short,unsigned short), (override));
     MOCK_METHOD(void, RegisterReceiveOverflowCallback, (const std::function<void (void)> &), (override));
     MOCK_METHOD(void, RegisterTransferOverflowCallback, (const std::function<void (void)> &), (override));
+    MOCK_METHOD(void, RegisterCallback, (IUs4OEM::MSINumber, const std::function<void (void)> &), (override));
     MOCK_METHOD(void, EnableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, EnableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, SyncReceive, (), (override));
@@ -180,8 +181,9 @@ public:
     MOCK_METHOD(void, SetStandardIODriveMode, (), (override));
     MOCK_METHOD(void, SetWaveformIODriveMode, (), (override));
     MOCK_METHOD(void, SetIOLevels, (uint8_t), (override));
-    MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint8_t), (override));
-    MOCK_METHOD(void, SetIOBSRegister, (uint8_t, uint8_t, uint8_t, bool, uint16_t), (override));
+    MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint16_t), (override));
+    MOCK_METHOD(void, SetIOBSRegister, (uint16_t, uint8_t, bool, uint16_t), (override));
+    MOCK_METHOD(uint32_t, GetIOBSRegister, (uint16_t), (override));
     MOCK_METHOD(void, ListPeriphs, (), (override));
     MOCK_METHOD(void, DumpPeriph, (std::string, uint32_t), (override));
     MOCK_METHOD(size_t, GetBaseAddr, (), (override));
@@ -226,7 +228,25 @@ public:
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
+    MOCK_METHOD(float, GetMinTxPulseLength, (), (const, override));
+    MOCK_METHOD(float, GetMaxTxPulseLength, (), (const, override));
+    MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end, bool syncMode, uint32_t endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
+    MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
+    MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
+    MOCK_METHOD(void, ClearCallbacks, (), (override));
+    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
+    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
+    MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
+    MOCK_METHOD(void, VerifyTxWaveform, (), (override));
+    MOCK_METHOD(void, EnableTxTimeout, (), (override));
+    MOCK_METHOD(void, DisableTxTimeout, (), (override));
+    MOCK_METHOD(void, SetTxTimeout, (uint8_t id, uint16_t timeoutUs), (override));
+    MOCK_METHOD(void, SetFiringTxTimoutId, (uint16_t firing, uint8_t id), (override));
+    MOCK_METHOD(void, SetTxVoltageLevel, (uint8_t level, uint16_t firing), (override));
+    MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
+    MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
+    MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short  firing), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
