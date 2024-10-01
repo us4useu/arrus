@@ -620,9 +620,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
-    RxSettingsValidator validator;
-    validator.validate(settings);
-    validator.throwOnErrors();
+    // TODO(ARRUS-179) enable (do the validation here, instead of the low-level OEM?)
+//    RxSettingsValidator validator;
+//    validator.validate(settings);
+//    validator.throwOnErrors();
 
     std::unique_lock<std::mutex> guard(afeParamsMutex);
     bool isStateInconsistent = false;

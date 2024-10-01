@@ -176,14 +176,15 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
     upload(seq);
 }
 
-TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
-    std::vector<TxRxParameters> seq = {
-        TestTxRxParams().get()
-    };
-    EXPECT_CALL(*ius4oemPtr, TGCDisable);
-    EXPECT_CALL(*ius4oemPtr, TGCEnable).Times(0);
-    upload(seq, {});
-}
+// TODO(ARRUS-179) move to us4r-api
+//TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
+//    std::vector<TxRxParameters> seq = {
+//        TestTxRxParams().get()
+//    };
+//    EXPECT_CALL(*ius4oemPtr, TGCDisable);
+//    EXPECT_CALL(*ius4oemPtr, TGCEnable).Times(0);
+//    upload(seq, {});
+//}
 
 TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
     std::vector<TxRxParameters> seq = {

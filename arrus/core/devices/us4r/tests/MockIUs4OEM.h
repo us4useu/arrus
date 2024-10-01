@@ -75,11 +75,6 @@ public:
     MOCK_METHOD(void, SetTxChannelMapping,
             (const unsigned char srcChannel, const unsigned char dstChannel),
     (override));
-    MOCK_METHOD(void, TGCEnable, (), (override));
-    MOCK_METHOD(void, TGCDisable, (), (override));
-    MOCK_METHOD(void, TGCSetSamples,
-            (const std::vector<float> & samples, const int firing),
-    (override));
     MOCK_METHOD(void, TriggerStart, (), (override));
     MOCK_METHOD(void, TriggerStop, (), (override));
     MOCK_METHOD(void, TriggerSync, (), (override));
