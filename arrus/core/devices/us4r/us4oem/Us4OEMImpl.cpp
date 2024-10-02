@@ -17,12 +17,6 @@
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/common/validation.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
-#include "arrus/core/devices/us4r/RxSettings.h"
-#include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
 
@@ -45,7 +39,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     setTestPattern(RxTestPattern::OFF);
     disableAfeDemod();
-    setRxSettingsPrivate(this->rxSettings, true);
+    ius4oem->SetRxSettings(this->rxSettings, true);
     setCurrentSamplingFrequency(this->descriptor.getSamplingFrequency());
 }
 
@@ -193,11 +187,6 @@ void Us4OEMImpl::setTxTimeouts(const std::vector<TxTimeout> &txTimeouts) {
     }
 }
 
-void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
-    RxSettingsBuilder rxSettingsBuilder(this->rxSettings);
-    this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc)->build();
-    setTgcCurve(this->rxSettings);
-}
 Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us4OEMAperture &txAperture,
                                                                         const Us4OEMAperture &rxAperture) {
     std::vector<bool> result(Us4OEMDescriptor::N_ADDR_CHANNELS, false);
@@ -283,7 +272,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     ius4oem->SetTxDelays(txDelays.size());
 
     // Build sequence waveform.
-    for (OpId firing = 0; firing < ARRUS_SAFE_CAST(sequence.size(), OpId); ++firing) {
+    for (OpId firing = 0; firing < ARRUS_SAFE_CAST(sequences.size(), OpId); ++firing) {
         ius4oem->BuildSequenceWaveform(firing);
     }
 }
@@ -570,6 +559,12 @@ void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequence
     }
     ARRUS_REQUIRES_TRUE_IAE(allCurvesTheSame, "TGC curves for all sequences should be exactly the same.");
     setTgcCurve(sequences.at(0).getTgcCurve());
+}
+
+void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
+    RxSettingsBuilder rxSettingsBuilder(this->rxSettings);
+    this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc).build();
+    setRxSettings(this->rxSettings);
 }
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
@@ -870,6 +865,9 @@ void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
 
 float Us4OEMImpl::getActualTxFrequency(float frequency) {
     return ius4oem->GetOCWSFrequency(frequency);
+}
+void Us4OEMImpl::setRxSettings(const RxSettings &settings) {
+    ius4oem->SetRxSettings(settings, false);
 }
 
 }// namespace arrus::devices

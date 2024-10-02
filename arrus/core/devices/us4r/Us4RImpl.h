@@ -16,7 +16,7 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"

@@ -12,35 +12,35 @@
 
 namespace arrus::devices {
 
-class Us4RLoggerWrapper : public ::us4r::Logger {
+class Us4RLoggerWrapper : public ::us4us::us4r::Logger {
 public:
 
     explicit Us4RLoggerWrapper(arrus::Logger::SharedHandle logger)
             : logger(std::move(logger)) {}
 
     void
-    log(const ::us4r::LogSeverity severity, const std::string &msg) override {
+    log(const ::us4us::us4r::LogSeverity severity, const std::string &msg) override {
         switch(severity) {
-            case ::us4r::LogSeverity::TRACE:
-                logger->log(arrus::LogSeverity::TRACE, msg);
-                break;
-            case ::us4r::LogSeverity::DEBUG:
-                logger->log(arrus::LogSeverity::DEBUG, msg);
-                break;
-            case ::us4r::LogSeverity::INFO:
-                logger->log(arrus::LogSeverity::INFO, msg);
-                break;
-            case ::us4r::LogSeverity::WARNING:
-                logger->log(arrus::LogSeverity::WARNING, msg);
-                break;
-            case ::us4r::LogSeverity::ERROR:
-                logger->log(arrus::LogSeverity::ERROR, msg);
-                break;
-            case ::us4r::LogSeverity::FATAL:
-                logger->log(arrus::LogSeverity::FATAL, msg);
-                break;
-            default:
-                throw std::runtime_error("Unknown logging level");
+        case ::us4us::us4r::LogSeverity::TRACE:
+            logger->log(arrus::LogSeverity::TRACE, msg);
+            break;
+        case ::us4us::us4r::LogSeverity::DEBUG:
+            logger->log(arrus::LogSeverity::DEBUG, msg);
+            break;
+        case ::us4us::us4r::LogSeverity::INFO:
+            logger->log(arrus::LogSeverity::INFO, msg);
+            break;
+        case ::us4us::us4r::LogSeverity::WARNING:
+            logger->log(arrus::LogSeverity::WARNING, msg);
+            break;
+        case ::us4us::us4r::LogSeverity::ERROR:
+            logger->log(arrus::LogSeverity::ERROR, msg);
+            break;
+        case ::us4us::us4r::LogSeverity::FATAL:
+            logger->log(arrus::LogSeverity::FATAL, msg);
+            break;
+        default:
+            throw std::runtime_error("Unknown logging level");
         }
     }
 

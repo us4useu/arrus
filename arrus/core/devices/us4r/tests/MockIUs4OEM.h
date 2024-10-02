@@ -24,17 +24,7 @@ public:
     MOCK_METHOD(void, ReleaseTransferRxBufferToHost,
         (unsigned char * dstAddress, size_t length, size_t srcAddress),
     (override));
-    MOCK_METHOD(void, SetPGAGain, (::us4r::afe58jd48::PGA_GAIN gain), (override));
-    MOCK_METHOD(void, SetLPFCutoff, (::us4r::afe58jd48::LPF_PROG cutoff),
-    (override));
-    MOCK_METHOD(void, SetActiveTermination,
-            (::us4r::afe58jd48::ACTIVE_TERM_EN endis, ::us4r::afe58jd48::GBL_ACTIVE_TERM term),
-    (override));
-    MOCK_METHOD(void, SetLNAGain, (::us4r::afe58jd48::LNA_GAIN_GBL gain),
-    (override));
-    MOCK_METHOD(void, SetDTGC,
-            (::us4r::afe58jd48::EN_DIG_TGC endis, ::us4r::afe58jd48::DIG_TGC_ATTENUATION att),
-    (override));
+    MOCK_METHOD(void, SetRxSettings, (const us4us::us4r::RxSettings &rxSettings, bool force), (override));
     MOCK_METHOD(void, InitializeTX, (), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
@@ -135,7 +125,6 @@ public:
     MOCK_METHOD(void, EnableInterrupts, (), (override));
     MOCK_METHOD(void, DisableInterrupts, (), (override));
 
-    MOCK_METHOD(void, SetActiveTermination, (::us4r::afe58jd48::ACTIVE_TERM_EN, ::us4r::afe58jd48::ACT_TERM_IND_RES), (override));
     MOCK_METHOD(void, AfeWriteRegister, (uint8_t, uint8_t, uint16_t), (override));
     MOCK_METHOD(void, AfeDemodEnable, (), (override));
     MOCK_METHOD(void, AfeDemodEnable, (uint8_t), (override));
@@ -242,7 +231,9 @@ public:
     MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
     MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short  firing), (override));
+    MOCK_METHOD(void, SetCustomSequenceWaveform, (const unsigned short firing, const std::vector<uint32_t>&), (override));
 };
+
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
 

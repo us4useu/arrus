@@ -1,5 +1,4 @@
 #include "Us4RImpl.h"
-#include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
 #include "TxTimeoutRegister.h"
 #include "arrus/core/common/interpolate.h"
@@ -576,8 +575,8 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyC
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setTgcSamples(tgcCurvePoints)
-                             ->setApplyTgcCharacteristic(applyCharacteristic)
-                             ->build();
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .build();
     setRxSettings(newRxSettings);
 }
 
@@ -647,7 +646,7 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 
 void Us4RImpl::setPgaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getPgaGain() {
@@ -656,7 +655,7 @@ uint16 Us4RImpl::getPgaGain() {
 }
 void Us4RImpl::setLnaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getLnaGain() {
@@ -665,17 +664,17 @@ uint16 Us4RImpl::getLnaGain() {
 }
 void Us4RImpl::setLpfCutoff(uint32 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setDtgcAttenuation(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value).build();
     setRxSettings(newRxSettings);
 }
 

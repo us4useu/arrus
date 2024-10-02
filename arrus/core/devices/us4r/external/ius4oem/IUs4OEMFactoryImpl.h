@@ -22,8 +22,7 @@ public:
 
     IUs4OEMHandle getIUs4OEM(unsigned index) override {
         Logger::SharedHandle arrusLogger = getLoggerFactory()->getLogger();
-        ::us4r::Logger::SharedHandle logger =
-                std::make_shared<Us4RLoggerWrapper>(arrusLogger);
+        ::us4us::us4r::Logger::SharedHandle logger = std::make_shared<Us4RLoggerWrapper>(arrusLogger);
         return IUs4OEMHandle(GetUs4OEM(index, logger));
     }
 

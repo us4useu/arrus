@@ -14,7 +14,6 @@ namespace {
 
 using namespace arrus;
 using namespace arrus::devices;
-using namespace ::us4r::afe58jd48;
 
 using ::testing::_;
 using ::testing::FloatEq;

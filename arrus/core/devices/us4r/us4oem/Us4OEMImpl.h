@@ -72,11 +72,10 @@ public:
     float getSamplingFrequency() override;
     void start() override;
     void stop() override;
-    void setTgcCurve(const RxSettings &cfg);
     Ius4OEMRawHandle getIUs4OEM() override;
     void enableSequencer(bool resetSequencerPointer) override;
     std::vector<uint8_t> getChannelMapping() override;
-    void setRxSettings(const RxSettings &newSettings) override;
+    void setRxSettings(const RxSettings &settings) override;
     float getFPGATemperature() override;
     float getUCDTemperature() override;
     float getUCDExternalTemperature() override;
@@ -137,12 +136,6 @@ private:
     uint32_t getTxStartSampleNumberAfeDemod(float ddcDecimationFactor);
 
     // IUs4OEM AFE setters.
-    void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
-    void setPgaGainAfe(uint16 value, bool force);
-    void setLnaGainAfe(uint16 value, bool force);
-    void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
-    void setLpfCutoffAfe(uint32 value, bool force);
-    void setActiveTerminationAfe(std::optional<uint16> param, bool force);
     void enableAfeDemod();
     void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq);
     void setAfeDemodDefault();
@@ -195,6 +188,7 @@ private:
     std::vector<uint8_t> channelMapping;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
     /** Current RX settings */
+    // TODO(ARRUS-179) consider removing the below property
     RxSettings rxSettings;
     bool externalTrigger{false};
     /** Current sampling frequency of the data produced by us4OEM. */
