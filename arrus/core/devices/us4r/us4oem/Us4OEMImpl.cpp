@@ -39,7 +39,7 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     setTestPattern(RxTestPattern::OFF);
     disableAfeDemod();
-    ius4oem->SetRxSettings(this->rxSettings, true);
+    this->ius4oem->SetRxSettings(this->rxSettings, true);
     setCurrentSamplingFrequency(this->descriptor.getSamplingFrequency());
 }
 
