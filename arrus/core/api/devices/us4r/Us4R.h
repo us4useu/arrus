@@ -98,7 +98,7 @@ public:
      * @param oemId OEM ID
      * @return positive HV voltage UCD measurement [V]
      */
-    virtual float getUCDMeasuredHVPVoltage(uint8_t oemId) = 0;
+    virtual float getMeasuredHVPVoltage(uint8_t oemId) = 0;
 
     /**
      * Gets negative HV voltage measurement by UCD chip on OEM.
@@ -106,7 +106,7 @@ public:
      * @param oemId OEM ID
      * @return negative HV voltage UCD measurement [V]
      */
-    virtual float getUCDMeasuredHVMVoltage(uint8_t oemId) = 0;
+    virtual float getMeasuredHVMVoltage(uint8_t oemId) = 0;
 
     /**
      * Disables HV voltage.

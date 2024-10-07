@@ -124,6 +124,8 @@ public:
     MOCK_METHOD(uint16_t, getAfe, (uint8_t address), (override));
     MOCK_METHOD(void, setAfe, (uint8_t address, uint16_t value), (override));
     MOCK_METHOD(float, getUCDMeasuredVoltage, (uint8_t), (override));
+    MOCK_METHOD(float, getMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD(float, getMeasuredHVMVoltage, (), (override));
     MOCK_METHOD(float, getFPGAWallclock, (), (override));
     MOCK_METHOD(void, setHpfCornerFrequency, (uint32_t), (override));
     MOCK_METHOD(void, disableHpf, (), (override));
