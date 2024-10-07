@@ -545,11 +545,11 @@ class Pipeline:
             buffers.append(b)
         if len(buffers) == 1:
             # Backward compatibility
-            self._input_buffer = buffers[0]
+            _input_buffer = buffers[0]
         else:
-            self._input_buffer = buffers
+            _input_buffer = buffers
 
-        data = self._input_buffer
+        data = _input_buffer
         for step in self.steps:
             if not isinstance(step, (Pipeline, Output)):
                 data = step.initialize(data)
