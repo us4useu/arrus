@@ -121,9 +121,10 @@ public:
     float getActualTxFrequency(float frequency) override;
 
     bool isOEMPlus() {
-        return getOemVersion() == 2;
+        auto version = getOemVersion();
+        return version >= 2 && version <= 5;
     }
-
+    
     std::pair<float, float> getTGCValueRange() const override;
 
 private:

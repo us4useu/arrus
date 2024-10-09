@@ -43,7 +43,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
             auto _hv = std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));
         }
-        else if(ver == 2) {
+        else if(ver >= 2 && ver <= 5) {
             std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
             auto _hv = std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));
