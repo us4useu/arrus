@@ -124,7 +124,15 @@ public:
         auto version = getOemVersion();
         return version >= 2 && version <= 5;
     }
-    
+
+    bool isAFEJD18() override {
+        return getOemVersion() == 1 || getOemVersion() == 2;
+    }
+
+    bool isAFEJD48() override {
+        return getOemVersion() == 3;
+    }
+
     std::pair<float, float> getTGCValueRange() const override;
 
 private:
