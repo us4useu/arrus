@@ -1128,4 +1128,21 @@ void Us4RImpl::registerPulserIRQCallback() {
     }
 }
 
+float Us4RImpl::getMinimumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return minimum;
+}
+
+/**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+float Us4RImpl::getMaximumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return maximum;
+}
+
+std::pair<float, float> Us4RImpl::getTGCValueRange() const {
+    return us4oems.at(0)->getTGCValueRange();
+}
+
 }// namespace arrus::devices

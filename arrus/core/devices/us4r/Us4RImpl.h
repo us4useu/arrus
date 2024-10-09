@@ -148,6 +148,15 @@ public:
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
 
+    float getMinimumTGCValue() const override;
+
+    /**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+    float getMaximumTGCValue() const override;
+
+    std::pair<float, float> getTGCValueRange() const;
+
 private:
     struct VoltageLogbook {
         enum class Polarity { MINUS, PLUS };

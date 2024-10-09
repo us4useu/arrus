@@ -360,6 +360,16 @@ public:
      */
     virtual float getActualTxFrequency(float frequency) = 0;
 
+    /**
+     * Returns minimum available TGC value, according to the currently set parameters.
+     */
+    virtual float getMinimumTGCValue() const = 0;
+
+    /**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+    virtual float getMaximumTGCValue() const = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

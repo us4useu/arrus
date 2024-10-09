@@ -11,7 +11,8 @@ class TgcCalculationContext:
 def compute_linear_tgc(
         tgc_context: TgcCalculationContext,
         fs: float,
-        linear_tgc
+        linear_tgc,
+        min_tgc_value, max_tgc_value
 ):
     tgc_start = linear_tgc.start
     tgc_slope = linear_tgc.slope

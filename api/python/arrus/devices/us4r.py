@@ -101,7 +101,10 @@ class Us4R(Device, Ultrasound):
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
                 self._tgc_context,
                 self.current_sampling_frequency,
-                tgc_curve)
+                tgc_curve,
+                min_tgc_value=self.get_minimum_tgc_value(),
+                max_tgc_value=self.get_maximum_tgc_value()
+            )
         elif not isinstance(tgc_curve, Iterable):
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
         # Here, TGC curve is iterable.
@@ -468,6 +471,12 @@ class Us4R(Device, Ultrasound):
         if isinstance(tgc, Iterable):
             tgc = np.array(tgc)
         return next(iter(tgc_contexts)), tgc
+
+    def get_minimum_tgc_value(self):
+        return self._handle.getMinimumTGCValue()
+
+    def get_maximum_tgc_value(self):
+        return self._handle.getMaximumTGCValue()
 
 
 # ------------------------------------------ LEGACY MOCK

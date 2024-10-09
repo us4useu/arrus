@@ -870,4 +870,8 @@ void Us4OEMImpl::setRxSettings(const RxSettings &settings) {
     ius4oem->SetRxSettings(settings, false);
 }
 
+std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
+    return ius4oem->GetTGCValueRange();
+}
+
 }// namespace arrus::devices
