@@ -17,6 +17,7 @@ from typing import Optional, Union, Sequence
 from arrus.devices.probe import ProbeDTO
 
 from arrus.kernels.simple_tx_rx_sequence import get_sample_range
+from arrus.kernels.tx_rx_sequence import get_tx_rx_sequence_sample_range
 
 DEVICE_TYPE = DeviceType("Us4R")
 
@@ -441,12 +442,16 @@ class Us4R(Device, Ultrasound):
                 # Make the curve hashable.
                 curve = tuple(seq.tgc_curve.tolist())
                 tgcs.add(curve)
-                sample_range = seq.get_sample_range_unique()
                 if medium is None:
                     # No context
                     tgc_contexts.add(None)
                 else:
                     c = medium.speed_of_sound
+                    sample_range = get_tx_rx_sequence_sample_range(
+                        seq,
+                        fs=self.current_sampling_frequency,
+                        speed_of_sound=c
+                    )
                     tgc_contexts.add(
                         arrus.kernels.tgc.TgcCalculationContext(
                             end_sample=sample_range[1],
