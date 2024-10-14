@@ -145,7 +145,7 @@ Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltag
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
-Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences, 
+Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
                                       uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                                       const std::vector<arrus::framework::NdArray> &txDelays,
@@ -271,7 +271,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     ius4oem->SetTxDelays(txDelays.size());
 }
 
-std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, 
+std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
                                                         uint32 startSample, uint32 endSample, uint16 entryId,
                                                         const TxRxParameters &op, uint16 rxMapId,
                                                         const std::optional<DigitalDownConversion> &ddc) {
@@ -311,7 +311,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
     ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
-    
+
     return std::make_pair(nBytes, sampleRxOffsetTimeResidue);
 }
 
@@ -686,6 +686,9 @@ float Us4OEMImpl::getUCDTemperature() { return ius4oem->GetUCDTemp(); }
 float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->GetUCDExtTemp(); }
 
 float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
+
+float Us4OEMImpl::getMeasuredHVPVoltage() { return ius4oem->GetMeasuredHVPVoltage(); }
+float Us4OEMImpl::getMeasuredHVMVoltage() { return ius4oem->GetMeasuredHVMVoltage(); }
 
 void Us4OEMImpl::checkFirmwareVersion() {
     try {

@@ -73,14 +73,19 @@ public:
     void start() override;
     void stop() override;
     void setTgcCurve(const RxSettings &cfg);
-    Ius4OEMRawHandle getIUs4OEM() override;
-    void enableSequencer(uint16 startEntry) override;
+
+    Ius4OEMRawHandle getIUs4oem() override;
+
+    void enableSequencer(uint16_t startEntry) override;
+
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
     float getUCDTemperature() override;
     float getUCDExternalTemperature() override;
     float getUCDMeasuredVoltage(uint8_t rail) override;
+    float getMeasuredHVPVoltage() override;
+    float getMeasuredHVMVoltage() override;
     void checkFirmwareVersion() override;
     uint32 getFirmwareVersion() override;
     void checkState() override;
@@ -164,7 +169,7 @@ private:
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                        const std::vector<arrus::framework::NdArray> &txDelays,
                        const Us4OEMRxMappingRegister &rxMappingRegister);
-    std::pair<size_t, float> scheduleReceiveDDC(size_t outputAddress, 
+    std::pair<size_t, float> scheduleReceiveDDC(size_t outputAddress,
                                                 uint32 startSample, uint32 endSample, uint16 entryId,
                                                 const us4r::TxRxParameters &op, uint16 rxMapId,
                                                 const std::optional<ops::us4r::DigitalDownConversion> &ddc);

@@ -84,19 +84,12 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
         voltages.push_back(VoltageLogbook{std::string("HVM on HV supply"), voltage, VoltageLogbook::Polarity::MINUS});
     }
 
-    auto ver = us4oems[0]->getOemVersion();
-
-    if (ver == 1) {
-        //Verify measured voltages on OEMs
-        for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-            voltage = this->getUCDMeasuredHVPVoltage(i);
-            voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::PLUS});
-            voltage = this->getUCDMeasuredHVMVoltage(i);
-            voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::MINUS});
-        }
-    } else if (ver == 2) {
-        //Verify measured voltages on OEM+s
-        //Currently OEM+ does not support internal voltage measurement - skip
+    //Verify measured voltages on OEMs
+    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+        voltage = this->getMeasuredHVPVoltage(i);
+        voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::PLUS});
+        voltage = this->getMeasuredHVMVoltage(i);
+        voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::MINUS});
     }
     return voltages;
 }
@@ -256,14 +249,12 @@ float Us4RImpl::getMeasuredMVoltage() {
     return hv[0]->getMeasuredMVoltage();
 }
 
-float Us4RImpl::getUCDMeasuredHVPVoltage(uint8_t oemId) {
-    //UCD rail 19 = HVP
-    return us4oems[oemId]->getUCDMeasuredVoltage(19);
+float Us4RImpl::getMeasuredHVPVoltage(uint8_t oemId) {
+    return us4oems[oemId]->getMeasuredHVPVoltage();
 }
 
-float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
-    //UCD rail 20 = HVM}
-    return us4oems[oemId]->getUCDMeasuredVoltage(20);
+float Us4RImpl::getMeasuredHVMVoltage(uint8_t oemId) {
+    return us4oems[oemId]->getMeasuredHVMVoltage();
 }
 
 void Us4RImpl::disableHV() {
