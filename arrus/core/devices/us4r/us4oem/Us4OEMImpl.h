@@ -74,7 +74,6 @@ public:
     void stop() override;
     void setTgcCurve(const RxSettings &cfg);
 
-    Ius4OEMRawHandle getIUs4oem() override;
 
     void enableSequencer(uint16_t startEntry) override;
 
@@ -126,6 +125,7 @@ public:
     bool isOEMPlus() {
         return getOemVersion() == 2;
     }
+    Ius4OEMRawHandle getIUs4OEM() override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
