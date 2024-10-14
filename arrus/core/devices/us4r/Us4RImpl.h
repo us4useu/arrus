@@ -8,6 +8,8 @@
 #include <boost/algorithm/string.hpp>
 
 #include "TxTimeoutRegister.h"
+#include "BlockingQueue.h"
+#include "Us4REvent.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -21,6 +23,7 @@
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+#include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/utils.h"
 
 namespace arrus::devices {
@@ -193,6 +196,8 @@ private:
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
     void registerPulserIRQCallback();
+    void handleEvents();
+    void handlePulserInterrupt();
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;
@@ -217,6 +222,10 @@ private:
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
+
+    BlockingQueue<Us4REvent> eventQueue{1000};
+    std::thread eventHandlerThread;
+    std::unordered_map<std::string, std::function<void()>> eventHandlers;
 };
 
 }// namespace arrus::devices

@@ -69,6 +69,8 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                               format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
         }
     }
+    this->eventHandlers.insert({"pulserIrq", [this]() {this->handlePulserInterrupt(); }});
+    this->eventHandlerThread = std::thread([this](){this->handleEvents(); });
 }
 
 std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
@@ -406,6 +408,9 @@ Us4RImpl::~Us4RImpl() {
         if (this->buffer) {
             cleanupBuffers();
         }
+        this->eventQueue.shutdown();
+        getDefaultLogger()->log(LogSeverity::DEBUG, "Waiting for the Us4R event handler thread to stop.");
+        this->eventHandlerThread.join();
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
@@ -432,10 +437,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
             return this->getActualTxFrequency(frequency);
         }};
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
-    // Register pulser IRQ handling procedure.
-    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
-        registerPulserIRQCallback();
-    }
+
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
     // Initialize converters.
@@ -487,6 +489,10 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
             oemsFCMs.at(sId).emplace_back(std::move(oemFCM.at(sId)));
         }
+    }
+    // Register pulser IRQ handling procedure.
+    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
+        registerPulserIRQCallback();
     }
     // Convert FCMs to probe-level apertures.
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -1105,13 +1111,13 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 }
 
 void Us4RImpl::registerPulserIRQCallback() {
+    using namespace std::chrono_literals;
     for(auto &oem: us4oems) {
-        const auto &ius4oem = oem->getIUs4OEM();
-        ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
-            try{
-                ius4oem->LogPulsersInterruptRegister();
-                // TODO consider fail-safe device stopping (e.g. don't wait for pending interrupts, etc.).
-                this->stop();
+        const auto ordinal = oem->getDeviceId().getOrdinal();
+        oem->getIUs4OEM()->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, ordinal]() {
+            logger->log(LogSeverity::ERROR, format("Detected pulser interrupt on OEM: '{}'.", ordinal));
+            try {
+                this->eventQueue.enqueue(Us4REvent("pulserIrq"));
             }
             catch(const std::exception &e) {
                 logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
@@ -1121,6 +1127,46 @@ void Us4RImpl::registerPulserIRQCallback() {
             }
         });
     }
+}
+
+void Us4RImpl::handleEvents() {
+    while(true) {
+        try {
+            auto event = eventQueue.dequeue();
+            if(!event.has_value()) {
+                // queue shutdown
+                return;
+            }
+            auto eventId = event.value().getId();
+            auto handler = eventHandlers.find(eventId);
+            if(handler == std::end(eventHandlers)) {
+                logger->log(LogSeverity::WARNING, format("Unknown event: {}", eventId));
+            }
+            else {
+                (handler->second)();
+            }
+        }
+        catch(const std::exception &e) {
+            logger->log(LogSeverity::ERROR, "Exception on event handling: " + std::string(e.what()));
+        }
+        catch(...) {
+            logger->log(LogSeverity::ERROR, "Unknown exception on event handling.");
+        }
+    }
+}
+
+
+void Us4RImpl::handlePulserInterrupt() {
+    if (this->state == State::STOPPED) {
+        this->disableHV();
+        logger->log(LogSeverity::INFO, format("System already stopped."));
+        return;
+    }
+    for(auto &oem: this->us4oems) {
+        oem->getIUs4OEM()->LogPulsersInterruptRegister();
+    }
+    this->stop();
+    this->disableHV();
 }
 
 }// namespace arrus::devices
