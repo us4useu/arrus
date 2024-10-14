@@ -134,6 +134,8 @@ public:
     float getUCDTemperature() override;
     float getUCDExternalTemperature() override;
     float getUCDMeasuredVoltage(uint8_t rail) override;
+    float getMeasuredHVPVoltage() override;
+    float getMeasuredHVMVoltage() override;
     void checkFirmwareVersion() override;
     uint32 getFirmwareVersion() override;
     void checkState() override;
