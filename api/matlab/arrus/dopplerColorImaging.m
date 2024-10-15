@@ -42,19 +42,10 @@ if isempty(proc.wcFiltA)
     % Change the filter-spoiled signal rejection:
     iqImgSetFlt = iqImgSetFlt(:, :, (1 + floor(proc.wcFiltInitSize/2)) : (nRep - ceil(proc.wcFiltInitSize/2)), :);
 else
-    if (max(numel(proc.wcFiltB),numel(proc.wcFiltA))-1) <= 8
-        % IIR (CUDA)
-        for iProj=1:nProj
-            wcFiltInitState = reshape(proc.wcFiltInitState(:).'.*reshape(iqImgSet(:,:,1,iProj),nZPix*nXPix,[]),nZPix,nXPix,[]);
-            iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, wcFiltInitState);
-        end
-    else
-        % IIR (Matlab)
-        for iProj=1:nProj
-            wcFiltInitState = proc.wcFiltInitState(:).*reshape(iqImgSet(:,:,1,iProj),1,nZPix*nXPix);
-            iqImgSetAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep).';
-            iqImgSetFlt(:,:,:,iProj) = reshape(filter(proc.wcFiltB, proc.wcFiltA, iqImgSetAux, wcFiltInitState).',nZPix,nXPix,nRep);
-        end
+    % IIR (CUDA)
+    for iProj=1:nProj
+        wcFiltInitState = reshape(proc.wcFiltInitState(:).'.*reshape(iqImgSet(:,:,1,iProj),nZPix*nXPix,[]),nZPix,nXPix,[]);
+        iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, wcFiltInitState);
     end
     % Change the filter-spoiled signal rejection:
     iqImgSetFlt = iqImgSetFlt(:, :, (1 + proc.wcFiltInitSize) : end, :);
