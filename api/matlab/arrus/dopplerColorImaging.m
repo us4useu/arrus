@@ -13,7 +13,7 @@ function[color,power,turbu] = dopplerColorImaging(iqImgSet,seq,proc)
 % proc                  - structure containing processing parameters
 % proc.wcFiltB          - WC filter numerator
 % proc.wcFiltA          - WC filter denominator
-% proc.wcFiltInitCoeff  - WC filter state for step=1 initialization 
+% proc.wcFiltInitState  - WC filter state for step=1 initialization 
 % proc.wcFiltInitSize   - number of WC filter output samples to be rejected
 % proc.vectorEnable     - Vector Doppler enable
 % proc.vect0Frames      - frames used for Vector Doppler reconstruction (1st projection)
@@ -34,21 +34,29 @@ end
 %% Wall Clutter Filtration
 iqImgSetFlt = zeros(nZPix,nXPix,nRep,nProj,'like',iqImgSet);
 if isempty(proc.wcFiltA)
+    % FIR (Matlab)
     for iProj=1:nProj
-        iqImgSetFltAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep);
-        iqImgSetFlt(:,:,:,iProj) = reshape(conv2(iqImgSetFltAux,proc.wcFiltB(:).','same'),nZPix,nXPix,nRep);
+        iqImgSetAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep);
+        iqImgSetFlt(:,:,:,iProj) = reshape(conv2(iqImgSetAux,proc.wcFiltB(:).','same'),nZPix,nXPix,nRep);
     end
+    % Change the filter-spoiled signal rejection:
     iqImgSetFlt = iqImgSetFlt(:, :, (1 + floor(proc.wcFiltInitSize/2)) : (nRep - ceil(proc.wcFiltInitSize/2)), :);
 else
-    for iProj=1:nProj
-        if (max(numel(proc.wcFiltB),numel(proc.wcFiltA))-1) <= 8
-            iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, proc.wcFiltInitCoeff);
-        else
-            wcFiltInitState = proc.wcFiltInitCoeff(:).*reshape(iqImgSet(:,:,1,iProj),1,nZPix*nXPix);
-            iqImgSetFltAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep).';
-            iqImgSetFlt(:,:,:,iProj) = reshape(filter(proc.wcFiltB, proc.wcFiltA, iqImgSetFltAux, wcFiltInitState).',nZPix,nXPix,nRep);
+    if (max(numel(proc.wcFiltB),numel(proc.wcFiltA))-1) <= 8
+        % IIR (CUDA)
+        for iProj=1:nProj
+            wcFiltInitState = reshape(proc.wcFiltInitState(:).'.*reshape(iqImgSet(:,:,1,iProj),nZPix*nXPix,[]),nZPix,nXPix,[]);
+            iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, wcFiltInitState);
+        end
+    else
+        % IIR (Matlab)
+        for iProj=1:nProj
+            wcFiltInitState = proc.wcFiltInitState(:).*reshape(iqImgSet(:,:,1,iProj),1,nZPix*nXPix);
+            iqImgSetAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep).';
+            iqImgSetFlt(:,:,:,iProj) = reshape(filter(proc.wcFiltB, proc.wcFiltA, iqImgSetAux, wcFiltInitState).',nZPix,nXPix,nRep);
         end
     end
+    % Change the filter-spoiled signal rejection:
     iqImgSetFlt = iqImgSetFlt(:, :, (1 + proc.wcFiltInitSize) : end, :);
 end
 
