@@ -31,25 +31,14 @@ if nRep-proc.wcFiltInitSize < 2
     error('Not enough data for Color Doppler. Possibly nRep to small or wcFiltInitSize to large.');
 end
 
-%% Wall Clutter Filtration
+%% Wall Clutter Filtration (IIR, CUDA)
 iqImgSetFlt = zeros(nZPix,nXPix,nRep,nProj,'like',iqImgSet);
-if isempty(proc.wcFiltA)
-    % FIR (Matlab)
-    for iProj=1:nProj
-        iqImgSetAux = reshape(iqImgSet(:,:,:,iProj),nZPix*nXPix,nRep);
-        iqImgSetFlt(:,:,:,iProj) = reshape(conv2(iqImgSetAux,proc.wcFiltB(:).','same'),nZPix,nXPix,nRep);
-    end
-    % Change the filter-spoiled signal rejection:
-    iqImgSetFlt = iqImgSetFlt(:, :, (1 + floor(proc.wcFiltInitSize/2)) : (nRep - ceil(proc.wcFiltInitSize/2)), :);
-else
-    % IIR (CUDA)
-    for iProj=1:nProj
-        wcFiltInitState = reshape(proc.wcFiltInitState(:).'.*reshape(iqImgSet(:,:,1,iProj),nZPix*nXPix,[]),nZPix,nXPix,[]);
-        iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, wcFiltInitState);
-    end
-    % Change the filter-spoiled signal rejection:
-    iqImgSetFlt = iqImgSetFlt(:, :, (1 + proc.wcFiltInitSize) : end, :);
+for iProj=1:nProj
+    wcFiltInitState = reshape(proc.wcFiltInitState(:).'.*reshape(iqImgSet(:,:,1,iProj),nZPix*nXPix,[]),nZPix,nXPix,[]);
+    iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, wcFiltInitState);
 end
+% Change the filter-spoiled signal rejection:
+iqImgSetFlt = iqImgSetFlt(:, :, (1 + proc.wcFiltInitSize) : end, :);
 
 %% Mean frequency estimator (in fact - it's a mean phase shift estimator)
 color = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
