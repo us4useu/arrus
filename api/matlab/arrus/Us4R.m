@@ -1147,7 +1147,7 @@ classdef Us4R < handle
             obj.rec.xSize	= length(obj.rec.xGrid);
             
             if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
+                [~,obj.rec.wcFiltInitState] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
             end
             
             %% Set data types and move data to GPU memory
@@ -1179,7 +1179,7 @@ classdef Us4R < handle
             obj.subSeq.txDelCent   =          single(obj.subSeq.txDelCent);
 
             if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
+                obj.rec.wcFiltInitState = gpuArray(single(obj.rec.wcFiltInitState)).';
             end
 
             if ~obj.rec.gridModeEnable
