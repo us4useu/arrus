@@ -45,18 +45,35 @@ classdef WallClutterFilter < handle
             obj.init    = gpuArray(single(obj.init));
         end
         
-        function y = filter(obj,x,initEnable)
+        function y = filter(obj,x,initEnable,nRejFrames)
             % Performs filtration
             %
             % :param x: data to be filtered
             % :param initEnable: enables filter initialization (reset of the filter internal state)
+            % :param nRejFrames: number of output frames to be rejected (if initEnable is true)
             % :returns: filtered data and updated WallClutterFilter object
             
-            if nargin>2 && ~isempty(initEnable) && initEnable
+            % Default input values
+            if nargin<3 || isempty(initEnable)
+                initEnable = false;
+            end
+
+            if nargin<4 || isempty(nRejFrames)
+                nRejFrames = 0;
+            end
+            
+            % Initialization
+            if initEnable
                 obj.state = x(:,:,1) .* obj.init;
             end
             
+            % Filtration
             [y, obj.state] = wcFilter(x, obj.coeff.b, obj.coeff.a, obj.state);
+            
+            % Rejection of initial frames 
+            if initEnable && nRejFrames > 0
+                y(:,:,1:nRejFrames) = [];
+            end
         end
 
     end    
