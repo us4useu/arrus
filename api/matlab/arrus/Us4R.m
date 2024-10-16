@@ -1146,7 +1146,7 @@ classdef Us4R < handle
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
             
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
+            if (obj.rec.colorEnable || obj.rec.vectorEnable)
                 obj.rec.wcf = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
             end
             
