@@ -1405,6 +1405,7 @@ classdef Us4R < handle
             end
 
             obj.buffer.iFrame = 0;
+            obj.buffer.tFrame = nan;
             obj.rec.enable = false;
 
         end
@@ -1431,7 +1432,11 @@ classdef Us4R < handle
 
             metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
             metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
-
+            
+            tFrameNew = bin2dec(reshape(dec2bin(metadata([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
+            obj.buffer.sri = tFrameNew - obj.buffer.tFrame;
+            obj.buffer.tFrame = tFrameNew;
+            
         end
         
         function img = execReconstr(obj,rfRaw)
@@ -1483,9 +1488,16 @@ classdef Us4R < handle
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
-                    rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
-%                     rfBfrColor = rfBfrColor(:, :, (1 + obj.rec.wcFiltInitSize) : end, :);
-
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       obj.rec.colorBatchesConsistent && ...
+                       abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) < 1e-9
+                        % The above condition on sri is valid for simple Tx/Rx sequences, 
+                        % it may not work properly for a messed up sequence.
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
+                    else
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,true,obj.rec.wcFiltInitSize);
+                    end
+                    
                     [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.subSeq, obj.rec);
                 end
                 
