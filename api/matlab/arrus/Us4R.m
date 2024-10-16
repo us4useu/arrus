@@ -1147,7 +1147,7 @@ classdef Us4R < handle
             obj.rec.xSize	= length(obj.rec.xGrid);
             
             if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                [~,obj.rec.wcFiltInitState] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
+                obj.rec.wcf = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
             end
             
             %% Set data types and move data to GPU memory
@@ -1171,16 +1171,10 @@ classdef Us4R < handle
             obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
             obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
             obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
-            obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
-            obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
             obj.subSeq.rxSampFreq  =          single(obj.subSeq.rxSampFreq);
             obj.rec.sos            =          single(obj.rec.sos);
             obj.subSeq.startSample =          single(obj.subSeq.startSample);
             obj.subSeq.txDelCent   =          single(obj.subSeq.txDelCent);
-
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                obj.rec.wcFiltInitState = gpuArray(single(obj.rec.wcFiltInitState)).';
-            end
 
             if ~obj.rec.gridModeEnable
                 obj.rec.rGrid      = gpuArray(single(obj.rec.rGrid));
@@ -1478,6 +1472,9 @@ classdef Us4R < handle
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
+                    rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
+%                     rfBfrColor = rfBfrColor(:, :, (1 + obj.rec.wcFiltInitSize) : end, :);
+
                     [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.subSeq, obj.rec);
                 end
                 

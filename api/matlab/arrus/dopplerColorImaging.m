@@ -11,34 +11,17 @@ function[color,power,turbu] = dopplerColorImaging(iqImgSet,seq,proc)
 % seq                   - structure containing sequence parameters
 % seq.txAng             - [rad] tx angles
 % proc                  - structure containing processing parameters
-% proc.wcFiltB          - WC filter numerator
-% proc.wcFiltA          - WC filter denominator
-% proc.wcFiltInitState  - WC filter state for step=1 initialization 
-% proc.wcFiltInitSize   - number of WC filter output samples to be rejected
 % proc.vectorEnable     - Vector Doppler enable
 % proc.vect0Frames      - frames used for Vector Doppler reconstruction (1st projection)
 % proc.vect1Frames      - frames used for Vector Doppler reconstruction (2nd projection)
 % proc.vect0RxTangLim	- rx angle tangent limits for Vector Doppler reconstruction (1st projection)
 % proc.vect1RxTangLim	- rx angle tangent limits for Vector Doppler reconstruction (2nd projection)
 
-[nZPix,nXPix,nRep,nProj] = size(iqImgSet);
+[nZPix,nXPix,~,nProj] = size(iqImgSet);
 
 if ~any(nProj == [1 2])
     error('Invalid number of projections (nProj) for Color/Vector Doppler processing, nProj must equal 1 or 2.');
 end
-
-if nRep-proc.wcFiltInitSize < 2
-    error('Not enough data for Color Doppler. Possibly nRep to small or wcFiltInitSize to large.');
-end
-
-%% Wall Clutter Filtration (IIR, CUDA)
-iqImgSetFlt = zeros(nZPix,nXPix,nRep,nProj,'like',iqImgSet);
-for iProj=1:nProj
-    wcFiltInitState = reshape(proc.wcFiltInitState(:).'.*reshape(iqImgSet(:,:,1,iProj),nZPix*nXPix,[]),nZPix,nXPix,[]);
-    iqImgSetFlt(:,:,:,iProj) = wcFilter(iqImgSet(:,:,:,iProj), proc.wcFiltB, proc.wcFiltA, wcFiltInitState);
-end
-% Change the filter-spoiled signal rejection:
-iqImgSetFlt = iqImgSetFlt(:, :, (1 + proc.wcFiltInitSize) : end, :);
 
 %% Mean frequency estimator (in fact - it's a mean phase shift estimator)
 color = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
@@ -47,7 +30,7 @@ turbu = zeros(nZPix,nXPix,1,nProj,'single','gpuArray');
 for iProj=1:nProj
     [color(:,:,1,iProj), ...
      power(:,:,1,iProj), ...
-     turbu(:,:,1,iProj),] = dopplerColor(iqImgSetFlt(:,:,:,iProj));
+     turbu(:,:,1,iProj),] = dopplerColor(iqImgSet(:,:,:,iProj));
 end
 
 %% Vector Doppler (optional)
