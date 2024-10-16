@@ -1108,11 +1108,14 @@ classdef Us4R < handle
             %% Validate colorFrames
             if obj.rec.colorEnable
                 if numel(unique(diff(obj.rec.colorFrames))) > 1
-                    warning('Doppler is sampled at uneven rate.');
+                    error('Doppler is sampled at uneven rate within the sequence.');
                 elseif (obj.rec.colorFrames(2) - obj.rec.colorFrames(1) ~= ...
                         obj.rec.colorFrames(1) - obj.rec.colorFrames(end) + obj.subSeq.nTx) && ...
                        any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'}))
                     warning('Doppler sampling rates within a batch and between subsequent batches are different.');
+                    obj.rec.colorBatchesConsistent = false;
+                else
+                    obj.rec.colorBatchesConsistent = true;
                 end
             end
             
