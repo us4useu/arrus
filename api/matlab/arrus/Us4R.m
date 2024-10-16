@@ -1105,6 +1105,17 @@ classdef Us4R < handle
                 obj.rec.bmodeFrames = 1:obj.subSeq.nTx;
             end
             
+            %% Validate colorFrames
+            if obj.rec.colorEnable
+                if numel(unique(diff(obj.rec.colorFrames))) > 1
+                    warning('Doppler is sampled at uneven rate.');
+                elseif (obj.rec.colorFrames(2) - obj.rec.colorFrames(1) ~= ...
+                        obj.rec.colorFrames(1) - obj.rec.colorFrames(end) + obj.subSeq.nTx) && ...
+                       any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'}))
+                    warning('Doppler sampling rates within a batch and between subsequent batches are different.');
+                end
+            end
+            
             %% Validate/adjust size of the RxTangLims
             obj.rec.bmodeRxTangLim = reshape(obj.rec.bmodeRxTangLim,[],2);
             if obj.rec.bmodeEnable
