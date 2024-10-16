@@ -1149,7 +1149,6 @@ void Us4RImpl::handleEvents() {
 
 void Us4RImpl::handlePulserInterrupt() {
     if (this->state == State::STOPPED) {
-        this->disableHV();
         logger->log(LogSeverity::INFO, format("System already stopped."));
         return;
     }
