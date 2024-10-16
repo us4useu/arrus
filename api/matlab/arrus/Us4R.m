@@ -1433,6 +1433,13 @@ classdef Us4R < handle
             obj.buffer.sri = tFrameNew - obj.buffer.tFrame;
             obj.buffer.tFrame = tFrameNew;
             
+            % The below condition on sri is valid for simple Tx/Rx sequences, 
+            % it may not work properly for a messed up sequence.
+            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 1e-9;
+            
+            if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
+                warning('SYNC mode: sequence lag detected');
+            end
         end
         
         function img = execReconstr(obj,rfRaw)
@@ -1485,10 +1492,8 @@ classdef Us4R < handle
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
                     if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
-                       obj.rec.colorBatchesConsistent && ...
-                       abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) < 1e-9
-                        % The above condition on sri is valid for simple Tx/Rx sequences, 
-                        % it may not work properly for a messed up sequence.
+                       ~obj.buffer.seqLagDetected && obj.rec.colorBatchesConsistent
+                        
                         rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
                     else
                         rfBfrColor = obj.rec.wcf.filter(rfBfrColor,true,obj.rec.wcFiltInitSize);
