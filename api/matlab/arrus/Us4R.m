@@ -487,21 +487,16 @@ classdef Us4R < handle
 
             % Main loop (using buffers if bufferMode is "conc")
             i = 0;
-            tStampPrev = nan;
             while(isContinue())
                 i = i + 1;
                 
                 tic;
-                [rf, meta] = obj.execSequence;
+                rf = obj.execSequence;
                 acqTime = toc;
                 
                 tic;
                 rf = obj.rawDataReorganization(rf);
                 reorgTime = toc;
-
-                tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                sri = tStampCurr - tStampPrev;
-                tStampPrev = tStampCurr;
 
                 if obj.rec.enable
                     tic;
@@ -520,7 +515,7 @@ classdef Us4R < handle
                     if exist('recTime', 'var')
                         disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
                     end
-                    disp(['Frame rate = ' num2str(1/sri, '%5.1f') ' fps']);
+                    disp(['Frame rate = ' num2str(1/obj.buffer.sri, '%5.1f') ' fps']);
                     disp('--------------------');
                 end
 
@@ -536,7 +531,7 @@ classdef Us4R < handle
                         imgBuffer(:,:,I,:) = img;
                     end
 
-                    sriBuffer(I) = sri;
+                    sriBuffer(I) = obj.buffer.sri;
                 end
             end
 
@@ -553,11 +548,9 @@ classdef Us4R < handle
             else
                 % Second loop (acquisition of raw data for "subs" bufferMode)
                 for i=1:bufferSize
-                    [raw0Buffer(:,:,i), meta] = obj.execSequence;
-
-                    tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                    sriBuffer(i) = tStampCurr - tStampPrev;
-                    tStampPrev = tStampCurr;
+                    raw0Buffer(:,:,i) = obj.execSequence;
+                    
+                    sriBuffer(i) = obj.buffer.sri;
                 end
                 obj.session.stopScheme();
                 disp('runLoop: acquisition done');
