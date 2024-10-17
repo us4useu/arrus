@@ -118,5 +118,35 @@ classdef Us4R < handle
             % :param gain: gain value to set [dB]
             obj.ptr.callMethod("setPgaGain", 0, gain);
         end
+
+        function disableLnaHpf(obj)
+            %
+            % Disables LNA analog high pass filter.
+            %
+            obj.ptr.callMethod("disableLnaHpf", 0);
+        end
+
+        function setLnaHpfCornerFrequency(obj, frequency)
+            %
+            % Enables the LNA analog high pass filter and sets its corner frequency to the given value.
+            %
+            % :param frequency: corner frequency to set [Hz]
+            obj.ptr.callMethod("setLnaHpfCornerFrequency", 0, frequency);
+        end
+
+        function disableAdcHpf(obj)
+            %
+            % Disables ADC digital high pass filter.
+            %
+            obj.ptr.callMethod("disableAdcHpf", 0);
+        end
+
+        function setAdcHpfCornerFrequency(obj, frequency)
+            %
+            % Enables the ADC digital high pass filter and sets its corner frequency to the given value.
+            %
+            % :param frequency: corner frequency to set [Hz]
+            obj.ptr.callMethod("setAdcHpfCornerFrequency", 0, frequency);
+        end
     end
 end

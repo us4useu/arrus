@@ -8,13 +8,6 @@
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/SettingsValidator.h"
-#include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
-
-#include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
 
 namespace arrus::devices {
 
@@ -57,9 +50,6 @@ public:
                                          ::arrus::toString(missingValues), group * nRxChannels, (group + 1) * nRxChannels));
             }
         }
-        RxSettingsValidator rxSettingsValidator;
-        rxSettingsValidator.validate(obj.getRxSettings());
-        copyErrorsFrom(rxSettingsValidator);
     }
 private:
     Us4OEMDescriptor descriptor;

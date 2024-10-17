@@ -63,7 +63,7 @@ public:
             std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0]), addrMode));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
-        else if(ver == 2) {
+        else if(ver >= 2 && ver <= 5) {
             if(addrMode != 32) {
                 throw IllegalArgumentException("The DBARLite rev2 supports 32-bit addressing mode only.");
             }

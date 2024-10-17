@@ -154,5 +154,12 @@ if(ARRUS_EMBED_DEPS)
             ${Us4_ROOT_DIR_SANITIZED}/lib64/
         DESTINATION
             ${ARRUS_LIB_INSTALL_DIR})
+    # headers
+    install(
+        DIRECTORY
+            ${Us4_ROOT_DIR_SANITIZED}/include/
+        DESTINATION
+            ${ARRUS_INCLUDE_INSTALL_DIR}
+    )
 endif()
 

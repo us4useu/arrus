@@ -14,7 +14,8 @@ from arrus.kernels.kernel import KernelExecutionContext, ConversionResults
 from arrus.kernels.tx_rx_sequence import (
     process_tx_rx_sequence,
     get_tx_delays,
-    set_aperture_masks
+    set_aperture_masks,
+    convert_depth_to_sample_range
 )
 from arrus.framework.constant import Constant, _get_unique_name
 
@@ -67,20 +68,6 @@ def get_center_delay(sequence: SimpleTxRxSequence, c: float, probe_model, fs):
     return center_delay
 
 
-def convert_depth_to_sample_range(depth_range, fs, speed_of_sound):
-    """
-    Converts depth range (in [m]) to the sample range
-    (in the number of samples).
-    """
-    sample_range = np.round(2*fs*np.asarray(depth_range)/speed_of_sound).astype(int)
-    # Round the number of samples to a value divisible by 64.
-    # Number of acquired must be divisible by 64 (required by us4R driver).
-    n_samples = sample_range[1]-sample_range[0]
-    n_samples = 64*int(math.ceil(n_samples/64))
-    sample_range = sample_range[0], sample_range[0]+n_samples
-    return sample_range
-
-
 def get_sample_range(op: SimpleTxRxSequence, fs, speed_of_sound):
     """
     Returns sample range (if provided) or returns depth range converted
@@ -123,7 +110,8 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
                 init_delay=op.init_delay, placement=op.rx_placement)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
-    return TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats)
+    result = TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats)
+    return result
 
 
 def __convert_to_op_specific_constant(constant, op_i):

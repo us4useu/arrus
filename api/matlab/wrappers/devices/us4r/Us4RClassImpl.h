@@ -35,6 +35,11 @@ public:
         ARRUS_MATLAB_ADD_METHOD("getLnaGain", getLnaGain);
         ARRUS_MATLAB_ADD_METHOD("setPgaGain", setPgaGain);
         ARRUS_MATLAB_ADD_METHOD("getPgaGain", getPgaGain);
+        ARRUS_MATLAB_ADD_METHOD("disableLnaHpf", disableLnaHpf);
+        ARRUS_MATLAB_ADD_METHOD("setLnaHpfCornerFrequency", setLnaHpfCornerFrequency);
+        ARRUS_MATLAB_ADD_METHOD("disableAdcHpf", disableAdcHpf);
+        ARRUS_MATLAB_ADD_METHOD("setAdcHpfCornerFrequency", setAdcHpfCornerFrequency);
+
     }
 
     void disableHV(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -94,6 +99,26 @@ public:
     void getPgaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         float gain = get(obj)->getPgaGain();
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint16, gain);
+    }
+
+    void disableLnaHpf(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        ctx->logInfo("Us4R: disabling LNA HPF");
+        get(obj)->disableLnaHpf();
+    }
+
+    void setLnaHpfCornerFrequency(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint32 frequency = inputs[0][0];
+        get(obj)->setLnaHpfCornerFrequency(frequency);
+    }
+
+    void disableAdcHpf(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        ctx->logInfo("Us4R: disabling ADC HPF");
+        get(obj)->disableAdcHpf();
+    }
+
+    void setAdcHpfCornerFrequency(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint32 frequency = inputs[0][0];
+        get(obj)->setAdcHpfCornerFrequency(frequency);
     }
 
 };

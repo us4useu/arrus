@@ -20,6 +20,14 @@ using ChannelAddress = ProbeAdapterSettings::ChannelAddress;
 using ChannelMapping = ProbeAdapterSettings::ChannelMapping;
 
 // -------- Mappings
+RxSettings DEFAULT_RX_SETTINGS = RxSettingsBuilder()
+                                     .setDtgcAttenuation(std::nullopt)
+                                     .setPgaGain(24)
+                                     .setLnaGain(24)
+                                     .setTgcSamples({})
+                                     .setLpfCutoff(10e6)
+                                     .setActiveTermination(std::nullopt)
+                                     .build();
 
 std::vector<ChannelIdx> generateReversed(ChannelIdx a, ChannelIdx b) {
     std::vector<ChannelIdx> result;
@@ -75,10 +83,8 @@ TEST_P(MappingsTest, CorrectlyConvertsMappingsToUs4OEMSettings) {
             mappings.adapterMapping.size(),
             mappings.adapterMapping);
 
-    RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
-
     auto[us4oemSettings, newAdapterSettings] = converter.convertToUs4OEMSettings(
-        adapterSettings, rxSettings,
+        adapterSettings, DEFAULT_RX_SETTINGS,
         Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, std::nullopt, {}, 2);
 
     EXPECT_EQ(us4oemSettings.size(), mappings.expectedUs4OEMMappings.size());
@@ -432,7 +438,6 @@ TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersEsaote) {
         adapterMapping.size(),
         adapterMapping
     );
-    RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
     Ordinal nUs4OEMs = 8;
     std::vector<Ordinal> adapterToUs4R = {
         /* Adapter Us4OEM: 0 -> Us4R Us4OEM: */ 0,
@@ -444,7 +449,7 @@ TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersEsaote) {
     };
 
     auto [us4oemCfg, adapterCfg] = converter.convertToUs4OEMSettings(
-        adapterSettings, rxSettings,
+        adapterSettings, DEFAULT_RX_SETTINGS,
         Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R, 2);
     // Adapter mapping
     auto &actualAdapterMapping = adapterCfg.getChannelMapping();
@@ -478,7 +483,6 @@ TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersAtl) {
         adapterMapping.size(),
         adapterMapping
     );
-    RxSettings rxSettings({}, 24, 24, {}, 10e6, {});
     Ordinal nUs4OEMs = 8;
     std::vector<Ordinal> adapterToUs4R = {
         /* Adapter Us4OEM: 0 -> Us4R Us4OEM: */ 0,
@@ -488,7 +492,7 @@ TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersAtl) {
     };
 
     auto [us4oemCfg, adapterCfg] = converter.convertToUs4OEMSettings(
-        adapterSettings, rxSettings,
+        adapterSettings, DEFAULT_RX_SETTINGS,
         Us4OEMSettings::ReprogrammingMode::SEQUENTIAL, nUs4OEMs, adapterToUs4R, 2);
     // Adapter mapping
     auto &actualAdapterMapping = adapterCfg.getChannelMapping();

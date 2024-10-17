@@ -28,7 +28,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
                                  "Only us4us High-Voltage suppliers are supported only (got {})",
                                  manufacturer)));
     Logger::SharedHandle arrusLogger = getLoggerFactory()->getLogger();
-    us4r::Logger::Handle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
+    us4us::us4r::Logger::Handle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
     DeviceId id(DeviceType::HV, 0);
 
     if(name == "hv256")  {
@@ -43,7 +43,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
             auto _hv = std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));
         }
-        else if(ver == 2) {
+        else if(ver >= 2 && ver <= 5) {
             std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
             auto _hv = std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));

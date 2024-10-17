@@ -76,6 +76,10 @@ public:
 
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
+    virtual std::pair<float, float> getTGCValueRange() const = 0;
+    virtual bool isAFEJD18() = 0;
+    virtual bool isAFEJD48() = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

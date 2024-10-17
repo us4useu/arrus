@@ -278,14 +278,32 @@ public:
     virtual bool isStopOnOverflow() const = 0;
 
     /**
-     * Enables High-Pass Filter and sets a given corner frequency.
+     * Enables LNA analog high-pass filter and sets a given corner frequency.
      *
-     * Available corner frequency values (Hz): 4520'000, 2420'000, 1200'000, 600'000, 300'000, 180'000,
-     * 80'000, 40'000, 20'000.
+     * Available corner frequency values (Hz): 20'000, 50'000, 100'000.
      *
-     * @param frequency corner high-pass filter frequency to set
+     * @param frequency LNA high-pass filter corner frequency to set
      */
-    virtual void setHpfCornerFrequency(uint32_t frequency)  = 0;
+    virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables LNA analog high-pass filter.
+     */
+    virtual void disableLnaHpf() = 0;
+
+    /**
+     * Enables ADC digital high-pass filter and sets a given corner frequency.
+     *
+     * Available corner frequency values (Hz): 150'000, 300'000, 600'000, 1'200'000, 2'400'000.
+     *
+     * @param frequency ADC high-pass filter corner frequency to set
+     */
+    virtual void setAdcHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables ADC digital high-pass filter.
+     */
+    virtual void disableAdcHpf() = 0;
 
     /**
      * Reads AFE register
@@ -301,12 +319,6 @@ public:
      * @param val register value
      */
     virtual void setAfe(uint8_t reg, uint16_t val) = 0;
-
-
-    /**
-     * Disables digital high-pass filter.
-     */
-    virtual void disableHpf()  = 0;
 
     /**
      * Returns serial number of the backplane (if available).
@@ -347,6 +359,16 @@ public:
      * @return the actual frequency that will be set
      */
     virtual float getActualTxFrequency(float frequency) = 0;
+
+    /**
+     * Returns minimum available TGC value, according to the currently set parameters.
+     */
+    virtual float getMinimumTGCValue() const = 0;
+
+    /**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+    virtual float getMaximumTGCValue() const = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

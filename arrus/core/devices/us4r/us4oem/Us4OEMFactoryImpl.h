@@ -5,7 +5,6 @@
 #include "arrus/common/asserts.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
-#include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"

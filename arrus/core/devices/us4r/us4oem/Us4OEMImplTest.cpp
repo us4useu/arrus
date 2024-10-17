@@ -73,7 +73,15 @@ protected:
     const Scheme::WorkMode defaultWorkMode = arrus::ops::us4r::Scheme::WorkMode::MANUAL;
     const std::optional<float> defaultSri = std::nullopt;
     const Us4OEMDescriptor defaultDescriptor = DEFAULT_DESCRIPTOR;
-    const RxSettings defaultRxSettings{std::nullopt, DEFAULT_PGA_GAIN, DEFAULT_LNA_GAIN, {}, 15'000'000, std::nullopt, true};
+    const RxSettings defaultRxSettings = RxSettingsBuilder()
+                                             .setActiveTermination(std::nullopt)
+                                             .setPgaGain(DEFAULT_PGA_GAIN)
+                                             .setLnaGain(DEFAULT_LNA_GAIN)
+                                             .setTgcSamples({})
+                                             .setLpfCutoff(15'000'000)
+                                             .setDtgcAttenuation(std::nullopt)
+                                             .setApplyTgcCharacteristic(true)
+                                             .build();
 };
 
 
@@ -176,65 +184,69 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
     upload(seq);
 }
 
-TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
-    std::vector<TxRxParameters> seq = {
-        TestTxRxParams().get()
-    };
-    EXPECT_CALL(*ius4oemPtr, TGCDisable);
-    EXPECT_CALL(*ius4oemPtr, TGCEnable).Times(0);
-    upload(seq, {});
-}
+// TODO(ARRUS-179) move to us4r-api
+//TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
+//    std::vector<TxRxParameters> seq = {
+//        TestTxRxParams().get()
+//    };
+//    EXPECT_CALL(*ius4oemPtr, TGCDisable);
+//    EXPECT_CALL(*ius4oemPtr, TGCEnable).Times(0);
+//    upload(seq, {});
+//}
 
-TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
-    std::vector<TxRxParameters> seq = {
-        TestTxRxParams().get()
-    };
-    TGCCurve tgc = {14.000f, 14.001f, 14.002f};
+// TODO(ARRUS-179)
+//TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
+//    std::vector<TxRxParameters> seq = {
+//        TestTxRxParams().get()
+//    };
+//    TGCCurve tgc = {14.000f, 14.001f, 14.002f};
+//
+//    EXPECT_CALL(*ius4oemPtr, TGCEnable);
+//
+//    TGCCurve expectedTgc = {14.0f, 15.0f, 16.0f};
+//    // normalized
+//    for(float &i : expectedTgc) {
+//        i = (i - 14.0f) / 40.f;
+//    }
+//    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
+//    upload(seq, tgc);
+//}
 
-    EXPECT_CALL(*ius4oemPtr, TGCEnable);
+// TODO(ARRUS-179)
+//TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
+//    std::vector<TxRxParameters> seq = {
+//        TestTxRxParams().get()
+//    };
+//    TGCCurve tgc = {14.000f, 14.0005f, 14.001f};
+//
+//    EXPECT_CALL(*ius4oemPtr, TGCEnable);
+//
+//    TGCCurve expectedTgc = {14.0f, 14.5f, 15.0f};
+//    // normalized
+//    for(float &i : expectedTgc) {
+//        i = (i - 14.0f) / 40.f;
+//    }
+//    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
+//    upload(seq, tgc);
+//}
 
-    TGCCurve expectedTgc = {14.0f, 15.0f, 16.0f};
-    // normalized
-    for(float &i : expectedTgc) {
-        i = (i - 14.0f) / 40.f;
-    }
-    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-    upload(seq, tgc);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
-    std::vector<TxRxParameters> seq = {
-        TestTxRxParams().get()
-    };
-    TGCCurve tgc = {14.000f, 14.0005f, 14.001f};
-
-    EXPECT_CALL(*ius4oemPtr, TGCEnable);
-
-    TGCCurve expectedTgc = {14.0f, 14.5f, 15.0f};
-    // normalized
-    for(float &i : expectedTgc) {
-        i = (i - 14.0f) / 40.f;
-    }
-    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-    upload(seq, tgc);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
-    std::vector<TxRxParameters> seq = {
-        TestTxRxParams().get()
-    };
-    TGCCurve tgc = {14.000f, 14.0002f, 14.0007f, 14.001f, 14.0015f};
-
-    EXPECT_CALL(*ius4oemPtr, TGCEnable);
-
-    TGCCurve expectedTgc = {14.0f, 14.2f, 14.7f, 15.0f, 15.5f};
-    // normalized
-    for(float &i : expectedTgc) {
-        i = (i - 14.0f) / 40.f;
-    }
-    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-    upload(seq, tgc);
-}
+// TODO(ARRUS-179)
+//TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
+//    std::vector<TxRxParameters> seq = {
+//        TestTxRxParams().get()
+//    };
+//    TGCCurve tgc = {14.000f, 14.0002f, 14.0007f, 14.001f, 14.0015f};
+//
+//    EXPECT_CALL(*ius4oemPtr, TGCEnable);
+//
+//    TGCCurve expectedTgc = {14.0f, 14.2f, 14.7f, 15.0f, 15.5f};
+//    // normalized
+//    for(float &i : expectedTgc) {
+//        i = (i - 14.0f) / 40.f;
+//    }
+//    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
+//    upload(seq, tgc);
+//}
 
 TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
     std::vector<TxRxParameters> seq = {
