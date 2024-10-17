@@ -192,8 +192,8 @@ classdef DuplexDisplay < handle
 
                 axes(obj.hAx(1)), hold on;
                 set(gca,'YDir','reverse');
-                set(gca,'XLim',obj.xGrid([1 end]));
-                set(gca,'YLim',obj.zGrid([1 end]));
+                set(gca,'XLim',obj.xGrid([1 end])*1e3);
+                set(gca,'YLim',obj.zGrid([1 end])*1e3);
                 
                 obj.vector.hQvr = quiver(obj.xGrid(obj.vector.xSel)*1e3, ...
                                          obj.zGrid(obj.vector.zSel)*1e3, ...
