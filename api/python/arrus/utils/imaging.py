@@ -18,7 +18,6 @@ import queue
 import dataclasses
 import threading
 from collections import deque
-from collections.abc import Iterable
 from pathlib import Path
 import os
 import importlib.util
@@ -26,7 +25,7 @@ from enum import Enum
 import arrus.kernels.simple_tx_rx_sequence
 import arrus.kernels.tx_rx_sequence
 from numbers import Number
-from typing import Sequence, Dict, Callable, Union, Tuple, List, Optional, Set
+from typing import Sequence, Dict, Callable, Union, Tuple, List, Optional, Set, Iterable
 from arrus.params import ParameterDef, Unit, Box
 from collections import defaultdict
 from arrus.ops.us4r import TxRxSequence
@@ -1515,12 +1514,21 @@ RX_BEAMFORMING_KERNEL_MODULE = _read_kernel_module("rx_beamforming.cu")
 class RxBeamforming(Operation):
     """
     Classical rx beamforming (reconstruct image scanline by scanline).
+
+    This operator assumes that:
+    - the distance between two consecutive elements is constant == pitch,
+    - tx and rx aperture sizes are equal and constant (i.e. doesn't change from TX/RX to TX/RX),
+    - tx and rx aperture centers are equal.
     """
-    X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
+    X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 256, np.float32)
+    Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 256, np.float32)
+    ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 256, np.float32)
 
     def close(self):
         # Clean-up pool.
-        RxBeamforming.X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 1024, np.float32)
+        RxBeamforming.X_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "xElemConst", 256, np.float32)
+        RxBeamforming.Z_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "zElemConst", 256, np.float32)
+        RxBeamforming.ANGLE_ELEM_CONST_POOL = GpuConstMemoryPool(RX_BEAMFORMING_KERNEL_MODULE, "angleElemConst", 256, np.float32)
 
     def __init__(self, num_pkg=None):
         import cupy as cp
@@ -1529,9 +1537,6 @@ class RxBeamforming(Operation):
     def prepare(self, const_metadata):
         import cupy as cp
         probe_model = get_unique_probe_model(const_metadata)
-        if probe_model.is_convex_array():
-            raise ValueError("RX beamforming is implemented for "
-                             "linear arrays only.")
 
         fs = const_metadata.data_description.sampling_frequency
         seq: Union[TxRxSequence, SimpleTxRxSequence] = const_metadata.context.sequence
@@ -1556,7 +1561,7 @@ class RxBeamforming(Operation):
                                  f"{seq.init_delay}")
             tx_rx_params = arrus.kernels.simple_tx_rx_sequence.preprocess_sequence_parameters(
                 probe_model, seq)
-            rx_aperture_center_element = np.array(tx_rx_params["rx_ap_cent"])[0]
+            rx_aperture_center_elements = np.array(tx_rx_params["rx_ap_cent"])
             rx_aperture_size = seq.rx_aperture_size
             angles = np.array(tx_rx_params["tx_angle"])
         elif isinstance(seq, TxRxSequence):
@@ -1579,7 +1584,7 @@ class RxBeamforming(Operation):
             # Rx
             downsampling_factor = ref_rx.downsampling_factor
             rx_sample_range = ref_rx.sample_range
-            rx_aperture_center_element = ref_rx.aperture.center_element
+            rx_aperture_center_elements = [op.rx.aperture.center_element for op in seq.ops]
             rx_aperture_size = ref_rx.aperture.size
             if ref_rx.init_delay == "tx_start":
                 burst_factor = n_periods / (2 * fc)
@@ -1595,6 +1600,8 @@ class RxBeamforming(Operation):
         else:
             raise ValueError(f"Unrecognized sequence type: {type(seq)}")
 
+        # Validate
+        # TODO make sure, rx and tx aperture center elements and sizes are all the same
         self._kernel_module = RX_BEAMFORMING_KERNEL_MODULE
         self._kernel = self._kernel_module.get_function("beamform")
         medium = const_metadata.context.medium
@@ -1614,7 +1621,7 @@ class RxBeamforming(Operation):
         self.fs = cp.float32(fs)
         self.c = cp.float32(c)
         # the ACQ sampling frequency.
-        self.start_time = cp.float32(start_sample / acq_fs)
+        self.start_time = cp.float32(start_sample/acq_fs)
         self.init_delay = cp.float32(init_delay)
         self.max_tang = cp.float32(max_tang)
         sample_block_size = min(self.n_samples, 16)
@@ -1624,16 +1631,30 @@ class RxBeamforming(Operation):
         self.grid_size = (int((self.n_samples-1)//sample_block_size + 1),
                           int((self.n_tx-1)//scanline_block_size + 1),
                           int((self.n_seq-1)//n_seq_block_size + 1))
-        # xElemConst
-        # Get aperture origin (for the given aperture center element/aperture center)
-        # TODO zElemConst for convex arrays?
-        # There is a single TX and RX aperture center for all TX/RXs
-        rx_aperture_origin = _get_rx_aperture_origin(
-            rx_aperture_center_element, rx_aperture_size)
-        rx_aperture_offset = rx_aperture_center_element-rx_aperture_origin
-        x_elem = (np.arange(0, self.n_rx)-rx_aperture_offset)*probe_model.pitch
-        x_elem = x_elem.astype(np.float32)
+
+        # Determine position of aperture elements, in the local coordinate
+        # system located in the center of the TX aperture.
+        element_position = np.arange(-(self.n_rx - 1) / 2, self.n_rx / 2)
+        element_position = element_position * probe_model.pitch
+        if not probe_model.is_convex_array():
+            x_elem = element_position
+            z_elem = np.zeros(self.n_rx)
+            angle_elem = np.zeros(self.n_rx)
+        else:
+            cr = probe_model.curvature_radius
+            angle_elem = element_position / cr
+            x_elem = cr * np.sin(angle_elem)
+            z_elem = cr * np.cos(angle_elem)
+            z_elem = z_elem - np.min(z_elem)
+
+        # check if there is enough constant memory
+        device_props = cp.cuda.runtime.getDeviceProperties(0)
+        if device_props["totalConstMem"] < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
+            raise ValueError("There is not enough constant memory available!")
         self.x_elem_const_offset = RxBeamforming.X_ELEM_CONST_POOL.reserve_new_array(np.squeeze(x_elem))
+        self.z_elem_const_offset = RxBeamforming.Z_ELEM_CONST_POOL.reserve_new_array(np.squeeze(z_elem))
+        self.angle_elem_const_offset = RxBeamforming.ANGLE_ELEM_CONST_POOL.reserve_new_array(np.squeeze(angle_elem))
+
         return const_metadata.copy(input_shape=self.output_buffer.shape)
 
     def process(self, data):
@@ -1645,7 +1666,10 @@ class RxBeamforming(Operation):
             self.init_delay, self.start_time,
             self.c, self.fs, self.fc,
             self.max_tang,
-            self.x_elem_const_offset)
+            self.x_elem_const_offset,
+            self.z_elem_const_offset,
+            self.angle_elem_const_offset,
+        )
         self._kernel(self.grid_size, self.block_size, params)
         return self.output_buffer
 
@@ -1719,7 +1743,7 @@ class RxBeamformingLin(Operation):
         rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
             op=seq, fs=fs, speed_of_sound=c)
         start_sample = rx_sample_range[0]
-        rx_aperture_origin = _get_rx_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
+        rx_aperture_origin = _get_aperture_origin(rx_aperture_center_element, seq.rx_aperture_size)
         # -start_sample compensates the fact, that the data indices always
         # start from 0
         initial_delay = - start_sample / acq_fs
@@ -1873,7 +1897,7 @@ class ScanConversion(Operation):
     Currently linear interpolation is used by default, values outside
     the input mesh will be set to 0.0.
 
-    Currently the op is (mostly) implemented for CPU only.
+    Currently, the op is (mostly) implemented for CPU only.
 
     Currently, the op is available only for convex probes.
     """
@@ -1910,8 +1934,12 @@ class ScanConversion(Operation):
             data_desc=new_signal_description
         )
         if probe.is_convex_array():
-            self.process = self._process_convex
-            return self._prepare_convex(const_metadata)
+            if probe.curvature_radius > 0:
+                self.process = self._process_convex
+                return self._prepare_convex(const_metadata)
+            else:
+                self.process = self._process_concave
+                return self._prepare_concave(const_metadata)
         else:
             # linear array or phased array
             seq = const_metadata.context.sequence
@@ -2000,7 +2028,7 @@ class ScanConversion(Operation):
         probe = get_unique_probe_model(const_metadata)
         medium = const_metadata.context.medium
         data_desc = const_metadata.data_description
-
+        
         if not self.num_pkg == np:
             import cupy as cp
             self.x_grid = self.num_pkg.asarray(self.x_grid).astype(cp.float32)
@@ -2025,16 +2053,17 @@ class ScanConversion(Operation):
         tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
             seq.tx_aperture_center_element, probe)
 
-        z_grid_moved = self.z_grid.T + probe.curvature_radius \
-                       - self.num_pkg.max(probe.element_pos_z)
+        element_pos_z = probe.element_pos_z.reshape(1, -1)
+        self.radGridIn = ((start_sample / acq_fs + self.num_pkg.arange(0, n_samples)/fs) * c/2)
 
-        self.radGridIn = (
-                (start_sample / acq_fs + self.num_pkg.arange(0, n_samples) / fs)
-                * c / 2)
-
+        # Move the z_grid coordinates to coordinate system located in the
+        # probe curvature center.
+        self.z_grid = self.z_grid.T + probe.curvature_radius - self.num_pkg.max(element_pos_z)
         self.azimuthGridIn = tx_ap_cent_ang
-        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, z_grid_moved)
-        radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + z_grid_moved ** 2)
+
+        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, self.z_grid)
+        # radGridIn starts where the image should start, so w subtract r
+        radGridOut = (self.num_pkg.sqrt(self.x_grid ** 2 + self.z_grid ** 2)
                       - probe.curvature_radius)
 
         self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
@@ -2069,6 +2098,65 @@ class ScanConversion(Operation):
                                                       self.dst_points,
                                                       order=1)
         return self.output_buffer
+
+    def _prepare_concave(self, const_metadata: arrus.metadata.ConstMetadata):
+        # Currently CPU processing is supported only
+        self.num_pkg = np  
+        probe = get_unique_probe_model(const_metadata)
+        medium = const_metadata.context.medium
+        data_desc = const_metadata.data_description
+        
+        self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
+        seq = const_metadata.context.sequence
+
+        acq_fs = (const_metadata.context.device.sampling_frequency
+                  / seq.downsampling_factor)
+        fs = data_desc.sampling_frequency
+
+        if seq.speed_of_sound is not None:
+            c = seq.speed_of_sound
+        else:
+            c = medium.speed_of_sound
+
+        rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
+            op=seq, fs=fs, speed_of_sound=c)
+        start_sample = rx_sample_range[0]
+
+        tx_ap_cent_ang, _, _ = arrus.kernels.tx_rx_sequence.get_aperture_center(
+            seq.tx_aperture_center_element, probe)
+
+        element_pos_z = probe.element_pos_z.reshape(1, -1)
+
+        max_sampling_time = (start_sample/acq_fs + n_samples/fs)*c/2
+        self.z_grid = max_sampling_time+abs(probe.curvature_radius)-self.z_grid
+        self.z_grid = self.z_grid.T
+
+        # 1 coord system: center of the circle determined by the curvature radius and the probe elements (arc)
+        self.azimuthGridIn = np.flip(tx_ap_cent_ang)
+        azimuthGridOut = self.num_pkg.arctan2(self.x_grid, self.z_grid)
+        
+        # 2. coordinate system: aperture's center
+        self.radGridIn = ((start_sample / acq_fs + self.num_pkg.arange(0, n_samples)/fs) * c/2)
+        # Assume the 1st coord system
+        radGridOut = self.num_pkg.sqrt(self.x_grid**2 + self.z_grid**2)
+        # Move back to the 2nd coordinat system
+        radGridOut = abs(probe.curvature_radius)+max_sampling_time-radGridOut
+
+        self.dst_shape = self.n_frames, len(self.z_grid.squeeze()), len(self.x_grid.squeeze())
+        dst_points = self.num_pkg.dstack((radGridOut, azimuthGridOut))
+        self.dst_points = self.num_pkg.asarray(dst_points, dtype=self.num_pkg.float32)
+
+        self.output_buffer = self.num_pkg.zeros(self.dst_shape, dtype=np.float32)
+        return const_metadata.copy(input_shape=self.dst_shape)
+
+    def _process_concave(self, data):
+        import cupy as cp
+        if self.is_gpu:
+            data = data.get()
+        data[np.isnan(data)] = 0.0
+        self.interpolator = scipy.interpolate.RegularGridInterpolator(
+            (self.radGridIn, self.azimuthGridIn), np.squeeze(data), fill_value=0, bounds_error=False)
+        return cp.asarray(self.interpolator(self.dst_points).reshape(self.dst_shape))
 
     def _prepare_phased_array(self, const_metadata: arrus.metadata.ConstMetadata):
         probe = get_unique_probe_model(const_metadata)
@@ -2911,7 +2999,7 @@ class Mean(Operation):
         return self.num_pkg.mean(data, axis=self.axis)
 
 
-def _get_rx_aperture_origin(aperture_center_element, aperture_size):
+def _get_aperture_origin(aperture_center_element, aperture_size):
     return np.round(aperture_center_element - (aperture_size - 1) / 2 + 1e-9)
 
 
