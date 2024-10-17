@@ -1,19 +1,19 @@
 classdef WallClutterFilter < handle
     % A Wall Clutter Filter class definition.
     %
-    % Intended use: filtration of Doppler data to remove the low frequency 
-    % high amplitude clutter.
+    % Intended use: filtration of Doppler data to remove 
+    % the low frequency, high amplitude clutter.
     
     properties(Access = private)
-
+        
         coeff
         state
         init
-
+        
     end
     
     methods
-
+        
         function obj = WallClutterFilter(b,a,inputGridSize,initMode)
             % Creates WallClutterFilter object
             %
@@ -22,13 +22,13 @@ classdef WallClutterFilter < handle
             % :param inputGridSize: size [z,x] of the data to be filtered 
             % :param initMode: determines filter initialization (step or zero)
             % :returns: WallClutterFilter object
-
+            
             obj.coeff.b = b;
             obj.coeff.a = a;
-
+            
             filtOrd = max(numel(b),numel(a)) - 1;
             obj.state = zeros([inputGridSize filtOrd],'like',single(1i));
-
+            
             switch initMode
                 case 'zero'
                     obj.init = zeros(filtOrd,1);
@@ -38,7 +38,7 @@ classdef WallClutterFilter < handle
                     error('Invalid initMode value, should be "zero" or "step"');
             end
             obj.init = reshape(obj.init,1,1,filtOrd);
-
+            
             obj.coeff.b = gpuArray(single(obj.coeff.b));
             obj.coeff.a = gpuArray(single(obj.coeff.a));
             obj.state   = gpuArray(       obj.state );
@@ -57,7 +57,7 @@ classdef WallClutterFilter < handle
             if nargin<3 || isempty(initEnable)
                 initEnable = false;
             end
-
+            
             if nargin<4 || isempty(nRejFrames)
                 nRejFrames = 0;
             end
@@ -75,7 +75,7 @@ classdef WallClutterFilter < handle
                 y(:,:,1:nRejFrames) = [];
             end
         end
-
-    end    
+        
+    end
 end
 
