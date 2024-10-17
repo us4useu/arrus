@@ -1076,6 +1076,11 @@ classdef Us4R < handle
                 obj.rec.rGrid = t * obj.rec.sos / 2;
             end
             
+            %% Validate color/vector modes
+            if obj.rec.colorEnable && obj.rec.vectorEnable
+                error("setRecParams: simultaneous color & vector operation is not supported");
+            end
+            
             %% Validate frames selection
             if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.subSeq.nTx)
                 error("setRecParams: bmodeFrames refers to nonexistent transmission id");
@@ -1110,6 +1115,12 @@ classdef Us4R < handle
                 else
                     obj.rec.colorBatchesConsistent = true;
                 end
+            end
+
+            %% Validate vectorFrames
+            if obj.rec.vectorEnable
+                % validation needed
+                obj.rec.vectorBatchesConsistent = true;
             end
             
             %% Validate/adjust size of the RxTangLims
@@ -1153,8 +1164,18 @@ classdef Us4R < handle
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
             
-            if (obj.rec.colorEnable || obj.rec.vectorEnable)
+            if obj.rec.colorEnable
                 obj.rec.wcf = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+            end
+            
+            if obj.rec.vectorEnable
+                obj.rec.wcf0 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+                obj.rec.wcf1 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+                
+                obj.rec.color2vector = Color2VectorConverter(obj.subSeq.txAng(obj.rec.vect0Frames(1)), ...
+                                                             obj.subSeq.txAng(obj.rec.vect1Frames(1)), ...
+                                                             atan(mean(obj.rec.vect0RxTangLim(1,:))), ...
+                                                             atan(mean(obj.rec.vect1RxTangLim(1,:))), 3);
             end
             
             %% Set data types and move data to GPU memory
@@ -1507,10 +1528,23 @@ classdef Us4R < handle
                     rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
                     rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
                     
-                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.subSeq, obj.rec);
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       ~obj.buffer.seqLagDetected && obj.rec.vectorBatchesConsistent
+                        
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,false);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,false);
+                    else
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,true,obj.rec.wcFiltInitSize);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,true,obj.rec.wcFiltInitSize);
+                    end
+                    
+                    [color0,power0,turbu0] = dopplerColor(rfBfrVect0);
+                    [color1,power1,turbu1] = dopplerColor(rfBfrVect1);
+                    
+                    [color,power,turbu] = obj.rec.color2vector.convert(color0,color1,power0,power1,turbu0,turbu1);
                 end
             end
-
+            
             %% Postprocessing
             % Obtain complex signal (if it isn't complex already)
             if ~obj.subSeq.hwDdcEnable && ~obj.rec.swDdcEnable
