@@ -15,7 +15,7 @@ classdef WallClutterFilter < handle
     methods
 
         function obj = WallClutterFilter(b,a,inputGridSize,initMode)
-            % Creates  WallClutterFilter object
+            % Creates WallClutterFilter object
             %
             % :param b: filter numerator coefficients
             % :param a: filter denominator coefficients

@@ -1499,7 +1499,7 @@ classdef Us4R < handle
                         rfBfrColor = obj.rec.wcf.filter(rfBfrColor,true,obj.rec.wcFiltInitSize);
                     end
                     
-                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.subSeq, obj.rec);
+                    [color,power,turbu] = dopplerColor(rfBfrColor);
                 end
                 
                 % Vector Doppler image reconstruction
