@@ -210,6 +210,10 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
 
     bool isDDCOn = ddc.has_value();
     const Us4OEMChannelsGroupsMask emptyChannelGroups;
+    const size_t totalNumberOfFirings = std::accumulate(
+        std::begin(sequences), std::end(sequences), 0,
+        [](size_t current, const auto &seq){return current + seq.size();});
+
     // us4OEM sequencer firing/entry id (global).
     OpId firingId = 0;
     for (SequenceId sequenceId = 0; sequenceId < ARRUS_SAFE_CAST(sequences.size(), SequenceId); ++sequenceId) {
@@ -242,7 +246,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
-            // Set delay defintion tables.
+            // Set delay definition tables.
             for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
                 auto delays = txDelays.at(delaysId).row(opId).toVector<float>();
                 setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx());
@@ -268,10 +272,9 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
-  
-    // Build sequence waveform.
-    for (OpId firing = 0; firing < ARRUS_SAFE_CAST(sequence.size(), OpId); ++firing) {
-        ius4oem->BuildSequenceWaveform(firing);
+
+    for (size_t firing = 0; firing < totalNumberOfFirings; ++firing) {
+        ius4oem->BuildSequenceWaveform(ARRUS_SAFE_CAST(firing, OpId));
     }
 }
 
