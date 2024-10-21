@@ -235,9 +235,13 @@ def get_tx_delays_for_focuses(
     for op in sequence.ops:
         op_centers = []
         for tx in op.tx:
-            ap_cent_elem = __get_center_element(
-                tx.aperture, probe_model=probe
-            )
+            if tx.delays is not None:
+                # custom delays
+                ap_cent_elem = np.nan
+            else:
+                ap_cent_elem = __get_center_element(
+                    tx.aperture, probe_model=probe
+                )
             op_centers.append(ap_cent_elem)
         tx_aperture_center_element.append(np.asarray(op_centers))
 

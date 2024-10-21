@@ -129,7 +129,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
     // Sample range -> rx time
     // end-start / sampling frequency
     Interval<uint32> sampleRange(40, 1024 + 40);
-    float rxDelay = 1e-6f;
+    float rxDelay = 0.0f; // NO RX delay is set in HAL v0.11.0
 
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(

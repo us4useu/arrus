@@ -37,7 +37,7 @@ classdef Reconstruction
         filterBCoeff
         filterDelay = 0
         swDdcEnable
-        decimation
+        decimation {mustBeFinite, mustBeInteger, mustBePositive}
         xGrid
         zGrid
         sos
