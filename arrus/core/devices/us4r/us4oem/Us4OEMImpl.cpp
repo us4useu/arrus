@@ -947,13 +947,12 @@ void Us4OEMImpl::setWaitForEventDone() {
 }
 
 void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
-    // TODO US4R-395
-    /*ius4oem->EnableHVPSMeasurementReadyIRQ();
+    ius4oem->EnableHVPSMeasurementReadyIRQ();
     auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
     irqEvents.at(measurementDoneIrq).resetCounters();
     ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
         this->irqEvents.at(measurementDoneIrq).notifyOne();
-    });*/
+    });
 }
 
 void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
