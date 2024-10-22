@@ -244,6 +244,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                            txrxTime, op.getPri()));
             // Upload
             ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
+            ius4oem->SetRxDelay(0.0f, firingId);
             ius4oem->SetTxAperture(filteredTxAperture, firingId);
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
             // Delays
@@ -265,7 +266,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
             }
             ius4oem->SetRxTime(rxTime, firingId);
-            ius4oem->SetRxDelay(0.0f, firingId);
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
                 ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
