@@ -2681,6 +2681,7 @@ class ReconstructLri(Operation):
         seq = const_metadata.context.sequence
         self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         probe_model = get_unique_probe_model(const_metadata)
+        device_sampling_frequency = const_metadata.context.device.sampling_frequency
 
         if isinstance(seq, SimpleTxRxSequence):
             rx_op = seq
@@ -2819,7 +2820,7 @@ class ReconstructLri(Operation):
 
         self.tx_foc = self.num_pkg.asarray(focus, dtype=self.num_pkg.float32)
         burst_factor = tx_op.excitation.n_periods/(2 * self.fn)
-        self.initial_delay = -start_sample/120e6+burst_factor+tx_center_delay
+        self.initial_delay = -start_sample/device_sampling_frequency+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         # Output metadata
         new_signal_description = dataclasses.replace(
@@ -3348,6 +3349,7 @@ class ReconstructLri3D(Operation):
         self.n_seq, self.n_tx, self.n_rx_y, self.n_rx_x, self.n_samples = const_metadata.input_shape
 
         seq = const_metadata.context.raw_sequence
+        device_sampling_frequency = const_metadata.context.device.sampling_frequency
         # TODO note: we assume here that a single TX/RX has the below properties
         # the same for each TX/RX. Validation is missing here.
         ref_tx_rx = seq.ops[0]
@@ -3490,7 +3492,7 @@ class ReconstructLri3D(Operation):
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
         burst_factor = ref_tx.excitation.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 120e6 + burst_factor + tx_center_delay
+        self.initial_delay = -start_sample/device_sampling_frequency + burst_factor + tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
         self.rx_apod = self.num_pkg.asarray(self.rx_apod)
@@ -3593,6 +3595,7 @@ class DelayAndSumLUT(Operation):
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         probe_model = get_unique_probe_model(const_metadata)
+        device_sampling_frequency = const_metadata.context.device.sampling_frequency
 
         if self.output_type == "hri":
             self._kernel = self._kernel_module.get_function("delayAndSumLutHri")
@@ -3632,7 +3635,7 @@ class DelayAndSumLUT(Operation):
 
         self.n_elements = probe_model.n_elements
         burst_factor = pulse.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 120e6 + burst_factor
+        self.initial_delay = -start_sample / device_sampling_frequency + burst_factor
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         return const_metadata.copy(input_shape=output_shape)
 
