@@ -11,6 +11,7 @@ from arrus.ops.us4r import (
 )
 from arrus.kernels.kernel import KernelExecutionContext, ConversionResults
 from arrus.framework import Constant
+import math
 
 
 def _sort_txs_by_aperture(sequence, probe_tx):
@@ -43,6 +44,7 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
     """
     sequence: TxRxSequence = context.op
     tx_delay_constants = context.constants
+    c = context.medium.speed_of_sound if context.medium is not None else None
 
     # Determine unique probe tx and rx id.
     probe_tx_id = sequence.get_tx_probe_id_unique()
@@ -60,7 +62,8 @@ def process_tx_rx_sequence(context: KernelExecutionContext):
         probe_tx=probe_tx,
         probe_rx=probe_rx,
         fs=fs,
-        tx_focus_constants=tx_delay_constants
+        tx_focus_constants=tx_delay_constants,
+        speed_of_sound=c
     )
     return ConversionResults(
         sequence=sequence,
@@ -77,7 +80,8 @@ def convert_to_us4r_sequence(sequence: TxRxSequence, probe_tx, probe_rx, fs: flo
         probe_tx=probe_tx,
         probe_rx=probe_rx,
         fs=fs,
-        tx_focus_constants=()
+        tx_focus_constants=(),
+        speed_of_sound=None
     )
     return seq, center_delay
 
@@ -130,7 +134,7 @@ def __merge_txs(txs):
 
 def convert_to_us4r_sequence_with_constants(
         sequence: TxRxSequence, probe_tx, probe_rx, fs: float,
-        tx_focus_constants
+        tx_focus_constants, speed_of_sound
 ):
     """
     NOTE: assumptions regarding sequence txs:
@@ -164,11 +168,14 @@ def convert_to_us4r_sequence_with_constants(
         new_tx = __merge_txs(new_txs)
 
         sample_range = __get_sample_range(
-            rx=op.rx, tx=new_tx, tx_delay_center=tx_center_delay, fs=fs)
+            rx=op.rx, tx=new_tx, tx_delay_center=tx_center_delay, fs=fs,
+            c=speed_of_sound
+        )
 
         old_rx = op.rx
         new_rx = dataclasses.replace(old_rx,
                                      sample_range=sample_range,
+                                     depth_range=None,
                                      init_delay="tx_start")
         new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
         new_ops.append(new_op)
@@ -526,8 +533,11 @@ def __get_aperture_mask_with_padding(center_element, size, probe_model):
     return aperture, (left_padding, right_padding)
 
 
-def __get_sample_range(rx, tx, tx_delay_center, fs):
+def __get_sample_range(rx, tx, tx_delay_center, fs, c):
     sample_range = rx.sample_range
+    if rx.depth_range is not None:
+        sample_range = convert_depth_to_sample_range(rx.depth_range, fs=fs,
+                                                     speed_of_sound=c)
     init_delay = rx.init_delay
     pulse = tx.excitation
     if init_delay == "tx_start":
@@ -571,3 +581,34 @@ def get_center_delay(sequence: TxRxSequence, probe_tx, probe_rx):
     )
     _, center_delay = _get_tx_delays_internal(probe_tx, sequence, sequence_with_masks)
     return center_delay
+
+
+def convert_depth_to_sample_range(depth_range, fs, speed_of_sound):
+    """
+    Converts depth range (in [m]) to the sample range
+    (in the number of samples).
+    """
+    sample_range = np.round(2*fs*np.asarray(depth_range)/speed_of_sound).astype(int)
+    # Round the number of samples to a value divisible by 64.
+    # Number of acquired must be divisible by 64 (required by us4R driver).
+    n_samples = sample_range[1]-sample_range[0]
+    n_samples = 64*int(math.ceil(n_samples/64))
+    sample_range = sample_range[0], sample_range[0]+n_samples
+    return sample_range
+
+
+def get_tx_rx_sequence_sample_range(seq: TxRxSequence, fs, speed_of_sound):
+    """
+    Returns sample range (if provided) or returns depth range converted
+    to the sample range according to the given sampling frequency
+    speed of sound.
+    """
+    op = seq.ops[0].rx
+    if op.sample_range is not None:
+        return op.sample_range
+    else:
+        return convert_depth_to_sample_range(
+            depth_range=op.depth_range,
+            fs=fs,
+            speed_of_sound=speed_of_sound
+        )

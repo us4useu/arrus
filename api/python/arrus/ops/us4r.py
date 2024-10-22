@@ -156,13 +156,17 @@ class Rx(Operation):
     :param placement: id of the probe that should do this RX
     """
     aperture: Union[np.ndarray, Aperture]
-    sample_range: tuple
+    sample_range: tuple = None
     downsampling_factor: int = 1
     padding: tuple = (0, 0)
     init_delay: str = "tx_start"
     placement: str = "Probe:0"
+    depth_range: tuple = None
 
     def __post_init__(self):
+        if not ((self.depth_range is None) ^ (self.sample_range is None)):
+            raise ValueError("Exactly one of the following parameters "
+                             "should be provided: sample_range, depth_range")
         if not isinstance(self.aperture, Aperture):
             object.__setattr__(self, "aperture", np.asarray(self.aperture))
 

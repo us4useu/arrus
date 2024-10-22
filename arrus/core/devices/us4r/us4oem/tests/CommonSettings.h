@@ -16,7 +16,7 @@ struct TestUs4OEMSettings {
     std::optional<uint16> dtgcAttenuation{std::nullopt};
     uint16 pgaGain{30};
     uint16 lnaGain{24};
-    RxSettings::TGCCurve tgcSamples{getRange<float>(30, 40, 0.5)};
+    ::arrus::ops::us4r::TGCCurve tgcSamples{getRange<float>(30, 40, 0.5)};
     uint32 lpfCutoff{(int) 10e6};
     std::optional<uint16> activeTermination{50};
     bool isApplyCharacteristic{true};
@@ -24,10 +24,16 @@ struct TestUs4OEMSettings {
     std::vector<std::string> invalidParameters;
 
     Us4OEMSettings getUs4OEMSettings() const {
-        return Us4OEMSettings(
-            channelMapping,
-            RxSettings(dtgcAttenuation, pgaGain, lnaGain, tgcSamples, lpfCutoff,
-                       activeTermination, isApplyCharacteristic));
+        auto rxSettings = RxSettingsBuilder()
+                              .setDtgcAttenuation(dtgcAttenuation)
+                              .setPgaGain(pgaGain)
+                              .setLnaGain(lnaGain)
+                              .setTgcSamples(tgcSamples)
+                              .setLpfCutoff(lpfCutoff)
+                              .setActiveTermination(activeTermination)
+                              .setApplyTgcCharacteristic(isApplyCharacteristic)
+                              .build();
+        return Us4OEMSettings(channelMapping, rxSettings);
     }
 
     friend std::ostream &

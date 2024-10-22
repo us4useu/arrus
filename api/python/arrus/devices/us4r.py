@@ -17,6 +17,7 @@ from typing import Optional, Union, Sequence
 from arrus.devices.probe import ProbeDTO
 
 from arrus.kernels.simple_tx_rx_sequence import get_sample_range
+from arrus.kernels.tx_rx_sequence import get_tx_rx_sequence_sample_range
 
 DEVICE_TYPE = DeviceType("Us4R")
 
@@ -101,7 +102,10 @@ class Us4R(Device, Ultrasound):
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
                 self._tgc_context,
                 self.current_sampling_frequency,
-                tgc_curve)
+                tgc_curve,
+                min_tgc_value=self.get_minimum_tgc_value(),
+                max_tgc_value=self.get_maximum_tgc_value()
+            )
         elif not isinstance(tgc_curve, Iterable):
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
         # Here, TGC curve is iterable.
@@ -438,12 +442,16 @@ class Us4R(Device, Ultrasound):
                 # Make the curve hashable.
                 curve = tuple(seq.tgc_curve.tolist())
                 tgcs.add(curve)
-                sample_range = seq.get_sample_range_unique()
                 if medium is None:
                     # No context
                     tgc_contexts.add(None)
                 else:
                     c = medium.speed_of_sound
+                    sample_range = get_tx_rx_sequence_sample_range(
+                        seq,
+                        fs=self.current_sampling_frequency,
+                        speed_of_sound=c
+                    )
                     tgc_contexts.add(
                         arrus.kernels.tgc.TgcCalculationContext(
                             end_sample=sample_range[1],
@@ -468,6 +476,12 @@ class Us4R(Device, Ultrasound):
         if isinstance(tgc, Iterable):
             tgc = np.array(tgc)
         return next(iter(tgc_contexts)), tgc
+
+    def get_minimum_tgc_value(self):
+        return self._handle.getMinimumTGCValue()
+
+    def get_maximum_tgc_value(self):
+        return self._handle.getMaximumTGCValue()
 
 
 # ------------------------------------------ LEGACY MOCK

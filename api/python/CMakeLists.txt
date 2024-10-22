@@ -47,6 +47,7 @@ target_include_directories(py_core
         PRIVATE
         ${PYTHON_INCLUDE_DIRS}
         ${ARRUS_ROOT_DIR}
+        ${US4_INCLUDE_DIR}
         )
 
 target_link_libraries(py_core

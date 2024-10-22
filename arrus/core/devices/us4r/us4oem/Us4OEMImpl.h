@@ -72,13 +72,10 @@ public:
     float getSamplingFrequency() override;
     void start() override;
     void stop() override;
-    void setTgcCurve(const RxSettings &cfg);
-
-
+    Ius4OEMRawHandle getIUs4OEM() override;
     void enableSequencer(uint16_t startEntry) override;
-
     std::vector<uint8_t> getChannelMapping() override;
-    void setRxSettings(const RxSettings &newSettings) override;
+    void setRxSettings(const RxSettings &settings) override;
     float getFPGATemperature() override;
     float getUCDTemperature() override;
     float getUCDExternalTemperature() override;
@@ -105,8 +102,11 @@ public:
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) override;
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &lengths) override;
-    void setHpfCornerFrequency(uint32_t frequency) override;
-    void disableHpf() override;
+
+    void setLnaHpfCornerFrequency(uint32_t frequency) override;
+    void disableLnaHpf() override;
+    void setAdcHpfCornerFrequency(uint32_t frequency) override;
+    void disableAdcHpf() override;
     Interval<Voltage> getAcceptedVoltageRange() override;
     void clearCallbacks() override;
     Us4OEMDescriptor getDescriptor() const override;
@@ -123,9 +123,19 @@ public:
     float getActualTxFrequency(float frequency) override;
 
     bool isOEMPlus() {
-        return getOemVersion() == 2;
+        auto version = getOemVersion();
+        return version >= 2 && version <= 5;
     }
-    Ius4OEMRawHandle getIUs4OEM() override;
+
+    bool isAFEJD18() override {
+        return getOemVersion() == 1 || getOemVersion() == 2;
+    }
+
+    bool isAFEJD48() override {
+        return getOemVersion() == 3;
+    }
+
+    std::pair<float, float> getTGCValueRange() const override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
@@ -139,12 +149,6 @@ private:
     std::pair<uint32_t, float> getTxStartSampleNumberAfeDemod(float ddcDecimationFactor);
 
     // IUs4OEM AFE setters.
-    void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
-    void setPgaGainAfe(uint16 value, bool force);
-    void setLnaGainAfe(uint16 value, bool force);
-    void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
-    void setLpfCutoffAfe(uint32 value, bool force);
-    void setActiveTerminationAfe(std::optional<uint16> param, bool force);
     void enableAfeDemod();
     void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq);
     void setAfeDemodDefault();
@@ -198,6 +202,7 @@ private:
     std::vector<uint8_t> channelMapping;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
     /** Current RX settings */
+    // TODO(ARRUS-179) consider removing the below property
     RxSettings rxSettings;
     bool externalTrigger{false};
     /** Current sampling frequency of the data produced by us4OEM. */

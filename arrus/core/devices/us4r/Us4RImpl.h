@@ -19,7 +19,7 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
@@ -120,8 +120,10 @@ public:
     float getMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
-    void setHpfCornerFrequency(uint32_t frequency) override;
-    void disableHpf() override;
+    void setLnaHpfCornerFrequency(uint32_t frequency) override;
+    void disableLnaHpf() override;
+    void setAdcHpfCornerFrequency(uint32_t frequency) override;
+    void disableAdcHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
@@ -149,6 +151,15 @@ public:
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
+
+    float getMinimumTGCValue() const override;
+
+    /**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+    float getMaximumTGCValue() const override;
+
+    std::pair<float, float> getTGCValueRange() const;
 
 private:
     struct VoltageLogbook {

@@ -1,5 +1,4 @@
 #include "Us4RImpl.h"
-#include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
 #include "TxTimeoutRegister.h"
 #include "arrus/core/common/interpolate.h"
@@ -570,14 +569,14 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, false); }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setTgcSamples(tgcCurvePoints)
-                             ->setApplyTgcCharacteristic(applyCharacteristic)
-                             ->build();
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .build();
     setRxSettings(newRxSettings);
 }
 
@@ -602,10 +601,18 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
-    // TODO(jrozb91) To reconsider below.
     float nominalFs = getSamplingFrequency();
-    uint16 offset = 359;
-    uint16 tgcT = 153;
+    // TGC curve offset (relative to the first acquired sample), TGC time resolution
+    uint16_t offset = 0, tgcT = 0;
+    if(us4oems.at(0)->isAFEJD18()) {
+        offset = 359;
+        tgcT = 153;
+    }
+    else if (us4oems.at(0)->isAFEJD48()) {
+        offset = 359;
+        tgcT = 120;
+    }
+
     // TODO try avoid converting from samples to time then back to samples?
     uint16 maxNSamples = int16(roundf(maxT * nominalFs));
     // Note: the last TGC sample should be applied before the reception ends.
@@ -620,9 +627,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
-    RxSettingsValidator validator;
-    validator.validate(settings);
-    validator.throwOnErrors();
+    // TODO(ARRUS-179) enable (do the validation here, instead of the low-level OEM?)
+//    RxSettingsValidator validator;
+//    validator.validate(settings);
+//    validator.throwOnErrors();
 
     std::unique_lock<std::mutex> guard(afeParamsMutex);
     bool isStateInconsistent = false;
@@ -646,7 +654,7 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 
 void Us4RImpl::setPgaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getPgaGain() {
@@ -655,7 +663,7 @@ uint16 Us4RImpl::getPgaGain() {
 }
 void Us4RImpl::setLnaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getLnaGain() {
@@ -664,17 +672,17 @@ uint16 Us4RImpl::getLnaGain() {
 }
 void Us4RImpl::setLpfCutoff(uint32 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setDtgcAttenuation(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value).build();
     setRxSettings(newRxSettings);
 }
 
@@ -742,13 +750,22 @@ void Us4RImpl::disableAfeDemod() {
 
 float Us4RImpl::getCurrentSamplingFrequency() const { return us4oems[0]->getCurrentSamplingFrequency(); }
 
-void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
-    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setHpfCornerFrequency(frequency); },
-                       "setAfeHpfCornerFrequency");
+void Us4RImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setLnaHpfCornerFrequency(frequency); },
+                       "setLnaHpfCornerFrequency");
 }
 
-void Us4RImpl::disableHpf() {
-    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
+void Us4RImpl::disableLnaHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableLnaHpf(); }, "disableLnaHpf");
+}
+
+void Us4RImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setAdcHpfCornerFrequency(frequency); },
+                       "setAdcHpfCornerFrequency");
+}
+
+void Us4RImpl::disableAdcHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAdcHpf(); }, "disableAdcHpf");
 }
 
 uint16_t Us4RImpl::getAfe(uint8_t reg) { return us4oems[0]->getAfe(reg); }
@@ -1157,6 +1174,23 @@ void Us4RImpl::handlePulserInterrupt() {
     }
     this->stop();
     this->disableHV();
+}
+
+float Us4RImpl::getMinimumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return minimum;
+}
+
+/**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+float Us4RImpl::getMaximumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return maximum;
+}
+
+std::pair<float, float> Us4RImpl::getTGCValueRange() const {
+    return us4oems.at(0)->getTGCValueRange();
 }
 
 }// namespace arrus::devices
