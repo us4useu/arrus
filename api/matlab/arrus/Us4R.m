@@ -53,8 +53,6 @@ classdef Us4R < handle
             obj.sys.rxSampFreq = 65e6;
             obj.sys.maxSeqLength = 2^14;
             obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
-            obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
-            obj.sys.tgcInterv = 153; % [samp]
             obj.sys.reloadTime = 43e-6; % [s]
             obj.logTime = logTime;
             
@@ -952,8 +950,10 @@ classdef Us4R < handle
                 obj.seq.tgcStart = obj.seq.tgcLim(1);
             end
             
-            obj.seq.tgcPoints = obj.sys.tgcOffset : obj.sys.tgcInterv : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec; % [samp]
-            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * obj.seq.tgcPoints / obj.sys.rxSampFreq * obj.seq.c;  % [dB]
+            % 0:100 -- arbitrary vaues
+            obj.seq.tgcPoints = 0:100:(obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec; % [samp]
+            obj.seq.tgcPoints = obj.seq.tgcPoints/obj.sys.rxSampFreq*obj.seq.c;
+            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope*obj.seq.tgcPoints;  % [dB]
             if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
                 warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
                       'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
@@ -1293,7 +1293,7 @@ classdef Us4R < handle
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
-            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve, "sri", obj.seq.sri);
+            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", [], "sri", obj.seq.sri);
             
             % Digital Down Conversion
             if obj.seq.hwDdcEnable
@@ -1323,6 +1323,9 @@ classdef Us4R < handle
             % NOTE: the above outputs were used for calculation of data
             % reorganization addresses. Since subSequences are supported,
             % the corresponding data is obtained during setSubsequence call.
+            
+            % time, value, applyCharacteristic
+            obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 1);
         end
 
         function selSubSeq(obj, seqId, sri)
