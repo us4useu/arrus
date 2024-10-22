@@ -22,6 +22,7 @@ set(SOURCE_FILES
     examples/Us4R_control_bmodeDwi.m
     examples/Us4R_control_bmodeLin.m
     examples/Us4R_control_colorPwi.m
+    examples/CustomTxRxSequence.m
 )
 
 set(ARRUS_CUDA_MEX_SRC_FILES
