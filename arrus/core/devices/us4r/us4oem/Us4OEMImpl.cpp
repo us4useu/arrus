@@ -246,7 +246,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
             ius4oem->SetTxAperture(filteredTxAperture, firingId);
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
-            ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
             // Set delay definition tables.
             for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {

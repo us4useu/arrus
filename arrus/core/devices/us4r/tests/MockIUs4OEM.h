@@ -234,6 +234,7 @@ public:
     MOCK_METHOD(void, SetCustomSequenceWaveform, (const unsigned short firing, const std::vector<uint32_t>&), (override));
     MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD((std::pair<float, float>), GetTGCValueRange, (), (const override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
