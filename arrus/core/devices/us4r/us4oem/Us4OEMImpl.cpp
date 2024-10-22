@@ -213,7 +213,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     bool isDDCOn = ddc.has_value();
     const Us4OEMChannelsGroupsMask emptyChannelGroups;
     const size_t totalNumberOfFirings = std::accumulate(
-        std::begin(sequences), std::end(sequences), 0,
+        std::begin(sequences), std::end(sequences), size_t(0),
         [](size_t current, const auto &seq){return current + seq.size();});
 
     // us4OEM sequencer firing/entry id (global).
