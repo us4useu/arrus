@@ -231,6 +231,8 @@ public:
     MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
+    MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
