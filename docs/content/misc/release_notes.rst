@@ -4,6 +4,14 @@ Release notes
 0.10.x
 -----
 
+0.10.4
+
+- core (C++, HAL):
+
+    - Added support for DBARLitePcie fw version 1.2.0.x #US4R-579.
+    - Provided possibility to get measured HV voltages on us4OEM+ #US4R-561.
+
+
 0.10.3
 
 - core (C++):
