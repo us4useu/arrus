@@ -2,33 +2,35 @@ classdef RemapToLogicalOrder
     % Remaps from system physical order to the probe-like logical order.
 
     properties
-        nRep
+        nRx
         nTx
-        rxApSize
+        nRep
         hwDdcEnable
         reorgMap
     end
 
     methods
         function obj = RemapToLogicalOrder(scheme, metadata)
+            
             addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
+            
             framesOffset = metadata{1};
             framesNumber = metadata{2};
             oemId = metadata{3};
             frameId = metadata{4};
             channelId = metadata{5};
-
-            obj.nRep = scheme.txRxSequence.nRepeats;
-            obj.nTx = length(scheme.txRxSequence.ops);
-            obj.rxApSize = sum(scheme.txRxSequence.ops(1).rx.aperture);
-            obj.hwDdcEnable = ~isempty(scheme.digitalDownConversion);
-
+            
+            nRx = sum(scheme.txRxSequence.ops(1).rx.aperture);
+            nTx = length(scheme.txRxSequence.ops);
+            nRep = scheme.txRxSequence.nRepeats;
             nOem = numel(framesNumber);
             nChunk = sum(framesNumber);
             nChan = 32;
-            nRep = obj.nRep;
-            nRx = obj.rxApSize;
-            nTx = obj.nTx;
+            
+            obj.nRx = uint32(nRx);
+            obj.nTx = uint32(nTx);
+            obj.nRep = uint32(nRep);
+            obj.hwDdcEnable = ~isempty(scheme.digitalDownConversion);
             
             obj.reorgMap = - ones(nChan, nChunk, 'int32');
             
@@ -45,7 +47,7 @@ classdef RemapToLogicalOrder
                         iChunk = framesOffset(iOem) ...
                                + framesNumber(iOem) / nRep * (iRep-1) ...
                                + iFrame;
-
+                        
                         % 0-based indexing
                         obj.reorgMap(iChan,iChunk) = (iRep-1)*nTx*nRx + (iTx-1)*nRx + iRx-1; 
                     end
@@ -58,9 +60,9 @@ classdef RemapToLogicalOrder
 
             dataOut = rawReorg( dataIn, ...
                                 obj.reorgMap, ...
-                                uint32(obj.rxApSize), ...
-                                uint32(obj.nTx), ...
-                                uint32(obj.nRep), ...
+                                obj.nRx, ...
+                                obj.nTx, ...
+                                obj.nRep, ...
                                 obj.hwDdcEnable);
         end
     end
