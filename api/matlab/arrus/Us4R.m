@@ -950,10 +950,9 @@ classdef Us4R < handle
                 obj.seq.tgcStart = obj.seq.tgcLim(1);
             end
             
-            % 0:100 -- arbitrary vaues
-            obj.seq.tgcPoints = 0:100:(obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec; % [samp]
-            obj.seq.tgcPoints = obj.seq.tgcPoints/obj.sys.rxSampFreq*obj.seq.c;
-            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope*obj.seq.tgcPoints;  % [dB]
+            dt = 500e-9; % [s] arbitrary time step for the tgc curve
+            obj.seq.tgcPoints = 0 : dt : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec/obj.sys.rxSampFreq; % [s]
+            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope*obj.seq.tgcPoints*obj.seq.c; % [dB]
             if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
                 warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
                       'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
