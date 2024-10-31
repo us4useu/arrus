@@ -14,15 +14,16 @@ set(SOURCE_FILES
     arrus/DuplexDisplay.m
     arrus/mustBeDivisible.m
     arrus/Reconstruction.m
+    arrus/RemapToLogicalOrder.m
     arrus/scanConversion.m
     arrus/Us4R.m
     arrus/wedgeParams.m
-    examples/Us4R_control_rawRfPwi.m
-    examples/Us4R_control_bmodePwi.m
-    examples/Us4R_control_bmodeDwi.m
-    examples/Us4R_control_bmodeLin.m
-    examples/Us4R_control_colorPwi.m
-    examples/CustomTxRxSequence.m
+    examples/bmodePwi.m
+    examples/bmodeDwi.m
+    examples/bmodeLin.m
+    examples/colorPwi.m
+    examples/rawRfPwi.m
+    examples/rawRfPwiCustomSequence.m
 )
 
 set(ARRUS_CUDA_MEX_SRC_FILES
