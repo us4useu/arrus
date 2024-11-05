@@ -121,6 +121,19 @@ classdef Us4R < handle
             nProbeElem = obj.sys.nElem;
         end
 
+        function setTgcCurve(varargin)
+            obj = varargin{1};
+            obj.us4r.setTgcCurve(varargin{2:end});
+        end
+
+        function setDtgcAttenuation(obj,attenuation)
+            obj.us4r.setDtgcAttenuation(attenuation);
+        end
+
+        function setActiveTermination(obj,impedance)
+            obj.us4r.setActiveTermination(impedance);
+        end
+
         function setLnaGain(obj,gain)
             obj.us4r.setLnaGain(gain);
         end
@@ -129,9 +142,24 @@ classdef Us4R < handle
             obj.us4r.setPgaGain(gain);
         end
 
-        function setTgcCurve(varargin)
-            obj = varargin{1};
-            obj.us4r.setTgcCurve(varargin{2:end});
+        function setLpfCutoff(obj,frequency)
+            obj.us4r.setLpfCutoff(frequency);
+        end
+
+        function disableLnaHpf(obj)
+            obj.us4r.disableLnaHpf();
+        end
+
+        function setLnaHpfCornerFrequency(obj,frequency)
+            obj.us4r.setLnaHpfCornerFrequency(frequency);
+        end
+
+        function disableAdcHpf(obj)
+            obj.us4r.disableAdcHpf();
+        end
+
+        function setAdcHpfCornerFrequency(obj,frequency)
+            obj.us4r.setAdcHpfCornerFrequency(frequency);
         end
 
         function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)

@@ -85,6 +85,22 @@ classdef Us4R < handle
             end
         end
 
+        function setDtgcAttenuation(obj, attenuation)
+            %
+            % Sets the DTGC attenuation to the given value.
+            %
+            % :param attenuation: attenuation value to set [dB]
+            obj.ptr.callMethod("setDtgcAttenuation", 0, attenuation);
+        end
+
+        function setActiveTermination(obj, impedance)
+            %
+            % Sets the input impedance to the given value.
+            %
+            % :param impedance: impedance value to set [ohm]
+            obj.ptr.callMethod("setActiveTermination", 0, impedance);
+        end
+
         function [gain] = getLnaGain(obj)
             %
             % Returns current LNA gain value.
@@ -117,6 +133,14 @@ classdef Us4R < handle
             %
             % :param gain: gain value to set [dB]
             obj.ptr.callMethod("setPgaGain", 0, gain);
+        end
+
+        function setLpfCutoff(obj, frequency)
+            %
+            % Sets the LPF cutoff frequency to the given value.
+            %
+            % :param frequency: cutoff frequency to set [Hz]
+            obj.ptr.callMethod("setLpfCutoff", 0, frequency);
         end
 
         function disableLnaHpf(obj)
