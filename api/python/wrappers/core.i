@@ -550,6 +550,7 @@ void Arrus2dArrayVectorPushBack(
 %feature("valuewrapper");
 %{
 #include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "Us4OEM/api/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h"
@@ -562,9 +563,11 @@ void Arrus2dArrayVectorPushBack(
 #include "arrus/core/api/session/SessionSettings.h"
 
 using namespace ::arrus::devices;
+using namespace ::us4us::us4r;
 %};
 
 %include "arrus/core/api/devices/us4r/RxSettings.h"
+%include "Us4OEM/api/RxSettings.h"
 %include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 %ignore operator<<(std::ostream &os, const ProbeAdapterModelId &id);
 %include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h"

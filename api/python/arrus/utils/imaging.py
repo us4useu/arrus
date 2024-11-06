@@ -55,6 +55,9 @@ else:
 
 
 def _read_kernel_module(path):
+    if not is_package_available("cupy"):
+        return None
+
     import cupy as cp
     current_dir = os.path.dirname(os.path.join(os.path.abspath(__file__)))
     kernel_src = Path(os.path.join(current_dir, path)).read_text()
@@ -62,6 +65,9 @@ def _read_kernel_module(path):
 
 
 def _get_const_memory_array(module, name, input_array):
+    if not is_package_available("cupy"):
+        return None
+
     import cupy as cp
     const_arr_ptr = module.get_global(name)
     const_arr = cp.ndarray(shape=input_array.shape, dtype=input_array.dtype,
@@ -85,10 +91,11 @@ def _assert_unique_property_for_rx_active_ops(seq: TxRxSequence, getter: Callabl
 class GpuConstMemoryPool:
 
     def __init__(self, kernel_module, variable_name, total_size: int, dtype):
-        import cupy as cp
-        device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
-            raise ValueError(f"There is not enough constant memory available for {variable_name}!")
+        if is_package_available("cupy"):
+            import cupy as cp
+            device_props = cp.cuda.runtime.getDeviceProperties(0)
+            if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
+                raise ValueError(f"There is not enough constant memory available for {variable_name}!")
         self.total_size = total_size
         self.variable_name = variable_name
         self.reference_array = np.zeros((self.total_size, ), dtype=dtype)  # Global memory
@@ -947,11 +954,11 @@ class Pipeline:
             buffers.append(b)
         if len(buffers) == 1:
             # Backward compatibility
-            self._input_buffer = buffers[0]
+            _input_buffer = buffers[0]
         else:
-            self._input_buffer = buffers
+            _input_buffer = buffers
 
-        data = self._input_buffer
+        data = _input_buffer
         for step in self.steps:
             if not isinstance(step, (Pipeline, Output)):
                 data = step.initialize(data)
@@ -1089,8 +1096,10 @@ class Processing:
             callback: Callable[[Sequence[Union[BufferElement, BufferElementLockBased]]], None] = None,
             input_buffer: ProcessingBufferDef = None,
             output_buffer: ProcessingBufferDef = None,
-            on_buffer_overflow_callback=None):
-        self.graph = graph
+            on_buffer_overflow_callback=None,
+            input_name: str=None
+        ):
+        self.graph = self._get_graph(processing=graph, input_name=input_name)
         self.callback = callback
         self.input_buffer = input_buffer if input_buffer is not None else ProcessingBufferDef(size=2, type="locked")
         self.output_buffer = output_buffer if output_buffer is not None else ProcessingBufferDef(size=2, type="locked")
@@ -1098,6 +1107,32 @@ class Processing:
         self._pipeline_name = _get_default_op_name(self.graph, 0)
         self._graph_op_by_name = self.graph.get_ops_by_name()
         self._param_defs = self._determine_params()
+
+    def _get_graph(self, processing: Union[Graph, Pipeline], input_name):
+        if isinstance(processing, Pipeline):
+            # Wrap Pipeline into the Processing object.
+            if processing.name is None:
+                processing.name = f"Pipeline:0"
+
+            n_outputs = processing._get_n_outputs()
+            operations = {processing}
+            if input_name is None:
+                input_name = "TxRxSequence:0"
+            dependencies = {
+                processing.name: input_name,
+            }
+            for i in range(n_outputs):
+                dependencies[f"Output:{i}"] = f"{processing.name}/Output:{i}"
+
+            graph = Graph(
+                operations=operations,
+                dependencies=dependencies
+            )
+            return graph
+        if isinstance(processing, Graph):
+            return processing
+        else:
+            raise ValueError(f"Unsupported type of processing: {type(processing)}")
 
     def set_parameter(self, key: str, value: Sequence[Number]):
         """
@@ -2646,6 +2681,7 @@ class ReconstructLri(Operation):
         seq = const_metadata.context.sequence
         self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         probe_model = get_unique_probe_model(const_metadata)
+        device_sampling_frequency = const_metadata.context.device.sampling_frequency
 
         if isinstance(seq, SimpleTxRxSequence):
             rx_op = seq
@@ -2784,7 +2820,7 @@ class ReconstructLri(Operation):
 
         self.tx_foc = self.num_pkg.asarray(focus, dtype=self.num_pkg.float32)
         burst_factor = tx_op.excitation.n_periods/(2 * self.fn)
-        self.initial_delay = -start_sample/65e6+burst_factor+tx_center_delay
+        self.initial_delay = -start_sample/device_sampling_frequency+burst_factor+tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         # Output metadata
         new_signal_description = dataclasses.replace(
@@ -3313,6 +3349,7 @@ class ReconstructLri3D(Operation):
         self.n_seq, self.n_tx, self.n_rx_y, self.n_rx_x, self.n_samples = const_metadata.input_shape
 
         seq = const_metadata.context.raw_sequence
+        device_sampling_frequency = const_metadata.context.device.sampling_frequency
         # TODO note: we assume here that a single TX/RX has the below properties
         # the same for each TX/RX. Validation is missing here.
         ref_tx_rx = seq.ops[0]
@@ -3455,7 +3492,7 @@ class ReconstructLri3D(Operation):
         self.min_tang = self.num_pkg.float32(self.min_tang)
         self.max_tang = self.num_pkg.float32(self.max_tang)
         burst_factor = ref_tx.excitation.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 65e6 + burst_factor + tx_center_delay
+        self.initial_delay = -start_sample/device_sampling_frequency + burst_factor + tx_center_delay
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         self.rx_apod = scipy.signal.windows.hamming(20).astype(np.float32)
         self.rx_apod = self.num_pkg.asarray(self.rx_apod)
@@ -3558,6 +3595,7 @@ class DelayAndSumLUT(Operation):
         seq = const_metadata.context.sequence
         raw_seq = const_metadata.context.raw_sequence
         probe_model = get_unique_probe_model(const_metadata)
+        device_sampling_frequency = const_metadata.context.device.sampling_frequency
 
         if self.output_type == "hri":
             self._kernel = self._kernel_module.get_function("delayAndSumLutHri")
@@ -3597,7 +3635,7 @@ class DelayAndSumLUT(Operation):
 
         self.n_elements = probe_model.n_elements
         burst_factor = pulse.n_periods / (2 * self.fn)
-        self.initial_delay = -start_sample / 65e6 + burst_factor
+        self.initial_delay = -start_sample / device_sampling_frequency + burst_factor
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         return const_metadata.copy(input_shape=output_shape)
 

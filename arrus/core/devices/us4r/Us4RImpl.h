@@ -4,10 +4,13 @@
 #include <mutex>
 #include <unordered_map>
 #include <utility>
+#include <thread>
 
 #include <boost/algorithm/string.hpp>
 
 #include "TxTimeoutRegister.h"
+#include "BlockingQueue.h"
+#include "Us4REvent.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -16,11 +19,12 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+#include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/utils.h"
 
 namespace arrus::devices {
@@ -110,12 +114,14 @@ public:
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
-    float getUCDMeasuredHVPVoltage(uint8_t oemId) override;
-    float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
+    float getMeasuredHVPVoltage(uint8_t oemId) override;
+    float getMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
-    void setHpfCornerFrequency(uint32_t frequency) override;
-    void disableHpf() override;
+    void setLnaHpfCornerFrequency(uint32_t frequency) override;
+    void disableLnaHpf() override;
+    void setAdcHpfCornerFrequency(uint32_t frequency) override;
+    void disableAdcHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
@@ -145,6 +151,15 @@ public:
     float getActualTxFrequency(float frequency) override;
     static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
 
+    float getMinimumTGCValue() const override;
+
+    /**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+    float getMaximumTGCValue() const override;
+
+    std::pair<float, float> getTGCValueRange() const;
+
 private:
     struct VoltageLogbook {
         enum class Polarity { MINUS, PLUS };
@@ -157,7 +172,7 @@ private:
 
     void stopDevice();
 
-    std::pair<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>>
+    std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<framework::NdArray> &txDelayProfiles);
@@ -191,6 +206,8 @@ private:
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     void registerPulserIRQCallback();
+    void handleEvents();
+    void handlePulserInterrupt();
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;
@@ -215,6 +232,10 @@ private:
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
+
+    BlockingQueue<Us4REvent> eventQueue{1000};
+    std::thread eventHandlerThread;
+    std::unordered_map<std::string, std::function<void()>> eventHandlers;
 };
 
 }// namespace arrus::devices

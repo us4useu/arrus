@@ -248,7 +248,7 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
     auto pgaGain = static_cast<uint16>(proto.pga_gain());
     auto lnaGain = static_cast<uint16>(proto.lna_gain());
 
-    RxSettings::TGCCurve tgcSamples =
+    arrus::ops::us4r::TGCCurve tgcSamples =
         castTo<arrus::ops::us4r::TGCSampleValue>(std::begin(proto.tgc_samples()), std::end(proto.tgc_samples()));
 
     uint32 lpfCutoff = proto.lpf_cutoff();
@@ -258,7 +258,14 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
         activeTermination = static_cast<uint16>(proto.active_termination());
     }
     // TODO apply characteristic parameter
-    return RxSettings(dtgcAtt, pgaGain, lnaGain, tgcSamples, lpfCutoff, activeTermination);
+    return ::arrus::devices::RxSettingsBuilder()
+        .setDtgcAttenuation(dtgcAtt)
+        .setPgaGain(pgaGain)
+        .setLnaGain(lnaGain)
+        .setTgcSamples(tgcSamples)
+        .setLpfCutoff(lpfCutoff)
+        .setActiveTermination(activeTermination)
+        .build();
 }
 
 ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, const SettingsDictionary &dictionary) {

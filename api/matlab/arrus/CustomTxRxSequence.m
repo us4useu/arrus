@@ -55,7 +55,7 @@ classdef CustomTxRxSequence
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         hwDdcEnable (1,1) {mustBeLogical} = true
-        decimation (1,:) {mustBePositive}
+        decimation (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         nRepetitions (1,:) = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)

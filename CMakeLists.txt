@@ -67,7 +67,7 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             _CRT_SECURE_NO_WARNINGS)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
     set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
-    set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror")
+    set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror -Wno-psabi")
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
             ARRUS_LINUX
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
@@ -154,5 +154,12 @@ if(ARRUS_EMBED_DEPS)
             ${Us4_ROOT_DIR_SANITIZED}/lib64/
         DESTINATION
             ${ARRUS_LIB_INSTALL_DIR})
+    # headers
+    install(
+        DIRECTORY
+            ${Us4_ROOT_DIR_SANITIZED}/include/
+        DESTINATION
+            ${ARRUS_INCLUDE_INSTALL_DIR}
+    )
 endif()
 

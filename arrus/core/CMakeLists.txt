@@ -92,8 +92,6 @@ set(SRC_FILES
     devices/us4r/Us4RSettingsConverterImpl.h
     devices/us4r/Us4RSettings.h
     devices/us4r/Us4RSettings.cpp
-    devices/us4r/RxSettings.h
-    devices/us4r/RxSettings.cpp
 
     devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
     devices/us4r/probeadapter/ProbeAdapterSettings.h
@@ -126,11 +124,6 @@ set(SRC_FILES
 
     devices/us4r/external/ius4oem/IUs4OEMFactory.h
     devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h
-    devices/us4r/external/ius4oem/LNAGainValueMap.h
-    devices/us4r/external/ius4oem/PGAGainValueMap.h
-    devices/us4r/external/ius4oem/ActiveTerminationValueMap.h
-    devices/us4r/external/ius4oem/LPFCutoffValueMap.h
-    devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h
     devices/us4r/external/ius4oem/Us4RLoggerWrapper.h
     devices/us4r/external/ius4oem/IUs4OEMInitializer.h
     devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
@@ -183,7 +176,6 @@ set(SRC_FILES
     api/arrus.h
     api/session.h
     api/common.h api/io.h
-    devices/us4r/validators/RxSettingsValidator.h
     devices/us4r/Us4OEMDataTransferRegistrar.h
     devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h
     devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h
@@ -231,8 +223,9 @@ target_include_directories(${TARGET_NAME}
 # Dependencies
 ################################################################################
 target_link_libraries(${TARGET_NAME}
-    PRIVATE
+    PUBLIC
     Us4::US4OEM
+    PRIVATE
     Us4::HV256
     Us4::DBARLite
     Us4::DBARLitePcie
@@ -353,6 +346,11 @@ install(
     DESTINATION
     ${ARRUS_INCLUDE_INSTALL_DIR}/arrus/core
 )
+
+# US4R dependency
+
+
+# binaries should be handled
 
 install(
     DIRECTORY

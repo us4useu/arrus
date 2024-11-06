@@ -107,62 +107,63 @@ INSTANTIATE_TEST_CASE_P
                  104, 105, 106, 107, 108, 109, 110, 111,
                  112, 113, 114, 115, 116, 117, 118, 119,
                  120, 121, 122, 124, 125, 126, 127,
-                 77})),
+                 77}))
 
          // Invalid value
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.pgaGain = 777,
-                 x.invalidParameters = {"pga gain"})),
-         // Invalid value
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.lnaGain = 666,
-                 x.invalidParameters = {"lna gain"})),
-         // Invalid value
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.dtgcAttenuation = 123,
-                 x.invalidParameters = {"dtgc attenuation"})),
-         // Invalid value
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.lpfCutoff = 1,
-                 x.invalidParameters = {"lpf cutoff"})),
-         // Invalid value
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.activeTermination = 9999,
-                 x.invalidParameters = {"active termination"})),
-
-         // Invalid number of TGC samples
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.tgcSamples = getNTimes(40.0f, 1024),
-                 x.invalidParameters = {"tgc samples"})),
-         // Invalid TGC samples values (1) below the range
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.pgaGain = 30,
-                 x.lnaGain = 24,
-                 x.tgcSamples = {13.0f},
-                 x.invalidParameters = {"tgc samples"})),
-         // Invalid TGC samples values (2) above the range
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                x.pgaGain = 30,
-                x.lnaGain = 24,
-                x.tgcSamples = {55.0f},
-                x.invalidParameters = {"tgc samples"})),
-         // Invalid TGC samples values (3) below the minimum
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                x.pgaGain = 24,
-                x.lnaGain = 12,
-                x.tgcSamples = {-5.0f},
-                x.isApplyCharacteristic = false,
-                x.invalidParameters = {"tgc samples"})),
-         // Invalid TGC samples values (3) multiple wrong values
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.pgaGain = 24,
-                 x.lnaGain = 24,
-                 x.tgcSamples = {0, 15, 50.0f},
-                 x.invalidParameters = {"tgc samples"})),
-         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
-                 x.pgaGain = 11,
-                 x.lnaGain = 22,
-                 x.invalidParameters = {"pga gain", "lna gain"}))
+         // TODO(ARRUS-179)
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.pgaGain = 777,
+//                 x.invalidParameters = {"pga gain"})),
+//         // Invalid value
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.lnaGain = 666,
+//                 x.invalidParameters = {"lna gain"})),
+//         // Invalid value
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.dtgcAttenuation = 123,
+//                 x.invalidParameters = {"dtgc attenuation"})),
+//         // Invalid value
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.lpfCutoff = 1,
+//                 x.invalidParameters = {"lpf cutoff"})),
+//         // Invalid value
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.activeTermination = 9999,
+//                 x.invalidParameters = {"active termination"})),
+//
+//         // Invalid number of TGC samples
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.tgcSamples = getNTimes(40.0f, 1024),
+//                 x.invalidParameters = {"tgc samples"})),
+//         // Invalid TGC samples values (1) below the range
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.pgaGain = 30,
+//                 x.lnaGain = 24,
+//                 x.tgcSamples = {13.0f},
+//                 x.invalidParameters = {"tgc samples"})),
+//         // Invalid TGC samples values (2) above the range
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                x.pgaGain = 30,
+//                x.lnaGain = 24,
+//                x.tgcSamples = {55.0f},
+//                x.invalidParameters = {"tgc samples"})),
+//         // Invalid TGC samples values (3) below the minimum
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                x.pgaGain = 24,
+//                x.lnaGain = 12,
+//                x.tgcSamples = {-5.0f},
+//                x.isApplyCharacteristic = false,
+//                x.invalidParameters = {"tgc samples"})),
+//         // Invalid TGC samples values (3) multiple wrong values
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.pgaGain = 24,
+//                 x.lnaGain = 24,
+//                 x.tgcSamples = {0, 15, 50.0f},
+//                 x.invalidParameters = {"tgc samples"})),
+//         ARRUS_STRUCT_INIT_LIST(TestUs4OEMSettings, (
+//                 x.pgaGain = 11,
+//                 x.lnaGain = 22,
+//                 x.invalidParameters = {"pga gain", "lna gain"}))
 ));
 
 // Test that multiple errors are signaled

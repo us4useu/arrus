@@ -53,8 +53,7 @@ classdef Us4R < handle
             obj.sys.rxSampFreq = 65e6;
             obj.sys.maxSeqLength = 2^14;
             obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
-            obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
-            obj.sys.tgcInterv = 153; % [samp]
+            obj.sys.reloadTime = 43e-6; % [s]
             obj.logTime = logTime;
             
             % Check if valid GPU is available
@@ -879,17 +878,23 @@ classdef Us4R < handle
             if obj.seq.hwDdcEnable
                 if isempty(obj.seq.dec)
                     obj.seq.dec = round(obj.sys.rxSampFreq / max(obj.seq.txFreq));
+%                     obj.seq.dec = obj.sys.rxSampFreq / max(obj.seq.txFreq);
+%                     obj.seq.dec = round(obj.seq.dec * 4) / 4;
                 end
                 obj.seq.fpgaDec = 1;
                 
-                cutoffFrequency = mean(obj.seq.txFreq)/(obj.sys.rxSampFreq/2);
-                firOrder = obj.seq.dec * 16 - 1;
+                decMultipMap = [1 4 2 4];
+                decMultip = decMultipMap(mod(obj.seq.dec*4, 4) + 1);
+                cutoffFrequency = mean(obj.seq.txFreq) / (obj.sys.rxSampFreq*decMultip/2);
+                firOrder = obj.seq.dec * decMultip * 16 - 1;
                 firCoeff = fir1(firOrder, cutoffFrequency, "low");
                 obj.seq.ddcFirCoeff = firCoeff((numel(firCoeff)/2 + 1) : end);
                 
             else
                 if isempty(obj.seq.dec)
                     obj.seq.dec = 1;
+                elseif mod(obj.seq.dec,1) ~= 0
+                    error('Sequence decimation factor must be integer if hwDdcEnable is set to false');
                 end
                 obj.seq.fpgaDec = obj.seq.dec;
                 obj.seq.ddcFirCoeff = [];
@@ -933,7 +938,7 @@ classdef Us4R < handle
             end
             
             %% txPri
-            txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + 42e-6;
+            txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + obj.sys.reloadTime;
             if isempty(obj.seq.txPri)
                 obj.seq.txPri = txPriMin;
             elseif obj.seq.txPri < txPriMin
@@ -949,8 +954,9 @@ classdef Us4R < handle
                 obj.seq.tgcStart = obj.seq.tgcLim(1);
             end
             
-            obj.seq.tgcPoints = obj.sys.tgcOffset : obj.sys.tgcInterv : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec; % [samp]
-            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * obj.seq.tgcPoints / obj.sys.rxSampFreq * obj.seq.c;  % [dB]
+            dt = 500e-9; % [s] arbitrary time step for the tgc curve
+            obj.seq.tgcPoints = 0 : dt : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec/obj.sys.rxSampFreq; % [s]
+            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope*obj.seq.tgcPoints*obj.seq.c; % [dB]
             if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
                 warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
                       'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
@@ -999,10 +1005,6 @@ classdef Us4R < handle
             end
             obj.seq.nSampOmit = (max(obj.seq.txDel) + txDuration) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + txDuration / 2;
-
-            if obj.seq.hwDdcEnable
-                obj.seq.initDel   = obj.seq.initDel + (8+1)/obj.seq.rxSampFreq;
-            end
 
         end
 
@@ -1071,7 +1073,8 @@ classdef Us4R < handle
                     obj.rec.dec = round(obj.subSeq.rxSampFreq / max(obj.subSeq.txFreq));
                 end
                 
-                % Filter design the same as in hardware DDC
+                % Filter design similar as in hardware DDC, 
+                % but rec.dec is always integer, so decMultip = 1;
                 % downConvertion.m performs filtration with no phase delay
                 cutoffFrequency = mean(obj.subSeq.txFreq)/(obj.subSeq.rxSampFreq/2);
                 firOrder = obj.rec.dec * 16 - 1;
@@ -1310,7 +1313,7 @@ classdef Us4R < handle
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
-            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve, "sri", obj.seq.sri);
+            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", [], "sri", obj.seq.sri);
             
             % Digital Down Conversion
             if obj.seq.hwDdcEnable
@@ -1334,11 +1337,15 @@ classdef Us4R < handle
              obj.buffer.framesNumber, ...
              obj.buffer.oemId, ...
              obj.buffer.frameId, ...
-             obj.buffer.channelId] = obj.session.upload(scheme);
+             obj.buffer.channelId, ...
+             obj.buffer.rxTimeOffset] = obj.session.upload(scheme);
 
             % NOTE: the above outputs were used for calculation of data
             % reorganization addresses. Since subSequences are supported,
             % the corresponding data is obtained during setSubsequence call.
+            
+            % time, value, applyCharacteristic
+            obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 1);
         end
         
         % txWaveform must be handled properly here!!!
@@ -1375,8 +1382,9 @@ classdef Us4R < handle
 %              obj.buffer.framesNumber, ...
 %              obj.buffer.oemId, ...
 %              obj.buffer.frameId, ...
-%              obj.buffer.channelId] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
-%                                                                 obj.seq.seqLim(seqId,2)-1, sri);
+%              obj.buffer.channelId, ...
+%              obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
+%                                                                    obj.seq.seqLim(seqId,2)-1, sri);
 
             obj.buffer.framesOffset = obj.buffer.framesOffset.';
             obj.buffer.framesNumber = obj.buffer.framesNumber.';
@@ -1575,11 +1583,11 @@ classdef Us4R < handle
                                     obj.subSeq.txApCentZ(selFrames), ...
                                     obj.subSeq.txApCentX(selFrames), ...
                                     obj.subSeq.txFreq(selFrames), ...
-                                    obj.subSeq.initDel(selFrames), ...
+                                    obj.subSeq.initDel(selFrames) + obj.buffer.rxTimeOffset, ...
                                     obj.subSeq.txApFstElem(selFrames), ...
                                     obj.subSeq.txApLstElem(selFrames), ...
                                     obj.subSeq.rxApOrig(selFrames), ...
-                                    obj.subSeq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                    ceil(obj.subSeq.nSampOmit(selFrames)/obj.rec.dec), ...
                                     rxTangLim(:,1).', ...
                                     rxTangLim(:,2).', ...
                                     obj.subSeq.rxSampFreq/obj.rec.dec, ...
@@ -1602,7 +1610,7 @@ classdef Us4R < handle
                                     obj.rec.sos, ...
                                     obj.sys.interfSos, ...
                                     1/64/gather(obj.subSeq.txFreq(1)), ...
-                                    gather(obj.subSeq.initDel(1)));
+                                    gather(obj.subSeq.initDel(1))) + obj.buffer.rxTimeOffset;
             end
 
         end
@@ -1621,9 +1629,9 @@ classdef Us4R < handle
                                 obj.subSeq.txApCentZ(selFrames), ...
                                 obj.subSeq.txApCentX(selFrames), ...
                                 obj.subSeq.txFreq(selFrames), ...
-                                obj.subSeq.initDel(selFrames), ...
+                                obj.subSeq.initDel(selFrames) + obj.buffer.rxTimeOffset, ...
                                 obj.subSeq.rxApOrig(selFrames), ...
-                                obj.subSeq.nSampOmit(selFrames)/obj.rec.dec, ...
+                                ceil(obj.subSeq.nSampOmit(selFrames)/obj.rec.dec), ...
                                 obj.rec.bmodeRxTangLim(:,1).', ...
                                 obj.rec.bmodeRxTangLim(:,2).', ...
                                 obj.subSeq.rxSampFreq/obj.rec.dec, ...

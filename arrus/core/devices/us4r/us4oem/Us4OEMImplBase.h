@@ -39,7 +39,7 @@ public:
                                       const std::vector<TxTimeout> &txTimeouts = {}) = 0;
 
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
-    virtual void enableSequencer(bool resetSequencerPointer) = 0;
+    virtual void enableSequencer(uint16 startEntry) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
     virtual void setRxSettings(const RxSettings& settings) = 0;
     virtual void setTestPattern(RxTestPattern pattern) = 0;
@@ -75,6 +75,10 @@ public:
     HVPSMeasurement getHVPSMeasurement() override = 0;
 
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
+
+    virtual std::pair<float, float> getTGCValueRange() const = 0;
+    virtual bool isAFEJD18() = 0;
+    virtual bool isAFEJD48() = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

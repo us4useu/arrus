@@ -6,6 +6,7 @@
 
 #include "arrus/common/format.h"
 #include "arrus/common/asserts.h"
+#include "arrus/core/api/common/exceptions.h"
 
 namespace arrus {
 
@@ -22,14 +23,10 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                              const std::vector<T> &xi,
                              const std::optional<T> minFillValue = std::nullopt,
                              const std::optional<T> maxFillValue = std::nullopt
-                             ) {
-
-    ARRUS_REQUIRES_TRUE(!x.empty(), "Interpolation 1D: "
-                                    "sample points list should not be empty.");
-    ARRUS_REQUIRES_TRUE(x.size() == y.size(),
-                        "Interpolation 1D: x.size != y.size");
-    ARRUS_REQUIRES_TRUE(!xi.empty(), "Interpolation 1D: "
-                                     "query points list should not be empty.");
+) {
+    ARRUS_REQUIRES_TRUE(!x.empty(), "Interpolation 1D: sample points list should not be empty.");
+    ARRUS_REQUIRES_TRUE(x.size() == y.size(), "Interpolation 1D: x.size != y.size");
+    ARRUS_REQUIRES_TRUE(!xi.empty(), "Interpolation 1D: query points list should not be empty.");
 
     std::vector<T> result(xi.size());
     int i = 0;
@@ -41,7 +38,7 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                 result[i] = minFillValue.value();
             }
             else {
-                throw IllegalArgumentException(arrus::format(
+                throw IllegalArgumentException(format(
                     "Interpolation 1D: value {} is out of range [{}, {}].",
                     value, *std::begin(x), *std::prev(std::end(x))));
             }
@@ -54,7 +51,7 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                     result[i] = maxFillValue.value();
                 }
                 else {
-                    throw IllegalArgumentException(arrus::format(
+                    throw IllegalArgumentException(format(
                         "Interp 1D: value {} is out of range [{}, {}].",
                         value, *std::begin(x), *std::prev(std::end(x))));
                 }
@@ -73,6 +70,8 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
     }
     return result;
 }
+
+
 }
 
 #endif //ARRUS_CORE_COMMON_INTERPOLATE_H

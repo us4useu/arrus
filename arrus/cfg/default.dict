@@ -309,6 +309,38 @@ probe_adapter_models: [
     {
         id: {
             manufacturer: "us4us"
+            name: "pau_rev1.0"
+        }
+        n_channels: 128
+        channel_mapping_regions: [
+            {
+                us4oem: 0
+                region: {begin: 0, end: 31}
+            },
+            {
+                us4oem: 1
+                channels: [63, 62, 61, 60, 59, 58, 57, 56,
+                           55, 54, 53, 52, 51, 50, 49, 48,
+                           47, 46, 45, 44, 43, 42, 41, 40,
+                           39, 38, 37, 36, 35, 34, 33, 32]
+            },
+            {
+                us4oem: 0
+                region: {begin: 32, end: 63}
+            },
+            {
+                us4oem: 1
+                channels: [31, 30, 29, 28, 27, 26, 25, 24,
+                           23, 22, 21, 20, 19, 18, 17, 16,
+                           15, 14, 13, 12, 11, 10, 9, 8,
+                           7, 6, 5, 4, 3, 2, 1, 0]
+            }
+        ]
+    },
+
+    {
+        id: {
+            manufacturer: "us4us"
             name: "atl/philips"
         }
         n_channels: 128
@@ -968,6 +1000,22 @@ probe_models: [
     },
     {
         id: {
+            manufacturer: "ultrasonix"
+            name: "l9-4/38"
+        }
+        n_elements: 128
+        pitch: 0.3048e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+	    begin: 0,
+	    end: 90
+	}
+    },
+    {
+        id: {
             manufacturer: "olympus"
             name: "10l128"
         }
@@ -1075,7 +1123,7 @@ probe_models: [
         },
         voltage_range: {
 			begin: 0,
-			end: 15
+			end: 30
 		}
     },
     {
@@ -1328,7 +1376,7 @@ probe_to_adapter_connections: [
             }
          ]
      },
-    {
+     {
          probe_model_id: {
              manufacturer: "ultrasonix"
              name: "l14-5/38"
@@ -1341,13 +1389,41 @@ probe_to_adapter_connections: [
              {
                  manufacturer: "us4us"
                  name: "ultrasonix-us4r"
+             },
+             {
+                 manufacturer: "us4us"
+                 name: "pau_rev1.0"
              }
          ]
          channel_mapping_ranges: {
                 begin: 0
                 end: 127
          }
-     },
+    },
+    {
+         probe_model_id: {
+             manufacturer: "ultrasonix"
+             name: "l9-4/38"
+         }
+         probe_adapter_model_id: [
+             {
+                 manufacturer: "us4us"
+                 name: "ultrasonix"
+             },
+             {
+                 manufacturer: "us4us"
+                 name: "ultrasonix-us4r"
+             },
+             {
+                 manufacturer: "us4us"
+                 name: "pau_rev1.0"
+             }
+         ]
+         channel_mapping_ranges: {
+                begin: 0
+                end: 127
+         }
+    },
     {
         probe_model_id: {
             manufacturer: "olympus"
