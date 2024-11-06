@@ -29,8 +29,8 @@ set(SOURCE_FILES
 set(ARRUS_CUDA_MEX_SRC_FILES
     arrus/mexcuda/wcFilter.cu
     arrus/mexcuda/dopplerColor.cu
-    arrus/mexcuda/iqRaw2Lri.cu
-    arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu
+    # arrus/mexcuda/iqRaw2Lri.cu
+    # arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu
 )
 
 ################################################################################
@@ -41,17 +41,14 @@ set(TIMESTAMP "${CMAKE_CURRENT_BINARY_DIR}/timestamp")
 set(TOOLBOX_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/arrus)
 set(PACKAGE_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/+arrus)
 
-if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
-# Note: the below mexcuda is supported only on Windows.
-# For linux, use arrus framework kernels implementation.
-# Generate mexcuda matlab command
 
-# TODO remove it when mexcuda is not needed anymore
 set(ARRUS_MATLAB_MEXCUDA_COMMAND "")
 foreach(MEX_SRC_FILE ${ARRUS_CUDA_MEX_SRC_FILES})
-    set(ARRUS_MATLAB_MEXCUDA_COMMAND
-        "${ARRUS_MATLAB_MEXCUDA_COMMAND} mexcuda -outdir '${CMAKE_CURRENT_BINARY_DIR}/arrus/mexcuda' '${CMAKE_CURRENT_SOURCE_DIR}/${MEX_SRC_FILE}';")
+    set(ARRUS_MATLAB_MEXCUDA_COMMAND "${ARRUS_MATLAB_MEXCUDA_COMMAND} mexcuda -outdir '${CMAKE_CURRENT_BINARY_DIR}/arrus/mexcuda' '${CMAKE_CURRENT_SOURCE_DIR}/${MEX_SRC_FILE}'\;")
 endforeach()
+
+
+string(REPLACE " " ";" ARRUS_MATLAB_MEXCUDA_COMMAND "${ARRUS_MATLAB_MEXCUDA_COMMAND}")
 
 set(ARRUS_MATLAB_CORE_SO_FILE "$<TARGET_FILE:arrus-core>")
 
@@ -75,21 +72,12 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     COMMAND
     ${CMAKE_COMMAND} -E make_directory "${TOOLBOX_OUTPUT_DIR}/mexcuda"
     COMMAND
-    matlab -batch "${ARRUS_MATLAB_MEXCUDA_COMMAND}"
+    echo '${ARRUS_MATLAB_MEXCUDA_COMMAND}'
+    COMMAND
+    matlab -batch '${ARRUS_MATLAB_MEXCUDA_COMMAND}'
     COMMAND
     ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
-    DEPENDS ${SOURCE_FILES}
-)
-else()
-    add_custom_command(OUTPUT ${TIMESTAMP}
-        COMMAND
-        ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/arrus ${TOOLBOX_OUTPUT_DIR}
-        COMMAND
-        ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
-        DEPENDS ${SOURCE_FILES}
-        )
-endif()
+    DEPENDS ${SOURCE_FILES})
 
 
 add_custom_target(matlab_toolbox ALL DEPENDS ${TIMESTAMP})
