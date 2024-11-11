@@ -8,7 +8,12 @@ namespace arrus::ops::us4r {
 /**
  * Us4R TX waveform segment.
  *
- * @param state: one of the following values: -2, -1, 0, 1, 2
+ * WaveformSegment is a part of the TX waveform, that can be repated multiple times.
+ *
+ * The duration[i] is the duration of the i-th state, i.e. state[i].
+ *
+ * @param state: the sequence of of states, one of the following values: -2, -1, 0, 1, 2
+ * @param duration: the duration of the i-th state
  */
 class WaveformSegment {
 public:

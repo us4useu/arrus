@@ -32,6 +32,7 @@ TEST_P(TxWaveformConverterTest, ConvertsCorrectWaveform) {
 INSTANTIATE_TEST_SUITE_P(
     ConvertsCorrectWaveform, TxWaveformConverterTest,
     testing::Values(
+
         // NOTE: below test cases implicitly tests also Pulse -> Waveform conversion
         TxWaveformConverterTestParams{
             ::arrus::ops::us4r::Pulse(1e6f, 1, false, 1).toWaveform(),
@@ -293,6 +294,29 @@ INSTANTIATE_TEST_SUITE_P(
                 0b00000'0100101'0101,
                 ENDSTATE
             }
+        },
+        // Other use cases
+        TxWaveformConverterTestParams{
+            ::arrus::ops::us4r::Pulse(0.5e6f, 2, false, 1).toWaveform(),
+            ////             HVP0 (128 cycles) -> HVP0 (2 cycles) -> HVM0 (128 cycles) -> HVM0 (2 cycles). 4-state repetition
+            std::vector<uint32_t>{0b11'000'1111110'0101, 0b00000'0000000'0101, 0b00000'1111110'1010, 0b00000'0000000'1010, ENDSTATE}
+        },
+        TxWaveformConverterTestParams{
+            // 0.5 MHz + 1 Tclk per level
+            ::arrus::ops::us4r::Pulse(1.0/(2e-6 + 2.0/SAMPLING_FREQUENCY), 2, false, 1).toWaveform(),
+            ////             HVP0 (129 cycles) -> HVP0 (2 cycles) -> HVM0 (129 cycles) -> HVM0 (2 cycles). 4-state repetition
+            std::vector<uint32_t>{0b11'000'1111111'0101, 0b00000'0000000'0101, 0b00000'1111111'1010, 0b00000'0000000'1010, ENDSTATE}
+        },
+        TxWaveformConverterTestParams{
+            // 0.5 MHz + 1 Tclk per level
+            ::arrus::ops::us4r::Pulse(1.0/(2e-6 + 4.0/SAMPLING_FREQUENCY), 2, false, 1).toWaveform(),
+            ////             HVP0 (129 cycles) -> HVP0 (2 cycles) -> HVM0 (129 cycles) -> HVM0 (2 cycles). 4-state repetition
+            std::vector<uint32_t>{0b11'000'1111111'0101, 0b00000'0000001'0101, 0b00000'1111111'1010, 0b00000'0000001'1010, ENDSTATE}
+        },
+        TxWaveformConverterTestParams{
+            ::arrus::ops::us4r::Pulse(0.5e6f, 4, false, 1).toWaveform(),
+            ////             HVP0 (128 cycles) -> HVP0 (2 cycles) -> HVM0 (128 cycles) -> HVM0 (2 cycles). 4-state repetition
+            std::vector<uint32_t>{0b11'010'1111110'0101, 0b00000'0000000'0101, 0b00000'1111110'1010, 0b00000'0000000'1010, ENDSTATE}
         }
     )
 );
