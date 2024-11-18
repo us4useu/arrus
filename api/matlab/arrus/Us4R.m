@@ -644,7 +644,8 @@ classdef Us4R < handle
             end
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 data = gather(data(:,selectedLines));
                 if boundsEnable
                     data = [min(data,[],2), max(data,[],2)];
@@ -664,6 +665,8 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.session.stopScheme();
+            
         end
         
         function imageRawRf(obj,varargin)
@@ -714,7 +717,8 @@ classdef Us4R < handle
             colorbar;
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 try
                     set(hDisp, 'CData', gather(data(:,selectedLines)));
                     drawnow limitrate;
@@ -727,6 +731,8 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.session.stopScheme();
+
         end
         
         function [img] = reconstructOffline(obj,rfRaw)
