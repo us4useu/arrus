@@ -63,7 +63,7 @@ classdef Us4R < handle
                 error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
             end
             % Add location of the CUDA kernels
-            addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
+            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
 
             % Probe parameters
             probe = obj.us4r.getProbeModel;

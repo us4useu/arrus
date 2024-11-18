@@ -1,8 +1,8 @@
 % Example script for b-mode classical line-by-line imaging using focused waves and linear scanning
 
 %% Initialize the system
-addpath('..\');
-addpath('..\arrus');
+addpath('../');
+addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
 us  = Us4R('configFile', 'us4r.prototxt');
