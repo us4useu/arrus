@@ -115,6 +115,7 @@ classdef Us4R < handle
         
         function stopScheme(obj)
             obj.session.stopScheme();
+            obj.buffer.iFrame = 0;
         end
 
         function nProbeElem = getNProbeElem(obj)
@@ -373,7 +374,7 @@ classdef Us4R < handle
             % of the master module
 
             [rf, metadata] = obj.execSequence;
-            obj.session.stopScheme();
+            obj.stopScheme;
 
             rf = obj.rawDataReorganization(rf);
 
@@ -522,7 +523,7 @@ classdef Us4R < handle
             end
 
             if concBufferEnable
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Output buffer unwinding
@@ -540,7 +541,7 @@ classdef Us4R < handle
                     sriBuffer(i) = tStampCurr - tStampPrev;
                     tStampPrev = tStampCurr;
                 end
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Postprocessing loop
@@ -665,7 +666,7 @@ classdef Us4R < handle
                     end
                 end
             end
-            obj.session.stopScheme();
+            obj.stopScheme;
             
         end
         
@@ -731,7 +732,7 @@ classdef Us4R < handle
                     end
                 end
             end
-            obj.session.stopScheme();
+            obj.stopScheme;
 
         end
         
