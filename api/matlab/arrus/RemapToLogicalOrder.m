@@ -12,7 +12,7 @@ classdef RemapToLogicalOrder
     methods
         function obj = RemapToLogicalOrder(scheme, metadata)
             
-            addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
+            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
             
             framesOffset = metadata{1};
             framesNumber = metadata{2};
