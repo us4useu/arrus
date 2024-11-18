@@ -362,33 +362,16 @@ classdef Us4R < handle
             seq = obj.seq;
         end
         
-        function [rf,img] = run(obj)
+        function [rf, img, metadata] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
             % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
-            % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
-            
-            [rf, ~] = obj.execSequence;
-            obj.session.stopScheme();
+            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` 
+            % operation was uploaded) and metadata located in the first sample 
+            % of the master module
 
-            rf = obj.rawDataReorganization(rf);
-
-            if obj.rec.enable
-                img = obj.execReconstr(rf(:,:,:,1));
-            else
-                img = [];
-            end
-        end
-        
-        function [rf, img, metadata] = runWithMetadata(obj)
-            % Runs uploaded operations in the us4R system.
-            %
-            % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
-            % implementations.
-            %
-            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
             [rf, metadata] = obj.execSequence;
             obj.session.stopScheme();
 
