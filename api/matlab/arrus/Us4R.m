@@ -113,6 +113,10 @@ classdef Us4R < handle
             obj.session.close();
         end
         
+        function state = getSessionState(obj)
+            state = obj.session.getCurrentState();
+        end
+
         function stopScheme(obj)
             obj.session.stopScheme();
         end

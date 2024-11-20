@@ -25,6 +25,7 @@ public:
 
     explicit SessionClassImpl(const std::shared_ptr<MexContext> &ctx) : ClassObjectManager(ctx, CLASS_NAME) {
         ARRUS_MATLAB_ADD_METHOD("getDevice", getDevice);
+        ARRUS_MATLAB_ADD_METHOD("getCurrentState", getCurrentState);
         ARRUS_MATLAB_ADD_METHOD("upload", upload);
         ARRUS_MATLAB_ADD_METHOD("startScheme", startScheme);
         ARRUS_MATLAB_ADD_METHOD("stopScheme", stopScheme);
@@ -77,6 +78,11 @@ public:
                                            });
             break;
         }
+    }
+
+    void getCurrentState(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        uint8 state = static_cast<uint8>(get(obj)->getCurrentState());
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint8, state);
     }
 
     void upload(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
