@@ -57,95 +57,6 @@ classdef Us4R < handle
 
     methods
         
-        function obj = Us4R(varargin)
-            
-            % Input parser
-            paramsParser = inputParser;
-            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
-            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
-            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
-            parse(paramsParser, varargin{:});
-            
-            configFile   = paramsParser.Results.configFile;
-            interfEnable = paramsParser.Results.interfEnable;
-            logTime      = paramsParser.Results.logTime;
-            
-            if isempty(configFile) || ~isfile(configFile)
-                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
-                if filterIndex	== 0
-                    obj = [];
-                    return;
-                else
-                    configFile = [pathName fileName];
-                end
-            end
-            
-            % Initialization
-            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
-            
-            obj.session = arrus.session.Session(configFile);
-            obj.us4r = obj.session.getDevice("/Us4R:0");
-            
-            obj.sys.nChArius = 32;
-            obj.sys.rxSampFreq = 65e6;
-            obj.sys.maxSeqLength = 2^14;
-            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
-            obj.sys.reloadTime = 43e-6; % [s]
-            obj.logTime = logTime;
-            
-            % Check if valid GPU is available
-            isGpuAvailable = ~isempty(ver('parallel')) ...
-                           && parallel.gpu.GPUDevice.isAvailable;
-            if ~isGpuAvailable
-                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
-            end
-            % Add location of the CUDA kernels
-            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
-
-            % Probe parameters
-            probe = obj.us4r.getProbeModel;
-            obj.sys.nElem = double(probe.nElements);
-            obj.sys.pitch = probe.pitch;
-            obj.sys.freqRange = double(probe.txFrequencyRange);
-            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
-
-            % Position (pos,x,z) and orientation (ang) of each probe element
-            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-            if obj.sys.curvRadius == 0
-                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
-                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
-            else
-                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
-                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
-                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
-                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
-            end
-
-            obj.sys.interfEnable = interfEnable;
-            if obj.sys.interfEnable
-                wedge = wedgeParams();
-                obj.sys.interfSize = wedge.interfSize;
-                obj.sys.interfAng  = wedge.interfAng;
-                obj.sys.interfSos  = wedge.interfSos;
-
-                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
-
-                xElemNoInterf = obj.sys.xElem;
-                zElemNoInterf = obj.sys.zElem;
-                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
-                              + zElemNoInterf * sin(obj.sys.interfAng);
-                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
-                              - xElemNoInterf * sin(obj.sys.interfAng) ...
-                              - obj.sys.interfSize;
-            end
-
-            obj.sys.tangElem = tan(obj.sys.angElem);
-            
-            obj.sys.isHardwareProgrammed = false;
-
-        end
-        
         function closeSession(obj)
             obj.session.close();
         end
@@ -793,6 +704,95 @@ classdef Us4R < handle
     end
     
     methods(Access = private)
+        
+        function obj = Us4R(varargin)
+            
+            % Input parser
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
+            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
+            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
+            parse(paramsParser, varargin{:});
+            
+            configFile   = paramsParser.Results.configFile;
+            interfEnable = paramsParser.Results.interfEnable;
+            logTime      = paramsParser.Results.logTime;
+            
+            if isempty(configFile) || ~isfile(configFile)
+                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
+                if filterIndex	== 0
+                    obj = [];
+                    return;
+                else
+                    configFile = [pathName fileName];
+                end
+            end
+            
+            % Initialization
+            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
+            
+            obj.session = arrus.session.Session(configFile);
+            obj.us4r = obj.session.getDevice("/Us4R:0");
+            
+            obj.sys.nChArius = 32;
+            obj.sys.rxSampFreq = 65e6;
+            obj.sys.maxSeqLength = 2^14;
+            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
+            obj.sys.reloadTime = 43e-6; % [s]
+            obj.logTime = logTime;
+            
+            % Check if valid GPU is available
+            isGpuAvailable = ~isempty(ver('parallel')) ...
+                           && parallel.gpu.GPUDevice.isAvailable;
+            if ~isGpuAvailable
+                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
+            end
+            % Add location of the CUDA kernels
+            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
+            
+            % Probe parameters
+            probe = obj.us4r.getProbeModel;
+            obj.sys.nElem = double(probe.nElements);
+            obj.sys.pitch = probe.pitch;
+            obj.sys.freqRange = double(probe.txFrequencyRange);
+            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
+            
+            % Position (pos,x,z) and orientation (ang) of each probe element
+            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+            if obj.sys.curvRadius == 0
+                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
+                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
+            else
+                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
+                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
+                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
+                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+            end
+            
+            obj.sys.interfEnable = interfEnable;
+            if obj.sys.interfEnable
+                wedge = wedgeParams();
+                obj.sys.interfSize = wedge.interfSize;
+                obj.sys.interfAng  = wedge.interfAng;
+                obj.sys.interfSos  = wedge.interfSos;
+                
+                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
+                
+                xElemNoInterf = obj.sys.xElem;
+                zElemNoInterf = obj.sys.zElem;
+                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
+                              + zElemNoInterf * sin(obj.sys.interfAng);
+                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
+                              - xElemNoInterf * sin(obj.sys.interfAng) ...
+                              - obj.sys.interfSize;
+            end
+            
+            obj.sys.tangElem = tan(obj.sys.angElem);
+            
+            obj.sys.isHardwareProgrammed = false;
+            
+        end
 
         function seqOut = mergeSequences(obj,seqIn)
 
