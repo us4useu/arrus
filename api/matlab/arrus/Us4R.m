@@ -7,7 +7,11 @@ classdef Us4R < handle
     % :param configFile: name of the prototxt file containing setup information.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
 
-    properties(Access = private)
+    properties (Constant)
+        instance = Us4RHandle
+    end
+
+    properties (Access = private)
         sys
         seq
         subSeq
@@ -18,8 +22,41 @@ classdef Us4R < handle
         logTime
     end
     
-    methods
+    methods (Static)
+        
+        function obj = getUs4R(varargin)
+            
+            instance = Us4R.instance;
+            if ~isempty(instance.handle) && instance.handle.getSessionState() ~= 2
+                
+                warning('There is an existing Us4R object with an open session which needs to be closed.');
+                
+                % Stop existing session
+                if instance.handle.getSessionState() == 1
+                    instance.handle.stopScheme();
+                    if instance.handle.getSessionState() ~= 0
+                        error('Cannot stop existing session');
+                    end
+                end
+                
+                % Close existing session
+                if instance.handle.getSessionState() == 0
+                    instance.handle.closeSession();
+                    if instance.handle.getSessionState() ~= 2
+                        error('Cannot close existing session');
+                    end
+                end
+                
+            end
+            
+            obj = Us4R(varargin{:});
+            instance.handle = obj;
+        end
+        
+    end
 
+    methods
+        
         function obj = Us4R(varargin)
             
             % Input parser
