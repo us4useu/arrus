@@ -43,7 +43,7 @@ classdef Us4R < handle
         end
         
     end
-
+    
     methods
         
         function closeSession(obj)
@@ -689,6 +689,15 @@ classdef Us4R < handle
         
         function [img] = reconstructOffline(obj,rfRaw)
             img = obj.execReconstr(rfRaw);
+        end
+        
+        function delete(obj)
+            if obj.getSessionState()==1
+                obj.stopScheme();
+            end
+            if obj.getSessionState()==0
+                obj.closeSession();
+            end
         end
     end
     
