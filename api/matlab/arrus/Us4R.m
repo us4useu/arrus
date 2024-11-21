@@ -24,7 +24,7 @@ classdef Us4R < handle
     
     methods (Static)
         
-        function obj = getUs4R(varargin)
+        function obj = create(varargin)
             
             instance = Us4R.instance;
             
