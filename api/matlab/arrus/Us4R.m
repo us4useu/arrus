@@ -42,6 +42,17 @@ classdef Us4R < handle
             instance.handle = obj;
         end
         
+        function clear()
+            
+            instance = Us4R.instance;
+            if ~isempty(instance.handle)
+                if isvalid(instance.handle)
+                    instance.handle.delete();
+                end
+                instance.handle = [];
+            end
+        end
+        
     end
     
     methods
