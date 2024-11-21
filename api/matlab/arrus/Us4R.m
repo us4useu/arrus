@@ -27,26 +27,15 @@ classdef Us4R < handle
         function obj = getUs4R(varargin)
             
             instance = Us4R.instance;
-            if ~isempty(instance.handle) && instance.handle.getSessionState() ~= 2
+            
+            if ~isempty(instance.handle) && ...
+               isvalid(instance.handle) && ...
+               instance.handle.getSessionState() ~= 2
                 
-                warning('There is an existing Us4R object with an open session which needs to be closed.');
+                warning('There is an Us4R instance with an open session which needs to be closed.');
                 
-                % Stop existing session
-                if instance.handle.getSessionState() == 1
-                    instance.handle.stopScheme();
-                    if instance.handle.getSessionState() ~= 0
-                        error('Cannot stop existing session');
-                    end
-                end
-                
-                % Close existing session
-                if instance.handle.getSessionState() == 0
-                    instance.handle.closeSession();
-                    if instance.handle.getSessionState() ~= 2
-                        error('Cannot close existing session');
-                    end
-                end
-                
+                instance.handle.stopScheme();
+                instance.handle.closeSession();
             end
             
             obj = Us4R(varargin{:});
