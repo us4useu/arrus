@@ -213,10 +213,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
 
     bool isDDCOn = ddc.has_value();
     const Us4OEMChannelsGroupsMask emptyChannelGroups;
-    const size_t totalNumberOfFirings = std::accumulate(
-        std::begin(sequences), std::end(sequences), size_t(0),
-        [](size_t current, const auto &seq){return current + seq.size();});
-
     // us4OEM sequencer firing/entry id (global).
     OpId firingId = 0;
     for (SequenceId sequenceId = 0; sequenceId < ARRUS_SAFE_CAST(sequences.size(), SequenceId); ++sequenceId) {
@@ -281,12 +277,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
-
-    if(isOEMPlus()) {
-        for (size_t firing = 0; firing < totalNumberOfFirings; ++firing) {
-            ius4oem->BuildSequenceWaveform(ARRUS_SAFE_CAST(firing, OpId));
-        }
-    }
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
