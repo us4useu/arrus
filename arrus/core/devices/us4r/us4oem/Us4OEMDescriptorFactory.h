@@ -107,7 +107,8 @@ public:
                     },
                     Interval<uint32>{0, 4096} // sequence length
                 },
-                4 // maximum number of timeouts
+                4, // maximum number of timeouts
+                0 // sample number TX start (i.e. TX delay = 0)
             };
         default:
             throw arrus::IllegalArgumentException(format("Unsupported us4OEM version: {}", version));
