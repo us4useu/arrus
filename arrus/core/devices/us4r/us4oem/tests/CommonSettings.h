@@ -79,7 +79,8 @@ Us4OEMDescriptor DEFAULT_DESCRIPTOR {
         },
         Interval<uint32>{0, 16384} // sequence length
     },
-    0 // number of timeouts
+    0, // number of timeouts
+    123
 };
 
 struct TestTxRxParams {

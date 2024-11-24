@@ -329,7 +329,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
 size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
                                      const TxRxParameters &op, uint16 rxMapId) {
     const uint32 startSampleRaw = startSample * op.getRxDecimationFactor();
-    const uint32 sampleRxOffset = ius4oem->GetTxOffset();
+    const uint32 sampleRxOffset = descriptor.getSampleTxStart();
     const size_t nSamples = endSample - startSample;
     const size_t nSamplesRaw = nSamples;
     const size_t sampleSize = sizeof(RawDataType);
@@ -615,8 +615,6 @@ uint32 Us4OEMImpl::getFirmwareVersion() { return ius4oem->GetFirmwareVersion(); 
 
 uint32 Us4OEMImpl::getTxFirmwareVersion() { return ius4oem->GetTxFirmwareVersion(); }
 
-uint32_t Us4OEMImpl::getTxOffset() { return ius4oem->GetTxOffset(); }
-
 uint32_t Us4OEMImpl::getOemVersion() { return ius4oem->GetOemVersion(); }
 
 void Us4OEMImpl::checkState() { this->checkFirmwareVersion(); }
@@ -631,7 +629,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 std::pair<uint32_t, float> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
     //DDC RX offset (valid data offset)
-    uint32_t txOffset = ius4oem->GetTxOffset();
+    uint32_t txOffset = descriptor.getSampleTxStart();
     uint32_t rxOffset = 34u + (uint32_t)(16 * ddcDecimationFactor);
     uint32_t filterDelay = (uint32_t)(8 * ddcDecimationFactor);
 
