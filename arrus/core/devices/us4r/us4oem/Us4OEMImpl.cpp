@@ -145,7 +145,7 @@ Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltag
 
 void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 
-Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences, 
+Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
                                       uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                                       const std::vector<arrus::framework::NdArray> &txDelays,
@@ -259,7 +259,8 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
             }
             ius4oem->SetRxTime(rxTime, firingId);
-            ius4oem->SetRxDelay(op.getRxDelay(), firingId);
+            // TODO(
+            ius4oem->SetRxDelay(0.0f, firingId);
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
                 ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
@@ -271,7 +272,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     ius4oem->BuildSequenceWaveforms(false);
 }
 
-std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress, 
+std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
                                                         uint32 startSample, uint32 endSample, uint16 entryId,
                                                         const TxRxParameters &op, uint16 rxMapId,
                                                         const std::optional<DigitalDownConversion> &ddc) {
@@ -311,7 +312,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
     ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
-    
+
     return std::make_pair(nBytes, sampleRxOffsetTimeResidue);
 }
 
@@ -470,8 +471,8 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                         }
                     }
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
-                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
-                                        triggerSyncPerTxRx);
+                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger);
+                                        // TODO US4R-395 triggerSyncPerTxRx);
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
@@ -566,13 +567,13 @@ void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequence
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer(bool resetSequencerPointer) {
+void Us4OEMImpl::enableSequencer(uint16 startEntry) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger, resetSequencerPointer);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
@@ -688,6 +689,9 @@ float Us4OEMImpl::getUCDTemperature() { return ius4oem->GetUCDTemp(); }
 float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->GetUCDExtTemp(); }
 
 float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
+
+float Us4OEMImpl::getMeasuredHVPVoltage() { return ius4oem->GetMeasuredHVPVoltage(); }
+float Us4OEMImpl::getMeasuredHVMVoltage() { return ius4oem->GetMeasuredHVMVoltage(); }
 
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
