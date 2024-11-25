@@ -38,12 +38,7 @@ public:
     MOCK_METHOD(void, InitializeTX, (), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
-    MOCK_METHOD(float, SetTxDelay,
-            (const unsigned char channel, const float value, const unsigned short firing),
-    (override));
-    MOCK_METHOD(float, SetTxDelay,
-        (const unsigned char channel, const float value, const unsigned short firing, size_t profile),
-    (override));
+    MOCK_METHOD(::us4r::Vector<float>, SetTxDelays, (const ::us4r::Span<float> &delays, const uint16_t firing, size_t profile), (override));
     MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
@@ -244,6 +239,7 @@ public:
     MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
     MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
