@@ -34,7 +34,9 @@ classdef Us4R < handle
                 
                 warning('There is an Us4R instance with an open session which needs to be closed.');
                 
-                instance.handle.stopScheme();
+                if instance.handle.getSessionState() == 1
+                    instance.handle.stopScheme();
+                end
                 instance.handle.closeSession();
             end
             
