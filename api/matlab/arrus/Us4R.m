@@ -705,11 +705,13 @@ classdef Us4R < handle
         end
         
         function delete(obj)
-            if obj.getSessionState()==1
-                obj.stopScheme();
-            end
-            if obj.getSessionState()==0
-                obj.closeSession();
+            if ~isempty(obj.session)
+                if obj.getSessionState()==1
+                    obj.stopScheme();
+                end
+                if obj.getSessionState()==0
+                    obj.closeSession();
+                end
             end
         end
     end
