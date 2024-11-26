@@ -115,6 +115,7 @@ classdef Us4R < handle
         
         function stopScheme(obj)
             obj.session.stopScheme();
+            obj.buffer.iFrame = 0;
         end
 
         function nProbeElem = getNProbeElem(obj)
@@ -362,35 +363,18 @@ classdef Us4R < handle
             seq = obj.seq;
         end
         
-        function [rf,img] = run(obj)
+        function [rf, img, metadata] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
             % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
-            % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
-            
-            [rf, ~] = obj.execSequence;
-            obj.session.stopScheme();
+            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` 
+            % operation was uploaded) and metadata located in the first sample 
+            % of the master module
 
-            rf = obj.rawDataReorganization(rf);
-
-            if obj.rec.enable
-                img = obj.execReconstr(rf(:,:,:,1));
-            else
-                img = [];
-            end
-        end
-        
-        function [rf, img, metadata] = runWithMetadata(obj)
-            % Runs uploaded operations in the us4R system.
-            %
-            % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
-            % implementations.
-            %
-            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
             [rf, metadata] = obj.execSequence;
-            obj.session.stopScheme();
+            obj.stopScheme;
 
             rf = obj.rawDataReorganization(rf);
 
@@ -539,7 +523,7 @@ classdef Us4R < handle
             end
 
             if concBufferEnable
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Output buffer unwinding
@@ -557,7 +541,7 @@ classdef Us4R < handle
                     sriBuffer(i) = tStampCurr - tStampPrev;
                     tStampPrev = tStampCurr;
                 end
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Postprocessing loop
@@ -661,7 +645,8 @@ classdef Us4R < handle
             end
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 data = gather(data(:,selectedLines));
                 if boundsEnable
                     data = [min(data,[],2), max(data,[],2)];
@@ -681,6 +666,8 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.stopScheme;
+            
         end
         
         function imageRawRf(obj,varargin)
@@ -731,7 +718,8 @@ classdef Us4R < handle
             colorbar;
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 try
                     set(hDisp, 'CData', gather(data(:,selectedLines)));
                     drawnow limitrate;
@@ -744,6 +732,8 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.stopScheme;
+
         end
         
         function [img] = reconstructOffline(obj,rfRaw)
