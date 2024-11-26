@@ -30,11 +30,11 @@ classdef Us4R < handle
             
             if ~isempty(instance.handle) && ...
                isvalid(instance.handle) && ...
-               instance.handle.getSessionState() ~= 2
+               instance.handle.getSessionState() ~= "CLOSED"
                 
                 warning('There is an Us4R instance with an open session which needs to be closed.');
                 
-                if instance.handle.getSessionState() == 1
+                if instance.handle.getSessionState() == "STARTED"
                     instance.handle.stopScheme();
                 end
                 instance.handle.closeSession();
@@ -706,10 +706,10 @@ classdef Us4R < handle
         
         function delete(obj)
             if ~isempty(obj.session)
-                if obj.getSessionState()==1
+                if obj.getSessionState()=="STARTED"
                     obj.stopScheme();
                 end
-                if obj.getSessionState()==0
+                if obj.getSessionState()=="STOPPED"
                     obj.closeSession();
                 end
             end

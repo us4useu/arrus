@@ -21,7 +21,7 @@ classdef Session < handle
         end
 
         function state = getCurrentState(obj)
-            % Returns a session current state (0-Stopped; 1-Started; 2-Closed)
+            % Returns a session current state (STOPPED; STARTED; CLOSED)
             %
             res = obj.ptr.callMethod("getCurrentState", 1);
             state = res{1, 1};

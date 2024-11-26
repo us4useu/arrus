@@ -81,8 +81,9 @@ public:
     }
 
     void getCurrentState(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        uint8 state = static_cast<uint8>(get(obj)->getCurrentState());
-        outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint8, state);
+        ::arrus::session::Session::State state = get(obj)->getCurrentState();
+        std::string stateName = ::arrus::session::Session::getSessionStateName(state);
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_STRING(ctx, stateName);
     }
 
     void upload(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
