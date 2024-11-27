@@ -37,7 +37,7 @@ public:
      * @param state Session State
      * @return a Session State name (string)
      */
-    static std::string getSessionStateName(const State state) {
+    static std::string getSessionStateAsString(const State state) {
         switch(state) {
             case State::STOPPED: return "STOPPED";
             case State::STARTED: return "STARTED";
