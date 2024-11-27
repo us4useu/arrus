@@ -82,7 +82,7 @@ public:
 
     void getCurrentState(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         ::arrus::session::Session::State state = get(obj)->getCurrentState();
-        std::string stateName = ::arrus::session::Session::getSessionStateName(state);
+        std::string stateName = ::arrus::session::Session::getSessionStateAsString(state);
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_STRING(ctx, stateName);
     }
 
