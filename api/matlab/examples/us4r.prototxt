@@ -1,12 +1,12 @@
 us4r: {
     probe_id: {
-        manufacturer: "vermon"
-        name: "la/20/128"
+        manufacturer: "esaote"
+        name: "sl1543"
     }
 
     adapter_id: {
         manufacturer: "us4us"
-        name: "atl/philips"
+        name: "esaote3"
     }
 
     # Default initial values.
