@@ -12,3 +12,4 @@ class LinearTgc:
     start: float
     slope: float
     clip: bool = True
+    use_medium : bool = True

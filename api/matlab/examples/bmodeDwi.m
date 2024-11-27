@@ -1,20 +1,20 @@
-% Example script for b-mode imaging using plane waves and angular scanning
+% Example script for b-mode imaging using diverging waves and linear scanning
 
 %% Initialize the system
-addpath('..\');
-addpath('..\arrus');
+addpath('../');
+addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
-us  = Us4R('configFile', 'us4r.prototxt');
+us  = Us4R.create('configFile', 'us4r.prototxt');
 
 %% Selected parameters
-% To program plane wave sequence, set 'txFocus' to infinity.
-txFoc = inf;                    % Focal distance [m]
+% To program diverging wave sequence, set 'txFocus' to finite negative value.
+txFoc = -6e-3;                  % Focal distance [m]
 
-% To program angular scanning/compounding, set 'txAngle' as a vector. 
-% It will also determine the number of transmissions in the sequence.
-txAng = (-15:3:15)*pi/180;      % Plane wave angles [rad]
-nTx = numel(txAng);             % Number of transmissions in a sequence
+% To program linear scanning/compounding, set 'txApertureCenter' or 'txCenterElement' 
+% as a vector. It will also determine the number of transmissions in the sequence.
+txApCent = (-15:3:15)*1e-3;     % Tx aperture center positions [m]
+nTx = numel(txApCent);          % Number of transmissions in a sequence
 
 %% Program Tx/Rx sequence and reconstruction
 % Set the Tx/Rx sequence
@@ -27,12 +27,12 @@ seq = CustomTxRxSequence(... % Obligatory parameters
                         ... % (tx/rxApertureCenter [m] can be replaced with 
                         ... % tx/rxCenterElement [elem], rxDepthRange [m] 
                         ... % can be replaced with rxNSamples [samp])
-                        'txApertureCenter', 0e-3, ...
-                        'txApertureSize',   us.getNProbeElem, ...
+                        'txApertureCenter', txApCent, ...
+                        'txApertureSize',   32, ...
                         'rxApertureCenter', 0e-3, ...
                         'rxApertureSize',   us.getNProbeElem, ...
                         'txFocus',          txFoc, ...
-                        'txAngle',          txAng, ...
+                        'txAngle',          0, ...
                         'speedOfSound',     1540, ...
                         'txFrequency',      6.5e6, ...
                         'txNPeriods',       2, ...
@@ -68,7 +68,5 @@ us.runLoop(@display.isOpen, @display.updateImg);
 %% Collecting data (single execution of the sequence)
 [raw,img] = us.run;
 
-%% Close session
-us.closeSession;
 
 

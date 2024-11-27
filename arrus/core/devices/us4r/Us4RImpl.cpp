@@ -1,5 +1,4 @@
 #include "Us4RImpl.h"
-#include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
 #include "TxTimeoutRegister.h"
 #include "arrus/core/common/interpolate.h"
@@ -69,6 +68,8 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                               format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
         }
     }
+    this->eventHandlers.insert({"pulserIrq", [this]() {this->handlePulserInterrupt(); }});
+    this->eventHandlerThread = std::thread([this](){this->handleEvents(); });
 }
 
 std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
@@ -397,6 +398,9 @@ Us4RImpl::~Us4RImpl() {
         if (this->buffer) {
             cleanupBuffers();
         }
+        this->eventQueue.shutdown();
+        getDefaultLogger()->log(LogSeverity::DEBUG, "Waiting for the Us4R event handler thread to stop.");
+        this->eventHandlerThread.join();
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
@@ -423,10 +427,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
             return this->getActualTxFrequency(frequency);
         }};
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
-    // Register pulser IRQ handling procedure.
-    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
-        registerPulserIRQCallback();
-    }
+
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
     // Initialize converters.
@@ -478,6 +479,10 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
             oemsFCMs.at(sId).emplace_back(std::move(oemFCM.at(sId)));
         }
+    }
+    // Register pulser IRQ handling procedure.
+    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
+        registerPulserIRQCallback();
     }
     // Convert FCMs to probe-level apertures.
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -564,14 +569,14 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, false); }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setTgcSamples(tgcCurvePoints)
-                             ->setApplyTgcCharacteristic(applyCharacteristic)
-                             ->build();
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .build();
     setRxSettings(newRxSettings);
 }
 
@@ -596,10 +601,18 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
-    // TODO(jrozb91) To reconsider below.
     float nominalFs = getSamplingFrequency();
-    uint16 offset = 359;
-    uint16 tgcT = 153;
+    // TGC curve offset (relative to the first acquired sample), TGC time resolution
+    uint16_t offset = 0, tgcT = 0;
+    if(us4oems.at(0)->isAFEJD18()) {
+        offset = 359;
+        tgcT = 153;
+    }
+    else if (us4oems.at(0)->isAFEJD48()) {
+        offset = 359;
+        tgcT = 120;
+    }
+
     // TODO try avoid converting from samples to time then back to samples?
     uint16 maxNSamples = int16(roundf(maxT * nominalFs));
     // Note: the last TGC sample should be applied before the reception ends.
@@ -614,9 +627,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
-    RxSettingsValidator validator;
-    validator.validate(settings);
-    validator.throwOnErrors();
+    // TODO(ARRUS-179) enable (do the validation here, instead of the low-level OEM?)
+//    RxSettingsValidator validator;
+//    validator.validate(settings);
+//    validator.throwOnErrors();
 
     std::unique_lock<std::mutex> guard(afeParamsMutex);
     bool isStateInconsistent = false;
@@ -640,7 +654,7 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 
 void Us4RImpl::setPgaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getPgaGain() {
@@ -649,7 +663,7 @@ uint16 Us4RImpl::getPgaGain() {
 }
 void Us4RImpl::setLnaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getLnaGain() {
@@ -658,17 +672,17 @@ uint16 Us4RImpl::getLnaGain() {
 }
 void Us4RImpl::setLpfCutoff(uint32 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setDtgcAttenuation(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value).build();
     setRxSettings(newRxSettings);
 }
 
@@ -736,13 +750,22 @@ void Us4RImpl::disableAfeDemod() {
 
 float Us4RImpl::getCurrentSamplingFrequency() const { return us4oems[0]->getCurrentSamplingFrequency(); }
 
-void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
-    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setHpfCornerFrequency(frequency); },
-                       "setAfeHpfCornerFrequency");
+void Us4RImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setLnaHpfCornerFrequency(frequency); },
+                       "setLnaHpfCornerFrequency");
 }
 
-void Us4RImpl::disableHpf() {
-    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
+void Us4RImpl::disableLnaHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableLnaHpf(); }, "disableLnaHpf");
+}
+
+void Us4RImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setAdcHpfCornerFrequency(frequency); },
+                       "setAdcHpfCornerFrequency");
+}
+
+void Us4RImpl::disableAdcHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAdcHpf(); }, "disableAdcHpf");
 }
 
 uint16_t Us4RImpl::getAfe(uint8_t reg) { return us4oems[0]->getAfe(reg); }
@@ -1096,13 +1119,13 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 }
 
 void Us4RImpl::registerPulserIRQCallback() {
+    using namespace std::chrono_literals;
     for(auto &oem: us4oems) {
-        const auto &ius4oem = oem->getIUs4OEM();
-        ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
-            try{
-                ius4oem->LogPulsersInterruptRegister();
-                // TODO consider fail-safe device stopping (e.g. don't wait for pending interrupts, etc.).
-                this->stop();
+        const auto ordinal = oem->getDeviceId().getOrdinal();
+        oem->getIUs4OEM()->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, ordinal]() {
+            logger->log(LogSeverity::ERROR, format("Detected pulser interrupt on OEM: '{}'.", ordinal));
+            try {
+                this->eventQueue.enqueue(Us4REvent("pulserIrq"));
             }
             catch(const std::exception &e) {
                 logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
@@ -1112,6 +1135,62 @@ void Us4RImpl::registerPulserIRQCallback() {
             }
         });
     }
+}
+
+void Us4RImpl::handleEvents() {
+    while(true) {
+        try {
+            auto event = eventQueue.dequeue();
+            if(!event.has_value()) {
+                // queue shutdown
+                return;
+            }
+            auto eventId = event.value().getId();
+            auto handler = eventHandlers.find(eventId);
+            if(handler == std::end(eventHandlers)) {
+                logger->log(LogSeverity::WARNING, format("Unknown event: {}", eventId));
+            }
+            else {
+                (handler->second)();
+            }
+        }
+        catch(const std::exception &e) {
+            logger->log(LogSeverity::ERROR, "Exception on event handling: " + std::string(e.what()));
+        }
+        catch(...) {
+            logger->log(LogSeverity::ERROR, "Unknown exception on event handling.");
+        }
+    }
+}
+
+
+void Us4RImpl::handlePulserInterrupt() {
+    if (this->state == State::STOPPED) {
+        logger->log(LogSeverity::INFO, format("System already stopped."));
+        return;
+    }
+    for(auto &oem: this->us4oems) {
+        oem->getIUs4OEM()->LogPulsersInterruptRegister();
+    }
+    this->stop();
+    this->disableHV();
+}
+
+float Us4RImpl::getMinimumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return minimum;
+}
+
+/**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+float Us4RImpl::getMaximumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return maximum;
+}
+
+std::pair<float, float> Us4RImpl::getTGCValueRange() const {
+    return us4oems.at(0)->getTGCValueRange();
 }
 
 }// namespace arrus::devices

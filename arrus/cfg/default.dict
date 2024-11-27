@@ -1123,7 +1123,7 @@ probe_models: [
         },
         voltage_range: {
 			begin: 0,
-			end: 15
+			end: 30
 		}
     },
     {

@@ -1,20 +1,20 @@
-% Example script for b-mode imaging using diverging waves and linear scanning
+% Example script for b-mode classical line-by-line imaging using focused waves and linear scanning
 
 %% Initialize the system
-addpath('..\');
-addpath('..\arrus');
+addpath('../');
+addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
-us  = Us4R('configFile', 'us4r.prototxt');
+us  = Us4R.create('configFile', 'us4r.prototxt');
 
 %% Selected parameters
-% To program diverging wave sequence, set 'txFocus' to finite negative value.
-txFoc = -6e-3;                  % Focal distance [m]
+% To program focused wave sequence, set 'txFocus' to finite positive value.
+txFoc = 20e-3;                  % Focal distance [m]
 
-% To program linear scanning/compounding, set 'txApertureCenter' or 'txCenterElement' 
+% To program linear scanning, set 'txApertureCenter' or 'txCenterElement' 
 % as a vector. It will also determine the number of transmissions in the sequence.
-txApCent = (-15:3:15)*1e-3;     % Tx aperture center positions [m]
-nTx = numel(txApCent);          % Number of transmissions in a sequence
+centElem = 1:us.getNProbeElem;  % Tx/Rx aperture center element
+nTx = numel(centElem);          % Number of transmissions in a sequence
 
 %% Program Tx/Rx sequence and reconstruction
 % Set the Tx/Rx sequence
@@ -27,10 +27,10 @@ seq = CustomTxRxSequence(... % Obligatory parameters
                         ... % (tx/rxApertureCenter [m] can be replaced with 
                         ... % tx/rxCenterElement [elem], rxDepthRange [m] 
                         ... % can be replaced with rxNSamples [samp])
-                        'txApertureCenter', txApCent, ...
+                        'txCenterElement',	centElem, ...
                         'txApertureSize',   32, ...
-                        'rxApertureCenter', 0e-3, ...
-                        'rxApertureSize',   us.getNProbeElem, ...
+                        'rxCenterElement',	centElem, ...
+                        'rxApertureSize',   64, ...
                         'txFocus',          txFoc, ...
                         'txAngle',          0, ...
                         'speedOfSound',     1540, ...
@@ -53,7 +53,7 @@ rec = Reconstruction(   ... % Obligatory parameters
                         'xGrid',            (-20:0.10:20)*1e-3, ...
                         'zGrid',            (  0:0.10:50)*1e-3, ...
                         ... % Optional parameters
-                        'gridModeEnable',   true, ... % set to false to reconstruct image lines instead of the full grid for each transmission.
+                        'gridModeEnable',   false, ... % set to false to reconstruct image lines instead of the full grid for each transmission.
                         'bmodeRxTangLim',   [-0.5 0.5], ...
                         'rxApod',           hamming(10).', ...
                         'bmodeFrames',      1:nTx ...
@@ -68,7 +68,5 @@ us.runLoop(@display.isOpen, @display.updateImg);
 %% Collecting data (single execution of the sequence)
 [raw,img] = us.run;
 
-%% Close session
-us.closeSession;
 
 

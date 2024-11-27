@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.11.0)
+set(PROJECT_VERSION 0.12.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
@@ -67,7 +67,7 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             _CRT_SECURE_NO_WARNINGS)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
     set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
-    set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror")
+    set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror -Wno-psabi")
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
             ARRUS_LINUX
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
@@ -82,7 +82,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.12.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
+find_package(Us4 0.13.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
@@ -154,5 +154,12 @@ if(ARRUS_EMBED_DEPS)
             ${Us4_ROOT_DIR_SANITIZED}/lib64/
         DESTINATION
             ${ARRUS_LIB_INSTALL_DIR})
+    # headers
+    install(
+        DIRECTORY
+            ${Us4_ROOT_DIR_SANITIZED}/include/
+        DESTINATION
+            ${ARRUS_INCLUDE_INSTALL_DIR}
+    )
 endif()
 
