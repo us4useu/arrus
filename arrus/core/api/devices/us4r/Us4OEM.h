@@ -136,11 +136,6 @@ public:
     virtual uint32 getTxFirmwareVersion() = 0;
 
     /**
-     * Returns Tx offset
-    */
-    virtual uint32_t getTxOffset() = 0;
-
-    /**
      * Returns OEM version (OEM/OEM+)
     */
     virtual uint32_t getOemVersion() = 0;

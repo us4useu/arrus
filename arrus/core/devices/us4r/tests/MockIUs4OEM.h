@@ -213,7 +213,6 @@ public:
     MOCK_METHOD(uint32_t, HVPSReadRegister, (uint32_t), (override));
     MOCK_METHOD(void, HVPSSetVoltage, (float), (override));
     MOCK_METHOD(IHV*, getHVPS, (), (override));
-    MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
     MOCK_METHOD(std::string, GetSerialNumber, (), (override));
     MOCK_METHOD(std::string, GetRevisionNumber, (), (override));
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));

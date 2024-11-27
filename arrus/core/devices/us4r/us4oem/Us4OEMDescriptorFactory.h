@@ -46,7 +46,8 @@ public:
                     Interval<uint32>{0, 16384}, // sequence length,
                     1024 // maximum number of different TX/RXs
                 },
-                0 // maximum number of TX timeouts
+                0, // maximum number of TX timeouts
+                229 // sample number TX start (i.e. TX delay = 0)
             };
         case 2:
             // us4OEM+ variant 0
@@ -77,7 +78,8 @@ public:
                     Interval<uint32>{0, 4096}, // sequence length
                     4096 // maximum number of different TX/RXs
                 },
-                4 // maximum number of timeouts
+                4, // maximum number of timeouts
+                35 // sample number TX start (i.e. TX delay = 0)
             };
         default:
             throw arrus::IllegalArgumentException(format("Unsupported us4OEM version: {}", version));
