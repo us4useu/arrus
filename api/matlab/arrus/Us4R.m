@@ -7,7 +7,11 @@ classdef Us4R < handle
     % :param configFile: name of the prototxt file containing setup information.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
 
-    properties(Access = private)
+    properties (Constant)
+        instance = Us4RHandle
+    end
+
+    properties (Access = private)
         sys
         seq
         subSeq
@@ -18,101 +22,51 @@ classdef Us4R < handle
         logTime
     end
     
-    methods
-
-        function obj = Us4R(varargin)
+    methods (Static)
+        
+        function obj = create(varargin)
             
-            % Input parser
-            paramsParser = inputParser;
-            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
-            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
-            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
-            parse(paramsParser, varargin{:});
+            instance = Us4R.instance;
             
-            configFile   = paramsParser.Results.configFile;
-            interfEnable = paramsParser.Results.interfEnable;
-            logTime      = paramsParser.Results.logTime;
-            
-            if isempty(configFile) || ~isfile(configFile)
-                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
-                if filterIndex	== 0
-                    obj = [];
-                    return;
-                else
-                    configFile = [pathName fileName];
+            if ~isempty(instance.handle) && ...
+               isvalid(instance.handle) && ...
+               instance.handle.getSessionState() ~= "CLOSED"
+                
+                warning('There is an Us4R instance with an open session which needs to be closed.');
+                
+                if instance.handle.getSessionState() == "STARTED"
+                    instance.handle.stopScheme();
                 end
+                instance.handle.closeSession();
             end
             
-            % Initialization
-            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
-            
-            obj.session = arrus.session.Session(configFile);
-            obj.us4r = obj.session.getDevice("/Us4R:0");
-            
-            obj.sys.nChArius = 32;
-            obj.sys.rxSampFreq = 65e6;
-            obj.sys.maxSeqLength = 2^14;
-            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
-            obj.sys.reloadTime = 43e-6; % [s]
-            obj.logTime = logTime;
-            
-            % Check if valid GPU is available
-            isGpuAvailable = ~isempty(ver('parallel')) ...
-                           && parallel.gpu.GPUDevice.isAvailable;
-            if ~isGpuAvailable
-                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
-            end
-            % Add location of the CUDA kernels
-            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
-
-            % Probe parameters
-            probe = obj.us4r.getProbeModel;
-            obj.sys.nElem = double(probe.nElements);
-            obj.sys.pitch = probe.pitch;
-            obj.sys.freqRange = double(probe.txFrequencyRange);
-            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
-
-            % Position (pos,x,z) and orientation (ang) of each probe element
-            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-            if obj.sys.curvRadius == 0
-                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
-                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
-            else
-                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
-                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
-                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
-                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
-            end
-
-            obj.sys.interfEnable = interfEnable;
-            if obj.sys.interfEnable
-                wedge = wedgeParams();
-                obj.sys.interfSize = wedge.interfSize;
-                obj.sys.interfAng  = wedge.interfAng;
-                obj.sys.interfSos  = wedge.interfSos;
-
-                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
-
-                xElemNoInterf = obj.sys.xElem;
-                zElemNoInterf = obj.sys.zElem;
-                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
-                              + zElemNoInterf * sin(obj.sys.interfAng);
-                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
-                              - xElemNoInterf * sin(obj.sys.interfAng) ...
-                              - obj.sys.interfSize;
-            end
-
-            obj.sys.tangElem = tan(obj.sys.angElem);
-            
-            obj.sys.isHardwareProgrammed = false;
-
+            obj = Us4R(varargin{:});
+            instance.handle = obj;
         end
+        
+        function clear()
+            
+            instance = Us4R.instance;
+            if ~isempty(instance.handle)
+                if isvalid(instance.handle)
+                    instance.handle.delete();
+                end
+                instance.handle = [];
+            end
+        end
+        
+    end
+    
+    methods
         
         function closeSession(obj)
             obj.session.close();
         end
         
+        function state = getSessionState(obj)
+            state = obj.session.getCurrentState();
+        end
+
         function stopScheme(obj)
             obj.session.stopScheme();
             obj.buffer.iFrame = 0;
@@ -739,9 +693,109 @@ classdef Us4R < handle
         function [img] = reconstructOffline(obj,rfRaw)
             img = obj.execReconstr(rfRaw);
         end
+        
+        function delete(obj)
+            if ~isempty(obj.session)
+                if obj.getSessionState()=="STARTED"
+                    obj.stopScheme();
+                end
+                if obj.getSessionState()=="STOPPED"
+                    obj.closeSession();
+                end
+            end
+        end
     end
     
     methods(Access = private)
+        
+        function obj = Us4R(varargin)
+            
+            % Input parser
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
+            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
+            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
+            parse(paramsParser, varargin{:});
+            
+            configFile   = paramsParser.Results.configFile;
+            interfEnable = paramsParser.Results.interfEnable;
+            logTime      = paramsParser.Results.logTime;
+            
+            if isempty(configFile) || ~isfile(configFile)
+                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
+                if filterIndex	== 0
+                    obj = [];
+                    return;
+                else
+                    configFile = [pathName fileName];
+                end
+            end
+            
+            % Initialization
+            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
+            
+            obj.session = arrus.session.Session(configFile);
+            obj.us4r = obj.session.getDevice("/Us4R:0");
+            
+            obj.sys.nChArius = 32;
+            obj.sys.rxSampFreq = 65e6;
+            obj.sys.maxSeqLength = 2^14;
+            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
+            obj.sys.reloadTime = 43e-6; % [s]
+            obj.logTime = logTime;
+            
+            % Check if valid GPU is available
+            isGpuAvailable = ~isempty(ver('parallel')) ...
+                           && parallel.gpu.GPUDevice.isAvailable;
+            if ~isGpuAvailable
+                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
+            end
+            % Add location of the CUDA kernels
+            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
+            
+            % Probe parameters
+            probe = obj.us4r.getProbeModel;
+            obj.sys.nElem = double(probe.nElements);
+            obj.sys.pitch = probe.pitch;
+            obj.sys.freqRange = double(probe.txFrequencyRange);
+            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
+            
+            % Position (pos,x,z) and orientation (ang) of each probe element
+            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+            if obj.sys.curvRadius == 0
+                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
+                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
+            else
+                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
+                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
+                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
+                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+            end
+            
+            obj.sys.interfEnable = interfEnable;
+            if obj.sys.interfEnable
+                wedge = wedgeParams();
+                obj.sys.interfSize = wedge.interfSize;
+                obj.sys.interfAng  = wedge.interfAng;
+                obj.sys.interfSos  = wedge.interfSos;
+                
+                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
+                
+                xElemNoInterf = obj.sys.xElem;
+                zElemNoInterf = obj.sys.zElem;
+                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
+                              + zElemNoInterf * sin(obj.sys.interfAng);
+                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
+                              - xElemNoInterf * sin(obj.sys.interfAng) ...
+                              - obj.sys.interfSize;
+            end
+            
+            obj.sys.tangElem = tan(obj.sys.angElem);
+            
+            obj.sys.isHardwareProgrammed = false;
+            
+        end
 
         function seqOut = mergeSequences(obj,seqIn)
 

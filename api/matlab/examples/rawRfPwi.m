@@ -5,7 +5,7 @@ addpath('../');
 addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
-us  = Us4R('configFile', 'us4r.prototxt');
+us  = Us4R.create('configFile', 'us4r.prototxt');
 
 %% Selected parameters
 % To program plane wave sequence, set 'txFocus' to infinity.
@@ -58,7 +58,5 @@ us.plotRawRf('selectedLines',96);
 %% Collecting data (single execution of the sequence)
 [raw,img] = us.run;
 
-%% Close session
-us.closeSession;
 
 
