@@ -358,7 +358,7 @@ void Us4RImpl::start() {
         us4oem->enableSequencer(0);
     }
     if (!this->digitalBackplane.has_value() && isExternalTrigger) {
-        this->digitalBackplane.get()->EnableExternalTrigger();
+        this->digitalBackplane.value()->enableExternalTrigger();
     }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
@@ -374,7 +374,7 @@ void Us4RImpl::stopDevice() {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
         if (!this->digitalBackplane.has_value() && isExternalTrigger) {
-            this->digitalBackplane.get()->EnableInternalTrigger();
+            this->digitalBackplane.value()->enableInternalTrigger();
         }
         this->getMasterOEM()->stop();
         try {
