@@ -37,11 +37,12 @@ public:
     Us4OEMDescriptor(
         uint32_t version, ChannelIdx nRxChannels, float minRxTime, float rxTimeEpsilon, float sequenceReprogrammingTime,
         float samplingFrequency, size_t ddrSize, size_t maxTransferSize, float nPeriodsResolution,
-        bool master, ops::us4r::TxRxSequenceLimits txRxSequenceLimits, uint8_t nTimeouts)
+        bool master, ops::us4r::TxRxSequenceLimits txRxSequenceLimits, uint8_t nTimeouts, uint32_t sampleTxStart)
         : version(version), nRxChannels(nRxChannels), minRxTime(minRxTime), rxTimeEpsilon(rxTimeEpsilon),
           sequenceReprogrammingTime(sequenceReprogrammingTime), samplingFrequency(samplingFrequency), ddrSize(ddrSize),
           maxTransferSize(maxTransferSize), nPeriodsResolution(nPeriodsResolution),
-          master(master), txRxSequenceLimits(std::move(txRxSequenceLimits)), nTimeouts(nTimeouts) {}
+          master(master), txRxSequenceLimits(std::move(txRxSequenceLimits)), nTimeouts(nTimeouts),
+          sampleTxStart(sampleTxStart) {}
 
     bool isUs4OEMLegacy() {return version == US4OEM_LEGACY_REVISION; }
     bool isUs4OEMPlus() {return version == US4OEM_PLUS_REVISION; }
@@ -61,6 +62,8 @@ public:
     bool isMaster() const { return master; }
     unsigned getMaxIRQNumber() {return MAX_IRQ_NR; }
     uint8_t getNTimeouts() const { return nTimeouts; }
+    /** Returns the RX sample number (relative to the trigger), when the TX delay = 0 time occurs. */
+    uint32_t getSampleTxStart() const { return sampleTxStart; }
 
 private:
     friend class Us4OEMDescriptorBuilder;
@@ -76,6 +79,7 @@ private:
     bool master;
     arrus::ops::us4r::TxRxSequenceLimits txRxSequenceLimits;
     uint8_t nTimeouts{0};
+    uint32_t sampleTxStart{0};
 };
 
 class Us4OEMDescriptorBuilder {

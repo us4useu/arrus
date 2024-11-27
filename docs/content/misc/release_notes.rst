@@ -15,6 +15,10 @@ Release notes
         - the us4oemChannelsMask is no longer available,
         - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
 
+    - Adjusted RF/IQ data start sample number (i.e. corresponding to the TX delay = 0) # US4R-513.
+
+        - Removed Us4OEM::getTxOffset() method.
+
 - MATLAB API:
 
     - Fixed the RX apodization #ARRUS-288.
