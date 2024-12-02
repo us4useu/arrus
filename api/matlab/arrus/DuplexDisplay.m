@@ -34,7 +34,7 @@ classdef DuplexDisplay < handle
         hFig
         hAx
         hImg
-        hQvr
+        vector
         xGrid
         zGrid
         colorEnable
@@ -183,7 +183,23 @@ classdef DuplexDisplay < handle
                 set(gca, 'YLim', obj.zGrid([1 end])*1e3);
             end
             
-            obj.hQvr = nan;
+            if obj.vectorEnable
+                vecDec	= 10;
+
+                obj.vector.xSel = vecDec:vecDec:(numel(obj.xGrid)-vecDec+1);
+                obj.vector.zSel = vecDec:vecDec:(numel(obj.zGrid)-vecDec+1);
+                obj.vector.scale = vecDec*diff(obj.xGrid(1:2)*1e3)/pi/2;
+
+                axes(obj.hAx(1)), hold on;
+                set(gca,'YDir','reverse');
+                set(gca,'XLim',obj.xGrid([1 end])*1e3);
+                set(gca,'YLim',obj.zGrid([1 end])*1e3);
+                
+                obj.vector.hQvr = quiver(obj.xGrid(obj.vector.xSel)*1e3, ...
+                                         obj.zGrid(obj.vector.zSel)*1e3, ...
+                                         zeros(numel(obj.vector.zSel),numel(obj.vector.xSel)), ...
+                                         zeros(numel(obj.vector.zSel),numel(obj.vector.xSel)), 0, 'Color', 'm', 'LineWidth', 1.5);
+            end
             
         end
         
@@ -296,25 +312,11 @@ classdef DuplexDisplay < handle
                 end
                 
                 if obj.vectorEnable
-                    vecDec	= 20;
-                    
-                    vXSel	= vecDec:vecDec:(nXPix-vecDec+1);
-                    vZSel	= vecDec:vecDec:(nZPix-vecDec+1);
-                    vMultip	= vecDec*diff(obj.xGrid(1:2)*1e3)/pi  /2;
-                    
                     colorX(~duplexMask) = nan;
                     colorZ(~duplexMask) = nan;
                     
-                    if ishandle(obj.hQvr)
-                        delete(obj.hQvr);
-                    end
-                    
-                    axes(obj.hAx), hold on;
-                    obj.hQvr = quiver(	obj.xGrid(vXSel)*1e3, ...
-                                        obj.zGrid(vZSel)*1e3, ...
-                                        vMultip*colorX(vZSel,vXSel), ...
-                                        vMultip*colorZ(vZSel,vXSel),0,'Color','k');
-                    obj.hQvr.Head.LineWidth = 1.5;
+                    obj.vector.hQvr.UData = obj.vector.scale*colorX(obj.vector.zSel,obj.vector.xSel);
+                    obj.vector.hQvr.VData = obj.vector.scale*colorZ(obj.vector.zSel,obj.vector.xSel);
                 end
                 
                 drawnow limitrate;

@@ -8,8 +8,8 @@ add_subdirectory(wrappers)
 ################################################################################
 set(SOURCE_FILES
     arrus/BModeDisplay.m
+    arrus/Color2VectorConverter.m
     arrus/CustomTxRxSequence.m
-    arrus/dopplerColorImaging.m
     arrus/downConversion.m
     arrus/DuplexDisplay.m
     arrus/mustBeDivisible.m
@@ -18,6 +18,7 @@ set(SOURCE_FILES
     arrus/scanConversion.m
     arrus/Us4R.m
     arrus/Us4RHandle.m
+    arrus/WallClutterFilter.m
     arrus/wedgeParams.m
     examples/bmodePwi.m
     examples/bmodeDwi.m
