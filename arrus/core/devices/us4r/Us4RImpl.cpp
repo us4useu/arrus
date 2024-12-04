@@ -30,7 +30,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
                    const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
-                   bool hasIOBitstreamAddressing, const IOSettings &ioSettings)
+                   bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger)
     : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
@@ -45,6 +45,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     this->channelsMask = std::move(channelsMask);
     this->bitstreams = std::move(bitstreams);
     this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
+    this->isExternalTrigger = isExternalTrigger;
     for (size_t i = 0; i < this->probeSettings.size(); ++i) {
         const auto &s = this->probeSettings.at(i).getModel();
         this->probes.push_back(std::make_unique<ProbeImpl>(DeviceId{DeviceType::Probe, Ordinal(i)}, s));
@@ -356,6 +357,9 @@ void Us4RImpl::start() {
         // Reset sequencer pointers.
         us4oem->enableSequencer(0);
     }
+    if (this->digitalBackplane.has_value() && isExternalTrigger) {
+        this->digitalBackplane.value()->enableExternalTrigger();
+    }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
 }
@@ -369,6 +373,9 @@ void Us4RImpl::stopDevice() {
     } else {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        if (this->digitalBackplane.has_value() && isExternalTrigger) {
+            this->digitalBackplane.value()->enableInternalTrigger();
+        }
         this->getMasterOEM()->stop();
         try {
             for (auto &us4oem : us4oems) {
