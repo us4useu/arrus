@@ -79,13 +79,16 @@ std::vector<std::pair <std::string,float>> Us4RImpl::logVoltages(bool isHV256) {
     }
 
     //Verify measured voltages on OEMs
-    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-        voltage = this->getMeasuredHVPVoltage(i);
-        temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
-        voltages.push_back(temp);
-        voltage = this->getMeasuredHVMVoltage(i);
-        temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
-        voltages.push_back(temp);
+    auto isUs4OEMPlus = this->isUs4OEMPlus();
+    if(!isUs4OEMPlus || (isUs4OEMPlus && !isHV256)) {
+        for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+            voltage = this->getMeasuredHVPVoltage(i);
+            temp = std::make_pair(std::string("HVP on OEM#" + std::to_string(i)), voltage);
+            voltages.push_back(temp);
+            voltage = this->getMeasuredHVMVoltage(i);
+            temp = std::make_pair(std::string("HVM on OEM#" + std::to_string(i)), voltage);
+            voltages.push_back(temp);
+        }
     }
     return voltages;
 }
