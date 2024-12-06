@@ -1,11 +1,11 @@
 % Example script for b-mode classical line-by-line imaging using focused waves and linear scanning
 
 %% Initialize the system
-addpath('..\');
-addpath('..\arrus');
+addpath('../');
+addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
-us  = Us4R('configFile', 'us4r.prototxt');
+us  = Us4R.create('configFile', 'us4r.prototxt');
 
 %% Selected parameters
 % To program focused wave sequence, set 'txFocus' to finite positive value.
@@ -68,7 +68,5 @@ us.runLoop(@display.isOpen, @display.updateImg);
 %% Collecting data (single execution of the sequence)
 [raw,img] = us.run;
 
-%% Close session
-us.closeSession;
 
 

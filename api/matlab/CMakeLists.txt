@@ -17,6 +17,7 @@ set(SOURCE_FILES
     arrus/RemapToLogicalOrder.m
     arrus/scanConversion.m
     arrus/Us4R.m
+    arrus/Us4RHandle.m
     arrus/wedgeParams.m
     examples/bmodePwi.m
     examples/bmodeDwi.m
