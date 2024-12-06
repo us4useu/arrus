@@ -4,6 +4,7 @@ import arrus.exceptions
 import arrus.devices.probe
 from arrus.devices.device import parse_device_id, DeviceId
 from typing import Dict, Any, Iterable, Tuple, Union, List
+import arrus.ops.us4r
 
 _UINT16_MIN = 0
 _UINT16_MAX = 2**16-1
@@ -30,12 +31,24 @@ def convert_to_core_sequence(seq):
         # TX
         core_delays = np.zeros(tx.aperture.shape, dtype=np.float32)
         core_delays[tx.aperture] = tx.delays
-        core_excitation = arrus.core.Pulse(
-            centerFrequency=tx.excitation.center_frequency,
-            nPeriods=tx.excitation.n_periods,
-            inverse=tx.excitation.inverse,
-            amplitudeLevel=tx.excitation.amplitude_level
-        )
+        excitation = tx.excitation
+        if isinstance(excitation, arrus.ops.us4r.Pulse):
+            core_excitation = arrus.core.Pulse(
+                centerFrequency=excitation.center_frequency,
+                nPeriods=excitation.n_periods,
+                inverse=excitation.inverse,
+                amplitudeLevel=excitation.amplitude_level
+            )
+        elif isinstance(excitation, arrus.ops.us4r.Waveform):
+            waveformBuilder = arrus.core.WaveformBuilder()
+            for segment, n_repeats in zip(excitation.segments, excitation.n_repeats):
+                duration = arrus.core.VectorFloat(np.asarray(segment.duration).tolist())
+                state = arrus.core.VectorInt8(np.asarray(segment.state).tolist())
+                segment = arrus.core.WaveformSegment(duration, state)
+                waveformBuilder.add(segment, n_repeats)
+            core_excitation = waveformBuilder.build()
+        else:
+            raise ValueError(f"Unrecognized TX pulse type: {excitation}")
         tx_placement = parse_device_id(tx.placement)
         tx_placement = to_core_device_id(tx_placement)
         core_tx = arrus.core.Tx(

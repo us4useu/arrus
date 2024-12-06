@@ -48,7 +48,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOp) {
     std::vector<float> delays0(nChannels, 0.0f);
     BitMask txAperture(nChannels, true);
     BitMask rxAperture(nChannels, true);
-    ops::us4r::Pulse pulse0{10.0e6f, 3000.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse0{1.0e6f, 300.0f, false}; // 300 us pulse
     size_t nTimeouts = 4;
 
     std::vector<TxRx> txrxs = {
@@ -59,7 +59,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOp) {
                 x.rxAperture = rxAperture,
                 x.txDelays = delays0,
                 x.pulse = pulse0
-                // TOTAL TX TIME: 500 us + 10 us
+                // TOTAL TX TIME: 300 us + 10 us
                 )
                 ).getTxRx(),
     };
@@ -111,8 +111,8 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly3Ops) {
     BitMask txAperture(nChannels, true);
     BitMask rxAperture(nChannels, true);
 
-    ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
-    ops::us4r::Pulse pulse1{3.0e6f, 3.0f, true}; // 1 us pulse
+    ops::us4r::Pulse pulse0{1e6f, 500.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse1{1e6f, 1.0f, true}; // 1 us pulse
 
     float delay0 = 10e-6f;
     float delay1 = 1e-6f;
@@ -179,10 +179,10 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly5Ops) {
     BitMask txAperture(nChannels, true);
     BitMask rxAperture(nChannels, true);
 
-    ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
-    ops::us4r::Pulse pulse1{10.0e6f, 3000.0f, false}; // 300 us pulse
-    ops::us4r::Pulse pulse2{10.0e6f, 2000.0f, true}; // 200 us
-    ops::us4r::Pulse pulse3{3.0e6f, 60.0f, true}; //  20 us
+    ops::us4r::Pulse pulse0{1.0e6f, 500.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse1{1.0e6f, 300.0f, false}; // 300 us pulse
+    ops::us4r::Pulse pulse2{1.0e6f, 200.0f, true}; // 200 us
+    ops::us4r::Pulse pulse3{9e6f, 200.0f, true}; //  ~20 us
     ops::us4r::Pulse pulse4{3.0e6f, 1.0f, true}; // 0.3 us
 
     float delay0 = 10e-6f;

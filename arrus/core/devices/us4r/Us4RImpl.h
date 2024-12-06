@@ -35,8 +35,6 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
-    static float getRxDelay(const ops::us4r::TxRx &op, const std::function<float(float)> &actualTxFunc);
-
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
@@ -151,6 +149,7 @@ public:
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
+    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
 
     float getMinimumTGCValue() const override;
 
@@ -206,7 +205,6 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
-    float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
     void registerPulserIRQCallback();
     void handleEvents();
     void handlePulserInterrupt();
