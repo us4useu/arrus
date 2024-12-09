@@ -43,7 +43,7 @@ public:
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
              const RxSettings &rxSettings, std::vector<std::unordered_set<unsigned short>> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
-             bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings);
+             bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings, bool isExternalTrigger);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -227,6 +227,8 @@ private:
     BlockingQueue<Us4REvent> eventQueue{1000};
     std::thread eventHandlerThread;
     std::unordered_map<std::string, std::function<void()>> eventHandlers;
+
+    bool isExternalTrigger;
 };
 
 }// namespace arrus::devices
