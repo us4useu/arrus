@@ -425,21 +425,16 @@ classdef Us4R < handle
 
             % Main loop (using buffers if bufferMode is "conc")
             i = 0;
-            tStampPrev = nan;
             while(isContinue())
                 i = i + 1;
                 
                 tic;
-                [rf, meta] = obj.execSequence;
+                rf = obj.execSequence;
                 acqTime = toc;
                 
                 tic;
                 rf = obj.rawDataReorganization(rf);
                 reorgTime = toc;
-
-                tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                sri = tStampCurr - tStampPrev;
-                tStampPrev = tStampCurr;
 
                 if obj.rec.enable
                     tic;
@@ -458,7 +453,7 @@ classdef Us4R < handle
                     if exist('recTime', 'var')
                         disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
                     end
-                    disp(['Frame rate = ' num2str(1/sri, '%5.1f') ' fps']);
+                    disp(['Frame rate = ' num2str(1/obj.buffer.sri, '%5.1f') ' fps']);
                     disp('--------------------');
                 end
 
@@ -474,7 +469,7 @@ classdef Us4R < handle
                         imgBuffer(:,:,I,:) = img;
                     end
 
-                    sriBuffer(I) = sri;
+                    sriBuffer(I) = obj.buffer.sri;
                 end
             end
 
@@ -491,11 +486,9 @@ classdef Us4R < handle
             else
                 % Second loop (acquisition of raw data for "subs" bufferMode)
                 for i=1:bufferSize
-                    [raw0Buffer(:,:,i), meta] = obj.execSequence;
-
-                    tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                    sriBuffer(i) = tStampCurr - tStampPrev;
-                    tStampPrev = tStampCurr;
+                    raw0Buffer(:,:,i) = obj.execSequence;
+                    
+                    sriBuffer(i) = obj.buffer.sri;
                 end
                 obj.stopScheme;
                 disp('runLoop: acquisition done');
@@ -1142,6 +1135,11 @@ classdef Us4R < handle
                 obj.rec.rGrid = t * obj.rec.sos / 2;
             end
             
+            %% Validate color/vector modes
+            if obj.rec.colorEnable && obj.rec.vectorEnable
+                error("setRecParams: simultaneous color & vector operation is not supported");
+            end
+            
             %% Validate frames selection
             if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.subSeq.nTx)
                 error("setRecParams: bmodeFrames refers to nonexistent transmission id");
@@ -1162,6 +1160,26 @@ classdef Us4R < handle
             %% Default bmodeFrames
             if obj.rec.bmodeEnable && isempty(obj.rec.bmodeFrames)
                 obj.rec.bmodeFrames = 1:obj.subSeq.nTx;
+            end
+            
+            %% Validate colorFrames
+            if obj.rec.colorEnable
+                if numel(unique(diff(obj.rec.colorFrames))) > 1
+                    error('Doppler is sampled at uneven rate within the sequence.');
+                elseif (obj.rec.colorFrames(2) - obj.rec.colorFrames(1) ~= ...
+                        obj.rec.colorFrames(1) - obj.rec.colorFrames(end) + obj.subSeq.nTx) && ...
+                       any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'}))
+                    warning('Doppler sampling rates within a batch and between subsequent batches are different.');
+                    obj.rec.colorBatchesConsistent = false;
+                else
+                    obj.rec.colorBatchesConsistent = true;
+                end
+            end
+
+            %% Validate vectorFrames
+            if obj.rec.vectorEnable
+                % validation needed
+                obj.rec.vectorBatchesConsistent = true;
             end
             
             %% Validate/adjust size of the RxTangLims
@@ -1205,8 +1223,18 @@ classdef Us4R < handle
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
             
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
+            if obj.rec.colorEnable
+                obj.rec.wcf = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+            end
+            
+            if obj.rec.vectorEnable
+                obj.rec.wcf0 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+                obj.rec.wcf1 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+                
+                obj.rec.color2vector = Color2VectorConverter(obj.subSeq.txAng(obj.rec.vect0Frames(1)), ...
+                                                             obj.subSeq.txAng(obj.rec.vect1Frames(1)), ...
+                                                             atan(mean(obj.rec.vect0RxTangLim(1,:))), ...
+                                                             atan(mean(obj.rec.vect1RxTangLim(1,:))), 3);
             end
             
             %% Set data types and move data to GPU memory
@@ -1230,16 +1258,10 @@ classdef Us4R < handle
             obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
             obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
             obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
-            obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
-            obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
             obj.subSeq.rxSampFreq  =          single(obj.subSeq.rxSampFreq);
             obj.rec.sos            =          single(obj.rec.sos);
             obj.subSeq.startSample =          single(obj.subSeq.startSample);
             obj.subSeq.txDelCent   =          single(obj.subSeq.txDelCent);
-
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
-            end
 
             if ~obj.rec.gridModeEnable
                 obj.rec.rGrid      = gpuArray(single(obj.rec.rGrid));
@@ -1467,6 +1489,7 @@ classdef Us4R < handle
             end
 
             obj.buffer.iFrame = 0;
+            obj.buffer.tFrame = nan;
             obj.rec.enable = false;
 
         end
@@ -1493,7 +1516,18 @@ classdef Us4R < handle
 
             metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
             metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
-
+            
+            tFrameNew = bin2dec(reshape(dec2bin(metadata([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
+            obj.buffer.sri = tFrameNew - obj.buffer.tFrame;
+            obj.buffer.tFrame = tFrameNew;
+            
+            % The below condition on sri is valid for simple Tx/Rx sequences, 
+            % it may not work properly for a messed up sequence.
+            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 1e-9;
+            
+            if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
+                warning('SYNC mode: sequence lag detected');
+            end
         end
         
         function img = execReconstr(obj,rfRaw)
@@ -1545,7 +1579,15 @@ classdef Us4R < handle
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
-                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.subSeq, obj.rec);
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       ~obj.buffer.seqLagDetected && obj.rec.colorBatchesConsistent
+                        
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
+                    else
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,true,obj.rec.wcFiltInitSize);
+                    end
+                    
+                    [color,power,turbu] = dopplerColor(rfBfrColor);
                 end
                 
                 % Vector Doppler image reconstruction
@@ -1553,10 +1595,23 @@ classdef Us4R < handle
                     rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
                     rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
                     
-                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.subSeq, obj.rec);
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       ~obj.buffer.seqLagDetected && obj.rec.vectorBatchesConsistent
+                        
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,false);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,false);
+                    else
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,true,obj.rec.wcFiltInitSize);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,true,obj.rec.wcFiltInitSize);
+                    end
+                    
+                    [color0,power0,turbu0] = dopplerColor(rfBfrVect0);
+                    [color1,power1,turbu1] = dopplerColor(rfBfrVect1);
+                    
+                    [color,power,turbu] = obj.rec.color2vector.convert(color0,color1,power0,power1,turbu0,turbu1);
                 end
             end
-
+            
             %% Postprocessing
             % Obtain complex signal (if it isn't complex already)
             if ~obj.subSeq.hwDdcEnable && ~obj.rec.swDdcEnable
