@@ -26,8 +26,8 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
     BitMask txAperture1(nChannels, false);
     std::fill(std::begin(txAperture1), std::begin(txAperture1) + 10, true);
 
-    ops::us4r::Pulse pulse0{2.0e6f, 2.0f, false};
-    ops::us4r::Pulse pulse1{3.0e6f, 3.0f, true};
+    ops::us4r::Pulse pulse0{1.0e6f, 1.0f, false}; // 1 us
+    ops::us4r::Pulse pulse1{1.0e6f, 2.0f, true}; // 2 us
     for (int i = 0; i < nChannels; ++i) {
         delays0[i] = i * 10e-7;
     }
@@ -68,20 +68,17 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
     };
     TxRxSequence seq{txrxs, {}};
 
-    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0), defaultTxFunc);
-    float expectedRxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0))
-        + 1.0f / pulse0.getCenterFrequency() * pulse0.getNPeriods();
+    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0));
+    float expectedRxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0)) + 1e-6f; // 1 us impulse
     EXPECT_EQ(expectedRxDelay0, actualRxDelay0);
 
-    float expectedRxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1))
-        + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
-    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1), defaultTxFunc);
+    float expectedRxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1)) + 2e-6f; // 2 us impulse
+    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1));
     EXPECT_EQ(expectedRxDelay1, actualRxDelay1);
 
 
-    float expectedRxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0) + 10)
-        + 1.0f / pulse1.getCenterFrequency() * pulse1.getNPeriods();
-    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2), defaultTxFunc);
+    float expectedRxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0) + 10) + 2e-6f; // 2 us impulse
+    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2));
     EXPECT_EQ(expectedRxDelay2, actualRxDelay2);
 }
 

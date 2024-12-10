@@ -105,7 +105,7 @@ struct TestTxRxParams {
 
     [[nodiscard]] arrus::devices::us4r::TxRxParameters get() const {
         return arrus::devices::us4r::TxRxParameters(
-            txAperture, txDelays, pulse, rxAperture, sampleRange, decimationFactor, pri,
+            txAperture, txDelays, pulse.toWaveform(), rxAperture, sampleRange, decimationFactor, pri,
             rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx);
     }
 

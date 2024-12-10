@@ -192,6 +192,8 @@ set(SRC_FILES
     api/devices/us4r/HVPSMeasurement.h
     api/devices/us4r/Us4RTxRxLimits.h
     devices/us4r/TxTimeoutRegister.h
+    api/ops/us4r/Waveform.h
+    devices/us4r/TxWaveformConverter.h
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
@@ -304,8 +306,8 @@ if (ARRUS_RUN_TESTS)
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
     create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
-
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/TxWaveformConverterTest.cpp common/logging.cpp)
 endif ()
 
 ################################################################################

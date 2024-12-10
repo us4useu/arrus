@@ -1,5 +1,6 @@
 #include "Us4RImpl.h"
 
+#include "TxWaveformConverter.h"
 #include "TxTimeoutRegister.h"
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/devices/probe/ProbeImpl.h"
@@ -1075,7 +1076,7 @@ int Us4RImpl::getNumberOfProbes() const {
  * @return rx delay [s]
  *
  */
-float Us4RImpl::getRxDelay(const TxRx &op, const std::function<float(float)> &actualTxFunc) {
+float Us4RImpl::getRxDelay(const TxRx &op) {
     float rxDelay = 0.0f; // default value.
     if(op.getRx().isNOP()) {
         return rxDelay;
@@ -1089,17 +1090,13 @@ float Us4RImpl::getRxDelay(const TxRx &op, const std::function<float(float)> &ac
     if(!txDelays.empty()) {
         float txDelay = *std::max_element(std::begin(txDelays), std::end(txDelays));
         // burst time
-        float frequency = actualTxFunc(op.getTx().getExcitation().getCenterFrequency());
-        float nPeriods = op.getTx().getExcitation().getNPeriods();
-        float burstTime = 1.0f/frequency*nPeriods;
+        // TODO avoid doing all the below conversion here, on the TX timeout calculations, and when setting the waveform.
+        // This should be done only once, in the Us4R::upload method.
+        float burstTime = TxWaveformConverter::getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
         // Total rx delay
         rxDelay = txDelay + burstTime;
     }
     return rxDelay;
-}
-
-float Us4RImpl::getRxDelay(const TxRx &op) {
-    return getRxDelay(op, [this](float frequency) {return this->getActualTxFrequency(frequency); });
 }
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>

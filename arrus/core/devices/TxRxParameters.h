@@ -20,7 +20,7 @@ public:
     static const TxRxParameters US4OEM_NOP;
 
     static TxRxParameters createRxNOPCopy(const TxRxParameters &op) {
-        return TxRxParameters(op.txAperture, op.txDelays, op.txPulse, BitMask(op.rxAperture.size(), false),
+        return TxRxParameters(op.txAperture, op.txDelays, op.txWaveform, BitMask(op.rxAperture.size(), false),
                               op.rxSampleRange, op.rxDecimationFactor, op.pri, op.rxPadding, op.rxDelay,
                               op.bitstreamId, op.maskedChannelsTx, op.maskedChannelsRx);
     }
@@ -33,14 +33,14 @@ public:
      *
      * @param txAperture
      * @param txDelays
-     * @param txPulse
+     * @param txWaveform
      * @param rxAperture
      * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param rxDecimationFactor
      * @param pri
      * @param rxPadding how many 0-channels pad from the left and right
      */
-    TxRxParameters(std::vector<bool> txAperture, std::vector<float> txDelays, const ops::us4r::Pulse &txPulse,
+    TxRxParameters(std::vector<bool> txAperture, std::vector<float> txDelays, const ops::us4r::Waveform &txWaveform,
                    std::vector<bool> rxAperture, Interval<uint32> rxSampleRange, int32 rxDecimationFactor, float pri,
                    Tuple<ChannelIdx> rxPadding = {0, 0}, float rxDelay = 0.0f,
                    std::optional<BitstreamId> bitstreamId = std::nullopt,
@@ -48,7 +48,7 @@ public:
                    std::unordered_set<ChannelIdx> maskedChannelsRx = {},
                    std::optional<TxTimeoutId> txTimeoutId = {}
     )
-        : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txPulse(txPulse),
+        : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txWaveform(txWaveform),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
           bitstreamId(bitstreamId), maskedChannelsTx(std::move(maskedChannelsTx)),
@@ -58,7 +58,7 @@ public:
 
     [[nodiscard]] const std::vector<float> &getTxDelays() const { return txDelays; }
 
-    [[nodiscard]] const ops::us4r::Pulse &getTxPulse() const { return txPulse; }
+    [[nodiscard]] const ops::us4r::Waveform &getTxWaveform() const { return txWaveform; }
 
     [[nodiscard]] const std::vector<bool> &getRxAperture() const { return rxAperture; }
 
@@ -108,10 +108,30 @@ public:
         for(auto d: parameters.getTxDelays()) {
             os << d << ", ";
         }
-        os << ", center frequency: " << parameters.getTxPulse().getCenterFrequency()
-           << ", n. periods: " << parameters.getTxPulse().getNPeriods()
-           << ", inverse: " << parameters.getTxPulse().isInverse()
-           << ", tx voltage level: " <<parameters.getTxPulse().getAmplitudeLevel();
+        auto pulse = arrus::ops::us4r::Pulse::fromWaveform(parameters.getTxWaveform());
+        if(pulse.has_value()) {
+            os << ", center frequency: " << pulse.value().getCenterFrequency()
+               << ", n. periods: " << pulse.value().getNPeriods()
+               << ", inverse: " << pulse.value().isInverse()
+               << ", tx voltage level: " << pulse.value().getAmplitudeLevel();
+        }
+        else {
+            os <<"; tx waveform: ";
+            for(const auto &segment: parameters.getTxWaveform().getSegments()) {
+                os << "segment: duration: ";
+                for(const auto duration: segment.getDuration()) {
+                    os << duration << ", ";
+                }
+                os << ", state: ";
+                for(const auto state: segment.getState()) {
+                    os << state << ", ";
+                }
+            }
+            os << ", n repetitions: ";
+            for(const auto &nRep: parameters.getTxWaveform().getNRepetitions()) {
+                os << nRep << ", ";
+            }
+        }
         os << "; RX: ";
         os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
         os << ", sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
@@ -138,7 +158,7 @@ public:
     }
 
     bool operator==(const TxRxParameters &rhs) const {
-        return txAperture == rhs.txAperture && txDelays == rhs.txDelays && txPulse == rhs.txPulse
+        return txAperture == rhs.txAperture && txDelays == rhs.txDelays && txWaveform == rhs.txWaveform
             && rxAperture == rhs.rxAperture && rxSampleRange == rhs.rxSampleRange
             && rxDecimationFactor == rhs.rxDecimationFactor && pri == rhs.pri && rxDelay == rhs.rxDelay
             && bitstreamId == rhs.bitstreamId
@@ -152,7 +172,7 @@ public:
 private:
     ::std::vector<bool> txAperture;
     ::std::vector<float> txDelays;
-    ::arrus::ops::us4r::Pulse txPulse;
+    ::arrus::ops::us4r::Waveform txWaveform;
     ::std::vector<bool> rxAperture;
     // TODO change to a simple pair
     Interval<uint32> rxSampleRange;
@@ -173,7 +193,7 @@ public:
     explicit TxRxParametersBuilder(const TxRxParameters &params) {
         txAperture = params.getTxAperture();
         txDelays = params.getTxDelays();
-        txPulse = params.getTxPulse();
+        txWaveform = params.getTxWaveform();
         rxAperture = params.getRxAperture();
         rxSampleRange = params.getRxSampleRange();
         rxDecimationFactor = params.getRxDecimationFactor();
@@ -195,7 +215,7 @@ public:
 
         this->txAperture = tx.getAperture();
         this->txDelays = tx.getDelays();
-        this->txPulse = tx.getExcitation();
+        this->txWaveform = tx.getExcitation();
         this->rxAperture = rx.getAperture();
         this->rxSampleRange = sampleRange;
         this->rxDecimationFactor = rx.getDownsamplingFactor();
@@ -209,10 +229,10 @@ public:
     }
 
     TxRxParameters build() {
-        if (!txPulse.has_value()) {
+        if (!txWaveform.has_value()) {
             throw IllegalArgumentException("TX pulse definition is required");
         }
-        return TxRxParameters(txAperture, txDelays, txPulse.value(), rxAperture, rxSampleRange, rxDecimationFactor, pri,
+        return TxRxParameters(txAperture, txDelays, txWaveform.value(), rxAperture, rxSampleRange, rxDecimationFactor, pri,
                               rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx, txTimeoutId);
     }
 
@@ -224,7 +244,7 @@ public:
 
     void setTxAperture(const std::vector<bool> &value) { TxRxParametersBuilder::txAperture = value; }
     void setTxDelays(const std::vector<float> &value) { TxRxParametersBuilder::txDelays = value; }
-    void setTxPulse(const std::optional<::arrus::ops::us4r::Pulse> &value) { TxRxParametersBuilder::txPulse = value; }
+    void setTxWaveform(const std::optional<::arrus::ops::us4r::Waveform> &value) { TxRxParametersBuilder::txWaveform = value; }
     void setRxAperture(const std::vector<bool> &value) { TxRxParametersBuilder::rxAperture = value; }
     void setRxSampleRange(const Interval<uint32> &value) { TxRxParametersBuilder::rxSampleRange = value; }
     void setRxDecimationFactor(int32 value) { TxRxParametersBuilder::rxDecimationFactor = value; }
@@ -239,7 +259,7 @@ public:
 private:
     ::std::vector<bool> txAperture;
     ::std::vector<float> txDelays;
-    std::optional<::arrus::ops::us4r::Pulse> txPulse;
+    std::optional<::arrus::ops::us4r::Waveform> txWaveform;
     ::std::vector<bool> rxAperture;
     Interval<uint32> rxSampleRange;
     int32 rxDecimationFactor;
