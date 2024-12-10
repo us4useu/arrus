@@ -76,6 +76,10 @@ public:
         return us4oems.at(ordinal).get();
     }
 
+    bool isUs4OEMPlus() {
+        return this->getMasterOEM()->getDescriptor().isUs4OEMPlus();
+    }
+
     std::pair<Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ops::us4r::Scheme &scheme) override;
 
