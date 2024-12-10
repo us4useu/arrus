@@ -88,11 +88,16 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
     }
 
     //Verify measured voltages on OEMs
-    for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-        voltage = this->getMeasuredHVPVoltage(i);
-        voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::PLUS});
-        voltage = this->getMeasuredHVMVoltage(i);
-        voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::MINUS});
+    auto isUs4OEMPlus = this->isUs4OEMPlus();
+    if(!isUs4OEMPlus || (isUs4OEMPlus && !isHV256)) {
+        for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
+            voltage = this->getMeasuredHVPVoltage(i);
+            voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage,
+                                              VoltageLogbook::Polarity::PLUS});
+            voltage = this->getMeasuredHVMVoltage(i);
+            voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage,
+                                              VoltageLogbook::Polarity::MINUS});
+        }
     }
     return voltages;
 }
