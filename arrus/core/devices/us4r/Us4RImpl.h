@@ -93,6 +93,12 @@ public:
         return probe.value().get();
     }
 
+    Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
+
+    bool isUs4OEMPlus() {
+        return getMasterOEM()->getOemVersion() == 2;
+    }
+
     std::pair<std::shared_ptr<arrus::framework::Buffer>, std::shared_ptr<arrus::session::Metadata>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override;
     void prepareHostBuffer(unsigned nElements, ops::us4r::Scheme::WorkMode workMode,
