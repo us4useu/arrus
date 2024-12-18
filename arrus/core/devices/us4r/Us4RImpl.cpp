@@ -153,7 +153,7 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     // (i.e. find the maximum start voltage, minimum end voltage).
     std::vector<Voltage> voltageStart, voltageEnd;
     for(auto &oem: us4oems) {
-        const auto &voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx().getVoltage();
+        const auto &voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx0().getVoltage();
         voltageStart.push_back(voltageLimits.start());
         voltageEnd.push_back(voltageLimits.end());
     }

@@ -72,6 +72,8 @@ public:
                 backplane.value()->enableInternalTrigger();
             }
 
+            auto txrxlimits = settings.getTxRxLimits();
+            
             auto [us4oems, masterIUs4OEM] =
                 getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings(),
                            ius4oemHandles, settings.getTxRxLimits());
