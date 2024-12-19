@@ -1571,8 +1571,14 @@ class RxBeamforming(Operation):
             _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.sample_range, "sample_range")
             _assert_unique_property_for_rx_active_ops(seq, lambda op: op.rx.init_delay, "init_delay")
             _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
-            ref_tx = seq.ops[0].tx
-            ref_rx = seq.ops[0].rx
+
+            ref_op = [op for op in seq.ops if op.tx.aperture.size > 0 and op.rx.aperture.size > 0]
+            if len(ref_op) == 0:
+                raise ValueError("There should be at least one op with non-empty TX aperture and RX aperture!")
+
+            ref_tx = ref_op[0].tx
+            ref_rx = ref_op[0].rx
+
             # Tx
             fc = ref_tx.excitation.center_frequency
             n_periods = ref_tx.excitation.n_periods
