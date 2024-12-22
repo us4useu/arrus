@@ -4,6 +4,17 @@ Release notes
 0.10.x
 -----
 
+
+0.10.5
+
+- core (C++, HAL):
+
+    - Fixed exception handling for exceptions that occurred before/on OEM+ initialization and might cause host PC restart #US4R-572.
+    - AFE58JD18 PGA HPF setting bugfix #US4R-584.
+    - Initial HVPS calibration time adjustment #US4R-585.
+    - Do not verify voltages measured by OEM+ with the external HV #US4R-586.
+
+
 0.10.4
 
 - core (C++, HAL):
