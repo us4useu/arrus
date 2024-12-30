@@ -7,7 +7,11 @@ classdef Us4R < handle
     % :param configFile: name of the prototxt file containing setup information.
     % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
 
-    properties(Access = private)
+    properties (Constant)
+        instance = Us4RHandle
+    end
+
+    properties (Access = private)
         sys
         seq
         subSeq
@@ -18,103 +22,54 @@ classdef Us4R < handle
         logTime
     end
     
-    methods
+    methods (Static)
 
-        function obj = Us4R(varargin)
-            
-            % Input parser
-            paramsParser = inputParser;
-            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
-            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
-            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
-            parse(paramsParser, varargin{:});
-            
-            configFile   = paramsParser.Results.configFile;
-            interfEnable = paramsParser.Results.interfEnable;
-            logTime      = paramsParser.Results.logTime;
-            
-            if isempty(configFile) || ~isfile(configFile)
-                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
-                if filterIndex	== 0
-                    obj = [];
-                    return;
-                else
-                    configFile = [pathName fileName];
+        function obj = create(varargin)
+
+            instance = Us4R.instance;
+
+            if ~isempty(instance.handle) && ...
+               isvalid(instance.handle) && ...
+               instance.handle.getSessionState() ~= "CLOSED"
+
+                warning('There is an Us4R instance with an open session which needs to be closed.');
+
+                if instance.handle.getSessionState() == "STARTED"
+                    instance.handle.stopScheme();
                 end
-            end
-            
-            % Initialization
-            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
-            
-            obj.session = arrus.session.Session(configFile);
-            obj.us4r = obj.session.getDevice("/Us4R:0");
-            
-            obj.sys.nChArius = 32;
-            obj.sys.rxSampFreq = 65e6;
-            obj.sys.maxSeqLength = 2^14;
-            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
-            obj.sys.reloadTime = 43e-6; % [s]
-            obj.logTime = logTime;
-            
-            % Check if valid GPU is available
-            isGpuAvailable = ~isempty(ver('parallel')) ...
-                           && parallel.gpu.GPUDevice.isAvailable;
-            if ~isGpuAvailable
-                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
-            end
-            % Add location of the CUDA kernels
-            addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
-
-            % Probe parameters
-            probe = obj.us4r.getProbeModel;
-            obj.sys.nElem = double(probe.nElements);
-            obj.sys.pitch = probe.pitch;
-            obj.sys.freqRange = double(probe.txFrequencyRange);
-            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
-
-            % Position (pos,x,z) and orientation (ang) of each probe element
-            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-            if obj.sys.curvRadius == 0
-                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
-                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
-            else
-                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
-                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
-                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
-                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+                instance.handle.closeSession();
             end
 
-            obj.sys.interfEnable = interfEnable;
-            if obj.sys.interfEnable
-                wedge = wedgeParams();
-                obj.sys.interfSize = wedge.interfSize;
-                obj.sys.interfAng  = wedge.interfAng;
-                obj.sys.interfSos  = wedge.interfSos;
-
-                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
-
-                xElemNoInterf = obj.sys.xElem;
-                zElemNoInterf = obj.sys.zElem;
-                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
-                              + zElemNoInterf * sin(obj.sys.interfAng);
-                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
-                              - xElemNoInterf * sin(obj.sys.interfAng) ...
-                              - obj.sys.interfSize;
-            end
-
-            obj.sys.tangElem = tan(obj.sys.angElem);
-            
-            obj.sys.isHardwareProgrammed = false;
-
+            obj = Us4R(varargin{:});
+            instance.handle = obj;
         end
+
+        function clear()
+
+            instance = Us4R.instance;
+            if ~isempty(instance.handle)
+                if isvalid(instance.handle)
+                    instance.handle.delete();
+                end
+                instance.handle = [];
+            end
+        end
+
+    end
+
+    methods
         
         function closeSession(obj)
             obj.session.close();
         end
         
+        function state = getSessionState(obj)
+            state = obj.session.getCurrentState();
+        end
+
         function stopScheme(obj)
             obj.session.stopScheme();
+            obj.buffer.iFrame = 0;
         end
 
         function nProbeElem = getNProbeElem(obj)
@@ -213,7 +168,8 @@ classdef Us4R < handle
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
-                'bufferSize', sequenceOperation.bufferSize);
+                'bufferSize', sequenceOperation.bufferSize, ...
+                'txWaveform', sequenceOperation.txWaveform);
 
             obj.seq.seqLim = [1 numel(obj.seq.txAng)];
             
@@ -306,7 +262,8 @@ classdef Us4R < handle
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
-                'bufferSize', sequenceOperation.bufferSize);
+                'bufferSize', sequenceOperation.bufferSize, ...
+                'txWaveform', sequenceOperation.txWaveform);
 
             % Program hardware
             if nargin<3 || enableHardwareProgramming
@@ -390,35 +347,18 @@ classdef Us4R < handle
             seq = obj.seq;
         end
         
-        function [rf,img] = run(obj)
+        function [rf, img, metadata] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
             % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
             % implementations.
             %
-            % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
-            
-            [rf, ~] = obj.execSequence;
-            obj.session.stopScheme();
+            % :returns: RF frame, reconstructed image (if :class:`Reconstruction`
+            % operation was uploaded) and metadata located in the first sample
+            % of the master module
 
-            rf = obj.rawDataReorganization(rf);
-
-            if obj.rec.enable
-                img = obj.execReconstr(rf(:,:,:,1));
-            else
-                img = [];
-            end
-        end
-        
-        function [rf, img, metadata] = runWithMetadata(obj)
-            % Runs uploaded operations in the us4R system.
-            %
-            % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
-            % implementations.
-            %
-            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
             [rf, metadata] = obj.execSequence;
-            obj.session.stopScheme();
+            obj.stopScheme;
 
             rf = obj.rawDataReorganization(rf);
 
@@ -513,21 +453,16 @@ classdef Us4R < handle
 
             % Main loop (using buffers if bufferMode is "conc")
             i = 0;
-            tStampPrev = nan;
             while(isContinue())
                 i = i + 1;
                 
                 tic;
-                [rf, meta] = obj.execSequence;
+                rf = obj.execSequence;
                 acqTime = toc;
                 
                 tic;
                 rf = obj.rawDataReorganization(rf);
                 reorgTime = toc;
-
-                tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                sri = tStampCurr - tStampPrev;
-                tStampPrev = tStampCurr;
 
                 if obj.rec.enable
                     tic;
@@ -546,7 +481,7 @@ classdef Us4R < handle
                     if exist('recTime', 'var')
                         disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
                     end
-                    disp(['Frame rate = ' num2str(1/sri, '%5.1f') ' fps']);
+                    disp(['Frame rate = ' num2str(1/obj.buffer.sri, '%5.1f') ' fps']);
                     disp('--------------------');
                 end
 
@@ -562,12 +497,12 @@ classdef Us4R < handle
                         imgBuffer(:,:,I,:) = img;
                     end
 
-                    sriBuffer(I) = sri;
+                    sriBuffer(I) = obj.buffer.sri;
                 end
             end
 
             if concBufferEnable
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Output buffer unwinding
@@ -579,13 +514,11 @@ classdef Us4R < handle
             else
                 % Second loop (acquisition of raw data for "subs" bufferMode)
                 for i=1:bufferSize
-                    [raw0Buffer(:,:,i), meta] = obj.execSequence;
-
-                    tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                    sriBuffer(i) = tStampCurr - tStampPrev;
-                    tStampPrev = tStampCurr;
+                    raw0Buffer(:,:,i) = obj.execSequence;
+                    
+                    sriBuffer(i) = obj.buffer.sri;
                 end
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Postprocessing loop
@@ -689,7 +622,8 @@ classdef Us4R < handle
             end
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 data = gather(data(:,selectedLines));
                 if boundsEnable
                     data = [min(data,[],2), max(data,[],2)];
@@ -709,6 +643,8 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.stopScheme;
+
         end
         
         function imageRawRf(obj,varargin)
@@ -759,7 +695,8 @@ classdef Us4R < handle
             colorbar;
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 try
                     set(hDisp, 'CData', gather(data(:,selectedLines)));
                     drawnow limitrate;
@@ -772,14 +709,116 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.stopScheme;
+
         end
         
         function [img] = reconstructOffline(obj,rfRaw)
             img = obj.execReconstr(rfRaw);
         end
+
+        function delete(obj)
+            if ~isempty(obj.session)
+                if obj.getSessionState()=="STARTED"
+                    obj.stopScheme();
+                end
+                if obj.getSessionState()=="STOPPED"
+                    obj.closeSession();
+                end
+            end
+        end
     end
     
     methods(Access = private)
+
+        function obj = Us4R(varargin)
+
+            % Input parser
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
+            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
+            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
+            parse(paramsParser, varargin{:});
+
+            configFile   = paramsParser.Results.configFile;
+            interfEnable = paramsParser.Results.interfEnable;
+            logTime      = paramsParser.Results.logTime;
+
+            if isempty(configFile) || ~isfile(configFile)
+                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
+                if filterIndex	== 0
+                    obj = [];
+                    return;
+                else
+                    configFile = [pathName fileName];
+                end
+            end
+
+            % Initialization
+            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
+
+            obj.session = arrus.session.Session(configFile);
+            obj.us4r = obj.session.getDevice("/Us4R:0");
+
+            obj.sys.nChArius = 32;
+            obj.sys.rxSampFreq = 65e6;
+            obj.sys.maxSeqLength = 2^14;
+            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
+            obj.sys.reloadTime = 43e-6; % [s]
+            obj.logTime = logTime;
+
+            % Check if valid GPU is available
+            isGpuAvailable = ~isempty(ver('parallel')) ...
+                           && parallel.gpu.GPUDevice.isAvailable;
+            if ~isGpuAvailable
+                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
+            end
+            % Add location of the CUDA kernels
+            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
+
+            % Probe parameters
+            probe = obj.us4r.getProbeModel;
+            obj.sys.nElem = double(probe.nElements);
+            obj.sys.pitch = probe.pitch;
+            obj.sys.freqRange = double(probe.txFrequencyRange);
+            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
+
+            % Position (pos,x,z) and orientation (ang) of each probe element
+            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+            if obj.sys.curvRadius == 0
+                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
+                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
+            else
+                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
+                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
+                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
+                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+            end
+
+            obj.sys.interfEnable = interfEnable;
+            if obj.sys.interfEnable
+                wedge = wedgeParams();
+                obj.sys.interfSize = wedge.interfSize;
+                obj.sys.interfAng  = wedge.interfAng;
+                obj.sys.interfSos  = wedge.interfSos;
+
+                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
+
+                xElemNoInterf = obj.sys.xElem;
+                zElemNoInterf = obj.sys.zElem;
+                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
+                              + zElemNoInterf * sin(obj.sys.interfAng);
+                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
+                              - xElemNoInterf * sin(obj.sys.interfAng) ...
+                              - obj.sys.interfSize;
+            end
+
+            obj.sys.tangElem = tan(obj.sys.angElem);
+
+            obj.sys.isHardwareProgrammed = false;
+
+        end
 
         function seqOut = mergeSequences(obj,seqIn)
 
@@ -886,7 +925,8 @@ classdef Us4R < handle
                                 'txInvert',         'txInvert'; ...
                                 'workMode',         'workMode'; ...
                                 'sri',              'sri'; ...
-                                'bufferSize',       'bufferSize'};
+                                'bufferSize',       'bufferSize';...
+                                'txWaveform',       'txWaveform'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -1011,16 +1051,24 @@ classdef Us4R < handle
                 error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
             end
             
-            if obj.sys.interfEnable && (numel(unique(obj.seq.txFreq)) > 1 || numel(unique(obj.seq.txNPer)) > 1)
-                error("setSeqParams: txFrequency and txNPeriods must be constant when wedge interface is used");
+            if obj.sys.interfEnable
+                if ~isempty(obj.seq.txWaveform)
+                    error("setSeqParams: txWaveform cannot be used together with wedge interface");
+                elseif numel(unique(obj.seq.txFreq)) > 1 || numel(unique(obj.seq.txNPer)) > 1
+                    error("setSeqParams: txFrequency and txNPeriods must be constant when wedge interface is used");
+                end
             end
             
             %% Aperture masks & delays
             obj.calcTxRxApMask;
             obj.calcTxDelays;
-            
-            obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
-            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
+            if ~isempty(obj.seq.txWaveform)
+                txDuration = obj.seq.txWaveform.getTotalDuration();
+            else
+                txDuration = obj.seq.txNPer./obj.seq.txFreq;
+            end
+            obj.seq.nSampOmit = (max(obj.seq.txDel) + txDuration) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
+            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + txDuration / 2;
 
         end
 
@@ -1066,6 +1114,11 @@ classdef Us4R < handle
                 obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
+            %% Check if txWaveform is used - it is not supported in reconstruction
+            if ~isempty(obj.subSeq.txWaveform)
+                error("setRecParams: reconstruction cannot be performed when txWaveform is used");
+            end
+
             %% Software DDC parameters
             if isempty(obj.rec.swDdcEnable)
                 obj.rec.swDdcEnable = ~obj.subSeq.hwDdcEnable;
@@ -1110,6 +1163,11 @@ classdef Us4R < handle
                 obj.rec.rGrid = t * obj.rec.sos / 2;
             end
             
+            %% Validate color/vector modes
+            if obj.rec.colorEnable && obj.rec.vectorEnable
+                error("setRecParams: simultaneous color & vector operation is not supported");
+            end
+            
             %% Validate frames selection
             if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.subSeq.nTx)
                 error("setRecParams: bmodeFrames refers to nonexistent transmission id");
@@ -1130,6 +1188,26 @@ classdef Us4R < handle
             %% Default bmodeFrames
             if obj.rec.bmodeEnable && isempty(obj.rec.bmodeFrames)
                 obj.rec.bmodeFrames = 1:obj.subSeq.nTx;
+            end
+            
+            %% Validate colorFrames
+            if obj.rec.colorEnable
+                if numel(unique(diff(obj.rec.colorFrames))) > 1
+                    error('Doppler is sampled at uneven rate within the sequence.');
+                elseif (obj.rec.colorFrames(2) - obj.rec.colorFrames(1) ~= ...
+                        obj.rec.colorFrames(1) - obj.rec.colorFrames(end) + obj.subSeq.nTx) && ...
+                       any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'}))
+                    warning('Doppler sampling rates within a batch and between subsequent batches are different.');
+                    obj.rec.colorBatchesConsistent = false;
+                else
+                    obj.rec.colorBatchesConsistent = true;
+                end
+            end
+
+            %% Validate vectorFrames
+            if obj.rec.vectorEnable
+                % validation needed
+                obj.rec.vectorBatchesConsistent = true;
             end
             
             %% Validate/adjust size of the RxTangLims
@@ -1173,8 +1251,18 @@ classdef Us4R < handle
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
             
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
+            if obj.rec.colorEnable
+                obj.rec.wcf = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+            end
+            
+            if obj.rec.vectorEnable
+                obj.rec.wcf0 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+                obj.rec.wcf1 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+                
+                obj.rec.color2vector = Color2VectorConverter(obj.subSeq.txAng(obj.rec.vect0Frames(1)), ...
+                                                             obj.subSeq.txAng(obj.rec.vect1Frames(1)), ...
+                                                             atan(mean(obj.rec.vect0RxTangLim(1,:))), ...
+                                                             atan(mean(obj.rec.vect1RxTangLim(1,:))), 3);
             end
             
             %% Set data types and move data to GPU memory
@@ -1198,16 +1286,10 @@ classdef Us4R < handle
             obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
             obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
             obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
-            obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
-            obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
             obj.subSeq.rxSampFreq  =          single(obj.subSeq.rxSampFreq);
             obj.rec.sos            =          single(obj.rec.sos);
             obj.subSeq.startSample =          single(obj.subSeq.startSample);
             obj.subSeq.txDelCent   =          single(obj.subSeq.txDelCent);
-
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
-            end
 
             if ~obj.rec.gridModeEnable
                 obj.rec.rGrid      = gpuArray(single(obj.rec.rGrid));
@@ -1315,7 +1397,11 @@ classdef Us4R < handle
             % Tx/Rx sequence
             nTx = obj.seq.nTx;
             for iTx=1:nTx
-                pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                if ~isempty(obj.seq.txWaveform)
+                    pulse = obj.seq.txWaveform;
+                else
+                    pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                end
                 txObj = Tx("aperture", obj.seq.txApMask(:,iTx).', 'delays', obj.seq.txDel(:,iTx).', "pulse", pulse);
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
@@ -1355,6 +1441,7 @@ classdef Us4R < handle
             obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 1);
         end
 
+        % txWaveform must be handled properly here!!!
         function selSubSeq(obj, seqId, sri)
             
             % Sub-sequence fuctionality is temporarily suspended
@@ -1430,6 +1517,7 @@ classdef Us4R < handle
             end
 
             obj.buffer.iFrame = 0;
+            obj.buffer.tFrame = nan;
             obj.rec.enable = false;
 
         end
@@ -1456,7 +1544,18 @@ classdef Us4R < handle
 
             metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
             metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
-
+            
+            tFrameNew = bin2dec(reshape(dec2bin(metadata([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
+            obj.buffer.sri = tFrameNew - obj.buffer.tFrame;
+            obj.buffer.tFrame = tFrameNew;
+            
+            % The below condition on sri is valid for simple Tx/Rx sequences, 
+            % it may not work properly for a messed up sequence.
+            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 1e-9;
+            
+            if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
+                warning('SYNC mode: sequence lag detected');
+            end
         end
         
         function img = execReconstr(obj,rfRaw)
@@ -1508,7 +1607,15 @@ classdef Us4R < handle
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
-                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.subSeq, obj.rec);
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       ~obj.buffer.seqLagDetected && obj.rec.colorBatchesConsistent
+                        
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
+                    else
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,true,obj.rec.wcFiltInitSize);
+                    end
+                    
+                    [color,power,turbu] = dopplerColor(rfBfrColor);
                 end
                 
                 % Vector Doppler image reconstruction
@@ -1516,10 +1623,23 @@ classdef Us4R < handle
                     rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
                     rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
                     
-                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.subSeq, obj.rec);
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       ~obj.buffer.seqLagDetected && obj.rec.vectorBatchesConsistent
+                        
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,false);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,false);
+                    else
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,true,obj.rec.wcFiltInitSize);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,true,obj.rec.wcFiltInitSize);
+                    end
+                    
+                    [color0,power0,turbu0] = dopplerColor(rfBfrVect0);
+                    [color1,power1,turbu1] = dopplerColor(rfBfrVect1);
+                    
+                    [color,power,turbu] = obj.rec.color2vector.convert(color0,color1,power0,power1,turbu0,turbu1);
                 end
             end
-
+            
             %% Postprocessing
             % Obtain complex signal (if it isn't complex already)
             if ~obj.subSeq.hwDdcEnable && ~obj.rec.swDdcEnable

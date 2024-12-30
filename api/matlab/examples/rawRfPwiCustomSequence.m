@@ -7,8 +7,8 @@
 % See the comments below for more detals.
 
 
-addpath("..\");
-addpath("..\arrus");
+addpath("../");
+addpath("../arrus");
 
 import arrus.session.*;
 import arrus.ops.us4r.*;

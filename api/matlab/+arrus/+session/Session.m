@@ -20,6 +20,13 @@ classdef Session < handle
             device = res{1, 1};
         end
 
+        function state = getCurrentState(obj)
+            % Returns a session current state (STOPPED; STARTED; CLOSED)
+            %
+            res = obj.ptr.callMethod("getCurrentState", 1);
+            state = res{1, 1};
+        end
+
         function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels, rxOffset] = upload(obj, scheme)
             % Uploads a given scheme on the available devices.
             % Currently, the scheme upload is performed on the Us4R:0 device only.

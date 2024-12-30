@@ -329,7 +329,7 @@ std::optional<T> getCppOptionalObject(const MexContext::SharedHandle &ctx, const
 
 template<typename T, typename Converter>
 T getCppObject(const MexContext::SharedHandle &ctx, const MatlabElementRef &object, const std::string &property) {
-    return getCppObjectVector<T, Converter>(ctx, object, property)[0];
+    return getCppObjectVector<T, Converter>(ctx, object, property).at(0);
 }
 
 #define ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Type, Converter, field, array)                                                \

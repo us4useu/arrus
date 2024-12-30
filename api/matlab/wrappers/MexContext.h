@@ -63,6 +63,17 @@ public:
         }
     }
 
+    bool isInstance(const ::matlab::data::ObjectArray &object, const std::string& className) {
+        try {
+            return matlabEngine->feval(u"isa",
+             std::vector<::matlab::data::Array>({object, factory.createScalar(className)})
+             )[0];
+        } catch (const std::exception &e) {
+            throw ::arrus::IllegalArgumentException(
+                ::arrus::format("Exception while calling 'isa': {}", e.what()));
+        }
+    }
+
     template<typename T>::matlab::data::TypedArray<T> createScalar(const T &value) {
         try {
             return getArrayFactory().createScalar<T>(value);

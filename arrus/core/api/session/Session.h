@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_API_SESSION_SESSION_H
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
+#include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/common/Parameters.h"
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/devices/Device.h"
@@ -29,6 +30,22 @@ public:
     enum class State {
         STOPPED, STARTED, CLOSED
     };
+
+    /**
+     * Returns a Session State name.
+     *
+     * @param state Session State
+     * @return a Session State name (string)
+     */
+    static std::string getSessionStateAsString(const State state) {
+        switch(state) {
+            case State::STOPPED: return "STOPPED";
+            case State::STARTED: return "STARTED";
+            case State::CLOSED: return "CLOSED";
+            default:
+                throw IllegalArgumentException("Unrecognized Session State.");
+        }
+    }
 
     /**
      * Returns a handle to device with given Id. The string format is:

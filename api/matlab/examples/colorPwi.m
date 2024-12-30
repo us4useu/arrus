@@ -1,37 +1,102 @@
 % Example script for b-mode & color doppler imaging (duplex) using plane waves
 
+% There are several approaches to design the Tx/Rx sequence for duplex
+% mode. They all must ensure that the Color Doppler frames are acquired 
+% at a constant pace (preferably as high as possible). Some basic examples
+% of duplex sequences using plane waves are listed below:
+% 
+% 1. Transmit N times at a constant Tx angle. 
+% B-mode is reconstructed from any of the collected frames. 
+% Color Doppler is reconstructed from all of the collected frames. 
+% This approach provides the highest Color Doppler PRF.
+% 
+% 2. Transmit N times (N is even).
+% B-mode is reconstructed from the odd frames which use various Tx angles.
+% Color Doppler is reconstructed from the even frames which use a constant
+% Tx angle.
+% This approach provides much better B-mode image (compouning of frames
+% acquired for a range of Tx angles) for the price of reduced Color Doppler
+% quality (reduced PRF, less frames for Color Doppler estimation).
+% 
+% The below code makes possible to test both approaches by setting the
+% exampleId to 1 or 2, respectively.
+% 
+% Tips:
+% - To improve Color Doppler SNR, use longer pulses (txNPeriods 4-8). In
+% example #1 this negatively affects B-mode resolution but in example #2
+% B-mode & Color Doppler frames are separable.
+% - Color Doppler sensitivity decreases if the effective beam direction
+% gets close to perpendicular to the flow direction. Most imaged vessels
+% are parallel to the skin/probe surface i.e. perpendicular to the beam if 
+% it is not angled. It is therefore advisable to angle the Tx beam for the
+% Color Doppler frames. The same applies to the Rx angle which is steered
+% by the colorRxTangLim property of Reconstruction.
+% - Color Doppler works best for uninterrupted multiple execution of the
+% Tx/Rx sequence. For this purpose set workMode to 'SYNC' and make sure 
+% that your hardware is capable to transfer & process a data frame in 
+% real time i.e. the time required for acquisition of another data frame.
+% If not, this will affect not only the Duplex display frame rate (time 
+% lags) but also the Color Doppler quality (included filter needs
+% initialisation if time regime is broken). To handle this, txPri should
+% be gradually increased until the lags disappear.
+
 %% Initialize the system
-addpath('..\');
-addpath('..\arrus');
+addpath('../');
+addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
-us  = Us4R('configFile', 'us4r.prototxt');
+us  = Us4R.create('configFile', 'us4r.prototxt');
 
 %% Selected parameters
-% To program plane wave sequence, set 'txFocus' to infinity.
-txFoc = inf;                    % Focal distance [m]
+exampleId = 1;  % set to 1 or 2 for running example #1 or #2, respectively
 
-% Set different tx angles for B-Mode and Color Doppler
-txAngBMode = (-15:3:15)*pi/180; % Plane wave angles for B-Mode [rad]
-nTxBMode = numel(txAngBMode);   % Number of transmissions for B-Mode
-    
-txAngColor = 10*pi/180;         % Plane wave angle for Color [rad]
-nTxColor = 64;                  % Number of transmissions for Color
+nTx = 32;       % number of Tx/Rx frames in the sequence
 
-txAng = [txAngBMode, txAngColor*ones(1,nTxColor)];
+switch exampleId
+    case 1
+        iTxBmode = 1;           % first frame for B-mode
+        iTxColor = 1:nTx;       % all frames for Color Doppler
+        
+        txAngColor = 20 * pi/180;           % constant Tx angle, try to avoid beam-flow perpendicularity -> 15deg
+        txAng = txAngColor * ones(1,nTx);   % at least one sequence parameter must have nTx elements
+        
+        txNPer = 4;             % constant Tx pulse length, a compromise between B-mode resolution and Color Doppler SNR
+        
+    case 2
+        iTxBmode = 1:2:nTx;     % odd frames for B-mode
+        iTxColor = 2:2:nTx;     % even frames for Color Doppler
+        
+        % Set Tx angles
+        txAngBmode = linspace(-20,20,numel(iTxBmode)) * pi/180; % a range of Tx angles for angular compounding
+        txAngColor = 20 * pi/180;   % constant Tx angle, try to avoid beam-flow perpendicularity -> 15deg
+        
+        txAng = zeros(1,nTx);
+        txAng(iTxBmode) = txAngBmode;
+        txAng(iTxColor) = txAngColor;
+        
+        % Set Tx pulse lengths
+        txNPerBMode = 2;        % short pulse for better resolution
+        txNPerColor = 8;        % long pulse for better SNR
+        
+        txNPer = zeros(1,nTx);
+        txNPer(iTxBmode) = txNPerBMode;
+        txNPer(iTxColor) = txNPerColor;
 
-% Set different pulse lengths for B-Mode and Color Doppler
-txNPerBMode = 2;
-txNPerColor = 8;
-txNPer = [txNPerBMode*ones(1,nTxBMode), ...
-          txNPerColor*ones(1,nTxColor)];
+    otherwise
+        error('Invalid exampleId');
+end
 
-% Set rx tangent limits for Color Doppler (account for angled rx beam)
-rxTangLimColor = [-0.5 0.5] + tan(txAngColor);
+% Set Rx tangent limits
+rxTangLimBmode = [-1.0 1.0];                        % wide Rx aperture for better resolution
+rxTangLimColor = [-0.5 0.5] + tan(txAngColor);      % narrow Rx aperture for better distinction of beam direction
+                                                    % moved Rx aperture, try to avoid beam-flow perpendicularity
 
 % Wall Clutter Filter parameters
-[wcfB, wcfA]    = butter(8,0.30,'high'); % Wall clutter filter coefficients
-wcfInitSize     = 32;
+wcfOrder = 8;       % filter order (max 8 order supported)
+wcfCutoff = 0.30;   % filter cutoff (fc/(fs/2))
+wcfInitSize = 8;    % number of filter output samples skipped after filter sturtup
+
+[wcfB, wcfA] = butter(wcfOrder, wcfCutoff, 'high');
 
 %% Program Tx/Rx sequence and reconstruction
 % Set the Tx/Rx sequence
@@ -40,43 +105,37 @@ wcfInitSize     = 32;
 % txApertureCenter/txCenterElement, rxApertureCenter/rxCenterElement,
 % txApertureSize, txFocus, txAngle, txFrequency, txNPeriods, txInvert.
 % All other parameters are constant for the whole sequence, thus they are scalars.
-seq = CustomTxRxSequence(... % Obligatory parameters
-                        ... % (tx/rxApertureCenter [m] can be replaced with 
-                        ... % tx/rxCenterElement [elem], rxDepthRange [m] 
-                        ... % can be replaced with rxNSamples [samp])
+seq = CustomTxRxSequence(... 
                         'txApertureCenter', 0e-3, ...
                         'txApertureSize',   us.getNProbeElem, ...
                         'rxApertureCenter', 0e-3, ...
                         'rxApertureSize',   us.getNProbeElem, ...
-                        'txFocus',          txFoc, ...
+                        'txFocus',          inf, ...    % for plane waves set 'txFocus' to infinity
                         'txAngle',          txAng, ...
                         'speedOfSound',     1540, ...
-                        'txFrequency',      6.5e6, ...
+                        'txFrequency',      4.0e6, ...
                         'txNPeriods',       txNPer, ...
-                        'txVoltage',        10, ...
-                        'rxDepthRange',     50e-3, ...
+                        'txVoltage',        15, ...
+                        'rxDepthRange',     30e-3, ...
                         ... % Optional parameters
-                        'hwDdcEnable',      true, ... % set to false/true to obtain raw data as RF/decimated IQ (set false to bypass DDC)
-                        'decimation',       10, ... % recommended (and default) value is round(65e6/txFrequency)
-                        'nRepetitions',     1, ...
-                        'txPri',            120e-6, ... % tx time interval kept low for Doppler
+                        'txPri',            200e-6, ...
                         'tgcStart',         14, ...
                         'tgcSlope',         200, ...
-                        'txInvert',         false ...
+                        'workMode',         'SYNC', ...
+                        'bufferSize',       16 ...
                         );
 
 % GPU/CPU reconstruction implemented in matlab.
 rec = Reconstruction(   ... % Obligatory parameters
-                        'xGrid',            (-20:0.10:20)*1e-3, ...
-                        'zGrid',            (  0:0.10:30)*1e-3, ...
+                        'xGrid',            (-15:0.20:15)*1e-3, ...
+                        'zGrid',            (  5:0.20:25)*1e-3, ...
                         ... % Optional parameters
-                        'gridModeEnable',   true, ... % set to false to reconstruct image lines instead of the full grid for each transmission.
-                        'bmodeRxTangLim',   [-0.5 0.5], ...
+                        'bmodeRxTangLim',   rxTangLimBmode, ...
                         'rxApod',           hamming(10).', ...
-                        'bmodeFrames',      1:nTxBMode, ...
+                        'bmodeFrames',      iTxBmode, ...
                         ... % Color Doppler parameters
                         'colorEnable',      true, ...
-                        'colorFrames',      (1:nTxColor) + nTxBMode, ...
+                        'colorFrames',      iTxColor, ...
                         'colorRxTangLim',	rxTangLimColor, ...
                         'wcFilterBCoeff',   wcfB, ...
                         'wcFilterACoeff',	wcfA, ...
@@ -86,16 +145,15 @@ us.upload(seq, rec);
 
 %% Preview (continuous in-loop operation)
 display = DuplexDisplay(rec, 'dynamicRange',    [0 80], ...
-                             'powerThreshold',  10, ...   % Color Doppler is shown if Power is ABOVE this level [dB]
-                             'turbuThreshold',  0.99, ... % Color Doppler is shown if Turbulence is BELOW this level (value range: 0-1)
-                             'stdevThreshold',  2.60, ... % Color Doppler is shown if Color St. Dev. is BELOW this level (value range: 0-pi)
-                             'thresholdSmooth', 20);
+                             'powerThreshold',  20, ...   % Color Doppler is shown if Power is ABOVE this level [dB]
+                             'turbuThreshold',  0.50, ... % Color Doppler is shown if Turbulence is BELOW this level (value range: 0-1)
+                             'stdevThreshold',  3.50, ... % Color Doppler is shown if Color St. Dev. is BELOW this level (value range: 0-pi)
+                             'thresholdSmooth', 3);
+
 us.runLoop(@display.isOpen, @display.updateImg);
 
 %% Collecting data (single execution of the sequence)
 [raw,img] = us.run;
 
-%% Close session
-us.closeSession;
 
 

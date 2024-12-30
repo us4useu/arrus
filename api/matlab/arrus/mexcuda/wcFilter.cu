@@ -6,11 +6,11 @@
 
 __constant__ float filtNumConst[MAX_ORD + 1];
 __constant__ float filtDenConst[MAX_ORD + 1];
-__constant__ float filtRectInitConst[MAX_ORD];
 
 __global__ void wcFilter(float2 * output, 
                          float2 * filtState, 
                          float2 const * input, 
+                         float2 const * filtInitState, 
                          int const nZPix, 
                          int const nXPix, 
                          int const nRep, 
@@ -26,24 +26,22 @@ __global__ void wcFilter(float2 * output,
         return;
     }
     
-    splIn = input[z + x * nZPix];
-    
-    flt1.x = filtRectInitConst[0] * splIn.x;
-    flt1.y = filtRectInitConst[0] * splIn.y;
-    flt2.x = filtRectInitConst[1] * splIn.x;
-    flt2.y = filtRectInitConst[1] * splIn.y;
-    flt3.x = filtRectInitConst[2] * splIn.x;
-    flt3.y = filtRectInitConst[2] * splIn.y;
-    flt4.x = filtRectInitConst[3] * splIn.x;
-    flt4.y = filtRectInitConst[3] * splIn.y;
-    flt5.x = filtRectInitConst[4] * splIn.x;
-    flt5.y = filtRectInitConst[4] * splIn.y;
-    flt6.x = filtRectInitConst[5] * splIn.x;
-    flt6.y = filtRectInitConst[5] * splIn.y;
-    flt7.x = filtRectInitConst[6] * splIn.x;
-    flt7.y = filtRectInitConst[6] * splIn.y;
-    flt8.x = filtRectInitConst[7] * splIn.x;
-    flt8.y = filtRectInitConst[7] * splIn.y;
+    flt1.x = filtInitState[z + x * nZPix + 0 * nZPix * nXPix].x;
+    flt1.y = filtInitState[z + x * nZPix + 0 * nZPix * nXPix].y;
+    flt2.x = filtInitState[z + x * nZPix + 1 * nZPix * nXPix].x;
+    flt2.y = filtInitState[z + x * nZPix + 1 * nZPix * nXPix].y;
+    flt3.x = filtInitState[z + x * nZPix + 2 * nZPix * nXPix].x;
+    flt3.y = filtInitState[z + x * nZPix + 2 * nZPix * nXPix].y;
+    flt4.x = filtInitState[z + x * nZPix + 3 * nZPix * nXPix].x;
+    flt4.y = filtInitState[z + x * nZPix + 3 * nZPix * nXPix].y;
+    flt5.x = filtInitState[z + x * nZPix + 4 * nZPix * nXPix].x;
+    flt5.y = filtInitState[z + x * nZPix + 4 * nZPix * nXPix].y;
+    flt6.x = filtInitState[z + x * nZPix + 5 * nZPix * nXPix].x;
+    flt6.y = filtInitState[z + x * nZPix + 5 * nZPix * nXPix].y;
+    flt7.x = filtInitState[z + x * nZPix + 6 * nZPix * nXPix].x;
+    flt7.y = filtInitState[z + x * nZPix + 6 * nZPix * nXPix].y;
+    flt8.x = filtInitState[z + x * nZPix + 7 * nZPix * nXPix].x;
+    flt8.y = filtInitState[z + x * nZPix + 7 * nZPix * nXPix].y;
     
     for (int iRep=0; iRep<nRep; iRep++) {
         splIn = input[z + x * nZPix + iRep * nZPix * nXPix];
@@ -128,14 +126,14 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUArray const * input;
     mxGPUArray const * filtNum;
     mxGPUArray const * filtDen;
-    mxGPUArray const * filtRectInit;
+    mxGPUArray const * filtInitState;
     
     float2 * dev_output;
     float2 * dev_filtState;
     float2 const * dev_input;
     float const * dev_filtNum;
     float const * dev_filtDen;
-    float const * dev_filtRectInit;
+    float2 const * dev_filtInitState;
     
     int nZPix;
     int nXPix;
@@ -162,16 +160,16 @@ void mexFunction(int nlhs, mxArray * plhs[],
 //     }
     
     /* Extract inputs from prhs */
-    input        = mxGPUCreateFromMxArray(prhs[0]);
-    filtNum      = mxGPUCreateFromMxArray(prhs[1]);
-    filtDen      = mxGPUCreateFromMxArray(prhs[2]);
-    filtRectInit = mxGPUCreateFromMxArray(prhs[3]);
+    input         = mxGPUCreateFromMxArray(prhs[0]);
+    filtNum       = mxGPUCreateFromMxArray(prhs[1]);
+    filtDen       = mxGPUCreateFromMxArray(prhs[2]);
+    filtInitState = mxGPUCreateFromMxArray(prhs[3]);
     
     /* Validate inputs */
-    checkData(input,        "input",        true,   3, invalidInputMsgId);
-    checkData(filtNum,      "filtNum",      false,  1, invalidInputMsgId);
-    checkData(filtDen,      "filtDen",      false,  1, invalidInputMsgId);
-    checkData(filtRectInit, "filtRectInit", false,  1, invalidInputMsgId);
+    checkData(input,         "input",         true,  3, invalidInputMsgId);
+    checkData(filtNum,       "filtNum",       false, 1, invalidInputMsgId);
+    checkData(filtDen,       "filtDen",       false, 1, invalidInputMsgId);
+    checkData(filtInitState, "filtInitState", true,  3, invalidInputMsgId);
     
     /* Get some additional information */
     nZPix = mxGPUGetDimensions(input)[0];
@@ -181,11 +179,17 @@ void mexFunction(int nlhs, mxArray * plhs[],
                   mxGPUGetNumberOfElements(filtDen)) - 1;
 
     /* Validate filter order */
-    if (mxGPUGetNumberOfElements(filtRectInit) != filtOrd) {
-        mexErrMsgIdAndTxt(invalidInputMsgId, "filtRectInit length must equal the filter order");
-    }
     if (filtOrd<1 || filtOrd>MAX_ORD) {
         mexErrMsgIdAndTxt(invalidInputMsgId, "filter order must be in 1-8 range");
+    }
+
+    /* Validate size of filter initial state */
+    if ((mxGPUGetDimensions(filtInitState)[0] != nZPix) || 
+        (mxGPUGetDimensions(filtInitState)[1] != nXPix)) {
+        mexErrMsgIdAndTxt(invalidInputMsgId, "filtInitState 1st & 2nd dimensions must be the same as in the input array");
+    }
+    if (mxGPUGetDimensions(filtInitState)[2] != filtOrd) {
+        mexErrMsgIdAndTxt(invalidInputMsgId, "filtInitState 3rd dimension must be equal to the filter order");
     }
     
     blocksPerGrid = {(nZPix+threadsPerBlock.x-1)/threadsPerBlock.x, 
@@ -200,12 +204,12 @@ void mexFunction(int nlhs, mxArray * plhs[],
     filtState = mxGPUCreateGPUArray(nDimOut, dimOut1, mxSINGLE_CLASS, mxCOMPLEX, MX_GPU_DO_NOT_INITIALIZE);
     
     /* Get pointers on the device */
-    dev_output       = (float2 *)(mxGPUGetData(output));
-    dev_filtState    = (float2 *)(mxGPUGetData(filtState));
-    dev_input        = (float2 const *)(mxGPUGetDataReadOnly(input));
-    dev_filtNum      = (float const *)(mxGPUGetDataReadOnly(filtNum));
-    dev_filtDen      = (float const *)(mxGPUGetDataReadOnly(filtDen));
-    dev_filtRectInit = (float const *)(mxGPUGetDataReadOnly(filtRectInit));
+    dev_output        = (float2 *)(mxGPUGetData(output));
+    dev_filtState     = (float2 *)(mxGPUGetData(filtState));
+    dev_input         = (float2 const *)(mxGPUGetDataReadOnly(input));
+    dev_filtNum       = (float const *)(mxGPUGetDataReadOnly(filtNum));
+    dev_filtDen       = (float const *)(mxGPUGetDataReadOnly(filtDen));
+    dev_filtInitState = (float2 const *)(mxGPUGetDataReadOnly(filtInitState));
     
     /* set constant memory */
     mwSize nDimAux = 1;
@@ -215,16 +219,15 @@ void mexFunction(int nlhs, mxArray * plhs[],
     
     cudaMemcpyToSymbol(filtNumConst,      dev_zeros,        (MAX_ORD+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     cudaMemcpyToSymbol(filtDenConst,      dev_zeros,        (MAX_ORD+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
-    cudaMemcpyToSymbol(filtRectInitConst, dev_zeros,         MAX_ORD   *sizeof(float), 0, cudaMemcpyDeviceToDevice);
-
+    
     cudaMemcpyToSymbol(filtNumConst,      dev_filtNum,      (filtOrd+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     cudaMemcpyToSymbol(filtDenConst,      dev_filtDen,      (filtOrd+1)*sizeof(float), 0, cudaMemcpyDeviceToDevice);
-    cudaMemcpyToSymbol(filtRectInitConst, dev_filtRectInit,  filtOrd   *sizeof(float), 0, cudaMemcpyDeviceToDevice);
-
+    
     /* Execute CUDA kernel */
     wcFilter<<<blocksPerGrid, threadsPerBlock>>>(dev_output, 
                                                  dev_filtState, 
                                                  dev_input, 
+                                                 dev_filtInitState, 
                                                  nZPix, 
                                                  nXPix, 
                                                  nRep, 
@@ -240,6 +243,6 @@ void mexFunction(int nlhs, mxArray * plhs[],
     mxGPUDestroyGPUArray(input);
     mxGPUDestroyGPUArray(filtNum);
     mxGPUDestroyGPUArray(filtDen);
-    mxGPUDestroyGPUArray(filtRectInit);
+    mxGPUDestroyGPUArray(filtInitState);
     
 }

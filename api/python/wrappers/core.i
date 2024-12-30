@@ -49,6 +49,8 @@ namespace std {
 %template(VectorFloat) vector<float>;
 %template(VectorUInt16) vector<unsigned short>;
 %template(VectorUInt8) vector<unsigned char>;
+%template(VectorInt8) vector<int8_t>;
+%template(VectorSizet) vector<size_t>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
 %template(VectorHVVoltage) vector<arrus::devices::HVVoltage>;
@@ -477,6 +479,7 @@ float arrusUs4OEMGetUCDExternalTemperature(::arrus::devices::Us4OEM *us4oem) {
 %{
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/core/api/ops/us4r/Waveform.h"
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
@@ -489,7 +492,9 @@ using namespace arrus::ops::us4r;
 
 %feature("valuewrapper") TxRx;
 %include "arrus/core/api/ops/us4r/tgc.h"
+%ignore arrus::ops::us4r::Pulse::toWaveform() const;
 %include "arrus/core/api/ops/us4r/Pulse.h"
+%include "arrus/core/api/ops/us4r/Waveform.h"
 %include "arrus/core/api/ops/us4r/Rx.h"
 %include "arrus/core/api/ops/us4r/Tx.h"
 %include "arrus/core/api/ops/us4r/TxRxSequence.h"
