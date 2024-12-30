@@ -15,16 +15,15 @@
 __global__ void rawReorgCplx( float2 *out, 
                               const short *in, 
                               const int *reorgMap, 
-                              const unsigned nSampOut, 
-                              const int blockOffset)
+                              const unsigned nSampOut )
 {
     __shared__ float2 tileShrd[OEM_N_CHAN][OEM_N_CHAN];
     
     size_t idx;
     
     // Input indices
-    int iChanIn = threadIdx.x; // gridSize[0] = 1 -> blockIdx.x = 0
-    int iSampIn = (blockIdx.y + blockOffset) * blockDim.y + threadIdx.y; // real and imag pair as a single sample
+    int iChanIn = threadIdx.x;                           // gridSize[0] = 1 -> blockIdx.x = 0
+    int iSampIn = blockIdx.y * blockDim.y + threadIdx.y; // real and imag pair as a single sample
     
     // Copy input to shared
     idx = iSampIn*2*OEM_N_CHAN + iChanIn;
@@ -35,7 +34,7 @@ __global__ void rawReorgCplx( float2 *out,
     __syncthreads();
     
     // Output indices
-    int iSampAux = (blockIdx.y + blockOffset) * blockDim.y + threadIdx.x;
+    int iSampAux = blockIdx.y * blockDim.y + threadIdx.x;
     int iChanAux = threadIdx.y;
     
     int iChunkIn = iSampAux / nSampOut;
@@ -58,8 +57,7 @@ __global__ void rawReorgCplx( float2 *out,
 __global__ void rawReorgReal( float *out, 
                               const short *in, 
                               const int *reorgMap, 
-                              const unsigned nSampOut, 
-                              const int blockOffset)
+                              const unsigned nSampOut )
 {
     __shared__ float tileShrd[OEM_N_CHAN][OEM_N_CHAN];
     
@@ -67,7 +65,7 @@ __global__ void rawReorgReal( float *out,
     
     // Input indices
     int iChanIn = threadIdx.x;
-    int iSampIn = (blockIdx.y + blockOffset) * blockDim.y + threadIdx.y;
+    int iSampIn = blockIdx.y * blockDim.y + threadIdx.y;
     
     // Copy input to shared
     idx = iSampIn*OEM_N_CHAN + iChanIn;
@@ -77,7 +75,7 @@ __global__ void rawReorgReal( float *out,
     __syncthreads();
     
     // Output indices
-    int iSampAux = (blockIdx.y + blockOffset) * blockDim.y + threadIdx.x;
+    int iSampAux = blockIdx.y * blockDim.y + threadIdx.x;
     int iChanAux = threadIdx.y;
     
     int iChunkIn = iSampAux / nSampOut;
@@ -158,17 +156,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
         out = mxGPUCreateGPUArray(nDimOut, dimOut, mxSINGLE_CLASS, mxCOMPLEX, MX_GPU_INITIALIZE_VALUES);
         float2 * dev_out = static_cast<float2 *>(mxGPUGetData(out));
         
-        /* Kernel in loop - due to blocksPerGrid limit */
-        int nBlock = nSampIn / 2 / threadsPerBlock.y;
-        int nBlockPerPart = (nBlock <= 65535) ? nBlock : 65535;
-        int nPart = (nBlock+nBlockPerPart-1)/nBlockPerPart;
-        for (int iPart=0; iPart<nPart; iPart++) {
-            
-            unsigned int nBlockInThisPart = (iPart<(nPart-1)) ? nBlockPerPart : (nBlock-iPart*nBlockPerPart);
-            
-            dim3 blocksPerGrid = {1, nBlockInThisPart, 1};
-            rawReorgCplx<<<blocksPerGrid, threadsPerBlock>>>( dev_out, dev_in, dev_reorgMap, nSampOut, iPart*nBlockPerPart);
-        }
+        dim3 blocksPerGrid = {1, nSampIn / 2 / threadsPerBlock.y, 1};
+        rawReorgCplx<<<blocksPerGrid, threadsPerBlock>>>( dev_out, dev_in, dev_reorgMap, nSampOut);
     }
     else {
         unsigned int nSampOut = nSampIn / nChunkIn;
@@ -179,17 +168,8 @@ void mexFunction(int nlhs, mxArray * plhs[],
         out = mxGPUCreateGPUArray(nDimOut, dimOut, mxSINGLE_CLASS, mxREAL, MX_GPU_INITIALIZE_VALUES);
         float * dev_out = static_cast<float *>(mxGPUGetData(out));
         
-        /* Kernel in loop - due to blocksPerGrid limit */
-        int nBlock = nSampIn / threadsPerBlock.y;
-        int nBlockPerPart = (nBlock <= 65535) ? nBlock : 65535;
-        int nPart = (nBlock+nBlockPerPart-1)/nBlockPerPart;
-        for (int iPart=0; iPart<nPart; iPart++) {
-            
-            unsigned int nBlockInThisPart = (iPart<(nPart-1)) ? nBlockPerPart : (nBlock-iPart*nBlockPerPart);
-
-            dim3 blocksPerGrid = {1, nBlockInThisPart, 1};
-            rawReorgReal<<<blocksPerGrid, threadsPerBlock>>>( dev_out, dev_in, dev_reorgMap, nSampOut, iPart*nBlockPerPart);
-        }
+        dim3 blocksPerGrid = {1, nSampIn / threadsPerBlock.y, 1};
+        rawReorgReal<<<blocksPerGrid, threadsPerBlock>>>( dev_out, dev_in, dev_reorgMap, nSampOut);
     }
     
     /* Wrap the output */
