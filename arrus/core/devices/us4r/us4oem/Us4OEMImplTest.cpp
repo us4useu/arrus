@@ -30,7 +30,6 @@ constexpr uint16 DEFAULT_PGA_GAIN = 30;
 constexpr uint16 DEFAULT_LNA_GAIN = 24;
 constexpr float MAX_TX_FREQUENCY = 65e6f;
 constexpr float MIN_TX_FREQUENCY = 1e6f;
-constexpr uint32_t TX_OFFSET = 123;
 
 class Us4OEMImplTest: public ::testing::Test {
 protected:
@@ -41,7 +40,6 @@ protected:
         // Default values returned by us4oem.
         ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetTxOffset).WillByDefault(testing::Return(TX_OFFSET));
     }
 
     Us4OEMUploadResult upload(const TxParametersSequenceColl &sequences) {
@@ -121,7 +119,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, TX_OFFSET + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, DEFAULT_DESCRIPTOR.getSampleTxStart() + sampleRange.start(), _, _, _));
     upload(seq);
 }
 
@@ -142,7 +140,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, TX_OFFSET + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, DEFAULT_DESCRIPTOR.getSampleTxStart() + sampleRange.start(), _, _, _));
     upload(seq);
 }
 
@@ -327,9 +325,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, DoesNothingWithAperturesWhenNoChannelMask) {
 
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
-    }
+    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4r::Span<float>(expectedTxDelays), 0, 0));
     upload(seq);
 }
 
@@ -365,9 +361,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannel) {
 
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    for(int i = 0; i < expectedTxDelays.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetTxDelay(i, expectedTxDelays[i], 0, 0));
-    }
+    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4r::Span<float>(expectedTxDelays), 0, 0));
     auto result = upload(seq);
     auto fcm = result.getFCM(0);
 
