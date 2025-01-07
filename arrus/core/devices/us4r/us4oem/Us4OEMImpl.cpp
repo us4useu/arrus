@@ -277,7 +277,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
-    ius4oem->BuildSequenceWaveforms(false);
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,

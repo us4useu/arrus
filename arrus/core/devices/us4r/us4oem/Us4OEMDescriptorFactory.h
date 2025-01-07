@@ -87,7 +87,7 @@ public:
                 version, // us4OEM version
                 32, // RX channels
                 20e-6f,  // min. RX time,
-                5e-6f, // RX time epsilon,
+                0e-6f, // RX time epsilon,
                 35e-6f, // TX parameters reprogramming time,
                 120e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
