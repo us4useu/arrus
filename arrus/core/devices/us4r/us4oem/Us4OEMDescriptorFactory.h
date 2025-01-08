@@ -73,13 +73,13 @@ public:
                         arrus::ops::us4r::TxLimits { // rail 0
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, (float)(32.0f/10e6f)}, // pulse length,
+                            Interval<float>{0.0f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::TxLimits { // rail 1
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, (float)(32.0f/10e6)}, // pulse length,
+                            Interval<float>{0.0f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::RxLimits {
