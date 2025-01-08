@@ -87,8 +87,8 @@ public:
             // Update the defualt limits with the limits defined by the user.
             ops::us4r::TxRxSequenceLimitsBuilder sequenceLimitsBuilder{descriptor.getTxRxSequenceLimits()};
             ops::us4r::TxLimitsBuilder txLimitsBuilder{descriptor.getTxRxSequenceLimits().getTxRx().getTx1()};
-            if(limits->getPulseCycles().has_value()) {
-                txLimitsBuilder.setPulseCycles(limits->getPulseCycles().value());
+            if(limits->getPulseLength().has_value()) {
+                txLimitsBuilder.setPulseLength(limits->getPulseLength().value());
             }
             if(limits->getVoltage().has_value()) {
                 txLimitsBuilder.setVoltage(limits->getVoltage().value());

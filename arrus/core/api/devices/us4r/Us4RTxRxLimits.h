@@ -13,17 +13,17 @@ namespace arrus::devices {
  */
 class Us4RTxRxLimits {
 public:
-    Us4RTxRxLimits(const std::optional<Interval<float>> &pulseCycles,
+    Us4RTxRxLimits(const std::optional<Interval<float>> &pulseLength,
                    const std::optional<Interval<Voltage>> &voltage,
                    const std::optional<Interval<float>> &pri)
-        : pulseCycles(pulseCycles), pri(pri), voltage(voltage) {}
+        : pulseLength(pulseLength), pri(pri), voltage(voltage) {}
 
-    const std::optional<Interval<float>> &getPulseCycles() const { return pulseCycles; }
+    const std::optional<Interval<float>> &getPulseLength() const { return pulseLength; }
     const std::optional<Interval<float>> &getPri() const { return pri; }
     const std::optional<Interval<Voltage>> &getVoltage() const { return voltage; }
 
 private:
-    std::optional<Interval<float>> pulseCycles;
+    std::optional<Interval<float>> pulseLength;
     std::optional<Interval<float>> pri;
     std::optional<Interval<Voltage>> voltage;
 };
