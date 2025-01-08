@@ -90,7 +90,7 @@ private:
     void validateTx(const ops::us4r::Pulse &pulse, const ops::us4r::TxLimits &txLimits, const std::string &firingStr) {
         ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(pulse.getCenterFrequency(), txLimits.getFrequency(), firingStr);
         float pulseCycles = pulse.getNPeriods();
-        ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(pulseCycles, txLimits.getPulseLength(), firingStr);
+        ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(pulseCycles, txLimits.getPulseCycles(), firingStr);
         float ignore = 0.0f;
         float fractional = std::modf(pulse.getNPeriods(), &ignore);
         ARRUS_VALIDATOR_EXPECT_TRUE_M((fractional == 0.0f || fractional == 0.5f), (firingStr + ", n periods"));
