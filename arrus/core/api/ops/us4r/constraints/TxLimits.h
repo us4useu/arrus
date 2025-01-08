@@ -41,6 +41,7 @@ public:
 
     TxLimitsBuilder& setFrequency(const Interval<float> &frequency) { tx->frequency = frequency; return *this;  }
     TxLimitsBuilder& setDelay(const Interval<float> &delay) { tx->delay = delay; return *this; }
+    TxLimitsBuilder& setPulseLength(const Interval<float> &pulseLength) { tx->pulseLength = pulseLength; return *this; }
     TxLimitsBuilder& setPulseCycles(const Interval<float> &pulseCycles) { tx->pulseCycles = pulseCycles; return *this; }
     TxLimitsBuilder& setVoltage(const Interval<Voltage> &voltage) { tx->voltage = voltage; return *this; }
 
