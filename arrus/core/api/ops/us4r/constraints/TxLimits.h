@@ -15,12 +15,13 @@ class TxLimitsBuilder;
  */
 class TxLimits {
 public:
-    TxLimits(const Interval<float> &frequency, const Interval<float> &delay, const Interval<float> &pulseLength,
+    TxLimits(const Interval<float> &frequency, const Interval<float> &delay, const Interval<float> &pulseCycles,
              const Interval<Voltage> &voltage)
-        : frequency(frequency), delay(delay), pulseLength(pulseLength), voltage(voltage) {}
+        : frequency(frequency), delay(delay), pulseCycles(pulseCycles), voltage(voltage) {}
 
     const Interval<float> &getFrequency() const { return frequency; }
     const Interval<float> &getPulseLength() const { return pulseLength; }
+    const Interval<float> &getPulseCycles() const { return pulseCycles; }
     const Interval<Voltage> &getVoltage() const { return voltage; }
     const Interval<float> &getDelay() const { return delay; }
 
@@ -29,6 +30,7 @@ private:
     Interval<float> frequency;
     Interval<float> delay;
     Interval<float> pulseLength;
+    Interval<float> pulseCycles;
     Interval<Voltage> voltage;
 };
 
@@ -39,7 +41,7 @@ public:
 
     TxLimitsBuilder& setFrequency(const Interval<float> &frequency) { tx->frequency = frequency; return *this;  }
     TxLimitsBuilder& setDelay(const Interval<float> &delay) { tx->delay = delay; return *this; }
-    TxLimitsBuilder& setPulseLength(const Interval<float> &pulseLength) { tx->pulseLength = pulseLength; return *this; }
+    TxLimitsBuilder& setPulseCycles(const Interval<float> &pulseCycles) { tx->pulseCycles = pulseCycles; return *this; }
     TxLimitsBuilder& setVoltage(const Interval<Voltage> &voltage) { tx->voltage = voltage; return *this; }
 
     TxLimits build() {
