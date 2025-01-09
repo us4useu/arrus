@@ -490,6 +490,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
             (x.sampleRange = sampleRange))
             .getTxRxParameters()
     };
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+
     EXPECT_CALL(*ius4oemPtr, SetRxDelay(0.0f, 0)); // Note: the value 0.0 is the default value
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
@@ -510,6 +511,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
             (x.sampleRange = sampleRange))
             .getTxRxParameters()
     };
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+
     EXPECT_CALL(*ius4oemPtr, SetRxDelay(0.0f, 0)); // Note: the default value of TxRxParameters
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float minimumRxTime = float(nSamples) / Us4OEMImpl::SAMPLING_FREQUENCY;
