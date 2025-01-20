@@ -339,15 +339,7 @@ Us4OEMImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::u
         ius4oem->SetTxHalfPeriods(static_cast<uint32>(op.getTxPulse().getNPeriods() * 2), opIdx);
         ius4oem->SetTxInvert(op.getTxPulse().isInverse(), opIdx);
         ius4oem->SetRxTime(rxTime, opIdx);
-        if(ius4oem->GetOemVersion() == 2) {
-            // OEM+.
-            // NOTE: this will be set to the same value as for the legacy OEM since ARRUS 0.11.0. Please also see the issue #US4R-635.
-            ius4oem->SetRxDelay(0.0f, opIdx);
-        }
-        else {
-            // The legacy OEM.
-            ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
-        }
+        ius4oem->SetRxDelay(op.getRxDelay(), opIdx);
     }
     // Set the last profile as the current TX delay (the last one is the one provided in the Sequence.ops.Tx.delays property.
     ius4oem->SetTxDelays(nTxDelayProfiles);
