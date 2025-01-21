@@ -1417,7 +1417,7 @@ classdef Us4R < handle
             % the corresponding data is obtained during setSubsequence call.
             
             % time, value, applyCharacteristic
-            obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 1);
+            obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 0);
         end
 
         % txWaveform must be handled properly here!!!
