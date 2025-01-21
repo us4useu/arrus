@@ -733,11 +733,18 @@ classdef Us4R < handle
             obj.us4r = obj.session.getDevice("/Us4R:0");
 
             obj.sys.nChArius = 32;
-            obj.sys.rxSampFreq = 65e6;
+            obj.sys.rxSampFreq = obj.us4r.getSamplingFrequency();
             obj.sys.maxSeqLength = 2^14;
             obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
             obj.sys.reloadTime = 43e-6; % [s]
             obj.logTime = logTime;
+            if obj.sys.rxSampFreq == 65e6
+                obj.sys.vcatRange = 40;
+            elseif obj.sys.rxSampFreq == 120e6
+                obj.sys.vcatRange = 36;
+            else
+                error('Arrus does not recognize AFE model');
+            end
 
             % Check if valid GPU is available
             isGpuAvailable = ~isempty(ver('parallel')) ...
@@ -963,7 +970,7 @@ classdef Us4R < handle
                 % rxNSamples (nSamp) must be coherent with rxDepthRange
                 nSamp = sampRange(2) - sampRange(1) + 1;
                 
-                % nSamp must be dividible by 64 (for now)
+                % nSamp must be divisible by 64 (for now)
                 nSamp = 64*ceil(nSamp/64);
                 obj.seq.nSamp = nSamp;
                 
@@ -983,14 +990,14 @@ classdef Us4R < handle
             end
             
             %% TGC
-            obj.seq.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-40 0];
+            obj.seq.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
             
             % Default TGC start level
             if isempty(obj.seq.tgcStart)
                 obj.seq.tgcStart = obj.seq.tgcLim(1);
             end
             
-            dt = 500e-9; % [s] arbitrary time step for the tgc curve
+            dt = 0.5e-6; % [s] arbitrary time step for the tgc curve
             obj.seq.tgcPoints = 0 : dt : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec/obj.sys.rxSampFreq; % [s]
             obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope*obj.seq.tgcPoints*obj.seq.c; % [dB]
             if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
