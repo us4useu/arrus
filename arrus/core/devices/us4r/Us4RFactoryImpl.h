@@ -91,14 +91,15 @@ public:
                 pValidator.throwOnErrors();
                 probeOrdinal++;
             }
+            bool isExternalTrigger = false;
             if(backplane.has_value() && settings.isExternalTrigger()) {
-                backplane.value()->enableExternalTrigger();
+                isExternalTrigger = true;
             }
             auto hv = getHV(settings.getHVSettings(), ius4oems, backplane);
             return std::make_unique<Us4RImpl>(
                 id, std::move(us4oems), std::move(probeSettings), std::move(adapterSettings), std::move(hv), rxSettings,
                 settings.getChannelsMaskForAllProbes(), std::move(backplane), settings.getBitstreams(),
-                isBitstreamAddr, adapterSettings.getIOSettings());
+                isBitstreamAddr, adapterSettings.getIOSettings(), isExternalTrigger) ;
         } else {
             throw IllegalArgumentException("Custom OEM configuration is not available since 0.11.0.");
         }

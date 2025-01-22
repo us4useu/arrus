@@ -15,22 +15,22 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session("/home/pjarosik/us4r.prototxt") as sess:
+with arrus.Session() as sess:
     us4r = sess.get_device("/Us4R:0")
     us4r.set_hv_voltage(20)
+    n_elements = us4r.get_probe_model().n_elements
 
     sequence = LinSequence(
-        tx_aperture_center_element=np.arange(0, 128),
+        tx_aperture_center_element=np.arange(0, n_elements),
         tx_aperture_size=64,
         tx_focus=20e-3,
         pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
-        rx_aperture_center_element=np.arange(0, 128),
+        rx_aperture_center_element=np.arange(0, n_elements),
         rx_aperture_size=64,
         rx_sample_range=(0, 4096),
         pri=200e-6,
         tgc_start=14,
         tgc_slope=2e2,
-        downsampling_factor=1,
         speed_of_sound=1450)
 
     # Imaging output grid.

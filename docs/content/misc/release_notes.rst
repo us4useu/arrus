@@ -24,6 +24,12 @@ Release notes
         - the us4oemChannelsMask is no longer available,
         - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
 
+    - Adjusted RF/IQ data start sample number (i.e. corresponding to the TX delay = 0) #US4R-513.
+
+        - Removed Us4OEM::getTxOffset() method.
+
+    - Increased the maximum PRF that can be set for the OEM+ devices: decreased the TX pulsers reprogramming time #US4R-525.
+
 - MATLAB API:
 
     - Fixed the RX apodization #ARRUS-288.
@@ -32,6 +38,14 @@ Release notes
 
 0.10.x
 -----
+
+0.10.4
+
+- core (C++, HAL):
+
+    - Added support for DBARLitePcie fw version 1.2.0.x #US4R-579.
+    - Provided possibility to get measured HV voltages on us4OEM+ #US4R-561.
+
 
 0.10.3
 

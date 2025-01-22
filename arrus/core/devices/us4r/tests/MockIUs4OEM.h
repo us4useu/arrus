@@ -28,12 +28,7 @@ public:
     MOCK_METHOD(void, InitializeTX, (), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
-    MOCK_METHOD(float, SetTxDelay,
-            (const unsigned char channel, const float value, const unsigned short firing),
-    (override));
-    MOCK_METHOD(float, SetTxDelay,
-        (const unsigned char channel, const float value, const unsigned short firing, size_t profile),
-    (override));
+    MOCK_METHOD(::us4us::us4r::Vector<float>, SetTxDelays, (const ::us4us::us4r::Span<float> &delays, const uint16_t firing, size_t profile), (override));
     MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
@@ -206,7 +201,6 @@ public:
     MOCK_METHOD(uint32_t, HVPSReadRegister, (uint32_t), (override));
     MOCK_METHOD(void, HVPSSetVoltage, (float), (override));
     MOCK_METHOD(IHV*, getHVPS, (), (override));
-    MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
     MOCK_METHOD(std::string, GetSerialNumber, (), (override));
     MOCK_METHOD(std::string, GetRevisionNumber, (), (override));
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
@@ -230,11 +224,12 @@ public:
     MOCK_METHOD(void, SetTxVoltageLevel, (uint8_t level, uint16_t firing), (override));
     MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
     MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
-    MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short  firing), (override));
     MOCK_METHOD(void, SetCustomSequenceWaveform, (const unsigned short firing, const std::vector<uint32_t>&), (override));
     MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
     MOCK_METHOD((std::pair<float, float>), GetTGCValueRange, (), (const, override));
+    MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
+    MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short firing), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

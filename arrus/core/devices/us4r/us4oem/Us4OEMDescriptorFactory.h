@@ -43,18 +43,20 @@ public:
                         },
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
-                    Interval<uint32>{0, 16384} // sequence length
+                    Interval<uint32>{0, 16384}, // sequence length,
+                    1024 // maximum number of different TX/RXs
                 },
-                0 // maximum number of TX timeouts
+                0, // maximum number of TX timeouts
+                229 // sample number TX start (i.e. TX delay = 0)
             };
         case 2:
-            // us4OEM+ variant 0
+            // us4OEM+ variant 0 AFE JD18
             return Us4OEMDescriptor{
                 version, // us4OEM version
                 32, // RX channels
                 20e-6f,  // min. RX time,
-                5e-6f, // RX time epsilon,
-                35e-6f, // TX parameters reprogramming time,
+                0e-6f, // RX time epsilon,
+                6e-6f, // TX parameters reprogramming time,
                 65e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
                 1ull << (14+12), // Max transfer size [B]
@@ -73,17 +75,19 @@ public:
                         },
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
-                    Interval<uint32>{0, 4096} // sequence length
+                    Interval<uint32>{0, 4096}, // sequence length
+                    4096 // maximum number of different TX/RXs
                 },
-                4 // maximum number of timeouts
+                4, // maximum number of timeouts
+                35 // sample number TX start (i.e. TX delay = 0)
             };
         case 3:
-            // us4OEM+ variant 0
+            // us4OEM+ variant 0, AFE JD48
             return Us4OEMDescriptor{
                 version, // us4OEM version
                 32, // RX channels
                 20e-6f,  // min. RX time,
-                5e-6f, // RX time epsilon,
+                0e-6f, // RX time epsilon,
                 35e-6f, // TX parameters reprogramming time,
                 120e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
@@ -105,7 +109,8 @@ public:
                     },
                     Interval<uint32>{0, 4096} // sequence length
                 },
-                4 // maximum number of timeouts
+                4, // maximum number of timeouts
+                35 // sample number TX start (i.e. TX delay = 0)
             };
         default:
             throw arrus::IllegalArgumentException(format("Unsupported us4OEM version: {}", version));
