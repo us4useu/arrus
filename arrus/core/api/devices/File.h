@@ -17,10 +17,14 @@ public:
     upload(const ops::us4r::Scheme &scheme) override = 0;
     void start() override = 0;
     void stop() override = 0;
-    void trigger() override = 0;
+    void trigger(bool sync, std::optional<long long> timeout) override = 0;
+    void sync(std::optional<long long> timeout) override = 0;
     float getSamplingFrequency() const override = 0;
     float getCurrentSamplingFrequency() const override = 0;
     arrus::devices::Probe *getProbe(Ordinal ordinal) override = 0;
+
+    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
 };
 
 }

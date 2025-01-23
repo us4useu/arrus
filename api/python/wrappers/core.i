@@ -35,6 +35,12 @@ private:
 using namespace ::arrus;
 %};
 
+%include "arrus/core/api/common/types.h"
+
+%feature("valuewrapper", "1");
+%include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
+%feature("valuewrapper", "0");
+
 // TODO try not declaring explicitly the below types
 namespace std {
 %template(VectorBool) vector<bool>;
@@ -101,6 +107,52 @@ namespace std {
     }
 %}
 
+%typemap(in) std::optional<float> %{
+    if($input == Py_None) {
+        $1 = std::optional<float>();
+    }
+    else {
+        float value = (float)(PyFloat_AsDouble($input));
+        $1 = std::optional<float>(value);
+    }
+%}
+
+%typemap(out) std::optional<float> %{
+    if($1) {
+        $result = PyFloat_FromDouble((double)(*$1));
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
+
+%typemap(in) std::optional<long long> %{
+    if($input == Py_None) {
+        $1 = std::optional<long long>();
+    }
+    else {
+        long long value = PyLong_AsLong($input);
+        if(value > std::numeric_limits<long long>::max() || value < std::numeric_limits<long long>::min()) {
+            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
+                + std::to_string(std::numeric_limits<long long>::min())
+                + ", " + std::to_string(std::numeric_limits<long long>::max()) + "]";
+            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
+            return NULL;
+        }
+        $1 = std::optional<long long>(value);
+    }
+%}
+
+%typemap(out) std::optional<long long> %{
+    if($1) {
+        $result = PyLong_FromLong(*$1);
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
 
 %module(directors="1") core
 
@@ -282,6 +334,10 @@ using namespace ::arrus::session;
 %shared_ptr(arrus::session::Session);
 %ignore createSession;
 
+// Ignore overloaded `run` methods -- the full signature will be used only.
+%ignore arrus::session::Session::run();
+%ignore arrus::session::Session::run(bool);
+
 
 %include "arrus/core/api/session/Metadata.h"
 %include "arrus/core/api/session/UploadResult.h"
@@ -314,6 +370,16 @@ void arrusSessionStartScheme(std::shared_ptr<arrus::session::Session> session) {
 void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
     ArrusPythonGILUnlock unlock;
     session->stopScheme();
+}
+
+void arrusSessionRun(std::shared_ptr<arrus::session::Session> session, bool async, std::optional<long long> timeout) {
+    ArrusPythonGILUnlock unlock;
+    session->run(async, timeout);
+}
+
+void arrusUs4OEMWaitForHVPSMeasuerementDone(arrus::devices::Us4OEM *us4oem, std::optional<long long> timeout) {
+    ArrusPythonGILUnlock unlock;
+    us4oem->waitForHVPSMeasurementDone(timeout);
 }
 
 

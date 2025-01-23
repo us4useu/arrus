@@ -40,7 +40,10 @@ public:
 
     void start() override;
     void stop() override;
-    void trigger() override;
+    void trigger(bool sync, std::optional<long long> timeout) override;
+    void sync(std::optional<long long> /*timeout*/) override {
+        throw std::runtime_error("Currently not supported");
+    }
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
     std::pair<arrus::framework::Buffer::SharedHandle, arrus::session::Metadata::SharedHandle>
@@ -48,6 +51,8 @@ public:
     Probe *getProbe(Ordinal ordinal) override;
     void setParameters(const Parameters &params) override;
 
+    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
 
 private:
     using Frame = std::vector<int16_t>;

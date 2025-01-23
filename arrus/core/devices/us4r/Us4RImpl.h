@@ -95,12 +95,16 @@ public:
 
     std::pair<std::shared_ptr<arrus::framework::Buffer>, std::shared_ptr<arrus::session::Metadata>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) override;
+    void prepareHostBuffer(unsigned nElements, ops::us4r::Scheme::WorkMode workMode,
+                           std::unique_ptr<Us4RBuffer> &rxBuffer, bool cleanupSequencer = false);
 
     void start() override;
 
     void stop() override;
 
-    void trigger() override;
+    void trigger(bool sync, std::optional<long long> timeout) override;
+
+    void sync(std::optional<long long> timeout) override;
 
     void setVoltage(Voltage voltage) override;
 
@@ -131,8 +135,8 @@ public:
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
-    float getUCDMeasuredHVPVoltage(uint8_t oemId) override;
-    float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
+    float getMeasuredHVPVoltage(uint8_t oemId) override;
+    float getMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
     void setHpfCornerFrequency(uint32_t frequency) override;
@@ -143,10 +147,15 @@ public:
 
     void registerOutputBuffer(Us4ROutputBuffer *buffer, const Us4RBuffer::Handle &us4rBuffer,
                               ::arrus::ops::us4r::Scheme::WorkMode workMode);
-    void unregisterOutputBuffer();
+    void unregisterOutputBuffer(bool cleanSequencer);
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
     void setParameters(const Parameters &parameters) override;
+
+    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
+
+    void setMaximumPulseLength(std::optional<float> maxLength) override;
 
 private:
     UltrasoundDevice *getDefaultComponent();
@@ -154,7 +163,8 @@ private:
     void stopDevice();
 
     std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
-    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize, bool triggerSync,
+    uploadSequence(const ops::us4r::TxRxSequence &seq, uint16_t bufferSize, uint16_t batchSize,
+                   arrus::ops::us4r::Scheme::WorkMode workMode,
                    const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                    const std::vector<framework::NdArray> &txDelayProfiles);
 
@@ -200,6 +210,8 @@ private:
     std::vector<unsigned short> channelsMask;
     bool stopOnOverflow{true};
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
+    /** Currently uploaded scheme. */
+    std::optional<ops::us4r::Scheme> currentScheme;
 };
 
 }// namespace arrus::devices

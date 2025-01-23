@@ -4,25 +4,28 @@
 #include <utility>
 #include <iostream>
 #include <unordered_set>
+#include <ius4oem.h>
 
-#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-#include "arrus/common/format.h"
+#include "IRQEvent.h"
 #include "arrus/common/cache.h"
-#include "arrus/core/common/logging.h"
-#include "arrus/core/api/devices/us4r/Us4OEM.h"
+#include "arrus/common/format.h"
 #include "arrus/core/api/common/types.h"
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
+#include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/common/logging.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
-#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
-#include "arrus/core/api/ops/us4r/tgc.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 #include "arrus/core/devices/us4r/DataTransfer.h"
+#include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
-
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
 
 namespace arrus::devices {
+
+
 
 /**
  * Us4OEM wrapper implementation.
@@ -77,6 +80,7 @@ public:
     static constexpr float RX_TIME_EPSILON = 5e-6f; // [s]
     // 2^14 descriptors * 2^12 (4096, minimum page size) bytes
     static constexpr size_t MAX_TRANSFER_SIZE = 1ull << (14+12); // bytes
+    static constexpr unsigned MAX_IRQ_NR = IUs4OEM::MAX_IRQ_NR;
 
     /**
      * Us4OEMImpl constructor.
@@ -103,7 +107,7 @@ public:
 
     std::tuple<Us4OEMBuffer, FrameChannelMapping::Handle>
     setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples, uint16 rxBufferSize,
-                    uint16 rxBatchSize, std::optional<float> sri, bool triggerSync = false,
+                    uint16 rxBatchSize, std::optional<float> sri, arrus::ops::us4r::Scheme::WorkMode workMode,
                     const std::optional<::arrus::ops::us4r::DigitalDownConversion> &ddc = std::nullopt,
                     const std::vector<arrus::framework::NdArray> &txDelays = std::vector<arrus::framework::NdArray>()
                     ) override;
@@ -122,7 +126,7 @@ public:
 
     Ius4OEMRawHandle getIUs4oem() override;
 
-    void enableSequencer() override;
+    void enableSequencer(uint16_t startEntry) override;
 
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
@@ -130,6 +134,8 @@ public:
     float getUCDTemperature() override;
     float getUCDExternalTemperature() override;
     float getUCDMeasuredVoltage(uint8_t rail) override;
+    float getMeasuredHVPVoltage() override;
+    float getMeasuredHVMVoltage() override;
     void checkFirmwareVersion() override;
     uint32 getFirmwareVersion() override;
     void checkState() override;
@@ -158,7 +164,22 @@ public:
 
     const char *getRevision() override;
 
-private:
+    void setSubsequence(uint16 start, uint16 end, bool syncMode, const std::optional<float> &sri) override;
+
+    void clearCallbacks() override;
+
+
+    HVPSMeasurement getHVPSMeasurement() override;
+
+    float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override;
+
+    void setMaximumPulseLength(std::optional<float> maxLength) override;
+
+    void sync(std::optional<long long> timeout) override;
+    void setWaitForHVPSMeasurementDone() override;
+    void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
+
+ private:
     using Us4OEMBitMask = std::bitset<Us4OEMImpl::N_ADDR_CHANNELS>;
 
     std::tuple<std::unordered_map<uint16, uint16>, std::vector<Us4OEMImpl::Us4OEMBitMask>, FrameChannelMapping::Handle>
@@ -199,6 +220,29 @@ private:
     void resetAfe();
     void setHpfCornerFrequency(uint32_t frequency);
     void disableHpf();
+    void waitForIrq(unsigned int irq, std::optional<long long> timeout);
+
+    uint32_t getTimeToNextTrigger(float pri) {
+        return static_cast<uint32_t>(std::round(pri * 1e6));
+    }
+
+    std::optional<float> getLastPriExtend(const std::vector<TxRxParameters>::const_iterator &start,
+                                          const std::vector<TxRxParameters>::const_iterator &end,
+                                          std::optional<float> sri) {
+        float totalPri = std::accumulate(start, end, 0.0f, [](const auto &a, const auto &b) {return a + b.getPri();});
+        std::optional<float> lastPriExtend = std::nullopt;
+        // Sequence repetition interval.
+        if (sri.has_value()) {
+            if (totalPri < sri.value()) {
+                lastPriExtend = sri.value() - totalPri;
+            } else {
+                throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
+                                                      "sequence total pri is equal {}",
+                                                      sri.value(), totalPri));
+            }
+        }
+        return lastPriExtend;
+    }
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -218,6 +262,13 @@ private:
     arrus::Cached<std::string> revision;
     bool acceptRxNops{false};
     bool isDecimationFactorAdjustmentLogged{false};
+    /** Currently uploaded sequence; empty when no sequence haven't been uploaded. */
+    std::vector<TxRxParameters> currentSequence;
+    /** Conditional variable that is set when an IRQ with given number is detected. */
+
+    std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(IUs4OEM::MAX_IRQ_NR+1);
+    /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
+    std::optional<float> maxPulseLength = std::nullopt;
 };
 
 }

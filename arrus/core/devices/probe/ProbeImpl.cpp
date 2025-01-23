@@ -51,7 +51,8 @@ class ProbeTxRxValidator : public Validator<TxRxParamsSequence> {
 
 std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
 ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us4r::TGCCurve &tgcSamples,
-                           uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri, bool triggerSync,
+                           uint16 rxBufferSize, uint16 rxBatchSize, std::optional<float> sri,
+                           arrus::ops::us4r::Scheme::WorkMode workMode,
                            const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                            const std::vector<framework::NdArray> &txDelayProfiles) {
     // Validate input sequence
@@ -125,7 +126,7 @@ ProbeImpl::setTxRxSequence(const std::vector<TxRxParameters> &seq, const ops::us
         ++opIdx;
     }
 
-    auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, triggerSync,
+    auto[buffer, fcm] = adapter->setTxRxSequence(adapterSeq, tgcSamples, rxBufferSize, rxBatchSize, sri, workMode,
                                                  ddc, adapterTxDelayProfiles);
     FrameChannelMapping::Handle actualFcm = remapFcm(fcm, rxApertureChannelMappings, rxPaddingLeft, rxPaddingRight);
     return std::make_tuple(std::move(buffer), std::move(actualFcm));
@@ -187,10 +188,9 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
         // probe2AdapterMap[i] = dst adapter aperture channel number (e.g. from 0 to 64 (aperture size)).
         std::vector<ChannelIdx> probe2AdapterMap(nRxChannels, 0);
 
-        std::transform(std::begin(mapping), std::end(mapping), std::back_insert_iterator(posChannel),
-                       [i = 0](ChannelIdx channel) mutable {
-                         return std::make_pair(static_cast<ChannelIdx>(i++), channel);
-                       });
+        std::transform(
+            std::begin(mapping), std::end(mapping), std::back_insert_iterator(posChannel),
+            [i = 0](ChannelIdx channel) mutable { return std::make_pair(static_cast<ChannelIdx>(i++), channel); });
         // EXAMPLE: posChannel = {{0, 3}, {1, 1}, {2, 10}}
         std::sort(std::begin(posChannel), std::end(posChannel),
                   [](const auto &a, const auto &b) { return a.second < b.second; });
@@ -200,24 +200,28 @@ FrameChannelMapping::Handle ProbeImpl::remapFcm(const FrameChannelMapping::Handl
 
         // probe aperture channel -> adapter aperture channel
         // EXAMPLE: probe2AdapterMap = {1, 0, 2}
-        for (const auto& posCh: posChannel) {
+        for (const auto &posCh : posChannel) {
             probe2AdapterMap[std::get<0>(posCh)] = i++;
         }
         // probe aperture rx number -> adapter aperture rx number -> physical channel
         auto nChannels = adapterFcm->getNumberOfLogicalChannels();
         for (ChannelIdx pch = 0; pch < nChannels; ++pch) {
-            if(pch >= paddingLeft && pch < (nChannels-paddingRight)) {
-                auto address = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch-paddingLeft]+paddingLeft);
+            if (pch >= paddingLeft && pch < (nChannels - paddingRight)) {
+                auto address = adapterFcm->getLogical(frameNumber, probe2AdapterMap[pch - paddingLeft] + paddingLeft);
                 auto us4oem = address.getUs4oem();
                 auto physicalFrame = address.getFrame();
                 auto physicalChannel = address.getChannel();
                 builder.setChannelMapping(frameNumber, pch, us4oem, physicalFrame, physicalChannel);
             }
-
         }
         ++frameNumber;
     }
     return builder.build();
 }
 
+std::tuple<Us4RBuffer::Handle, FrameChannelMapping::Handle>
+ProbeImpl::setSubsequence(uint16_t start, uint16_t end, const std::optional<float> &sri) {
+    return this->adapter->setSubsequence(start, end, sri);
 }
+
+}// namespace arrus::devices

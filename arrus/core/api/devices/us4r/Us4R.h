@@ -98,7 +98,7 @@ public:
      * @param oemId OEM ID
      * @return positive HV voltage UCD measurement [V]
      */
-    virtual float getUCDMeasuredHVPVoltage(uint8_t oemId) = 0;
+    virtual float getMeasuredHVPVoltage(uint8_t oemId) = 0;
 
     /**
      * Gets negative HV voltage measurement by UCD chip on OEM.
@@ -106,7 +106,7 @@ public:
      * @param oemId OEM ID
      * @return negative HV voltage UCD measurement [V]
      */
-    virtual float getUCDMeasuredHVMVoltage(uint8_t oemId) = 0;
+    virtual float getMeasuredHVMVoltage(uint8_t oemId) = 0;
 
     /**
      * Disables HV voltage.
@@ -226,7 +226,17 @@ public:
 
     virtual void start() override = 0;
     virtual void stop() override = 0;
-    virtual void trigger() override = 0;
+    virtual void trigger(bool sync, std::optional<long long> timeout) override = 0;
+
+    /**
+     * Synchronization point with us4R system. After returning from this method, the last "TX/RX" (triggered by the
+     * trigger method will be  fully executed by the system.
+     *
+     * Sync with "SEQ_IRQ" interrupt (i.e. wait until the SEQ IRQ will occur).
+     *
+     * @param timeout timeout in number of milliseconds
+     */
+    virtual void sync(std::optional<long long> timeout) override = 0;
 
     virtual std::vector<unsigned short> getChannelsMask() = 0;
 
@@ -312,7 +322,18 @@ public:
     /**
      * Returns serial number of the backplane (if available).
      */
-    virtual const char* getBackplaneRevision() = 0;
+    virtual const char *getBackplaneRevision() = 0;
+
+    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
+    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+
+    /**
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * std::nullopt means to use up to 32 TX cycles.
+     *
+     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     */
+    virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

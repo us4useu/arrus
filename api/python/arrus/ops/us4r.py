@@ -4,6 +4,7 @@ import numpy as np
 from arrus.ops.operation import Operation
 from typing import Iterable
 from arrus.framework import Constant
+import dataclasses
 
 
 @dataclass(frozen=True)
@@ -215,6 +216,15 @@ class TxRxSequence:
             raise ValueError("All TX/RXs should acquire the same sample range.")
         return next(iter(sample_range))
 
+    def get_subsequence(self, start, end):
+        """
+        Limits the sequence to the given sub-sequence [start, end] both inclusive.
+        """
+        return dataclasses.replace(
+            self,
+            ops=self.ops[start:(end+1)],
+        )
+
 
 @dataclass(frozen=True)
 class DigitalDownConversion:
@@ -244,7 +254,7 @@ class Scheme:
     :param rx_buffer_size: number of elements the rx buffer (allocated on \
       us4r ddr internal memory) should consists of
     :param output_buffer: specification of the output buffer
-    :param work_mode: determines the system work mode, available values: 'ASYNC', 'HOST', 'MANUAL'
+    :param work_mode: determines the system work mode, available values: 'ASYNC', 'HOST', 'MANUAL', 'MANUAL_OP'
     :param processing: data processing to perform on the raw channel RF data \
       currently only arrus.utils.imaging is supported
     """

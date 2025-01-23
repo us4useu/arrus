@@ -5,6 +5,7 @@
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/TriggerGenerator.h"
+#include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
 
 namespace arrus::devices {
 
@@ -55,6 +56,20 @@ public:
      * @param rail UCD rail number
      */
     virtual float getUCDMeasuredVoltage(uint8_t rail) = 0;
+
+    /**
+     * Returns rail voltage measured by Us4OEM's UCD [V].
+     *
+     * @param rail UCD rail number
+     */
+    virtual float getMeasuredHVPVoltage() = 0;
+
+    /**
+     * Returns rail voltage measured by Us4OEM's UCD [V].
+     *
+     * @param rail UCD rail number
+     */
+    virtual float getMeasuredHVMVoltage() = 0;
 
     /**
     * Reads AFE register
@@ -160,6 +175,32 @@ public:
      * Disables digital high-pass filter.
      */
     virtual void disableHpf() = 0;
+
+    /**
+     * Returns HVPS ADC measurements
+     */
+    virtual HVPSMeasurement getHVPSMeasurement() = 0;
+
+    /**
+     * Configures HVPS voltage/current measurement in Sync mode.
+     *
+     * :param nSamples: number of ADC samples to acquire.
+     * :param frequency: Requested sampling frequency.
+     * :return: Actual sampling frequency
+     */
+    virtual float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) = 0;
+
+    /**
+     * Configures the system to sync with the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void setWaitForHVPSMeasurementDone() = 0;
+
+    /**
+     * Waits for the HVPS Measurement done irq.
+     * This method is intended to be used in the probe_check implementation.
+     */
+    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

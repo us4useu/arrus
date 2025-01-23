@@ -13,6 +13,18 @@
 
 namespace arrus::devices {
 
+
+struct SplitResult {
+    std::vector<TxRxParamsSequence> sequences;
+    /* a mapping (module, input op index, rx channel) -> output (physical) frame number */
+    Eigen::Tensor<FrameChannelMapping::FrameNumber, 3> frames;
+    /* a mapping (module, input op index, rx channel) -> output (physical) frame rx channel */
+    Eigen::Tensor<int8, 3> channels;
+    /** A list of updated constants */
+    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> constants;
+    std::vector<std::pair<uint16_t, uint16_t>> logicalToPhysicalOp;
+};
+
 /**
  * Splits each tx/rx operation into multiple ops so that each rx aperture
  * does not include the same rx channel multiple times.
@@ -37,12 +49,7 @@ namespace arrus::devices {
  *         a mapping (module, input op index, rx channel) -> output frame number,
  *         a mapping (module, input op index, rx channel) -> output frame rx channel
  */
-std::tuple<
-    std::vector<TxRxParamsSequence>,
-    Eigen::Tensor<FrameChannelMapping::FrameNumber, 3>,
-    Eigen::Tensor<int8, 3>,
-    std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>>
->
+SplitResult
 splitRxAperturesIfNecessary(const std::vector<TxRxParamsSequence> &seqs,
                             const std::vector<std::vector<uint8_t>> &mappings,
                             const std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> &txDelayProfiles,
