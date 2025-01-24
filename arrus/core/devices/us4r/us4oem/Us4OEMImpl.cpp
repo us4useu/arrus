@@ -269,6 +269,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
+    ius4oem->BuildSequenceWaveforms(false);
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
@@ -318,7 +319,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
 size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
                                      const TxRxParameters &op, uint16 rxMapId) {
     const uint32 startSampleRaw = startSample * op.getRxDecimationFactor();
-    const uint32 sampleRxOffset = ius4oem->GetTxOffset();
+    const uint32 sampleRxOffset = descriptor.getSampleTxStart();
     const size_t nSamples = endSample - startSample;
     const size_t nSamplesRaw = nSamples;
     const size_t sampleSize = sizeof(RawDataType);
@@ -472,8 +473,8 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                         }
                     }
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
-                    // TODO US4R-395
-                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger); // triggerSyncPerTxRx);
+                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger);
+                                        // TODO US4R-395 triggerSyncPerTxRx);
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
@@ -497,7 +498,9 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
     auto nFirings = getNumberOfFirings(sequences);
     auto nTriggers = getNumberOfTriggers(sequences, rxBufferSize);
 
-    ARRUS_REQUIRES_AT_MOST(nFirings, 1024, format("Exceeded the maximum ({}) number of firings: {}", 1024, nFirings));
+    auto maxFirings = descriptor.getTxRxSequenceLimits().getMaxNumberOfFirings();
+
+    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, format("Exceeded the maximum ({}) number of firings: {}", maxFirings, nFirings));
     const auto maxSequenceSize = descriptor.getTxRxSequenceLimits().getSize().end();
     ARRUS_REQUIRES_AT_MOST(nTriggers, maxSequenceSize,
                            format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
@@ -689,6 +692,9 @@ float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->GetUCDExtTemp();
 
 float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
 
+float Us4OEMImpl::getMeasuredHVPVoltage() { return ius4oem->GetMeasuredHVPVoltage(); }
+float Us4OEMImpl::getMeasuredHVMVoltage() { return ius4oem->GetMeasuredHVMVoltage(); }
+
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
         ius4oem->CheckFirmwareVersion();
@@ -700,8 +706,6 @@ void Us4OEMImpl::checkFirmwareVersion() {
 uint32 Us4OEMImpl::getFirmwareVersion() { return ius4oem->GetFirmwareVersion(); }
 
 uint32 Us4OEMImpl::getTxFirmwareVersion() { return ius4oem->GetTxFirmwareVersion(); }
-
-uint32_t Us4OEMImpl::getTxOffset() { return ius4oem->GetTxOffset(); }
 
 uint32_t Us4OEMImpl::getOemVersion() { return ius4oem->GetOemVersion(); }
 
@@ -717,7 +721,7 @@ void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
 
 std::pair<uint32_t, float> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcDecimationFactor) {
     //DDC RX offset (valid data offset)
-    uint32_t txOffset = ius4oem->GetTxOffset();
+    uint32_t txOffset = descriptor.getSampleTxStart();
     uint32_t rxOffset = 34u + (uint32_t)(16 * ddcDecimationFactor);
     uint32_t filterDelay = (uint32_t)(8 * ddcDecimationFactor);
 
@@ -857,14 +861,16 @@ size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> 
 void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
                              size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx) {
     ARRUS_REQUIRES_EQUAL_IAE(txAperture.size(), delays.size());
+    std::vector<float> delaysToBeApplied(txAperture.size());
     for (uint8 ch = 0; ch < ARRUS_SAFE_CAST(txAperture.size(), uint8); ++ch) {
         bool bit = txAperture.at(ch);
         float delay = 0.0f;
         if (bit && !setContains(maskedChannelsTx, static_cast<ChannelIdx>(ch))) {
             delay = delays.at(ch);
         }
-        ius4oem->SetTxDelay(ch, delay, firingId, delaysId);
+        delaysToBeApplied.at(ch) = delay;
     }
+    ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId);
 }
 
 void Us4OEMImpl::clearCallbacks() {
@@ -890,18 +896,19 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     if(ius4oem->GetOemVersion() != 2 && maxLength.has_value()) {
         throw IllegalArgumentException("Currently it is possible to set maxLength value only for OEM+ (type 2)");
     }
-    TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTx()};
+    TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTx0()};
     if(maxLength.has_value()) {
         txBuilder.setPulseLength(Interval<float>{0.0f, maxLength.value()});
     }
     else {
+        txBuilder.setPulseLength(Interval<float>{0.0f, 0.0f});
         // Set the default setting.
-        auto defaultLimits = Us4OEMDescriptorFactory::getDescriptor(ius4oem, isMaster()).getTxRxSequenceLimits().getTxRx().getTx().getPulseLength();
-        txBuilder.setPulseLength(defaultLimits);
+        auto defaultLimits = Us4OEMDescriptorFactory::getDescriptor(ius4oem, isMaster()).getTxRxSequenceLimits().getTxRx().getTx0().getPulseCycles();
+        txBuilder.setPulseCycles(defaultLimits);
     }
     TxLimits txLimits = txBuilder.build();
     TxRxSequenceLimitsBuilder seqBuilder{descriptor.getTxRxSequenceLimits()};
-    seqBuilder.setTxRxLimits(txLimits, descriptor.getTxRxSequenceLimits().getTxRx().getRx(),
+    seqBuilder.setTxRxLimits(txLimits, descriptor.getTxRxSequenceLimits().getTxRx().getTx1(), descriptor.getTxRxSequenceLimits().getTxRx().getRx(),
                              descriptor.getTxRxSequenceLimits().getTxRx().getPri());
     Us4OEMDescriptorBuilder builder{descriptor};
     builder.setTxRxSequenceLimits(seqBuilder.build());
@@ -937,24 +944,22 @@ void Us4OEMImpl::sync(std::optional<long long> timeout) {
     this->waitForIrq(eventDoneIrq, timeout);
 }
 
-// TODO to be unlocked in the near future (after merging new probe check to v0.11.0-dev)
-// TODO US4R-395
-//void Us4OEMImpl::setWaitForEventDone() {
-//    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
-//    irqEvents.at(eventDoneIrq).resetCounters();
-//    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
-//        this->irqEvents.at(eventDoneIrq).notifyOne();
-//    });
-//}
-//
-//void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
-//    ius4oem->EnableHVPSMeasurementReadyIRQ();
-//    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
-//    irqEvents.at(measurementDoneIrq).resetCounters();
-//    ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
-//        this->irqEvents.at(measurementDoneIrq).notifyOne();
-//    });
-//}
+void Us4OEMImpl::setWaitForEventDone() {
+    auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
+    irqEvents.at(eventDoneIrq).resetCounters();
+    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
+        this->irqEvents.at(eventDoneIrq).notifyOne();
+    });
+}
+
+void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
+    ius4oem->EnableHVPSMeasurementReadyIRQ();
+    auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
+    irqEvents.at(measurementDoneIrq).resetCounters();
+    ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
+        this->irqEvents.at(measurementDoneIrq).notifyOne();
+    });
+}
 
 void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
     logger->log(LogSeverity::TRACE, "Waiting for HVPS Measurement done IRQ");
@@ -968,18 +973,6 @@ float Us4OEMImpl::getActualTxFrequency(float frequency) {
 
 void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
     this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
-}
-
-void Us4OEMImpl::clearCallbacks(IUs4OEM::MSINumber ) {
-    // TODO(US4R-395)
-//    this->ius4oem->ClearCallbacks(irq);
-    this->ius4oem->ClearCallbacks();
-}
-void Us4OEMImpl::setWaitForEventDone() {
-    // TODO(US4R-395)
-}
-void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
-    // TODO(US4R-395)
 }
 
 }// namespace arrus::devices

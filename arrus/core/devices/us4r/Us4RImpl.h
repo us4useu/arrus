@@ -4,10 +4,13 @@
 #include <mutex>
 #include <unordered_map>
 #include <utility>
+#include <thread>
 
 #include <boost/algorithm/string.hpp>
 
 #include "TxTimeoutRegister.h"
+#include "BlockingQueue.h"
+#include "Us4REvent.h"
 #include "Us4RSubsequence.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
@@ -22,6 +25,7 @@
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+#include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/utils.h"
 
 namespace arrus::devices {
@@ -40,7 +44,7 @@ public:
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
              const RxSettings &rxSettings, std::vector<std::unordered_set<unsigned short>> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
-             bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings);
+             bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings, bool isExternalTrigger);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -71,6 +75,10 @@ public:
             throw DeviceNotFoundException(DeviceId(DeviceType::Us4OEM, ordinal));
         }
         return us4oems.at(ordinal).get();
+    }
+
+    bool isUs4OEMPlus() {
+        return this->getMasterOEM()->getDescriptor().isUs4OEMPlus();
     }
 
     std::pair<Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
@@ -113,8 +121,8 @@ public:
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
-    float getUCDMeasuredHVPVoltage(uint8_t oemId) override;
-    float getUCDMeasuredHVMVoltage(uint8_t oemId) override;
+    float getMeasuredHVPVoltage(uint8_t oemId) override;
+    float getMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
     void setHpfCornerFrequency(uint32_t frequency) override;
@@ -200,8 +208,11 @@ private:
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
     void registerPulserIRQCallback();
+    void handleEvents();
+    void handlePulserInterrupt();
+
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
-                                     bool cleanupSequencerTransfers = false);
+                           bool cleanupSequencerTransfers = false);
     std::vector<arrus::session::Metadata::SharedHandle>
     createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
 
@@ -228,12 +239,18 @@ private:
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
+
+    BlockingQueue<Us4REvent> eventQueue{1000};
+    std::thread eventHandlerThread;
+    std::unordered_map<std::string, std::function<void()>> eventHandlers;
+
+    bool isExternalTrigger;
+
     std::optional<Us4RSubsequenceFactory> subsequenceFactory;
     std::optional<Us4RSubsequence> currentSubsequenceParams;
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
     std::optional<float> currentRxTimeOffset;
-
 };
 
 }// namespace arrus::devices

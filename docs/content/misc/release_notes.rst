@@ -15,6 +15,12 @@ Release notes
         - the us4oemChannelsMask is no longer available,
         - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
 
+    - Adjusted RF/IQ data start sample number (i.e. corresponding to the TX delay = 0) #US4R-513.
+
+        - Removed Us4OEM::getTxOffset() method.
+
+    - Increased the maximum PRF that can be set for the OEM+ devices: decreased the TX pulsers reprogramming time #US4R-525.
+
 - MATLAB API:
 
     - Fixed the RX apodization #ARRUS-288.
@@ -24,23 +30,41 @@ Release notes
 0.10.x
 -----
 
-0.10.2
+0.10.4
+
+- core (C++, HAL):
+
+    - Added support for DBARLitePcie fw version 1.2.0.x #US4R-579.
+    - Provided possibility to get measured HV voltages on us4OEM+ #US4R-561.
+
+
+0.10.3
 
 - core (C++):
 
     - Exposed HVPS measurements and MANUAL_OP work mode #US4R-395.
 
         - Implemented MANUAL_OP work mode #US4R-395.
-        - Exposed the Us4R::setMaximumPulseLength(pulseLength) function, which allows you to set what is the maximum allowable pulse length. The function was prepared in order to provide the possibility to transmit with more than 32 cycles (available only for OEM+), and that is necessary for the new probe_check function to get reliable results. By default (when the method is not explicitly called), the maximum pulse length is set to 32 cycles. 
+        - Exposed the Us4R::setMaximumPulseLength(pulseLength) function, which allows you to set what is the maximum allowable pulse length. The function was prepared in order to provide the possibility to transmit with more than 32 cycles (available only for OEM+), and that is necessary for the new probe_check function to get reliable results. By default (when the method is not explicitly called), the maximum pulse length is set to 32 cycles.
 
 - Python API:
 
+    - Reduced memory overhead of the data structures stroed in the Python Pipeline #ARRUS-351.
     - Implement HVPS-based probe check and MANUAL_OP work mode #US4R-395.
-        
+
         - Exposed HVPS measurement in the Python API
         - Implemented MANUAL_OP work mode
         - Updated arrus.utils.probe_check module to use the HVPS measurements (OEM+ rev1 only). Exposed the new parameters: signal_type (rf or hvps), current (hvps only).
         - Exposed the us4r.set_maximum_pulse_length(pulse_length) function. See the core (C++) release notes for more details.
+
+
+0.10.2
+
+- core:
+
+  - Fixed the subsequence selection in case of the start_scheme/stop_scheme sequence of calls #US4R-505
+  - us4R/us4R-lite systems with the external HV: added OEM+ bypass mode, enabled suport for DBAR rev3, fixed HV256 initialization procedure #US4R-535, #US4R-538.
+
 
 0.10.1
 

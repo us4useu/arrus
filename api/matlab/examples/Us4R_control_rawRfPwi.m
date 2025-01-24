@@ -1,8 +1,8 @@
 % Example script for raw rf imaging when using plane waves and angular scanning
 
 %% Initialize the system
-addpath('..\');
-addpath('..\arrus');
+addpath('../');
+addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
 us  = Us4R('configFile', 'us4r.prototxt');

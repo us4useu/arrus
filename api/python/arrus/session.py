@@ -353,51 +353,12 @@ class Session(AbstractSession):
         if processing is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
-            if isinstance(processing, _imaging.Pipeline):
-                # Wrap Pipeline into the Processing object.
-                if processing.name is None:
-                    processing.name = f"Pipeline:0"
-
-                n_outputs = processing._get_n_outputs()
-                operations = {processing}
-                dependencies = {
-                    processing.name: sequences[0].name,
-                }
-                for i in range(n_outputs):
-                    dependencies[f"Output:{i}"] = f"{processing.name}/Output:{i}"
-
-                graph = _imaging.Graph(
-                    operations=operations,
-                    dependencies=dependencies
-                )
-                processing = _imaging.Processing(
-                    graph=graph,
-                    callback=None,
-                )
-            if isinstance(processing, Iterable):
-                pipelines = processing
-                for i, p in enumerate(pipelines):
-                    if p.name is None:
-                        p.name = f"Pipeline:{i}"
-                ops = set(pipelines)
-                deps = dict([(p.name, s.name) for p, s in zip(pipelines, sequences)]
-                            + [(f"Output:{i}", p.name) for i, p in enumerate(pipelines)])
-                graph = _imaging.Graph(
-                    operations=ops,
-                    dependencies=deps
-                )
-                processing = _imaging.Processing(
-                    graph=graph,
-                    callback=None,
-                )
-            if isinstance(processing, _imaging.Graph):
+            if not isinstance(processing, _imaging.Processing):
+                # Wrap into the Processing object.
                 processing = _imaging.Processing(
                     graph=processing,
                     callback=None,
                 )
-            if not isinstance(processing, _imaging.Processing):
-                raise ValueError(f"Unsupported type of processing: {type(processing)}")
-
             processing_runner = arrus.utils.imaging.ProcessingRunner(
                 input_buffer=buffer, metadata=metadatas, processing=processing,
             )

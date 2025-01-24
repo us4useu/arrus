@@ -63,7 +63,7 @@ Us4OEMDescriptor DEFAULT_DESCRIPTOR {
             arrus::ops::us4r::TxLimits {
                 Interval<float>{1e6, 60e6},  // Frequency
                 Interval<float>{0.0f, 16.96e-6f}, // delay
-                Interval<float>{0.0f, 32.0f/10e6}, // pulse length,
+                Interval<float>{0.0f, 32.0f}, // pulse length in cycles,
                 Interval<Voltage>{5, 90}
             },
             arrus::ops::us4r::RxLimits {
@@ -73,7 +73,8 @@ Us4OEMDescriptor DEFAULT_DESCRIPTOR {
         },
         Interval<uint32>{0, 16384} // sequence length
     },
-    0 // number of timeouts
+    0, // number of timeouts
+    123
 };
 
 struct TestTxRxParams {

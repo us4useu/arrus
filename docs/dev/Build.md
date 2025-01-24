@@ -119,7 +119,7 @@ pip install "git+https://github.com/pjarosik/matlabdomain@master#egg=sphinxcontr
 
 `windows_x86_64`
 
-- The latest [MiKTeX](https://miktex.org/) with packages: `ha-prosper`, `prosper`, `latex-tools`
+- The latest [MiKTeX](https://miktex.org/) with packages: `ha-prosper`, `prosper`, `latex-tools`, `tabulary`
 - install the latest version of [strawberry perl](strawberryperl.com)
 
 `linux_x86_64` and `Linux aarch64`:

@@ -59,6 +59,20 @@ public:
     virtual float getUCDMeasuredVoltage(uint8_t rail) = 0;
 
     /**
+     * Returns rail voltage measured by Us4OEM's UCD [V].
+     *
+     * @param rail UCD rail number
+     */
+    virtual float getMeasuredHVPVoltage() = 0;
+
+    /**
+     * Returns rail voltage measured by Us4OEM's UCD [V].
+     *
+     * @param rail UCD rail number
+     */
+    virtual float getMeasuredHVMVoltage() = 0;
+
+    /**
     * Reads AFE register
     *
     * @param address: register address
@@ -120,11 +134,6 @@ public:
      * Returns Tx component firmware version installed on this us4OEM module.
      */
     virtual uint32 getTxFirmwareVersion() = 0;
-
-    /**
-     * Returns Tx offset
-    */
-    virtual uint32_t getTxOffset() = 0;
 
     /**
      * Returns OEM version (OEM/OEM+)

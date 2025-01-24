@@ -30,7 +30,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
                    const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
-                   bool hasIOBitstreamAddressing, const IOSettings &ioSettings)
+                   bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger)
     : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
@@ -45,6 +45,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     this->channelsMask = std::move(channelsMask);
     this->bitstreams = std::move(bitstreams);
     this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
+    this->isExternalTrigger = isExternalTrigger;
     for (size_t i = 0; i < this->probeSettings.size(); ++i) {
         const auto &s = this->probeSettings.at(i).getModel();
         this->probes.push_back(std::make_unique<ProbeImpl>(DeviceId{DeviceType::Probe, Ordinal(i)}, s));
@@ -69,6 +70,8 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                               format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
         }
     }
+    this->eventHandlers.insert({"pulserIrq", [this]() {this->handlePulserInterrupt(); }});
+    this->eventHandlerThread = std::thread([this](){this->handleEvents(); });
 }
 
 std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
@@ -84,19 +87,17 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
         voltages.push_back(VoltageLogbook{std::string("HVM on HV supply"), voltage, VoltageLogbook::Polarity::MINUS});
     }
 
-    auto ver = us4oems[0]->getOemVersion();
-
-    if (ver == 1) {
-        //Verify measured voltages on OEMs
+    //Verify measured voltages on OEMs
+    auto isUs4OEMPlus = this->isUs4OEMPlus();
+    if(!isUs4OEMPlus || (isUs4OEMPlus && !isHV256)) {
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
-            voltage = this->getUCDMeasuredHVPVoltage(i);
-            voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::PLUS});
-            voltage = this->getUCDMeasuredHVMVoltage(i);
-            voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage, VoltageLogbook::Polarity::MINUS});
+            voltage = this->getMeasuredHVPVoltage(i);
+            voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage,
+                                              VoltageLogbook::Polarity::PLUS});
+            voltage = this->getMeasuredHVMVoltage(i);
+            voltages.push_back(VoltageLogbook{std::string("HVM on OEM#" + std::to_string(i)), voltage,
+                                              VoltageLogbook::Polarity::MINUS});
         }
-    } else if (ver == 2) {
-        //Verify measured voltages on OEM+s
-        //Currently OEM+ does not support internal voltage measurement - skip
     }
     return voltages;
 }
@@ -152,7 +153,7 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     // (i.e. find the maximum start voltage, minimum end voltage).
     std::vector<Voltage> voltageStart, voltageEnd;
     for(auto &oem: us4oems) {
-        const auto &voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx().getVoltage();
+        const auto &voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx0().getVoltage();
         voltageStart.push_back(voltageLimits.start());
         voltageEnd.push_back(voltageLimits.end());
     }
@@ -256,14 +257,12 @@ float Us4RImpl::getMeasuredMVoltage() {
     return hv[0]->getMeasuredMVoltage();
 }
 
-float Us4RImpl::getUCDMeasuredHVPVoltage(uint8_t oemId) {
-    //UCD rail 19 = HVP
-    return us4oems[oemId]->getUCDMeasuredVoltage(19);
+float Us4RImpl::getMeasuredHVPVoltage(uint8_t oemId) {
+    return us4oems[oemId]->getMeasuredHVPVoltage();
 }
 
-float Us4RImpl::getUCDMeasuredHVMVoltage(uint8_t oemId) {
-    //UCD rail 20 = HVM}
-    return us4oems[oemId]->getUCDMeasuredVoltage(20);
+float Us4RImpl::getMeasuredHVMVoltage(uint8_t oemId) {
+    return us4oems[oemId]->getMeasuredHVMVoltage();
 }
 
 void Us4RImpl::disableHV() {
@@ -391,6 +390,9 @@ void Us4RImpl::start() {
         auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
         us4oem->enableSequencer(startEntry);
     }
+    if (this->digitalBackplane.has_value() && isExternalTrigger) {
+        this->digitalBackplane.value()->enableExternalTrigger();
+    }
     this->getMasterOEM()->start();
     this->state = State::STARTED;
 }
@@ -404,6 +406,9 @@ void Us4RImpl::stopDevice() {
     } else {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        if (this->digitalBackplane.has_value() && isExternalTrigger) {
+            this->digitalBackplane.value()->enableInternalTrigger();
+        }
         this->getMasterOEM()->stop();
         try {
             for (auto &us4oem : us4oems) {
@@ -434,6 +439,9 @@ Us4RImpl::~Us4RImpl() {
         if (this->buffer) {
             cleanupBuffers();
         }
+        this->eventQueue.shutdown();
+        getDefaultLogger()->log(LogSeverity::DEBUG, "Waiting for the Us4R event handler thread to stop.");
+        this->eventHandlerThread.join();
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
@@ -466,10 +474,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
             return this->getActualTxFrequency(frequency);
         }};
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
-    // Register pulser IRQ handling procedure.
-    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
-        registerPulserIRQCallback();
-    }
+
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
     // Initialize converters.
@@ -532,6 +537,10 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         for (SequenceId sId = 0; sId < nSequences; ++sId) {
             oemsFCMs.at(sId).emplace_back(std::move(oemFCM.at(sId)));
         }
+    }
+    // Register pulser IRQ handling procedure.
+    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
+        registerPulserIRQCallback();
     }
     // Convert FCMs to probe-level apertures.
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -895,7 +904,6 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     switch (workMode) {
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
-            std::cout << "RELEASE!" << std::endl;
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
@@ -1174,13 +1182,13 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 }
 
 void Us4RImpl::registerPulserIRQCallback() {
-    /*for(auto &oem: us4oems) {
-        const auto &ius4oem = oem->getIUs4OEM();
-        ius4oem->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, &ius4oem]() {
-            try{
-                ius4oem->LogPulsersInterruptRegister();
-                // TODO consider fail-safe device stopping (e.g. don't wait for pending interrupts, etc.).
-                this->stop();
+    using namespace std::chrono_literals;
+    for(auto &oem: us4oems) {
+        const auto ordinal = oem->getDeviceId().getOrdinal();
+        oem->getIUs4OEM()->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, ordinal]() {
+            logger->log(LogSeverity::ERROR, format("Detected pulser interrupt on OEM: '{}'.", ordinal));
+            try {
+                this->eventQueue.enqueue(Us4REvent("pulserIrq"));
             }
             catch(const std::exception &e) {
                 logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
@@ -1189,7 +1197,46 @@ void Us4RImpl::registerPulserIRQCallback() {
                 logger->log(LogSeverity::ERROR, "Unknown exception on handling pulser IRQ.");
             }
         });
-    }*/
+    }
+}
+
+void Us4RImpl::handleEvents() {
+    while(true) {
+        try {
+            auto event = eventQueue.dequeue();
+            if(!event.has_value()) {
+                // queue shutdown
+                return;
+            }
+            auto eventId = event.value().getId();
+            auto handler = eventHandlers.find(eventId);
+            if(handler == std::end(eventHandlers)) {
+                logger->log(LogSeverity::WARNING, format("Unknown event: {}", eventId));
+            }
+            else {
+                (handler->second)();
+            }
+        }
+        catch(const std::exception &e) {
+            logger->log(LogSeverity::ERROR, "Exception on event handling: " + std::string(e.what()));
+        }
+        catch(...) {
+            logger->log(LogSeverity::ERROR, "Unknown exception on event handling.");
+        }
+    }
+}
+
+
+void Us4RImpl::handlePulserInterrupt() {
+    if (this->state == State::STOPPED) {
+        logger->log(LogSeverity::INFO, format("System already stopped."));
+        return;
+    }
+    for(auto &oem: this->us4oems) {
+        oem->getIUs4OEM()->LogPulsersInterruptRegister();
+    }
+    this->stop();
+    this->disableHV();
 }
 
 }// namespace arrus::devices
