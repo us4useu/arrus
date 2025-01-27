@@ -14,21 +14,33 @@ from arrus.framework import Constant
 
 
 def _sort_txs_by_aperture(sequence, probe_tx):
+
     def get_aperture_left(aperture):
         mask, _, = get_new_masked_aperture_if_necessary(aperture, probe_tx)
-        return np.min(np.argwhere(mask.flatten()))
+        active_elements = np.argwhere(mask.flatten()).squeeze()
+        if len(active_elements) > 0:
+            return np.min(active_elements)
+        else:
+            raise ValueError(f"All Txs in the multi-Tx should have non-empty "
+                             f"Tx aperture")
 
     new_ops = []
     for op in sequence.ops:
         tx = op.tx
         if isinstance(tx, Tx):
             tx = [tx]
-        txs = list(tx)
-        txs = [(tx, get_aperture_left(tx.aperture)) for tx in txs]
-        txs = sorted(txs, key=lambda x: x[1])
-        txs = list(zip(*txs))[0]
-        op = dataclasses.replace(op, tx=txs)
-        new_ops.append(op)
+            op = dataclasses.replace(op, tx=tx)
+
+        if len(tx) == 1:
+            # Nothing to sort.
+            new_ops.append(op)
+        else:
+            txs = list(tx)
+            txs = [(tx, get_aperture_left(tx.aperture)) for tx in txs]
+            txs = sorted(txs, key=lambda x: x[1])
+            txs = list(zip(*txs))[0]
+            op = dataclasses.replace(op, tx=txs)
+            new_ops.append(op)
     sequence = dataclasses.replace(sequence, ops=new_ops)
     return sequence
 
