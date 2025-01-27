@@ -102,7 +102,7 @@ public:
             }
             auto newTxLimits = txLimitsBuilder.build();
             auto currentRxLimits = descriptor.getTxRxSequenceLimits().getTxRx().getRx();
-            sequenceLimitsBuilder.setTxRxLimits(descriptor.getTxRxSequenceLimits().getTxRx().getTx0() ,newTxLimits, currentRxLimits, newPri);
+            sequenceLimitsBuilder.setTxRxLimits(descriptor.getTxRxSequenceLimits().getTxRx().getTx0(), newTxLimits, currentRxLimits, newPri);
             auto txRxSequenceLimits = sequenceLimitsBuilder.build();
             auto newDescriptor = Us4OEMDescriptorBuilder{descriptor}
                                      .setTxRxSequenceLimits(txRxSequenceLimits)

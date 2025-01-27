@@ -66,6 +66,12 @@ Us4OEMDescriptor DEFAULT_DESCRIPTOR {
                 Interval<float>{0.0f, 32.0f}, // pulse length in cycles,
                 Interval<Voltage>{5, 90}
             },
+            arrus::ops::us4r::TxLimits {
+                Interval<float>{1e6, 60e6},  // Frequency
+                Interval<float>{0.0f, 16.96e-6f}, // delay
+                Interval<float>{0.0f, 32.0f}, // pulse length in cycles,
+                Interval<Voltage>{5, 90}
+            },
             arrus::ops::us4r::RxLimits {
                 Interval<uint32>{64, 16384}
             },
