@@ -43,9 +43,30 @@ public:
     }
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        ::arrus::Voltage value = inputs[0][0];
-        ctx->logInfo(format("Us4R: setting voltage {}", value));
-        get(obj)->setVoltage(value);
+        auto value = inputs[0];
+        if(isArrayScalar(value)) {
+            ::arrus::Voltage scalarValue = value[0];
+            ctx->logInfo(format("Us4R: setting voltage {}", scalarValue));
+            get(obj)->setVoltage(scalarValue);
+        }
+        else {
+            // non scalar -- must be 2x2
+            // row 1: level 0 [plus minus]
+            // row 2: level 1 [plus minus]
+            std::vector<size_t> expectedDimensions = {2, 2};
+            if(value.getDimensions() != expectedDimensions) {
+                throw IllegalArgumentException("The Us4R voltage values should be either a scalar value "
+                                               "(level 0 +/- amplitude) "
+                                               "or a matrix 2x2 [level 0 +, level 0-, level 1+, level1-]");
+            }
+            ::arrus::Voltage level0Plus = value[0][0];
+            ::arrus::Voltage level0Minus = value[0][1];
+            ::arrus::Voltage level1Plus = value[1][0];
+            ::arrus::Voltage level1Minus = value[1][1];
+            std::vector<HVVoltage> voltages = {HVVoltage{level0Plus, level0Minus}, HVVoltage{level1Plus, level1Minus}};
+            get(obj)->setVoltage(voltages);
+        }
+
     }
 
     void getSamplingFrequency(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {

@@ -21,10 +21,22 @@ classdef Us4R < handle
         end
 
         function setVoltage(obj, voltage)
+            % Enables HV and sets a given voltage(s).
             %
-            % Sets the voltage to given value.
+            % This method expects a list of integers or a list of pairs of integers
+            % as input.
+            % A single integer v means that the voltage should be set t +v and -v.
+            % A pair (vm, vp) means that the -voltage should be set to vm,
+            % -voltage to vp.
             %
-            % :param voltage: value to set
+            % Voltage is always expected to be positive number (even for -v).
+            %
+            %  Examples:
+            %       set_hv_voltage(10) -- sets +10 -10 on amplitude level 0.
+            %       set_hv_voltage([10, 10; 5, 5]) -- sets +10, -10 on level 0, +5, -5 on level 1.
+            %
+            % :param voltage: voltage to set: a single value (for amplitude level 0)
+            % or a 2x2 matrix, where voltage(1, :) are [plus minus] V level 0, voltage(2, :) are [plus minus] V 1.
             obj.ptr.callMethod("setVoltage", 0, voltage);
         end
 
