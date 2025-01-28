@@ -130,5 +130,13 @@ classdef Us4R < handle
             % :param gain: gain value to set [dB]
             obj.ptr.callMethod("setPgaGain", 0, gain);
         end
+
+        function setMaximumPulseLength(obj, value)
+            %
+            % Set maximum TX pulse length.
+            %
+            % :param value: pulse length to set [seconds]
+            obj.ptr.callMethod("setMaximumPulseLength", 0, value);
+        end
     end
 end
