@@ -60,15 +60,17 @@ public:
                                                "(level 0 -/+ amplitude) "
                                                "or a matrix 2x2 [level 0 -,+; level 1 -,+]");
             }
-            ::arrus::Voltage level0Minus = value[0][0];
-            ::arrus::Voltage level0Plus = value[0][1];
-            ::arrus::Voltage level1Minus = value[1][0];
-            ::arrus::Voltage level1Plus = value[1][1];
+
+	    ::arrus::Voltage level0Minus = value[0][0]; // row 1, column 1
+            ::arrus::Voltage level0Plus = value[0][1];  // row 1, column 2
+            ::arrus::Voltage level1Minus = value[1][0]; // row 2, column 1
+            ::arrus::Voltage level1Plus = value[1][1];  // row 2, column 2
+
             std::vector<HVVoltage> voltages = {HVVoltage{level0Minus, level0Plus}, HVVoltage{level1Minus, level1Plus}};
             ctx->logInfo(format(
                 "Us4R: setting voltage "
-                "level 0 -{}, +{}, "
-                "level 1 -{}, +{}",
+                "level 0: -{}, +{}, "
+                "level 1: -{}, +{}",
                 voltages.at(0).getVoltageMinus(),
                 voltages.at(0).getVoltagePlus(),
                 voltages.at(1).getVoltageMinus(),
