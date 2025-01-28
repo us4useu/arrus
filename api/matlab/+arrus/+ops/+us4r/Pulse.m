@@ -14,6 +14,7 @@ classdef Pulse
         centerFrequency (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 1e6
         nPeriods (1, 1) {mustBeFinite, mustBeReal, mustBePositive} = 1
         inverse (1, 1) {arrus.validators.mustBeLogical} = false
+        amplitudeLevel (1, 1) {mustBeMember(amplitudeLevel, {0, 1})} = 0
     end
 
     methods
