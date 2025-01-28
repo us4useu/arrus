@@ -3,7 +3,7 @@ us4r: {
     {
         id: {
             manufacturer: "GE"
-            name: "12_3"
+            name: "3_9"
         }
         # TODO: please set the correct number of probe elements.
         n_elements: 256,
@@ -12,15 +12,15 @@ us4r: {
         pitch: 0.2e-3,
 
         tx_frequency_range: {
-            begin: 3e6,
-            end: 12e6
+            begin: 2e6,
+            end: 10e6
         },
         # NOTE: the voltage limit set below has been chosen to allow safe experimentation when the pin mapping between 
         # the head and the system is not yet well known. Once you are certain about the pin mapping and that no elements 
         # are shorted or open, you may increase the `end` value (max: 90 V).
         voltage_range {
             begin: 0,
-            end: 10
+            end: 20
         }
     }
 

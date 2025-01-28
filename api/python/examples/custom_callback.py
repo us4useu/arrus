@@ -55,7 +55,7 @@ def main():
         work_mode="HOST")
 
     # Here starts communication with the device.
-    with arrus.Session("/home/pjarosik/tmp/test.prototxt") as sess:
+    with arrus.Session("us4r_L3-9i-D.prototxt") as sess:
         ultrasound = sess.get_device("/Ultrasound:0")
         # us4r.set_hv_voltage(10)
         # Upload sequence on the us4r-lite device.

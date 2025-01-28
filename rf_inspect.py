@@ -21,6 +21,6 @@ print(f"Subset shape for plotting: {data_to_plot.shape}")
 vmin, vmax = -100, 100  # Replace with your desired range
 
 # Plot 
-plt.imshow(data_to_plot[0:250,:], cmap="viridis", aspect="auto", origin='upper', vmin=vmin, vmax=vmax)
+plt.imshow(data_to_plot[:,:], cmap="viridis", aspect="auto", origin='upper', vmin=vmin, vmax=vmax)
 plt.colorbar(label="Value")  # Optional: Colorbar for value reference
 plt.show()

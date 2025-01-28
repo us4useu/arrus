@@ -43,9 +43,9 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
-    with arrus.Session("custom_mapping_dlp408r.prototxt", medium=medium) as sess:
+    with arrus.Session("us4r_L3-9i-D.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(10)
+        us4r.set_hv_voltage(20)
 
         n_elements = us4r.get_probe_model().n_elements
         q = deque(maxlen=3)
@@ -98,7 +98,8 @@ def main():
         )
         # Upload the scheme on the us4r-lite device.
         buffer, metadata = sess.upload(scheme)
-        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
+        # us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
+        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=54, slope=0))
         # Created 2D image display.
         display = Display2D(metadata=metadata, value_range=(-100, 100))
         # Start the scheme.

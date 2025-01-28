@@ -14,12 +14,12 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session() as sess:
+with arrus.Session("us4r_L3-9i-D.prototxt") as sess:
     us4r = sess.get_device("/Us4R:0")
     us4r.set_hv_voltage(40)
 
     sequence = StaSequence(
-        tx_aperture_center=np.linspace(-15, 15, 11)*1e-3,
+        tx_aperture_center=np.linspace(-15, 15, 11)*1e-3, 
         tx_aperture_size=32,
         tx_focus=-6e-3,
         pulse=Pulse(center_frequency=6e6, n_periods=2, inverse=False),
