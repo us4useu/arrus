@@ -51,19 +51,28 @@ public:
         }
         else {
             // non scalar -- must be 2x2
-            // row 1: level 0 [plus minus]
-            // row 2: level 1 [plus minus]
+            // row 1: level 0 [minus plus]
+            // row 2: level 1 [minus plus]
             std::vector<size_t> expectedDimensions = {2, 2};
             if(value.getDimensions() != expectedDimensions) {
                 throw IllegalArgumentException("The Us4R voltage values should be either a scalar value "
-                                               "(level 0 +/- amplitude) "
-                                               "or a matrix 2x2 [level 0 +, level 0-, level 1+, level1-]");
+                                               "(level 0 -/+ amplitude) "
+                                               "or a matrix 2x2 [level 0 -,+; level 1 -,+]");
             }
-            ::arrus::Voltage level0Plus = value[0][0];
-            ::arrus::Voltage level0Minus = value[0][1];
-            ::arrus::Voltage level1Plus = value[1][0];
-            ::arrus::Voltage level1Minus = value[1][1];
-            std::vector<HVVoltage> voltages = {HVVoltage{level0Plus, level0Minus}, HVVoltage{level1Plus, level1Minus}};
+            ::arrus::Voltage level0Minus = value[0][0];
+            ::arrus::Voltage level0Plus = value[0][1];
+            ::arrus::Voltage level1Minus = value[1][0];
+            ::arrus::Voltage level1Plus = value[1][1];
+            std::vector<HVVoltage> voltages = {HVVoltage{level0Minus, level0Plus}, HVVoltage{level1Minus, level1Plus}};
+            ctx->logInfo(format(
+                "Us4R: setting voltage "
+                "level 0 -{}, +{}, "
+                "level 1 -{}, +{}",
+                voltages.at(0).getVoltageMinus(),
+                voltages.at(0).getVoltagePlus(),
+                voltages.at(1).getVoltageMinus(),
+                voltages.at(1).getVoltagePlus()
+            ));
             get(obj)->setVoltage(voltages);
         }
 
