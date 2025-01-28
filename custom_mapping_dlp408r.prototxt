@@ -1,0 +1,84 @@
+us4r: {
+    probe:
+    {
+        id: {
+            manufacturer: "GE"
+            name: "12_3"
+        }
+        # TODO: please set the correct number of probe elements.
+        n_elements: 256,
+
+        # TODO: please set the correct pitch. [m]
+        pitch: 0.2e-3,
+
+        tx_frequency_range: {
+            begin: 3e6,
+            end: 12e6
+        },
+        # NOTE: the voltage limit set below has been chosen to allow safe experimentation when the pin mapping between 
+        # the head and the system is not yet well known. Once you are certain about the pin mapping and that no elements 
+        # are shorted or open, you may increase the `end` value (max: 90 V).
+        voltage_range {
+            begin: 0,
+            end: 10
+        }
+    }
+
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "dlp408r"
+    }
+
+    probe_to_adapter_connection: {
+        # One to one mapping between system channels and probe elements.
+        channel_mapping_ranges: [
+            {
+                begin: 0
+                end: 255
+            }
+        ]
+        
+        # You can specify your own order using a construction like the one below. 
+        # Note: the number of elements in the list below should be equal to the number of elements in the probe.
+        # channel_mapping: [
+        #     250, 254, 242, 246, 232, 236, 224, 228, 218, 222, 210, 214, 200, 204, 192, 196,
+        #     186, 190, 178, 182, 168, 172, 160, 164, 154, 158, 146, 150, 136, 140, 128, 132,
+        #     131, 135, 139, 143, 145, 149, 153, 157, 163, 167, 171, 175, 177, 181, 185, 189,
+        #     195, 199, 203, 207, 209, 213, 217, 221, 227, 231, 235, 239, 241, 245, 249, 253,
+        #     129, 133, 137, 141, 147, 151, 155, 159, 161, 165, 169, 173, 179, 183, 187, 191,
+        #     193, 197, 201, 205, 211, 215, 219, 223, 225, 229, 233, 237, 243, 247, 251, 255,
+        #     126, 122, 118, 114, 108, 104, 100, 96, 94, 90, 86, 82, 76, 72, 68, 64,
+        #     62, 58, 54, 50, 44, 40, 36, 32, 30, 26, 22, 18, 12, 8, 4, 0,
+        #     124, 120, 116, 112, 110, 106, 102, 98, 92, 88, 84, 80, 78, 74, 70, 66,
+        #     60, 56, 52, 48, 46, 42, 38, 34, 28, 24, 20, 16, 14, 10, 6, 2,
+        #     5, 1, 13, 9, 23, 19, 31, 27, 37, 33, 45, 41, 55, 51, 63, 59,
+        #     69, 65, 77, 73, 87, 83, 95, 91, 101, 97, 109, 105, 119, 115, 127, 123
+        # ]
+    }
+
+    # Default initial values.
+    rx_settings: {
+        lna_gain: 24
+        pga_gain: 30
+        lpf_cutoff: 15000000
+        active_termination: 200
+    }
+
+    hv: {
+        model_id {
+            manufacturer: "us4us"
+            name: "us4oemhvps"
+        }
+    }
+
+    
+channels_mask: {
+        channels: []
+    }
+
+     us4oem_channels_mask: [
+        {channels: []},
+        {channels: []}
+    ]
+}
+

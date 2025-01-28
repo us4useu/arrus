@@ -13,9 +13,9 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 # Here starts communication with the device.
-with arrus.Session("us4r.prototxt") as sess:
+with arrus.Session("custom_mapping_dlp408r.prototxt") as sess:
     us4r = sess.get_device("/Us4R:0")
-    us4r.set_hv_voltage(20)
+    us4r.set_hv_voltage(10)
 
     sequence = PwiSequence(
         angles=np.linspace(-10, 10, 32)*np.pi/180,
