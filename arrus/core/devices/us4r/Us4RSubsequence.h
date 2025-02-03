@@ -116,7 +116,7 @@ public:
             auto n = opToNextFrame.at(sequenceId).at(oem).getNumberOfFrames(oemStart, oemEnd);
             nFrames.push_back(n);
             if (nextFrameNumber.has_value()) {
-                // Subtract from the physical frame numbers, the number of preceeding frames (e.g. move frame 3 to 0).
+                // Subtract from the physical frame numbers, the number of preceding frames (e.g. move frame 3 to 0).
                 outFCMBuilder.subtractPhysicalFrameNumber((Ordinal)oem, nextFrameNumber.value());
             } // Otherwise there is no frame from the given OEM in FCM, so nothing to update.
         }

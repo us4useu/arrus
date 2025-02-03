@@ -1147,7 +1147,7 @@ Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, co
     if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
         throw ::arrus::IllegalStateException("Call upload method before setting a new sub-sequence.");
     }
-    // Clear callback (the new one will be registered later, in the prepareHostBuffer
+    // Clear callback (the new one will be registered later, in the prepareHostBuffer)
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
