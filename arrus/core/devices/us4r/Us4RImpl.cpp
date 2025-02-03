@@ -1149,9 +1149,7 @@ Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, co
     }
     // Clear callback (the new one will be registered later, in the prepareHostBuffer
     for(auto &us4oem: us4oems) {
-        us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIDMA);
-        us4oem->clearCallbacks(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
-        us4oem->clearCallbacks(IUs4OEM::MSINumber::RXDMAOVERFLOW);
+        us4oem->clearDMACallbacks();
     }
     auto params = subsequenceFactory->get(sequenceId, start, end, sri);
     bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());

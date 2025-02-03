@@ -45,7 +45,6 @@ public:
     virtual void setTestPattern(RxTestPattern pattern) = 0;
     virtual BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
     virtual void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
-    virtual void clearCallbacks() = 0;
     virtual Us4OEMDescriptor getDescriptor() const = 0;
 
 
@@ -84,7 +83,7 @@ public:
      * @param timeToNextTrigger PRI to be applied to the end of the new sub-sequence
      */
     virtual void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) = 0;
-    virtual void clearCallbacks(IUs4OEM::MSINumber irq) = 0;
+    virtual void clearDMACallbacks() = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

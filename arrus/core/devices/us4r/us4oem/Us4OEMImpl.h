@@ -105,7 +105,6 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
     Interval<Voltage> getAcceptedVoltageRange() override;
-    void clearCallbacks() override;
     Us4OEMDescriptor getDescriptor() const override;
 
     HVPSMeasurement getHVPSMeasurement() override;
@@ -122,7 +121,7 @@ public:
     bool isOEMPlus() {
         return getOemVersion() == 2;
     }
-    void clearCallbacks(IUs4OEM::MSINumber irq) override;
+    void clearDMACallbacks() override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;

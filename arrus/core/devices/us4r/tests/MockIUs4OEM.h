@@ -80,7 +80,7 @@ public:
     MOCK_METHOD(void, TriggerSync, (), (override));
     MOCK_METHOD(void, SetNTriggers, (unsigned short n), (override));
     MOCK_METHOD(void, SetTrigger,
-            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode), // , bool irqDone), TODO US4R-395
+            (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode, bool irqDone),
     (override));
     MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
@@ -224,7 +224,7 @@ public:
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
-    MOCK_METHOD(void, ClearCallbacks, (), (override));
+    MOCK_METHOD(void, ClearDMACallbacks, (), (override));
 //    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override)); TODO US4R-395
 //    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override)); TODO US4R-395
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
