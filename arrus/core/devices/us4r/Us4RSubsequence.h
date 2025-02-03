@@ -14,6 +14,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/utils.h"
 #include "arrus/core/devices/us4r/types.h"
+#include <iostream>
 
 namespace arrus::devices {
 
@@ -284,7 +285,7 @@ private:
         std::vector<Us4OEMBufferElement> newElements;
         for(const auto &oldElement: buffer.getElements()) {
             newElements.emplace_back(
-                oldElement.getAddress() + newArrayDef.getAddress(),
+                oldElement.getAddress(),
                 newArrayDef.getSize(),
                 oldElement.getGlobalFiring()
             );
