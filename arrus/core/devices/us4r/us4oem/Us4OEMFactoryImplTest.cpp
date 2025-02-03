@@ -268,29 +268,29 @@ TEST(Us4OEMFactoryTest, SetsAppropriateTxRxLimits) {
     auto descriptor0 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits0);
     const auto &txRxLimits0 = descriptor0.getTxRxSequenceLimits().getTxRx();
     EXPECT_EQ(txRxLimits0.getPri(), priLimits);
-    EXPECT_EQ(txRxLimits0.getTx().getPulseLength(), pulseLengthLimits);
-    EXPECT_EQ(txRxLimits0.getTx().getVoltage(), voltageLimits);
+    EXPECT_EQ(txRxLimits0.getTx1().getPulseLength(), pulseLengthLimits);
+    EXPECT_EQ(txRxLimits0.getTx1().getVoltage(), voltageLimits);
 
     Us4RTxRxLimits limits1{std::nullopt, voltageLimits, priLimits};
     auto descriptor1 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits1);
     const auto &txRxLimits1 = descriptor1.getTxRxSequenceLimits().getTxRx();
     EXPECT_EQ(txRxLimits1.getPri(), priLimits);
-    EXPECT_EQ(txRxLimits1.getTx().getPulseLength(),  Interval<float>(0.0f, 32.0f/10e6)); // Us4OEMFactoryImpl default
-    EXPECT_EQ(txRxLimits1.getTx().getVoltage(), voltageLimits);
+    EXPECT_EQ(txRxLimits1.getTx1().getPulseCycles(),  Interval<float>(0.5f, 32.0f)); // Us4OEMFactoryImpl default
+    EXPECT_EQ(txRxLimits1.getTx1().getVoltage(), voltageLimits);
 
     Us4RTxRxLimits limits2{pulseLengthLimits, std::nullopt, priLimits};
     auto descriptor2 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits2);
     const auto &txRxLimits2 = descriptor2.getTxRxSequenceLimits().getTxRx();
     EXPECT_EQ(txRxLimits2.getPri(), priLimits);
-    EXPECT_EQ(txRxLimits2.getTx().getPulseLength(),  pulseLengthLimits);
-    EXPECT_EQ(txRxLimits2.getTx().getVoltage(), Interval<Voltage>(5, 90)); // Us4OEMFactoryImpl default value
+    EXPECT_EQ(txRxLimits2.getTx1().getPulseLength(),  pulseLengthLimits);
+    EXPECT_EQ(txRxLimits2.getTx1().getVoltage(), Interval<Voltage>(5, 90)); // Us4OEMFactoryImpl default value
 
     Us4RTxRxLimits limits3{pulseLengthLimits, voltageLimits, std::nullopt};
     auto descriptor3 = Us4OEMFactoryImpl::getOEMDescriptor(0, ius4oem, limits3);
     const auto &txRxLimits3 = descriptor3.getTxRxSequenceLimits().getTxRx();
     EXPECT_EQ(txRxLimits3.getPri(), Interval<float>(35e-6f, 1.0f)); // Us4OEMFactoryImpl default value
-    EXPECT_EQ(txRxLimits3.getTx().getPulseLength(),  pulseLengthLimits);
-    EXPECT_EQ(txRxLimits3.getTx().getVoltage(), voltageLimits);
+    EXPECT_EQ(txRxLimits3.getTx1().getPulseLength(),  pulseLengthLimits);
+    EXPECT_EQ(txRxLimits3.getTx1().getVoltage(), voltageLimits);
 }
 }
 

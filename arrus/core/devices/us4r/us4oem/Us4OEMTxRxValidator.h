@@ -45,7 +45,7 @@ namespace arrus::devices {
                 const auto &pulse = op.getTxPulse();
                 if(pulse.getAmplitudeLevel() == 0) { validateTx(pulse, txLimits0, firingStr); }
                 else if(pulse.getAmplitudeLevel() == 1) { validateTx(pulse, txLimits1, firingStr); }
-                else { throw(std::runtime_error("Invalid amplitude level")); }
+                else { throw(IllegalArgumentException("Invalid amplitude level")); }
             
                 // Rx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(descriptor.getNAddressableRxChannels()), firingStr);
