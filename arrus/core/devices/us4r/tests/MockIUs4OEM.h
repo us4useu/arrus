@@ -225,8 +225,8 @@ public:
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
     MOCK_METHOD(void, ClearDMACallbacks, (), (override));
-//    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override)); TODO US4R-395
-//    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override)); TODO US4R-395
+    MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
+    MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
     MOCK_METHOD(void, VerifyTxWaveform, (), (override));
     MOCK_METHOD(void, EnableTxTimeout, (), (override));
