@@ -280,8 +280,6 @@ public:
     /**
      * Enables LNA analog high-pass filter and sets a given corner frequency.
      *
-     * Available corner frequency values (Hz): 20'000, 50'000, 100'000.
-     *
      * @param frequency LNA high-pass filter corner frequency to set
      */
     virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
@@ -293,8 +291,6 @@ public:
 
     /**
      * Enables ADC digital high-pass filter and sets a given corner frequency.
-     *
-     * Available corner frequency values (Hz): 150'000, 300'000, 600'000, 1'200'000, 2'400'000.
      *
      * @param frequency ADC high-pass filter corner frequency to set
      */
