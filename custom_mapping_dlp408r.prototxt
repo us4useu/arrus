@@ -15,6 +15,7 @@ us4r: {
             begin: 2e6,
             end: 10e6
         },
+        
         # NOTE: the voltage limit set below has been chosen to allow safe experimentation when the pin mapping between 
         # the head and the system is not yet well known. Once you are certain about the pin mapping and that no elements 
         # are shorted or open, you may increase the `end` value (max: 90 V).
