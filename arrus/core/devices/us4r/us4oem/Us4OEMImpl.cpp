@@ -872,7 +872,7 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
 }
 
 void Us4OEMImpl::clearCallbacks() {
-    this->ius4oem->ClearCallbacks();
+    this->ius4oem->ClearDMACallbacks();
 }
 
 std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(
