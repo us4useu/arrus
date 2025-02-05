@@ -118,16 +118,16 @@ void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
 }
 
 void Us4OEMImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
-    ius4oem->AfeSetLnaHPFCornerFrequency(frequency);
+    ius4oem->AfeSetLnaHpfCornerFrequency(frequency);
 }
 
-void Us4OEMImpl::disableLnaHpf() { ius4oem->AfeDisableLnaHPF(); }
+void Us4OEMImpl::disableLnaHpf() { ius4oem->AfeDisableLnaHpf(); }
 
 void Us4OEMImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
-    ius4oem->AfeSetAdcHPFCornerFrequency(frequency);
+    ius4oem->AfeSetAdcHpfCornerFrequency(frequency);
 }
 
-void Us4OEMImpl::disableAdcHpf() { ius4oem->AfeDisableAdcHPF(); }
+void Us4OEMImpl::disableAdcHpf() { ius4oem->AfeDisableAdcHpf(); }
 
 Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltage>{0, 90}; }
 
