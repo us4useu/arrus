@@ -118,14 +118,12 @@ void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
 }
 
 void Us4OEMImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
-    ius4oem->AfeEnableLnaHPF();
     ius4oem->AfeSetLnaHPFCornerFrequency(frequency);
 }
 
 void Us4OEMImpl::disableLnaHpf() { ius4oem->AfeDisableLnaHPF(); }
 
 void Us4OEMImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
-    ius4oem->AfeEnableAdcHPF();
     ius4oem->AfeSetAdcHPFCornerFrequency(frequency);
 }
 
