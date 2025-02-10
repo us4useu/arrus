@@ -81,6 +81,11 @@ classdef Us4R < handle
             obj.us4r.setTgcCurve(varargin{2:end});
         end
 
+        function setVcatCurve(obj,time,attenuation,applyCharacteristic)
+            obj.us4r.setVcat(obj, time, attenuation, applyCharacteristic);
+            
+        end
+
         function setDtgcAttenuation(obj,attenuation)
             obj.us4r.setDtgcAttenuation(attenuation);
         end
