@@ -104,7 +104,7 @@ classdef Us4R < handle
             % :param value: values to apply at given sampling time
             % :param applyCharacteristic: set it to true if you want to compensate response characteristic
             % (pre-computed by us4us).
-            obj.ptr.callMethod("setTgcCurveTimeValue", 0, t, v, logical(applyCharacteristic));
+            obj.ptr.callMethod("setVcatTimeValue", 0, t, v, logical(applyCharacteristic));
         end
 
         function setDtgcAttenuation(obj, attenuation)
