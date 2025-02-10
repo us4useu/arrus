@@ -154,8 +154,7 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
     EXPECT_EQ(rxSettings->getDtgcAttenuation(), 0);
     EXPECT_EQ(rxSettings->getPgaGain(), 24);
     EXPECT_EQ(rxSettings->getLnaGain(), 12);
-    EXPECT_EQ(rxSettings->getTgcSamples(),
-              std::vector<TGCSampleValue>({20, 21, 22}));
+    EXPECT_EQ(rxSettings->getTgcSamples(), std::vector<TGCSampleValue>({20, 21, 22}));
     EXPECT_EQ(rxSettings->getLpfCutoff(), 1000000);
     EXPECT_FALSE(rxSettings->getActiveTermination().has_value());
     EXPECT_FALSE(us4rSettings.getTxRxLimits().has_value());
