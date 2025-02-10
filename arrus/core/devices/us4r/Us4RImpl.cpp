@@ -625,7 +625,7 @@ void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool appl
         setVcat(y, applyCharacteristic);
     } else {
         vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setTgcCurve(tgcValues, applyCharacteristic);
+        setVcat(tgcValues, applyCharacteristic);
     }
 }
 
