@@ -582,7 +582,7 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, false); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
@@ -599,18 +599,45 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
         // Turn off TGC
         setTgcCurve(y, applyCharacteristic);
     } else {
-        auto timeStartIt = std::min_element(std::begin(t), std::end(t));
-        auto timeEndIt = std::max_element(std::begin(t), std::end(t));
-
-        auto timeEnd = *timeEndIt;
-
-        auto valueStart = y[std::distance(std::begin(t), timeStartIt)];
-        auto valueEnd = y[std::distance(std::begin(t), timeEndIt)];
-
-        std::vector<float> hardwareTgcSamplingPoints = getTgcCurvePoints(timeEnd);
-        auto tgcValues = ::arrus::interpolate1d<float>(t, y, hardwareTgcSamplingPoints, valueStart, valueEnd);
+        vector<float> tgcValues = interpolateToSystemTGC(t, y);
         setTgcCurve(tgcValues, applyCharacteristic);
     }
+}
+
+std::vector<float> Us4RImpl::interpolateToSystemTGC(const vector<float> &t, const vector<float> &y) const {
+    auto timeStartIt = min_element(std::begin(t), std::end(t));
+    auto timeEndIt = max_element(std::begin(t), std::end(t));
+
+    auto timeEnd = *timeEndIt;
+
+    auto valueStart = y[distance(std::begin(t), timeStartIt)];
+    auto valueEnd = y[distance(std::begin(t), timeEndIt)];
+
+    vector<float> hardwareTgcSamplingPoints = getTgcCurvePoints(timeEnd);
+    auto tgcValues = interpolate1d<float>(t, y, hardwareTgcSamplingPoints, valueStart, valueEnd);
+    return tgcValues;
+}
+
+void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic) {
+    ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
+    if (y.empty()) {
+        // Turn off TGC
+        setVcat(y, applyCharacteristic);
+    } else {
+        vector<float> tgcValues = interpolateToSystemTGC(t, y);
+        setTgcCurve(tgcValues, applyCharacteristic);
+    }
+}
+
+void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true); }
+
+void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic) {
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
+                             .setVcat(attenuation)
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .build();
+    setRxSettings(newRxSettings);
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {

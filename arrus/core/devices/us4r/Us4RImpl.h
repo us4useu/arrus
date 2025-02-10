@@ -7,24 +7,25 @@
 #include <thread>
 
 #include <boost/algorithm/string.hpp>
+#include <vector>
 
-#include "TxTimeoutRegister.h"
 #include "BlockingQueue.h"
+#include "TxTimeoutRegister.h"
 #include "Us4REvent.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/utils.h"
 
 namespace arrus::devices {
@@ -163,6 +164,9 @@ public:
     float getMaximumTGCValue() const override;
 
     std::pair<float, float> getTGCValueRange() const;
+    void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) override;
+    void setVcat(const std::vector<float> &attenuation) override;
+    void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
 
 private:
     struct VoltageLogbook {
@@ -209,6 +213,7 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
+    std::vector<float> interpolateToSystemTGC(const std::vector<float> &t, const std::vector<float> &y) const;
     void registerPulserIRQCallback();
     void handleEvents();
     void handlePulserInterrupt();

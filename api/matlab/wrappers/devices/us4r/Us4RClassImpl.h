@@ -31,6 +31,7 @@ public:
         ARRUS_MATLAB_ADD_METHOD("getChannelsMask", getChannelsMask);
         ARRUS_MATLAB_ADD_METHOD("setTgcCurveValue", setTgcCurveValue);
         ARRUS_MATLAB_ADD_METHOD("setTgcCurveTimeValue", setTgcCurveTimeValue);
+        ARRUS_MATLAB_ADD_METHOD("setVcatTimeValue", setVcatTimeValue);
         ARRUS_MATLAB_ADD_METHOD("setDtgcAttenuation", setDtgcAttenuation);
         ARRUS_MATLAB_ADD_METHOD("setActiveTermination", setActiveTermination);
         ARRUS_MATLAB_ADD_METHOD("setLnaGain", setLnaGain);
@@ -82,6 +83,13 @@ public:
         std::vector<float> value = convertToCppVector<float>(inputs[1], "tgc values");
         bool applyCharacteristic = inputs[2][0];
         get(obj)->setTgcCurve(time, value, applyCharacteristic);
+    }
+
+    void setVcatTimeValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        std::vector<float> time = convertToCppVector<float>(inputs[0], "tgc time");
+        std::vector<float> value = convertToCppVector<float>(inputs[1], "attenuation values");
+        bool applyCharacteristic = inputs[2][0];
+        get(obj)->setVcat(time, value, applyCharacteristic);
     }
 
     void setDtgcAttenuation(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
