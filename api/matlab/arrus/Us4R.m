@@ -82,7 +82,7 @@ classdef Us4R < handle
         end
 
         function setVcatCurve(obj,time,attenuation,applyCharacteristic)
-            obj.us4r.setVcat(obj, time, attenuation, applyCharacteristic);
+            obj.us4r.setVcat(time, attenuation, applyCharacteristic);
             
         end
 
