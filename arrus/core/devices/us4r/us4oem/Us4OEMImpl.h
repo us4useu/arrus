@@ -119,7 +119,7 @@ public:
     float getActualTxFrequency(float frequency) override;
 
     bool isOEMPlus() {
-        return getOemVersion() == 2;
+        return getOemVersion() >= 2;
     }
     void clearDMACallbacks() override;
 

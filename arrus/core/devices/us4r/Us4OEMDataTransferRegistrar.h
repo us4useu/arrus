@@ -104,7 +104,6 @@ public:
     }
 
     void cleanupSequencerTransfers() {
-        std::cout << "Cleaning up sequencer transfers " << std::endl;
         uint16 elementFirstFiring = 0;
         for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
             for(auto &arrayTransfers: elementTransfers) {
