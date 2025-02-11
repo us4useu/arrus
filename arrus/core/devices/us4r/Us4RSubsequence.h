@@ -68,6 +68,7 @@ public:
     ) {
         this->sequences = sequences;
         this->logicalToPhysicalOp = createGlobalMapping(mapping);
+        this->logicalToPhysicalOpLocal = mapping;
         this->oemSequences = oemSequences;
         this->oemBuffers = oemBuffers;
         for(const auto &m: fcms) {
@@ -98,13 +99,16 @@ public:
         uint16_t oemStart = logicalToPhysicalOp.at(sequenceId).at(start).first;
         uint16_t oemEnd = logicalToPhysicalOp.at(sequenceId).at(end).second;
 
+        uint16_t oemStartLocal = logicalToPhysicalOpLocal.at(sequenceId).at(start).first;
+        uint16_t oemEndLocal = logicalToPhysicalOpLocal.at(sequenceId).at(end).second;
+
         std::vector<Us4OEMBuffer> views;
         // Update us4OEM buffers.
         // We only limit the range of the parts list and change the size and shape of the elements buffer (required
         // for creating new host buffer).
         // We do not recalculate firing numbers! This way transfer registrar will use the proper firing numbers.
         for (const auto &oemBuffer : oemBuffers) {
-            views.push_back(getOEMBufferView(oemBuffer, sequenceId, oemStart, oemEnd));
+            views.push_back(getOEMBufferView(oemBuffer, sequenceId, oemStartLocal, oemEndLocal));
         }
         // Update FCM.
         FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*(fcm.at(sequenceId)));
@@ -112,8 +116,8 @@ public:
         // OEM nr -> number of frames
         std::vector<uint32> nFrames;
         for (size_t oem = 0; oem < oemBuffers.size(); ++oem) {
-            auto nextFrameNumber = opToNextFrame.at(sequenceId).at(oem).getNextFrame(oemStart);
-            auto n = opToNextFrame.at(sequenceId).at(oem).getNumberOfFrames(oemStart, oemEnd);
+            auto nextFrameNumber = opToNextFrame.at(sequenceId).at(oem).getNextFrame(oemStartLocal);
+            auto n = opToNextFrame.at(sequenceId).at(oem).getNumberOfFrames(oemStartLocal, oemEndLocal);
             nFrames.push_back(n);
             if (nextFrameNumber.has_value()) {
                 // Subtract from the physical frame numbers, the number of preceding frames (e.g. move frame 3 to 0).
@@ -125,7 +129,7 @@ public:
         outFCMBuilder.recalculateOffsets();
         return Us4RSubsequence{
             oemStart, oemEnd,
-            getTimeToNextTrigger(sequenceId, oemStart, oemEnd, sri),
+            getTimeToNextTrigger(sequenceId, oemStartLocal, oemEndLocal, sri),
             views, outFCMBuilder
         };
     }
@@ -310,12 +314,14 @@ private:
     std::vector<::arrus::ops::us4r::TxRxSequence> sequences;
     /** OEM sequences (with physical ops) */
     std::vector<std::vector<::arrus::devices::us4r::TxRxParametersSequence>> oemSequences;
-    /** OEM buffers for the complete, input scheme, i.e. right after upload method was called */
+    /** OEM buffers for the complete, input scheme, i.e. right after upload method was called. OEM ordinal -> buffer. */
     std::vector<Us4OEMBuffer> oemBuffers;
     /** Frame channel mappings for the complete, input scheme, i.e. right after upload method was called */
     std::vector<FrameChannelMappingImpl::Handle> fcm;
     /** sequence id -> op id -> GLOBAL firing start, end */
     std::vector<LogicalToPhysicalOp> logicalToPhysicalOp;
+    /** sequence id -> op id -> Local (for the given sequence) firing start, end */
+    std::vector<LogicalToPhysicalOp> logicalToPhysicalOpLocal;
     /** sequence id -> OEM id -> op to next RF frame */
     std::vector<std::vector<OpToNextFrameMapping>> opToNextFrame;
 };
