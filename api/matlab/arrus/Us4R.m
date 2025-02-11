@@ -76,6 +76,10 @@ classdef Us4R < handle
             nProbeElem = obj.sys.nElem;
         end
 
+        function fs = getSamplingFrequency(obj)
+            fs = obj.us4r.getSamplingFrequency();
+        end
+
         function setTgcCurve(varargin)
             obj = varargin{1};
             obj.us4r.setTgcCurve(varargin{2:end});
