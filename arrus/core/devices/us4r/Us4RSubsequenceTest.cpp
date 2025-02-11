@@ -231,7 +231,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
     const auto &oem1Buffer = resultOEMBuffers.at(1);
     EXPECT_EQ(oem1Buffer.getElement(0).getSize(), 2 * 4096);
     EXPECT_EQ(oem1Buffer.getElement(0).getAddress(), 2 * 4096);
-    EXPECT_EQ(oem0Buffer.getArrayDef(0).getDefinition().getShape(), Tuple<size_t>({2 * 4096, 1}));
+    EXPECT_EQ(oem1Buffer.getArrayDef(0).getDefinition().getShape(), Tuple<size_t>({2 * 4096, 1}));
     EXPECT_EQ(oem1Buffer.getParts(0).at(0).getEntryId(), 2);
     EXPECT_EQ(oem1Buffer.getParts(0).at(1).getEntryId(), 3);
 
