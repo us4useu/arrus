@@ -93,8 +93,13 @@ public:
     }
 
     void setDtgcAttenuation(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        uint16 attenuation = inputs[0][0];
-        get(obj)->setDtgcAttenuation(attenuation);
+        if(inputs[0].isEmpty()) {
+            get(obj)->setDtgcAttenuation(std::nullopt);
+        }
+        else {
+            uint16 attenuation = inputs[0][0];
+            get(obj)->setDtgcAttenuation(attenuation);
+        }
     }
 
     void setActiveTermination(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
