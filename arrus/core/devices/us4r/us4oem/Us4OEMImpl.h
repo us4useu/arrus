@@ -107,7 +107,6 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
     Interval<Voltage> getAcceptedVoltageRange() override;
-    void clearCallbacks() override;
     Us4OEMDescriptor getDescriptor() const override;
 
     HVPSMeasurement getHVPSMeasurement() override;

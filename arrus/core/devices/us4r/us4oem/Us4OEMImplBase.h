@@ -45,7 +45,6 @@ public:
     virtual void setTestPattern(RxTestPattern pattern) = 0;
     virtual BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
     virtual void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
-    virtual void clearCallbacks() = 0;
     virtual Us4OEMDescriptor getDescriptor() const = 0;
 
 

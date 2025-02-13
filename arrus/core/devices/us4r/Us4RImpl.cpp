@@ -353,7 +353,7 @@ void Us4RImpl::start() {
     }
     this->state = State::START_IN_PROGRESS;
     for (auto &us4oem : us4oems) {
-        us4oem->getIUs4OEM()->EnableInterrupts();
+        us4oem->getIUs4OEM()->EnableRuntimeInterrupts();
     }
     //  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
@@ -385,18 +385,13 @@ void Us4RImpl::stopDevice() {
         try {
             for (auto &us4oem : us4oems) {
                 us4oem->getIUs4OEM()->WaitForPendingTransfers();
-                us4oem->getIUs4OEM()->WaitForPendingInterrupts();
+                us4oem->getIUs4OEM()->DisableRuntimeInterrupts();
             }
         }
         catch(const std::exception &e) {
             logger->log(
                 LogSeverity::WARNING,
                 arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
-        }
-        // Here all us4R IRQ threads should not work anymore.
-        // Cleanup.
-        for (auto &us4oem : us4oems) {
-            us4oem->getIUs4OEM()->DisableInterrupts();
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
