@@ -115,7 +115,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
         )
         .get()
     };
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0));
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0)); // Note: the value 0.0 is the default value
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
@@ -136,7 +137,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
         )
         .get()
     };
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0));
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+
+    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0)); // Note: the default value of TxRxParameters
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
     EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
