@@ -40,8 +40,8 @@ namespace arrus::devices {
                 if(estimatedPulse.has_value()) {
                     auto pulse = estimatedPulse.value();
                     ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(pulse.getAmplitudeLevel(),
-                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(0),
-                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
+                                                      static_cast<ops::us4r::Pulse::State>(0),
+                                                      static_cast<ops::us4r::Pulse::State>(1),
                                                       firingStr);
                     // Tx - pulse
                     if(pulse.getAmplitudeLevel() == 0) { validateTx(pulse, txLimits0, firingStr); }
