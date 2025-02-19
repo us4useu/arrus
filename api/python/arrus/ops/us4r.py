@@ -19,12 +19,12 @@ class Pulse:
     :param center_frequency: pulse center frequency [Hz]
     :param n_periods: number of periods of the generated pulse, possible values: 0.5, 1, 1.5, ...
     :param inverse: true if the signal amplitude should be reversed, false otherwise
-    :param amplitude_level: TX voltage amplitude level to set
+    :param amplitude: TX voltage amplitude level to set, available values: 1 (HV1), 2 (HV0)
     """
     center_frequency: float
     n_periods: float
     inverse: bool
-    amplitude_level: int = 1
+    amplitude: int = 2
 
 
 @dataclass(frozen=True)
