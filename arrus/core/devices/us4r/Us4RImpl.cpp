@@ -157,7 +157,20 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     // List of available amplitudes (rails).
     std::unordered_set<int> availableAmplitudes = isHVPS ? std::unordered_set<int>{1, 2} : std::unordered_set<int>{2};
 
-    // Determin (min, max) voltage for each rail.
+    // Voltages should be in a strictly increasing order.
+    Voltage currentVoltageM = voltages.at(0).getVoltageMinus();
+    Voltage currentVoltageP = voltages.at(0).getVoltagePlus();
+    for(size_t i = 1; i < voltages.size(); ++i) {
+        if(currentVoltageM >= voltages.at(i).getVoltageMinus() || currentVoltageP >= voltages.at(i).getVoltagePlus()) {
+            throw IllegalArgumentException("TX voltage amplitudes (for the TX level 1 and 2) should be in strictly "
+                                           "increasing order, i.e. voltage[1].plus > voltage[0].plus and "
+                                           "voltage[1].minus > voltage[1].minus.");
+        }
+        currentVoltageM = voltages.at(i).getVoltageMinus();
+        currentVoltageP = voltages.at(i).getVoltagePlus();
+    }
+
+    // Determine (min, max) voltage for each rail.
     // amplitude (rail) -> vector of minimum / maximum values
     std::vector<std::vector<Voltage>> voltageMin(N_RAILS), voltageMax(N_RAILS);
     for(auto &oem: us4oems) {

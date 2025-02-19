@@ -247,11 +247,16 @@ def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
         else:
             raise ValueError("Voltages are expected to be integers "
                              "or pair of integers.")
-
-        min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
-        if not (min_v <= vm <= max_v) or not (min_v <= vp <= max_v):
-            raise ValueError("Voltages are expected to be values in range "
-                             f"[{min_v}, {max_v}]")
+        assert_hv_voltage_correct(vm)
+        assert_hv_voltage_correct(vp)
         result.append(arrus.core.HVVoltage(vm, vp))
     return arrus.core.VectorHVVoltage(result)
+
+
+def assert_hv_voltage_correct(value):
+    min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
+    if not (min_v <= value <= max_v):
+        raise ValueError("Voltages are expected to be values in range "
+                         f"[{min_v}, {max_v}]")
+
 
