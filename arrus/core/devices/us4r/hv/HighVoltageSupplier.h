@@ -32,15 +32,15 @@ public:
         // The voltages are expected to be in the order: amplitude level 1 (HV 1), amplitude level 2 (HV 0)
         // IHV expects the order: HV 0, HV 1.
         // HV 0
-        us4RVoltages.push_back(
+        us4RVoltages.emplace_back(
             // Level 2 (-1)
-            IHVVoltage(voltages.at(1).getVoltageMinus(), voltages.at(1).getVoltagePlus())
+            voltages.at(1).getVoltageMinus(), voltages.at(1).getVoltagePlus()
         );
 
         // HV 1
-        us4RVoltages.push_back(
+        us4RVoltages.emplace_back(
             // Level 1 (-1)
-            IHVVoltage(voltages.at(0).getVoltageMinus(), voltages.at(0).getVoltagePlus())
+            voltages.at(0).getVoltageMinus(), voltages.at(0).getVoltagePlus()
         );
 
         try {
