@@ -43,7 +43,7 @@ def main():
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
     with arrus.Session("/home/pjarosik/us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(5)
+        us4r.set_hv_voltage((5, 6), (10, 11))
 
         wfBuilder = WaveformBuilder()
         wfBuilder.add(duration=[0.2e-6, 0.5e-6, 1e-6], 
