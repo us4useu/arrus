@@ -23,14 +23,10 @@ public:
 	 * @param centerFrequency center frequency of the transmitted pulse
 	 * @param nPeriods pulse number of periods, should be a multiple of 0.5
 	 * @param inverse if set to true - inverse the pulse polarity
-	 * @param amplitudeLevel amplitude level to use, default: 2
+	 * @param amplitude amplitude level to use, default: 2 (HVM/P 0)
 	 */
-    Pulse(float centerFrequency, float nPeriods, bool inverse, State amplitudeLevel = 2)
-        : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel) {
-        if(! (amplitudeLevel == 1 || amplitudeLevel == 2)) {
-            throw IllegalArgumentException("Pulse amplitude level should be 1 or 2");
-        }
-    }
+    Pulse(float centerFrequency, float nPeriods, bool inverse, State amplitude = 2)
+        : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitude(amplitude) {}
 
     float getCenterFrequency() const {
         return centerFrequency;
@@ -42,13 +38,13 @@ public:
 
     bool isInverse() const { return inverse; }
 
-    State getAmplitudeLevel() const { return amplitudeLevel; }
+    State getAmplitude() const { return amplitude; }
 
     bool operator==(const Pulse &rhs) const {
         return centerFrequency == rhs.centerFrequency
                && nPeriods == rhs.nPeriods
                && inverse == rhs.inverse
-               && amplitudeLevel == rhs.amplitudeLevel;
+               && amplitude == rhs.amplitude;
     }
 
     bool operator!=(const Pulse &rhs) const {
@@ -69,7 +65,7 @@ public:
         if(currentNPeriods >= 1.0f) {
             WaveformSegment segment{
                 {t/2, t/2},
-                {(int8)(polarity*amplitudeLevel), (int8)(-1*polarity*amplitudeLevel)}
+                {(int8)(polarity* amplitude), (int8)(-1*polarity* amplitude)}
             };
             float integral, fractional;
             fractional = std::modf(nPeriods, &integral);
@@ -81,14 +77,14 @@ public:
             auto rest = std::clamp(currentNPeriods, 0.0f, 0.5f);
             WaveformSegment rem1{
                 {rest *t},
-                {(int8)(polarity*amplitudeLevel)}
+                {(int8)(polarity* amplitude)}
             };
             wb.add(rem1);
             rest = currentNPeriods- rest;
             if(rest > 0.0f) {
                 WaveformSegment rem2{
                     {rest *t},
-                    {(int8)(-1*polarity*amplitudeLevel)}
+                    {(int8)(-1*polarity* amplitude)}
                 };
                 wb.add(rem2);
             }
@@ -212,8 +208,7 @@ private:
         return std::fabs(a - b) < atol;
     }
 
-    static std::optional<float> getNCyclesFractional(
-        const WaveformSegment &segment, int8 expectedState, float period) {
+    static std::optional<float> getNCyclesFractional(const WaveformSegment &segment, int8 expectedState, float period) {
         if(segment.getDuration().size() > 1) {
             // Each segment should contain a single state
             return std::nullopt;
@@ -240,7 +235,7 @@ private:
     float centerFrequency;
     float nPeriods;
     bool inverse;
-    State amplitudeLevel = 0;
+    State amplitude {2};
 };
 
 }

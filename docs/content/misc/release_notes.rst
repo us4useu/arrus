@@ -8,7 +8,7 @@ Release notes
 
 - core (C++):
 
-    - note: the Pulser(amplitudeLevel = 0) NOW BECOMES CLAMP, NOT THE HVP0/HVM0. HVP0/HVM0 is amplitudeLevel == 1, HVP1/HVM1 is amplitude level == 2.
+    - note: the Pulser(amplitude = 0) NOW BECOMES CLAMP, NOT THE HVP0/HVM0. HVP0/HVM0 is amplitude == 2, HVP1/HVM1 is amplitude level == 1.
 
 0.11.x
 -----

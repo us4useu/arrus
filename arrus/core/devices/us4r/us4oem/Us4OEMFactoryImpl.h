@@ -85,7 +85,7 @@ public:
         if(limits.has_value()) {
             // Update the defualt limits with the limits defined by the user.
             ops::us4r::TxRxSequenceLimitsBuilder sequenceLimitsBuilder{descriptor.getTxRxSequenceLimits()};
-            ops::us4r::TxLimitsBuilder txLimitsBuilder{descriptor.getTxRxSequenceLimits().getTxRx().getTx1()};
+            ops::us4r::TxLimitsBuilder txLimitsBuilder{descriptor.getTxRxSequenceLimits().getTxRx().getTxHV1()};
             if(limits->getPulseLength().has_value()) {
                 txLimitsBuilder.setPulseLength(limits->getPulseLength().value());
             }
@@ -101,7 +101,7 @@ public:
             }
             auto newTxLimits = txLimitsBuilder.build();
             auto currentRxLimits = descriptor.getTxRxSequenceLimits().getTxRx().getRx();
-            sequenceLimitsBuilder.setTxRxLimits(descriptor.getTxRxSequenceLimits().getTxRx().getTx0(), newTxLimits, currentRxLimits, newPri);
+            sequenceLimitsBuilder.setTxRxLimits(descriptor.getTxRxSequenceLimits().getTxRx().getTxHV0(), newTxLimits, currentRxLimits, newPri);
             auto txRxSequenceLimits = sequenceLimitsBuilder.build();
             auto newDescriptor = Us4OEMDescriptorBuilder{descriptor}
                                      .setTxRxSequenceLimits(txRxSequenceLimits)
