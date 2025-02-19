@@ -142,32 +142,74 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
 }
 
 void Us4RImpl::setVoltage(Voltage voltage) {
-    std::vector<HVVoltage> voltages = {HVVoltage(voltage, voltage)};
+    std::vector<HVVoltage> voltages = {HVVoltage(0, 0), HVVoltage(voltage, voltage)};
     setVoltage(voltages);
 }
 
 void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
+    const int N_RAILS = 2;
+    ARRUS_REQUIRES_TRUE(voltages.size() == N_RAILS, "Voltages for HV0 and HV1 should be provided.");
+    auto &hvModel = this->hv[0]->getModelId();
 
-    // Determine the narrowest voltage range for us4OEMs and the connected probes
-    // (i.e. find the maximum start voltage, minimum end voltage).
-    std::vector<Voltage> voltageStart, voltageEnd;
+    bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
+    bool isHVPS = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps";
+    // List of available amplitudes (rails).
+    std::unordered_set<int> availableAmplitudes = isHVPS ? std::unordered_set<int>{1, 2} : std::unordered_set<int>{2};
+
+    // Determin (min, max) voltage for each rail.
+    // amplitude (rail) -> vector of minimum / maximum values
+    std::vector<std::vector<Voltage>> voltageMin(N_RAILS), voltageMax(N_RAILS);
     for(auto &oem: us4oems) {
-        const auto &voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTxHV0().getVoltage();
-        voltageStart.push_back(voltageLimits.start());
-        voltageEnd.push_back(voltageLimits.end());
+        const auto &txRxLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx();
+        for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
+            Interval<Voltage> voltageLimits;
+            switch(amplitude) {
+            case 1:
+                voltageLimits = txRxLimits.getTx1().getVoltage();
+                break;
+            case 2:
+                voltageLimits = txRxLimits.getTx2().getVoltage();
+                break;
+            default:
+                throw IllegalArgumentException(format("Unsupported voltage amplitude {}", amplitude));
+            }
+            if(setContains(availableAmplitudes, amplitude)) {
+                // Voltage available
+                voltageMin.at(amplitude-1).push_back(voltageLimits.start());
+                voltageMax.at(amplitude-1).push_back(voltageLimits.end());
+            }
+            else {
+                // Voltage unavailable
+                voltageMin.at(amplitude-1).push_back(0);
+                voltageMax.at(amplitude-1).push_back(0);
+            }
+        }
     }
     for(const auto &probe: probeSettings) {
         const auto &voltageLimits = probe.getModel().getVoltageRange();
-        voltageStart.push_back(voltageLimits.start());
-        voltageEnd.push_back(voltageLimits.end());
+        for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
+            voltageMin.at(amplitude-1).push_back(voltageLimits.start());
+            voltageMax.at(amplitude-1).push_back(voltageLimits.end());
+        }
     }
-    auto minVoltage = *std::max_element(std::begin(voltageStart), std::end(voltageStart));
-    auto maxVoltage = *std::min_element(std::begin(voltageEnd), std::end(voltageEnd));
-    if(minVoltage > maxVoltage) {
-        throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
-                                           "the actual minimum voltage {} is greater than the maximum: {}.",
-                                           minVoltage, maxVoltage));
+
+    std::vector<Voltage> minVoltages(N_RAILS);
+    std::vector<Voltage> maxVoltages(N_RAILS);
+    for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
+
+        const auto &min = voltageMin.at(amplitude-1);
+        const auto &max = voltageMax.at(amplitude-1);
+
+        auto minVoltage = *std::max_element(std::begin(min), std::end(min));
+        auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
+        if(minVoltage > maxVoltage) {
+            throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
+                                               "the actual minimum voltage {} is greater than the maximum: {}.",
+                                               minVoltage, maxVoltage));
+        }
+        minVoltages.at(amplitude-1) = minVoltage;
+        maxVoltages.at(amplitude-1) = maxVoltage;
     }
 
     ARRUS_REQUIRES_TRUE(!voltages.empty(), "At least a single voltage level should be set.");
@@ -176,6 +218,10 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
         const auto& voltage = voltages[i];
         auto voltageMinus = voltage.getVoltageMinus();
         auto voltagePlus = voltage.getVoltagePlus();
+
+        const auto minVoltage = minVoltages.at(i);
+        const auto maxVoltage = maxVoltages.at(i);
+
         logger->log(LogSeverity::INFO,
             format("Setting voltage -{}, +{}, level: {}", voltageMinus, voltagePlus, i));
         ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
@@ -189,16 +235,6 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     }
 
     // Set voltages.
-    bool isHVPS = true;
-
-    for (uint8_t n = 0; n < hv.size(); n++) {
-        auto &hvModel = this->hv[n]->getModelId();
-        if (hvModel.getName() != "us4oemhvps") {
-            isHVPS = false;
-            break;
-        }
-    }
-
     if (isHVPS) {
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
@@ -219,14 +255,10 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     float tolerance = 4.0f;// 4V tolerance
     int retries = 5;
 
-    //Verify register
-    auto &hvModel = this->hv[0]->getModelId();
-    bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
-
     if(isHV256) {
         Voltage actualVoltage = this->getVoltage();
         // For HV256 we expect only a single voltage level, and +V == -V.
-        auto expectedVoltage = voltages[0].getVoltagePlus();
+        auto expectedVoltage = voltages[1].getVoltagePlus();
         if (actualVoltage != expectedVoltage) {
             disableHV();
             throw IllegalStateException(
@@ -238,8 +270,8 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
-    // TODO what about checking voltages on rail 1?
-    checkVoltage(voltages[0].getVoltageMinus(), voltages[0].getVoltagePlus(), tolerance, retries, isHV256);
+    // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
+    checkVoltage(voltages[1].getVoltageMinus(), voltages[1].getVoltagePlus(), tolerance, retries, isHV256);
 }
 
 unsigned char Us4RImpl::getVoltage() {

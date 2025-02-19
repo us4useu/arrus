@@ -25,9 +25,24 @@ public:
     HighVoltageSupplier(const DeviceId &id, HVModelId modelId);
 
     void setVoltage(const std::vector<HVVoltage> &voltages) {
+        ARRUS_REQUIRES_TRUE(voltages.size() == 2, "The vector of voltages should contain exactly two values!");
         std::vector<IHVVoltage> us4RVoltages;
-        std::transform(std::begin(voltages), std::end(voltages), std::back_insert_iterator(us4RVoltages),
-                       [](const HVVoltage &v) { return IHVVoltage(v.getVoltageMinus(), v.getVoltagePlus()); });
+
+        // NOTE!
+        // The voltages are expected to be in the order: amplitude level 1 (HV 1), amplitude level 2 (HV 0)
+        // IHV expects the order: HV 0, HV 1.
+        // HV 0
+        us4RVoltages.push_back(
+            // Level 2 (-1)
+            IHVVoltage(voltages.at(1).getVoltageMinus(), voltages.at(1).getVoltagePlus())
+        );
+
+        // HV 1
+        us4RVoltages.push_back(
+            // Level 1 (-1)
+            IHVVoltage(voltages.at(0).getVoltageMinus(), voltages.at(0).getVoltagePlus())
+        );
+
         try {
             getIHV()->EnableHV();
             getIHV()->SetHVVoltage(us4RVoltages);

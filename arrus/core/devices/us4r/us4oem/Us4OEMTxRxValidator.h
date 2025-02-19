@@ -24,8 +24,8 @@ namespace arrus::devices {
         const auto startSample = txRxs.at(0).getRxSampleRange().start();
         const auto& sequenceLimits = descriptor.getTxRxSequenceLimits();
         const auto& txRxLimits = sequenceLimits.getTxRx();
-        const auto& txLimitsHV0 = txRxLimits.getTxHV0();
-        const auto& txLimitsHV1 = txRxLimits.getTxHV1();
+        const auto& txLimits1 = txRxLimits.getTx1();
+        const auto& txLimits2 = txRxLimits.getTx2();
         const auto& rxLimits = txRxLimits.getRx();
 
         for (size_t firing = 0; firing < txRxs.size(); ++firing) {
@@ -35,8 +35,8 @@ namespace arrus::devices {
                 // Tx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(descriptor.getNTxChannels()), firingStr);
-                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimitsHV0.getDelay(), firingStr);
-                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimitsHV1.getDelay(), firingStr);
+                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits1.getDelay(), firingStr);
+                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits2.getDelay(), firingStr);
                 auto estimatedPulse = arrus::ops::us4r::Pulse::fromWaveform(op.getTxWaveform());
                 if(estimatedPulse.has_value()) {
                     auto pulse = estimatedPulse.value();
@@ -45,12 +45,12 @@ namespace arrus::devices {
                                                       static_cast<ops::us4r::Pulse::State>(2),
                                                       firingStr);
 
-                    switch(TxWaveformConverter::getDeviceState(ARRUS_SAFE_CAST(pulse.getAmplitude(), int8))) {
-                    case TxWaveformConverter::DeviceState::HVP0:
-                        validateTx(pulse, txLimitsHV0, firingStr);
+                    switch(pulse.getAmplitude()) {
+                    case 1:
+                        validateTx(pulse, txLimits1, firingStr);
                         break;
-                    case TxWaveformConverter::DeviceState::HVP1:
-                        validateTx(pulse, txLimitsHV1, firingStr);
+                    case 2:
+                        validateTx(pulse, txLimits2, firingStr);
                         break;
                     default:
                         throw IllegalArgumentException(format("Unsupported amplitude value: {}", pulse.getAmplitude()));

@@ -803,7 +803,7 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     if(ius4oem->GetOemVersion() != 2 && maxLength.has_value()) {
         throw IllegalArgumentException("Currently it is possible to set maxLength value only for OEM+ (type 2)");
     }
-    TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTxHV0()};
+    TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTx2()};
     if(maxLength.has_value()) {
         txBuilder.setPulseLength(Interval<float>{0.0f, maxLength.value()});
     }
@@ -813,13 +813,18 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
         auto defaultLimits = Us4OEMDescriptorFactory::getDescriptor(ius4oem, isMaster())
                                  .getTxRxSequenceLimits()
                                  .getTxRx()
-                                 .getTxHV0().getPulseCycles();
+                                 .getTx2().getPulseCycles();
         txBuilder.setPulseCycles(defaultLimits);
     }
     TxLimits txLimits = txBuilder.build();
     TxRxSequenceLimitsBuilder seqBuilder{descriptor.getTxRxSequenceLimits()};
-    seqBuilder.setTxRxLimits(txLimits, descriptor.getTxRxSequenceLimits().getTxRx().getTxHV1(), descriptor.getTxRxSequenceLimits().getTxRx().getRx(),
-                             descriptor.getTxRxSequenceLimits().getTxRx().getPri());
+    seqBuilder.setTxRxLimits(
+        // TX amplitude 1 / HV rail 1
+        descriptor.getTxRxSequenceLimits().getTxRx().getTx1(),
+        // TX amplitude 2 / HV rail 0
+        txLimits,
+        descriptor.getTxRxSequenceLimits().getTxRx().getRx(),
+        descriptor.getTxRxSequenceLimits().getTxRx().getPri());
     Us4OEMDescriptorBuilder builder{descriptor};
     builder.setTxRxSequenceLimits(seqBuilder.build());
     // Set the new descriptor.
