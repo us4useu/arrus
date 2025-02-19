@@ -50,7 +50,7 @@ def main():
                       state   =[-1,     1,      -1], 
                       n=2)
         wfBuilder.add(duration=[1.5e-6, 2e-6, 3e-6], 
-                      state   =[1,      -1,   1])
+                      state   =[2,      -1,   2])
         wf = wfBuilder.build()
 
 
