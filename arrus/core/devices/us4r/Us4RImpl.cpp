@@ -249,7 +249,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
             const auto maxVoltage = maxVoltages.at(i);
 
             logger->log(LogSeverity::INFO,
-                        format("Setting voltage -{}, +{}, level: {}", voltageMinus, voltagePlus, i));
+                        format("Setting voltage -{}, +{}, TX amplitude: {}", voltageMinus, voltagePlus, i+1));
             ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
                                   IllegalArgumentException(format(
                                       "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,

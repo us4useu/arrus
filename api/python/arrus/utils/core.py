@@ -37,7 +37,7 @@ def convert_to_core_sequence(seq):
                 centerFrequency=excitation.center_frequency,
                 nPeriods=excitation.n_periods,
                 inverse=excitation.inverse,
-                amplitudeLevel=excitation.amplitude_level
+                amplitude=excitation.amplitude
             )
         elif isinstance(excitation, arrus.ops.us4r.Waveform):
             waveformBuilder = arrus.core.WaveformBuilder()

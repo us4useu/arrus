@@ -137,7 +137,8 @@ class Us4R(Device, Ultrasound):
             set_hv_voltage((5, 6), (10, 11)) -- sets -5 V for TX state -1, +6 V for TX state +1, -10 V for TX state -2, +11 V for TX state +2
         """
         if len(args) == 1:
-            self._handle.setVoltage(arrus.utils.core.assert_hv_voltage_correct(args[0]))
+            arrus.utils.core.assert_hv_voltage_correct(args[0])
+            self._handle.setVoltage(args[0])
         else:
             voltages = arrus.utils.core.convert_to_hv_voltages(args)
             self._handle.setVoltage(voltages)

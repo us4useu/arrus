@@ -51,7 +51,7 @@ public:
      *
      * @param voltage voltage to set [V]
      */
-    virtual void setVoltage(Voltage voltage) = 0;
+    virtual void setVoltage(unsigned char voltage) = 0;
 
     /**
      * Sets HV voltage.
