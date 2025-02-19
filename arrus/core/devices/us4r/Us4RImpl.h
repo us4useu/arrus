@@ -209,6 +209,7 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
+    void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
     void registerPulserIRQCallback();
     void handleEvents();
     void handlePulserInterrupt();

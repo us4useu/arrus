@@ -24,28 +24,12 @@ public:
 
     HighVoltageSupplier(const DeviceId &id, HVModelId modelId);
 
-    void setVoltage(const std::vector<HVVoltage> &voltages) {
-        ARRUS_REQUIRES_TRUE(voltages.size() == 2, "The vector of voltages should contain exactly two values!");
-        std::vector<IHVVoltage> us4RVoltages;
-
-        // NOTE!
-        // The voltages are expected to be in the order: amplitude level 1 (HV 1), amplitude level 2 (HV 0)
-        // IHV expects the order: HV 0, HV 1.
-        // HV 0
-        us4RVoltages.emplace_back(
-            // Level 2 (-1)
-            voltages.at(1).getVoltageMinus(), voltages.at(1).getVoltagePlus()
-        );
-
-        // HV 1
-        us4RVoltages.emplace_back(
-            // Level 1 (-1)
-            voltages.at(0).getVoltageMinus(), voltages.at(0).getVoltagePlus()
-        );
-
+    void setVoltage(const std::vector<IHVVoltage> &voltages) {
+        ARRUS_REQUIRES_TRUE(voltages.size() == 2 || voltages.size() == 1,
+                            "The vector of voltages should contain exactly two values!");
         try {
             getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(us4RVoltages);
+            getIHV()->SetHVVoltage(voltages);
         } catch (const ::us4us::ValidationException &) {
             // Disable HV and Propage validation errors.
             try {
@@ -68,7 +52,7 @@ public:
                                         "message: '{}', trying once more.",
                                         e.what()));
             getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(us4RVoltages);
+            getIHV()->SetHVVoltage(voltages);
         }
     }
 
