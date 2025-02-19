@@ -187,15 +187,14 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     // amplitude (rail) -> vector of minimum / maximum values
     std::vector<std::vector<Voltage>> voltageMin(N_RAILS), voltageMax(N_RAILS);
     for(auto &oem: us4oems) {
-        const auto &txRxLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx();
         for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
             Interval<Voltage> voltageLimits;
             switch(amplitude) {
             case 1:
-                voltageLimits = txRxLimits.getTx1().getVoltage();
+                voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getVoltage();
                 break;
             case 2:
-                voltageLimits = txRxLimits.getTx2().getVoltage();
+                voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx2().getVoltage();
                 break;
             default:
                 throw IllegalArgumentException(format("Unsupported voltage amplitude {}", amplitude));
