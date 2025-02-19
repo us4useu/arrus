@@ -72,10 +72,22 @@ public:
         }
     }
 
+    /**
+     * Returns the default measured voltage.
+     * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
+     */
     unsigned char getVoltage() { return getIHV()->GetHVVoltage(); }
 
+    /**
+     * Returns the default measured voltage.
+     * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
+     */
     float getMeasuredPVoltage() { return getIHV()->GetMeasuredHVPVoltage(); }
 
+    /**
+     * Returns the default measured voltage.
+     * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
+     */
     float getMeasuredMVoltage() { return getIHV()->GetMeasuredHVMVoltage(); }
 
     void disable() {
