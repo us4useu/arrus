@@ -60,7 +60,7 @@ namespace arrus::devices {
                     for(const auto &segment : op.getTxWaveform().getSegments()) {
                         for(const auto &state: segment.getState()) {
                             ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(state,
-                                                              static_cast<ops::us4r::WaveformSegment::State>(0),
+                                                              static_cast<ops::us4r::WaveformSegment::State>(-2),
                                                               static_cast<ops::us4r::WaveformSegment::State>(2),
                                                               firingStr);
                         }
