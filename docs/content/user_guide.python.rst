@@ -381,6 +381,98 @@ create the ``arrus.ops.imaging.PwiSequence`` object:
         tgc_start=14,
         tgc_slope=0)
 
+Custom TX waveforms
+```````````````````
+
+.. note::
+
+    Custom TX waveforms are available only for the OEM+ systems.
+
+It is possible to specify arbitrary waveforms using
+`arrus.ops.us4r.Waveform`, `arrus.ops.us4r.WaveformSegment`
+`arrus.ops.us4r.WaveformBuilder`
+classes.
+
+Conceptually, `WaveformSegment` is one particular fragment of a `Waveform`:
+it is a sequence of states `WaveformSegment.states` along with their duration `Waveform.duration`.
+ **Importantly, the entire segment can be repeated multiple times
+ (using the `Waveform.n_repeats` parameter) without consuming the internal memory
+ of the pulsers (which is limited to 256 registers for the OEM+ rev 1).**
+
+`Waveform` is a collection of segments to be set on the device pulsers.
+
+`WaveformBuilder` is a convenience class that allows to build the waveform as
+ a sequence of states and duration.
+
+**5-level Waveforms**
+
+In the us4OEM+ there are 2 positive HV **rails** (HVP0 and HVP1) and 2 negative rails (HVM0 and HVM1).
+
+In ARRUS, we translate the concept of the **rail** to the concepts of the **amplitude** and Waveform **states** in the following way:
+
+- The waveform **state** is a `WaveformSegment` attribute `s`: it can be one of {-2, -1, 0, 1, 2} The value `s` is translated to HV rail in the following way:
+
+    - s = -2 corresponds to HVM0, s = +2 corresponds to HVP0,
+    - s = -1 corresponds to HVM1, s = +1 corresponds to HVP1,
+    - s = 0 corresponds to CLAMP state.
+
+- The `amplitude` is a `Pulse` attribute: it can be one of {1, 2}.
+  The `Pulse` object is translated to a periodic pulse (`Waveform`) (l, -l),
+  repeated a given number of times (`n_periods`), with the given transmitting
+  frequency (`center_frequency`).
+
+
+You can set the amplitudes -2, -1, +1, +2 using the `us4r.set_hv_voltage` method, e.g.:
+
+.. code-block:: python
+
+    us4r.set_hv_voltage((m1, p1), (m2, p2))
+
+where:
+
+- `m1` is the HV voltage for the state -1 (**absolute value**),
+- `p1` is the voltage for the state +1,
+- `m2` is the voltage for the state -2 (**absolute value**),
+- `p2` is the voltage for the state +2.
+
+**NOTE: all of the set_hv_voltage values must be positive**.
+
+The following restrictions apply: `m1 < m2` and `p1 < p2`.
+
+**Example**
+
+Please also see the `api/python/examples/custom_waveform.py` script.
+
+.. code-block:: python
+
+    us4r.set_hv_voltage((5, 6), (10, 11))
+
+    wfBuilder = WaveformBuilder()
+    # Set states -1 (0.2 us), 1 (0.5 us), -1 (1 us), and repeat that twice.
+    wfBuilder.add(duration=[0.2e-6, 0.5e-6, 1e-6],
+                  state   =[-1,     1,      -1],
+                  n=2)
+    # Set states 2 (1.5 us), 0 (2 us), 2 (3 us).
+    wfBuilder.add(duration=[1.5e-6, 2e-6, 3e-6],
+                  state   =[2,      0,   2])
+    wf = wfBuilder.build()
+
+    seq = TxRxSequence(
+        ops=[
+            TxRx(
+                Tx(aperture=[True]*n_elements,
+                   excitation=wf,
+                   delays=[0]*n_elements),
+                Rx(aperture=[True]*n_elements,
+                   sample_range=(0, 4096),
+                   downsampling_factor=1),
+                   pri=200e-6
+            ),
+        ],
+    )
+
+
+
 Processing
 ``````````
 

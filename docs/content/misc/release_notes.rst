@@ -8,7 +8,7 @@ Release notes
 
 - core (C++):
 
-    - note: the Pulser(amplitude = 0) NOW BECOMES CLAMP, NOT THE HVP0/HVM0. HVP0/HVM0 is amplitude == 2, HVP1/HVM1 is amplitude level == 1.
+    - Changed us4R TX voltage amplitudes order: the Pulser(amplitude = 0) NOW BECOMES CLAMP, NOT THE HVP0/HVM0. HVP0/HVM0 becomes amplitude == 2, HVP1/HVM1 becomes amplitude == 1.
 
 0.11.x
 -----
