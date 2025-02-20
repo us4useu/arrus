@@ -24,7 +24,7 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Medical Science Apps."
     ],
     install_requires=[
-        "numpy>=1.19.3<2.0.0",
+        "numpy>=1.19.3,<2.0.0",
         "scipy>=1.3.1"
     ],
     package_data={
