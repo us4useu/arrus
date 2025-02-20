@@ -86,7 +86,7 @@ public:
                 const auto &oemSequence = oemSeq.at(i);
                 const auto &buffer = this->oemBuffers.at(i);
                 seqMapping.emplace_back(
-                    oemSequence.size(),
+                    ARRUS_SAFE_CAST(oemSequence.size(), uint16_t),
                     buffer.getArrayDef(seqId).getParts()
                 );
             }
@@ -211,7 +211,7 @@ private:
             std::transform(
                 std::begin(map), std::end(map), std::begin(newMap),
                 [offset](const std::pair<OpId, OpId> &v) {
-                    return std::make_pair(v.first + offset, v.second + offset);
+                    return std::make_pair(ARRUS_SAFE_CAST(v.first + offset, uint16), ARRUS_SAFE_CAST(v.second + offset, uint16));
                 }
             );
             result.push_back(newMap);

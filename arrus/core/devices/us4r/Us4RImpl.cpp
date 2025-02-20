@@ -388,7 +388,7 @@ void Us4RImpl::start() {
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
         // the sequencer pointers will appropriately set to the start param value.
         auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
-        us4oem->enableSequencer(startEntry);
+        us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t));
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
         this->digitalBackplane.value()->enableExternalTrigger();
