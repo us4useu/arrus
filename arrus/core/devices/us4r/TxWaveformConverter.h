@@ -14,6 +14,32 @@ namespace arrus::devices {
  */
 class TxWaveformConverter {
 public:
+
+    // TODO this should probably be the part of us4r-api/Us4OEM
+    enum DeviceState {
+        HVM0 = 0b1010,
+        HVP0 = 0b0101,
+        HVM1 = 0b1001,
+        HVP1 = 0b0110,
+        CLAMP = 0b1111
+    };
+
+    static uint32_t getDeviceState(int8 apiState) {
+        switch (apiState) {
+        case -2:
+            return HVM0;
+        case 2:
+            return HVP0;
+        case -1:
+            return HVM1;
+        case 1:
+            return HVP1;
+        case 0:
+            return CLAMP;
+        default: throw IllegalArgumentException(format("Unrecognized waveform state: {}", apiState));
+        }
+    }
+
     constexpr static uint32_t END_STATE = 0b1110;
     // Waveform sampling frequency
     constexpr static float SAMPLING_FREQUENCY = 130e6f;
@@ -380,26 +406,7 @@ private:
         return setBitField(input, 11, size, (nRepetitions & mask) >> offset);
     }
 
-    static uint32_t getDeviceState(int8 apiState) {
-        switch (apiState) {
-        case -1:
-            // HVM0
-            return 0b1010;
-        case 1:
-            // HVP0
-            return 0b0101;
-        case -2:
-            //HVM1
-            return 0b1001;
-        case 2:
-            // HVP1
-            return 0b0110;
-        case 0:
-            // CLAMP
-            return 0b1111;
-        default: throw IllegalArgumentException(format("Unrecognized waveform state: {}", apiState));
-        }
-    }
+
 
     static uint32_t getRepetitionType(const ::arrus::ops::us4r::WaveformSegment &segment) {
         auto repetitionType = ARRUS_SAFE_CAST(segment.getState().size(), uint32_t);

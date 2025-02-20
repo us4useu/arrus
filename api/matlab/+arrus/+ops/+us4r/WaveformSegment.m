@@ -4,7 +4,7 @@ classdef WaveformSegment
     %  NOTE: duration and state should have the same length!
     %
     % :param duration: duration of a given state; duration(i) is a duration of state(i) [seconds]
-    % :param state: state to apply, available states: -2, -1, 0, 1, 2
+    % :param state: state to apply, available states: -2 (HVM0), -1 (HVM1), 0 (CLAMP), 1 (HVP1), 2 (HVP0)
 
     properties(Constant, Hidden=true)
         REQUIRED_PARAMS = {'duration', 'state'};
