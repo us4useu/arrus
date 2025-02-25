@@ -6,6 +6,7 @@
 
 #include "Us4OEMApertureSplitter.h"
 #include "arrus/core/devices/TxRxParameters.h"
+#include "arrus/core/devices/us4r/types.h"
 #include "arrus/core/devices/us4r/validators/ProbeAdapterTxRxValidator.h"
 
 namespace arrus::devices {
@@ -17,6 +18,7 @@ public:
     using SequenceByOEM = std::vector<us4r::TxRxParametersSequence>;
     using FCMByOEM = std::vector<FrameChannelMapping::RawHandle>;
     using DelayProfilesByOEM = std::unordered_map<Ordinal, std::vector<framework::NdArray>>;
+
 
     AdapterToUs4OEMMappingConverter(ProbeAdapterSettings settings, const Ordinal noems,
                                     std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM,
@@ -174,7 +176,14 @@ public:
         }
         // creating 32-element subapertures
         splitResult = splitter.split(fullApSeq, txDelayProfilesList);
-        return std::make_pair(splitResult.sequences, splitResult.delayProfiles);
+        return std::make_pair(splitResult->sequences, splitResult->delayProfiles);
+    }
+
+    /**
+     * Returns a LOCAL (i.e. limited to the given sequence) logical to physical mapping.
+     */
+    const LogicalToPhysicalOp &getLogicalToPhysicalOpMap() {
+        return splitResult->logicalToPhysicalMap;
     }
 
     /**
@@ -222,8 +231,8 @@ public:
                         // dstOp, dstChannel - frame and channel after considering that the aperture ops are
                         // into multiple smaller ops for each us4oem separately.
                         // dstOp, dstChannel - frame and channel of a given module
-                        auto dstOp = splitResult.physicalFrame(dstModule, frameIdx, dstModuleChannel);
-                        auto dstChannel = splitResult.physicalChannel(dstModule, frameIdx, dstModuleChannel);
+                        auto dstOp = splitResult->physicalFrame(dstModule, frameIdx, dstModuleChannel);
+                        auto dstChannel = splitResult->physicalChannel(dstModule, frameIdx, dstModuleChannel);
                         FrameChannelMapping::Us4OEMNumber us4oem = 0;
                         FrameChannelMapping::FrameNumber dstFrame = 0;
                         int8 dstFrameChannel = -1;
@@ -246,13 +255,14 @@ public:
         return outFcBuilder.build();
     }
 
+
 private:
     ProbeAdapterSettings settings;
     Ordinal noems;
     Us4OEMApertureSplitter splitter;
 
     // Determined while converting the sequence:
-    Us4OEMApertureSplitter::Result splitResult;
+    std::optional<Us4OEMApertureSplitter::Result> splitResult;
     us4r::TxRxParametersSequence sequence;
     SequenceId batchSize{0};
     OpId nFrames{0};

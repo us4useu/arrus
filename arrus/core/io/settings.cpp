@@ -288,7 +288,7 @@ getUniqueConnection(const proto::ProbeModel_Id &probeId,
     auto it = connections.find(key);
     if (it == std::end(connections)) {
         throw IllegalArgumentException(
-            format("No definition found for probe {}, but the probe is used in the probe to adapter connections list. ",
+            format("No definition found for probe {} in the probe to adapter connections list.",
                    id.toString()));
     }
     return it->second;
@@ -299,6 +299,38 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
     // Read and index by probe to adapter connections
     std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> connections =
         indexProbeToAdapterConnections(us4r.probe_to_adapter_connection());
+
+    // validate connections
+    std::unordered_set<std::string> indexedConnectionProbeModelIds;
+
+    for(const auto &pair: connections) {
+        indexedConnectionProbeModelIds.insert(pair.first);
+    }
+
+    bool hasNoProbeModelId = indexedConnectionProbeModelIds.find("") != std::end(indexedConnectionProbeModelIds);
+
+    if(hasNoProbeModelId) {
+        // We accept that situations (backward compatibility), but only in case there is only a single probe provided.
+        if(indexedConnectionProbeModelIds.size() > 1) {
+            throw IllegalArgumentException("Only one probe to adapter connection should be used when no PROBE ID is "
+                                           "provided.");
+        }
+        size_t nProbes = us4r.probe_id_size() + us4r.probe_size();
+        if(nProbes > 1) {
+            throw IllegalArgumentException("Only one probe should be used when no PROBE ID is "
+                                           "provided in the probe to adapter connection.");
+        }
+        std::string key;
+        if(us4r.probe_id_size() > 0) {
+            key = SettingsDictionary::convertProtoIdToString(us4r.probe_id(0));
+        }
+        else {
+            key = SettingsDictionary::convertProtoIdToString(us4r.probe(0).id());
+        }
+        // assign the only connection to the given probe model id
+        connections.emplace(key, connections.find("")->second);
+        connections.erase("");
+    }
 
     std::vector<ProbeSettings> result;
 

@@ -114,7 +114,7 @@ public:
         return std::make_pair(seqBuilder.build(), std::move(adapterTxDelayProfiles));
     }
 
-    FrameChannelMapping::Handle convert(const FrameChannelMapping::Handle &adapterFCM) {
+    FrameChannelMappingImpl::Handle convert(const FrameChannelMapping::Handle &adapterFCM) {
         auto nOps = adapterActiveRxChannels.size();
         if (adapterFCM->getNumberOfLogicalFrames() != nOps) {
             throw std::runtime_error("Inconsistent mapping and op number of probe's Rx apertures");

@@ -95,17 +95,18 @@ public:
 
     void setSubsequence(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         // start, end, sri
-        ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 3, "setSubsequence");
+        ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 4, "setSubsequence");
         ctx->logInfo(format("Inputs size: {}", inputs.size()));
         uint16 start = inputs[0][0];
         uint16 end = inputs[1][0];
+        ArrayId arrayId = inputs[2][0];
         std::optional<float> sri = static_cast<float>(inputs[2][0]);
         if(sri == 0) {
             sri = std::nullopt;
         }
         auto *session = get(obj);
         ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri.has_value() ? sri.value(): 0));
-        auto uploadResult = session->setSubsequence(start, end, sri);
+        auto uploadResult = session->setSubsequence(start, end, sri, arrayId);
         setToMatlabOutput(outputs, uploadResult);
     }
 

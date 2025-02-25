@@ -115,9 +115,10 @@ public:
      * @param start the TX/RX number which should now be the first TX/RX
      * @param end the TX/RX number which should now be the last TX/RX
      * @param sri the new SRI to apply
+     * @param arrayId id array to select, default: array with id 0
      * @return the new data buffer and metadata
      */
-    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri) = 0;
+    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) = 0;
 
     virtual ~Session() = default;
 

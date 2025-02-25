@@ -278,12 +278,12 @@ void Us4RImpl::disableHV() {
     }
 }
 
-void Us4RImpl::cleanupBuffers() {
+void Us4RImpl::cleanupBuffers(bool cleanupSequencerTransfers) {
     // The buffer should be already unregistered (after stopping the device).
     this->buffer->shutdown();
     // We must be sure here, that there is no thread working on the us4rBuffer here.
     if (!this->oemBuffers.empty()) {
-        unregisterOutputBuffer(false);
+        unregisterOutputBuffer(cleanupSequencerTransfers);
         this->oemBuffers.clear();
     }
     this->buffer.reset();
@@ -305,29 +305,30 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
-    auto [buffers, fcms, rxTimeOffset] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
-                                                          scheme.getDigitalDownConversion(), scheme.getConstants());
-
-    // Cleanup.
-    // If the output buffer already exists - remove it.
-    if (this->buffer) {
-        cleanupBuffers();
-    }
-    // Reset previously set properties for buffer handling.
-    for(auto &us4oem: this->us4oems) {
-        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
-        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
-    }
-    // Create output buffer.
-    Us4ROutputBufferBuilder builder;
-    this->buffer = builder.setStopOnOverflow(stopOnOverflow)
-                          .setNumberOfElements(scheme.getOutputBuffer().getNumberOfElements())
-                          .setLayoutTo(buffers)
-                          .build();
-    registerOutputBuffer(this->buffer.get(), buffers, workMode);
-    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
-    this->oemBuffers = std::move(buffers);
+    auto [buffers,
+          fcms,
+          rxTimeOffset,
+          l2pMapping,
+          oemSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+                                           scheme.getDigitalDownConversion(), scheme.getConstants());
+    currentScheme = scheme;
+    currentRxTimeOffset = rxTimeOffset;
+    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(), buffers);
+    // Reset sub-sequence factory and params.
+    currentSubsequenceParams.reset();
+    subsequenceFactory = Us4RSubsequenceFactory{
+        scheme.getTxRxSequences(),
+        l2pMapping,
+        oemSequences,
+        buffers,
+        fcms
+    };
     // Metadata
+    std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
+    return {this->buffer, metadatas};
+}
+
+vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const {
     std::vector<Metadata::SharedHandle> metadatas;
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
@@ -335,7 +336,30 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
         metadataBuilder.add<float>("rxOffset", std::make_shared<float>(rxTimeOffset));
         metadatas.emplace_back(metadataBuilder.buildPtr());
     }
-    return std::make_pair(this->buffer, metadatas);
+    return metadatas;
+}
+
+void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode workMode, vector<Us4OEMBuffer> buffers,
+                                 bool cleanupSequencerTransfers) {
+    // Cleanup.
+    // If the output buffer already exists - remove it.
+    if (buffer) {
+        cleanupBuffers(cleanupSequencerTransfers);
+    }
+    // Reset previously set properties for buffer handling.
+    for(auto &us4oem: us4oems) {
+        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
+        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
+    }
+    // Create output buffer.
+    Us4ROutputBufferBuilder builder;
+    buffer = builder.setStopOnOverflow(stopOnOverflow)
+                          .setNumberOfElements(hostBufNElements)
+                          .setLayoutTo(buffers)
+                          .build();
+    registerOutputBuffer(buffer.get(), buffers, workMode);
+    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
+    oemBuffers = std::move(buffers);
 }
 
 void Us4RImpl::start() {
@@ -360,7 +384,11 @@ void Us4RImpl::start() {
         // Reset tx subsystem pointers.
         us4oem->getIUs4OEM()->EnableTransmit();
         // Reset sequencer pointers.
-        us4oem->enableSequencer(0);
+        // The sequencer pointer (the entry from which sequencer starts) should not be reset when
+        // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
+        // the sequencer pointers will appropriately set to the start param value.
+        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
+        us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t));
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
         this->digitalBackplane.value()->enableExternalTrigger();
@@ -420,7 +448,13 @@ Us4RImpl::~Us4RImpl() {
     }
 }
 
-std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
+std::tuple<
+    std::vector<Us4OEMBuffer>,
+    std::vector<FrameChannelMappingImpl::Handle>,
+    float,
+    std::vector<LogicalToPhysicalOp>,
+    std::vector<std::vector<TxRxParametersSequence>>
+>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
@@ -466,18 +500,29 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
     // OEM -> list of sequences to upload on the OEM
     auto sequencesByOEM = std::vector{noems, OEMSequences{}};
+    // sequence -> op -> a range of physical TX/RXs [start, end]
+    // NOTE: start and end are local per sequence, i.e. logicalToPhysicalMapping.at(i).at(0) is counted
+    // from te beginning of the i-th sequence.
+    std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
+    // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
+    std::vector<std::vector<TxRxParametersSequence>> oemSequences;
     // Convert probe sequence -> OEM Sequences
+
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
         auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
+
+        logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
+        oemSequences.push_back(oemSeqs);
+
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
         }
     }
     std::vector<Us4OEMBuffer> buffers;
     // Sequence id -> the probe-level FCM.
-    std::vector<FrameChannelMapping::Handle> fcms;
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
     float rxTimeOffset;
@@ -503,7 +548,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset);
+    return std::make_tuple(buffers, std::move(fcms), rxTimeOffset, logicalToPhysicalMapping, oemSequences);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
@@ -812,7 +857,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     uint16 startFiring = 0;
     for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
-        uint16 endFiring = srcElement.getFiring();
+        uint16 endFiring = srcElement.getGlobalFiring();
         for (size_t j = 0; j < nRepeats; ++j) {
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);
@@ -1098,8 +1143,29 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
 }
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-Us4RImpl::setSubsequence(uint16_t, uint16_t, const std::optional<float> &) {
-    throw std::runtime_error("setSubsequence not yet implemented.");
+Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float> &sri) {
+    if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
+        throw ::arrus::IllegalStateException("Call upload method before setting a new sub-sequence.");
+    }
+    // Clear callback (the new one will be registered later, in the prepareHostBuffer)
+    for(auto &us4oem: us4oems) {
+        us4oem->clearDMACallbacks();
+    }
+    auto params = subsequenceFactory->get(sequenceId, start, end, sri);
+    bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    for (auto &oem : us4oems) {
+        oem->setSubsequence(params.getStart(), params.getEnd(), isSyncMode, params.getTimeToNextTrigger());
+    }
+    currentSubsequenceParams = params;
+
+    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
+                      currentScheme->getWorkMode(), params.getOemBuffers(), true);
+    // Create metadata
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
+    fcms.emplace_back(params.buildFCM());
+    auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
+    // A single metadata is assumed here.
+    return {this->buffer, metadatas.at(0)};
 }
 
 void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {

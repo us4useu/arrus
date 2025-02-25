@@ -97,7 +97,7 @@ void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, Cha
     channelMapping(logicalFrame, logicalChannel) = physicalChannel;
 }
 
-FrameChannelMappingImpl::Handle FrameChannelMappingBuilder::build() {
+FrameChannelMappingImpl::Handle FrameChannelMappingBuilder::build() const {
     return std::make_unique<FrameChannelMappingImpl>(this->us4oemMapping, this->frameMapping, this->channelMapping,
                                                      this->frameOffsets, this->numberOfFrames);
 }
