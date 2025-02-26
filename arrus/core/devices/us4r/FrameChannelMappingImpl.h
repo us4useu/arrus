@@ -116,7 +116,7 @@ public:
     void setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel, Us4OEMNumber us4oem,
                            FrameNumber physicalFrame, int8 physicalChannel);
 
-    FrameChannelMappingImpl::Handle build();
+    FrameChannelMappingImpl::Handle build() const;
     void setFrameOffsets(const std::vector<uint32> &frameOffsets);
     void setNumberOfFrames(const std::vector<uint32> &nFrames);
     void slice(FrameNumber start, FrameNumber end);

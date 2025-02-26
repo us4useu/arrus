@@ -51,7 +51,7 @@ protected:
 
 TEST_F(Us4OEMDataTransferRegistrarTest, CorrectlyPassesSinglePartAsSingleTransfer) {
     Us4OEMBufferArrayParts parts = {
-        Us4OEMBufferArrayPart{0, 4096,0, 14},
+        Us4OEMBufferArrayPart{0, 4096,0, 14, 4096},
     };
     auto transfers = createTransfers(parts);
     std::vector<Us4OEMDataTransferRegistrar::ArrayTransfers> expected{{
@@ -68,9 +68,9 @@ TEST_F(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoSingleTr
     size_t partSize = nSamples*128*2;
     size_t nFullParts = totalSize / partSize;
     for(int i = 0; i < nFullParts; ++i) {
-        parts.push_back(Us4OEMBufferArrayPart{i*partSize, partSize, 0, (uint16_t)i});
+        parts.push_back(Us4OEMBufferArrayPart{i*partSize, partSize, 0, (uint16_t)i, 4096});
     }
-    parts.push_back(Us4OEMBufferArrayPart{nFullParts*partSize, totalSize-nFullParts*partSize, 0, (uint16_t)nFullParts });
+    parts.push_back(Us4OEMBufferArrayPart{nFullParts*partSize, totalSize-nFullParts*partSize, 0, (uint16_t)nFullParts, 4096});
     auto transfers = createTransfers(parts);
 
     std::vector<Us4OEMDataTransferRegistrar::ArrayTransfers> expected{{
@@ -88,9 +88,10 @@ TEST_F(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoTwoTrans
     size_t partSize = nSamples*128*2;
     size_t nFullParts = totalSize / partSize;
     for(int i = 0; i < nFullParts; ++i) {
-        parts.push_back(Us4OEMBufferArrayPart{i*partSize, partSize, 0, (uint16_t)i});
+        parts.push_back(Us4OEMBufferArrayPart{i*partSize, partSize, 0, (uint16_t)i, nSamples});
     }
-    parts.push_back(Us4OEMBufferArrayPart{nFullParts*partSize, totalSize-nFullParts*partSize, 0, (uint16_t)nFullParts});
+
+    parts.push_back(Us4OEMBufferArrayPart{nFullParts*partSize, totalSize-nFullParts*partSize, 0, (uint16_t)nFullParts, nSamples});
 
     auto transfers = createTransfers(parts);
     // expect:
@@ -110,9 +111,9 @@ TEST_F(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoThreeTra
     size_t partSize = nSamples*128*2;
     size_t nFullParts = totalSize / partSize;
     for(int i = 0; i < nFullParts; ++i) {
-        parts.push_back(Us4OEMBufferArrayPart{i*partSize, partSize, 0, (uint16_t)i});
+        parts.push_back(Us4OEMBufferArrayPart{i*partSize, partSize, 0, (uint16_t)i, nSamples});
     }
-    parts.push_back(Us4OEMBufferArrayPart{nFullParts*partSize, totalSize-nFullParts*partSize, 0, (uint16_t)nFullParts});
+    parts.push_back(Us4OEMBufferArrayPart{nFullParts*partSize, totalSize-nFullParts*partSize, 0, (uint16_t)nFullParts, nSamples});
 
     auto transfers = createTransfers(parts);
 
