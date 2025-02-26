@@ -319,7 +319,7 @@ public:
     virtual const char *getBackplaneRevision() = 0;
 
     std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
 
     virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
 
