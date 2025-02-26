@@ -119,6 +119,10 @@ classdef Us4R < handle
             obj.session.stopScheme();
         end
 
+        function setMaximumPulseLength(obj,maxPulseLength)
+            obj.us4r.setMaximumPulseLength(maxPulseLength);
+        end
+
         function nProbeElem = getNProbeElem(obj)
             nProbeElem = obj.sys.nElem;
         end
