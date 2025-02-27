@@ -23,19 +23,27 @@ public:
             ctx,
             ARRUS_MATLAB_GET_CPP_REQUIRED_SCALAR(ctx, float, centerFrequency, object),
             ARRUS_MATLAB_GET_CPP_REQUIRED_SCALAR(ctx, float, nPeriods, object),
-            ARRUS_MATLAB_GET_CPP_REQUIRED_SCALAR(ctx, bool, inverse, object)
+            ARRUS_MATLAB_GET_CPP_REQUIRED_SCALAR(ctx, bool, inverse, object),
+            ARRUS_MATLAB_GET_CPP_REQUIRED_SCALAR(ctx, uint8, amplitudeLevel, object)
         };
     }
 
     static PulseConverter from(const MexContext::SharedHandle &ctx, const Pulse &object) {
-        return PulseConverter{ctx, object.getCenterFrequency(), object.getNPeriods(), object.isInverse() };
+        return PulseConverter{
+            ctx,
+            object.getCenterFrequency(),
+            object.getNPeriods(),
+            object.isInverse(),
+            object.getAmplitudeLevel()
+        };
     }
 
-    PulseConverter(MexContext::SharedHandle ctx, float centerFrequency, float nPeriods, bool inverse)
-        : ctx(std::move(ctx)), centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse) {}
+    PulseConverter(MexContext::SharedHandle ctx, float centerFrequency, float nPeriods, bool inverse, uint8 amplitudeLevel)
+        : ctx(std::move(ctx)), centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse),
+          amplitudeLevel(amplitudeLevel) {}
 
     [[nodiscard]] ::arrus::ops::us4r::Pulse toCore() const {
-        return ::arrus::ops::us4r::Pulse{centerFrequency, nPeriods, inverse};
+        return ::arrus::ops::us4r::Pulse{centerFrequency, nPeriods, inverse, amplitudeLevel};
     }
 
     [[nodiscard]] ::matlab::data::Array toMatlab() const {
@@ -44,7 +52,8 @@ public:
             {
                 ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, centerFrequency),
                 ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, nPeriods),
-                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, bool, inverse)
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, bool, inverse),
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, uint8, amplitudeLevel)
             }
         );
     }
@@ -54,6 +63,7 @@ private:
     float centerFrequency;
     float nPeriods;
     bool inverse;
+    uint8 amplitudeLevel;
 };
 
 }// namespace arrus::matlab::ops::us4r

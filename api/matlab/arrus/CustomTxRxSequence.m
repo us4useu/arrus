@@ -49,7 +49,8 @@ classdef CustomTxRxSequence
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txVoltage (1,1) {mustBeNonnegative} = 0;
+        txVoltage = 0;
+        txVoltageId (1,:) = 0
         txFrequency (1,:) {mustBeProperNumber}
         txNPeriods (1,:) {mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
@@ -116,6 +117,7 @@ classdef CustomTxRxSequence
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
             obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
+            obj.txVoltageId         = mustBeProperLength(obj.txVoltageId,nTx);
             obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
             if ~isstring(obj.txApertureSize)
                 obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);

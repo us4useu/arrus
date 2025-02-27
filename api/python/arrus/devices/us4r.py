@@ -129,9 +129,13 @@ class Us4R(Device, Ultrasound):
         Voltage is always expected to be positive number (even for -v).
 
         Examples:
-            set_hv_voltage(10) -- sets +10 -10 on amplitude level 0.
-            set_hv_voltage((10, 10), (5, 5)) -- sets +10, -10 on level 0,
-            +5, -5 on level 1.
+            set_hv_voltage(10) -- sets -10 +10 on amplitude level 0.
+            set_hv_voltage((10, 10), (5, 5)) -- sets -10, +10 on level 0,
+            -5, +5 on level 1.
+
+        :param voltage: a single value (for amplitude level 0)
+            or a list of tuples, where voltage[0] are (minus, plus) V level 0,
+            voltage[1] are (minus, plus) V level 1.
         """
         voltages = arrus.utils.core.convert_to_hv_voltages(args)
         self._handle.setVoltage(voltages)
