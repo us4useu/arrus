@@ -875,6 +875,11 @@ classdef Us4R < handle
                 idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
+
+            %% Tx Voltage
+            if numel(obj.seq.txVoltage) == 4
+                obj.seq.txVoltage = reshape(obj.seq.txVoltage, 2, 2);
+            end
             
             %% Default decimation & DDC filter coefficients
             if obj.seq.hwDdcEnable
@@ -1283,7 +1288,7 @@ classdef Us4R < handle
             
             import arrus.ops.us4r.*;
             
-            if obj.seq.txVoltage == 0
+            if isscalar(obj.seq.txVoltage) && obj.seq.txVoltage == 0
                 obj.us4r.disableHV();
             else
                 obj.us4r.setVoltage(obj.seq.txVoltage);
