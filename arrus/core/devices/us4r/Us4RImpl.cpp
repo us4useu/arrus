@@ -207,6 +207,9 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
         }
         for (auto &future : futures) {
             future.wait();
+            // throw exception if necessary. NOTE: this will throw for the first
+            // exception occurrence, consider aggregating exceptions.
+            future.get();
         }
     }
     else {
