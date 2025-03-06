@@ -237,6 +237,14 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.setHpfCornerFrequency(frequency)
 
+    def get_lna_gain(self):
+        """
+        Returns current LNA gain value.
+
+        :return: LNA gain value [dB]
+        """
+        return self._handle.getLnaGain()
+
     def set_lna_gain(self, gain: int):
         """
         Sets LNA gain.
@@ -247,6 +255,14 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.setLnaGain(gain)
 
+    def get_pga_gain(self):
+        """
+        Returns current PGA gain value.
+
+        :return: PGA gain value [dB]
+        """
+        return self._handle.getPgaGain()
+
     def set_pga_gain(self, gain: int):
         """
         Sets PGA gain.
@@ -256,6 +272,28 @@ class Us4R(Device, Ultrasound):
         :param gain: gain value to set
         """
         self._handle.setPgaGain(gain)
+
+    def set_lpf_cutoff(self, frequency: int):
+        """
+        Sets low pass filter cutoff frequency.
+
+        Available: 10e6, 15e6, 20e6, 30e6, 35e6, 50e6 [Hz].
+
+        :param frequency: frequency value to set
+        """
+        self._handle.setLpfCutoff(frequency)
+
+    def set_active_termination(self, impedance: Optional[int]):
+        """
+        Sets the impedance value for active termination
+
+        Available: 50, 100, 200, 400 [Ohm] or None;
+        None turns off active termination.
+
+        Args:
+            impedance (int): the impedance value to set
+        """
+        self._handle.setActiveTermination(impedance)
 
     def set_dtgc_attenuation(self, attenuation: Optional[int]):
         """
