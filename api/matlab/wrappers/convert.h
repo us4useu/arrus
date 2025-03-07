@@ -112,6 +112,7 @@ template<> bool isArrayTypeOkFor<::arrus::float64>(ArrayType arrayType) { return
 template<> bool isArrayTypeOkFor<::arrus::float32>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::int64>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::uint64>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
+template<> bool isArrayTypeOkFor<size_t>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::int32>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::uint32>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::int16>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
