@@ -782,7 +782,7 @@ classdef Us4R < handle
             
             if obj.rec.gpuEnable && obj.rec.gridModeEnable
                 % Add location of the CUDA kernels
-                addpath([fileparts(mfilename('fullpath')) '\mexcuda']);
+                addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
                 
                 % move reconstruction-related data to GPU
                 obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
