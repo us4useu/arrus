@@ -29,8 +29,8 @@ set(SOURCE_FILES
 set(ARRUS_CUDA_MEX_SRC_FILES
     arrus/mexcuda/wcFilter.cu
     arrus/mexcuda/dopplerColor.cu
-    # arrus/mexcuda/iqRaw2Lri.cu
-    # arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu
+    arrus/mexcuda/iqRaw2Lri.cu
+    arrus/mexcuda/iqRaw2Lri_SSTA_Wedge.cu
 )
 
 ################################################################################
@@ -44,11 +44,13 @@ set(PACKAGE_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/+arrus)
 
 set(ARRUS_MATLAB_MEXCUDA_COMMAND "")
 foreach(MEX_SRC_FILE ${ARRUS_CUDA_MEX_SRC_FILES})
-    set(ARRUS_MATLAB_MEXCUDA_COMMAND "${ARRUS_MATLAB_MEXCUDA_COMMAND} mexcuda -outdir '${CMAKE_CURRENT_BINARY_DIR}/arrus/mexcuda' '${CMAKE_CURRENT_SOURCE_DIR}/${MEX_SRC_FILE}'\;")
+    set(ARRUS_MATLAB_MEXCUDA_COMMAND "${ARRUS_MATLAB_MEXCUDA_COMMAND} mexcuda -outdir '${CMAKE_CURRENT_BINARY_DIR}/arrus/mexcuda' '${CMAKE_CURRENT_SOURCE_DIR}/${MEX_SRC_FILE}';")
 endforeach()
 
 
-string(REPLACE " " ";" ARRUS_MATLAB_MEXCUDA_COMMAND "${ARRUS_MATLAB_MEXCUDA_COMMAND}")
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+    string(REPLACE " " ";" ARRUS_MATLAB_MEXCUDA_COMMAND "${ARRUS_MATLAB_MEXCUDA_COMMAND}")
+endif()
 
 set(ARRUS_MATLAB_CORE_SO_FILE "$<TARGET_FILE:arrus-core>")
 
@@ -71,10 +73,10 @@ add_custom_command(OUTPUT ${TIMESTAMP}
     # Generate .mex files for image reconstruction
     COMMAND
     ${CMAKE_COMMAND} -E make_directory "${TOOLBOX_OUTPUT_DIR}/mexcuda"
+    # COMMAND
+    # echo '${ARRUS_MATLAB_MEXCUDA_COMMAND}'
     COMMAND
-    echo '${ARRUS_MATLAB_MEXCUDA_COMMAND}'
-    COMMAND
-    matlab -batch '${ARRUS_MATLAB_MEXCUDA_COMMAND}'
+    matlab -batch "${ARRUS_MATLAB_MEXCUDA_COMMAND}"
     COMMAND
     ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
     DEPENDS ${SOURCE_FILES})
