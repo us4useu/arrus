@@ -227,11 +227,6 @@ private:
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
-
-    BlockingQueue<Us4REvent> eventQueue{1000};
-    std::thread eventHandlerThread;
-    std::unordered_map<std::string, std::function<void()>> eventHandlers;
-
     bool isExternalTrigger;
 };
 
