@@ -36,7 +36,7 @@ public:
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
-        WatchdogSettings watchdogSettings = WatchdogSettings(1.0f, 1.1f, 1.0f)
+        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings()
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -67,7 +67,7 @@ public:
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
-        WatchdogSettings watchdogSettings = WatchdogSettings(1.0f, 1.1f, 1.0f)
+        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings()
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},

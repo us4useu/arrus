@@ -15,8 +15,12 @@ public:
         return settings;
     }
 
+    static WatchdogSettings defaultSettings() {
+        return WatchdogSettings{1.0f, 1.1f, 1.0f};
+    }
+
     WatchdogSettings(float oemThreshold0, float oemThreshold1, float hostThreshold)
-        : oemThreshold0(oemThreshold0), oemThreshold1(oemThreshold1), hostThreshold(hostThreshold) {}
+        : enabled(true), oemThreshold0(oemThreshold0), oemThreshold1(oemThreshold1), hostThreshold(hostThreshold) {}
 
     bool isEnabled() const { return enabled; }
 
@@ -25,14 +29,13 @@ public:
     float getHostThreshold() const { return hostThreshold; }
 
 private:
-    WatchdogSettings() {}
-
+    WatchdogSettings()  = default;
     bool enabled{false};
     /** thresholds, that should be respected by the watchdog implemented in OEM [seconds] */
-    float oemThreshold0{0};
-    float oemThreshold1{0};
+    float oemThreshold0{0.0f};
+    float oemThreshold1{0.0f};
     /** threshold, that should be respected by the watchdog implemented in host PC [seconds] */
-    float hostThreshold{0};
+    float hostThreshold{0.0f};
 };
 
 

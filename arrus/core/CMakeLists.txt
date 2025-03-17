@@ -23,6 +23,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/DigitalBackplaneSettings.proto
     io/proto/devices/us4r/Bitstream.proto
     io/proto/devices/us4r/Us4RTxRxLimits.proto
+    io/proto/devices/us4r/WatchdogSettings.proto
 )
 ################################################################################
 # Target
