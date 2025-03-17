@@ -11,6 +11,7 @@
 #include "TxTimeoutRegister.h"
 #include "BlockingQueue.h"
 #include "Us4REvent.h"
+#include "Us4RSubsequence.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -95,7 +96,7 @@ public:
     void setVoltage(const std::vector<HVVoltage> &voltages) override;
 
     void disableHV() override;
-    void cleanupBuffers();
+    void cleanupBuffers(bool cleanupSequencerTransfers = false);
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
     void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
@@ -149,7 +150,7 @@ public:
     }
 
     std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
+    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
@@ -166,7 +167,13 @@ private:
 
     void stopDevice();
 
-    std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
+    std::tuple<
+        std::vector<Us4OEMBuffer>,
+        std::vector<FrameChannelMappingImpl::Handle>,
+        float,
+        std::vector<LogicalToPhysicalOp>,
+        std::vector<std::vector<::arrus::devices::us4r::TxRxParametersSequence>>
+    >
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<framework::NdArray> &txDelayProfiles);
@@ -204,6 +211,11 @@ private:
     void handleEvents();
     void handlePulserInterrupt();
 
+    void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
+                           bool cleanupSequencerTransfers = false);
+    std::vector<arrus::session::Metadata::SharedHandle>
+    createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
+
     std::mutex deviceStateMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
@@ -228,6 +240,12 @@ private:
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
     bool isExternalTrigger;
+
+    std::optional<Us4RSubsequenceFactory> subsequenceFactory;
+    std::optional<Us4RSubsequence> currentSubsequenceParams;
+    /** The currently uploaded scheme */
+    std::optional<::arrus::ops::us4r::Scheme> currentScheme;
+    std::optional<float> currentRxTimeOffset;
 };
 
 }// namespace arrus::devices

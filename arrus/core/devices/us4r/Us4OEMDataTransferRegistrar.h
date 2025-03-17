@@ -112,8 +112,8 @@ public:
                     ius4oem->ClearTransferRXBufferToHost(firing);
                 }
             }
-            // element.getFiring() -- the last firing of the given element
-            elementFirstFiring = srcBuffer.getElement(srcIdx).getFiring() + 1;
+            // element.getGlobalFiring() -- the last firing of the given element
+            elementFirstFiring = srcBuffer.getElement(srcIdx).getGlobalFiring() + 1;
         }
     }
 
@@ -263,7 +263,7 @@ public:
         for (int16 srcIdx = 0; srcIdx < int16(srcNElements); ++srcIdx) {
             const auto &element = srcBuffer.getElement(srcIdx);
             size_t addressSrc = element.getAddress();// bytes addressed
-            uint16 elementLastFiring = element.getFiring();
+            uint16 elementLastFiring = element.getGlobalFiring();
             // for each element's part transfer:
             size_t localIdx = 0;
             for (const auto &arrayTransfers : elementTransfers) {

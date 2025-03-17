@@ -25,6 +25,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
+#include "utils.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -259,8 +260,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
             }
             ius4oem->SetRxTime(rxTime, firingId);
-            // TODO(
-            ius4oem->SetRxDelay(0.0f, firingId);
+            ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
                 ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
@@ -269,7 +269,9 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
-    ius4oem->BuildSequenceWaveforms(false);
+    if(isOEMPlus()) {
+        ius4oem->BuildSequenceWaveforms(false);
+    }
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
@@ -383,13 +385,15 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
                     }
                     if (batchId == 0) {
                         size_t partSize = 0;
+                        size_t actualNumberOfSamples = 0;
                         if (!op.isRxNOP() || acceptRxNops) {
                             partSize = nBytes;
+                            actualNumberOfSamples = nSamples;
                         }
                         // Otherwise, make an empty part (i.e. partSize = 0).
                         // (note: the firing number will be needed for transfer configuration to release element in
                         // us4oem sequencer).
-                        parts.emplace_back(outputAddress, partSize, seqId, entryId);
+                        parts.emplace_back(outputAddress, partSize, seqId, entryId, ARRUS_SAFE_CAST(actualNumberOfSamples, uint32_t));
                     }
                     if (!op.isRxNOP() || acceptRxNops) {
                         // Also, allows rx nops for OEM that is acceptable, in order to acquire frame metadata.
@@ -445,7 +449,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
     FiringId entryId = 0;
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
 
-    bool triggerSyncPerBatch = arrus::ops::us4r::Scheme::isWorkModeManual(workMode) || workMode == ops::us4r::Scheme::WorkMode::HOST;
+    bool triggerSyncPerBatch = isWaitForSoftMode(workMode);
     bool triggerSyncPerTxRx = workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP;
 
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
@@ -498,7 +502,7 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
 
     auto maxFirings = descriptor.getTxRxSequenceLimits().getMaxNumberOfFirings();
 
-    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, format("Exceeded the maximum ({}) number of timeoutIds: {}", maxFirings, nFirings));
+    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, format("Exceeded the maximum ({}) number of firings: {}", maxFirings, nFirings));
     const auto maxSequenceSize = descriptor.getTxRxSequenceLimits().getSize().end();
     ARRUS_REQUIRES_AT_MOST(nTriggers, maxSequenceSize,
                            format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
@@ -871,6 +875,10 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
     ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId);
 }
 
+void Us4OEMImpl::clearDMACallbacks() {
+    this->ius4oem->ClearDMACallbacks();
+}
+
 std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(
     std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
     const std::unordered_set<ChannelIdx> &channelsMask) {
@@ -963,6 +971,10 @@ void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
 
 float Us4OEMImpl::getActualTxFrequency(float frequency) {
     return ius4oem->GetOCWSFrequency(frequency);
+}
+
+void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
+    this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
 }
 
 }// namespace arrus::devices
