@@ -44,6 +44,10 @@ public:
     using RawDataType = int16;
     static constexpr framework::NdArray::DataType DataType = framework::NdArray::DataType::INT16;
 
+    static bool isOEMPlus(uint32_t version)  {
+        return version >= 2;
+    }
+
     /**
      * Us4OEMImpl constructor.
      *
@@ -120,9 +124,11 @@ public:
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
     float getActualTxFrequency(float frequency) override;
 
+
     bool isOEMPlus() {
-        return getOemVersion() == 2;
+        return isOEMPlus(getOemVersion());
     }
+
     Ius4OEMRawHandle getIUs4OEM() override;
 
 private:

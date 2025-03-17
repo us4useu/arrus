@@ -14,6 +14,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/devices/us4r/DigitalBackplaneSettings.h"
 #include "arrus/core/api/devices/us4r/Bitstream.h"
+#include "arrus/core/api/devices/us4r/WatchdogSettings.h"
 
 namespace arrus::devices {
 
@@ -34,7 +35,8 @@ public:
         int txFrequencyRange = 1,
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
-        std::optional<Us4RTxRxLimits> limits = std::nullopt
+        std::optional<Us4RTxRxLimits> limits = std::nullopt,
+        WatchdogSettings watchdogSettings = WatchdogSettings(1.0f, 1.1f, 1.0f)
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -47,7 +49,8 @@ public:
           txFrequencyRange(txFrequencyRange),
           digitalBackplaneSettings(std::move(digitalBackplaneSettings)),
           bitstreams(std::move(bitstreams)),
-          limits(std::move(limits))
+          limits(std::move(limits)),
+          watchdogSettings(std::move(watchdogSettings))
     {}
 
     Us4RSettings(
@@ -63,7 +66,8 @@ public:
         int txFrequencyRange = 1,
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
-        std::optional<Us4RTxRxLimits> limits = std::nullopt
+        std::optional<Us4RTxRxLimits> limits = std::nullopt,
+        WatchdogSettings watchdogSettings = WatchdogSettings(1.0f, 1.1f, 1.0f)
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -77,7 +81,8 @@ public:
                 txFrequencyRange,
                 std::move(digitalBackplaneSettings),
                 std::move(bitstreams),
-                std::move(limits)
+                std::move(limits),
+                std::move(watchdogSettings)
         )
     {}
 
@@ -170,6 +175,8 @@ public:
 
     const std::optional<Us4RTxRxLimits> &getTxRxLimits() const { return limits; }
 
+    const WatchdogSettings &getWatchdogSettings() const { return watchdogSettings; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -220,6 +227,8 @@ private:
       * TxRx limits to apply for in this session with us4R. Optional, by default the us4us-defined limits are applied.
       */
      std::optional<Us4RTxRxLimits> limits{std::nullopt};
+     /** OEM watchdog settings */
+     WatchdogSettings watchdogSettings{1.0f, 1.1f, 1.0f};
 };
 
 }

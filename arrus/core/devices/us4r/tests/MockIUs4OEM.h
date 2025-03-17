@@ -238,7 +238,10 @@ public:
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
     MOCK_METHOD(void, DisableWatchdog, (), (override));
-    MOCK_METHOD(void, SetWatchdogThresholds, (uint16_t threshold0, uint16_t threshold1), (override));
+    MOCK_METHOD(void, SetOEMWatchdogThresholds, (uint16_t threshold0, uint16_t threshold1), (override));
+    MOCK_METHOD(void, SetHostWatchdogThresholds, (uint16_t threshold), (override));
+    MOCK_METHOD(void, EnableInterrupts, (), (override));
+    MOCK_METHOD(void, EnableSystemInterrupts, (const IUs4OEM::CallbacksMap&), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

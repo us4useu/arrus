@@ -544,6 +544,7 @@ void Arrus2dArrayVectorPushBack(
 // Turn on globally value wrappers
 %feature("valuewrapper");
 %{
+#include "arrus/core/api/devices/us4r/WatchdogSettings.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
@@ -559,14 +560,15 @@ void Arrus2dArrayVectorPushBack(
 using namespace ::arrus::devices;
 %};
 
-%include "arrus/core/api/devices/us4r/RxSettings.h"
-%include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+%include "arrus/core/api/devices/us4r/WatchdogSettings.h";
+%include "arrus/core/api/devices/us4r/RxSettings.h";
+%include "arrus/core/api/devices/us4r/Us4OEMSettings.h";
 %ignore operator<<(std::ostream &os, const ProbeAdapterModelId &id);
-%include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h"
-%include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
+%include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h";
+%include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h";
 %ignore operator<<(std::ostream &os, const ProbeModelId &id);
-%include "arrus/core/api/devices/probe/ProbeModelId.h"
-%include "arrus/core/api/devices/probe/ProbeModel.h"
+%include "arrus/core/api/devices/probe/ProbeModelId.h";
+%include "arrus/core/api/devices/probe/ProbeModel.h";
 %include "arrus/core/api/devices/probe/ProbeSettings.h"
 %ignore operator<<(std::ostream &os, const HVModelId &id);
 %include "arrus/core/api/devices/us4r/HVModelId.h"

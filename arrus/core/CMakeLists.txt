@@ -200,6 +200,7 @@ set(SRC_FILES
     api/devices/us4r/HVPSMeasurement.h
     api/devices/us4r/Us4RTxRxLimits.h
     devices/us4r/TxTimeoutRegister.h
+    api/devices/us4r/WatchdogSettings.h
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
