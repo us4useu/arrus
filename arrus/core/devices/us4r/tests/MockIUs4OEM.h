@@ -242,6 +242,8 @@ public:
     MOCK_METHOD(void, SetHostWatchdogThresholds, (uint16_t threshold), (override));
     MOCK_METHOD(void, EnableInterrupts, (), (override));
     MOCK_METHOD(void, EnableSystemInterrupts, (const IUs4OEM::CallbacksMap&), (override));
+    MOCK_METHOD(void, ResetDMACallbacks, (), (override));
+    MOCK_METHOD(::us4r::Vector<unsigned int>, RunPulserReadbackTest, (uint32_t), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
