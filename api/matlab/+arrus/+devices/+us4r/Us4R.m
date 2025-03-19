@@ -23,13 +23,15 @@ classdef Us4R < handle
         function setVoltage(obj, voltage)
             % Enables HV and sets a given voltage(s).
             %
-            % This method expects a list of integers or a list of pairs of integers
+            % This method expects a scalar integer or a 2x2 array of integers
             % as input.
-            % A single integer v means that the voltage should be set t +v and -v.
-            % A pair (vm, vp) means that the -voltage should be set to vm,
-            % -voltage to vp.
+            % A single integer v defines the voltage range as [-v, +v].
+            % A 2x2 array [v0m, v0p; v1m, v1p] defines two separate voltage ranges:
+            % [-v0m +v0p], and [-v1m, +v1p]. The voltage range can be selected 
+            % individually for each tx pulse using "amplitudeLevel" property of Pulse class.
             %
-            % Voltage is always expected to be positive number (even for -v).
+            % Voltage is always expected to be positive number (even for v0m and v1m).
+            % v0m and v0p are always expected to be higher than v1m and v1p, respectively. 
             %
             %  Examples:
             %       set_hv_voltage(10) -- sets -10 +10 on amplitude level 0.
