@@ -769,7 +769,7 @@ classdef Us4R < handle
             end
 
             %% Validate sequences
-            % Some parameters must be equal (those that have to be scalars or 2-elem vectors)
+            % Some parameters must be equal (those that have to be scalars or 2-elem vectors or 2x2 arrays)
             selFieldNames = {'rxApertureSize','speedOfSound','txVoltage', ...
                              'rxDepthRange','rxNSamples', 'hwDdcEnable', ...
                              'decimation','nRepetitions','txPri', ...
@@ -777,12 +777,12 @@ classdef Us4R < handle
                              'sri','bufferSize'};
             for iFld=1:numel(selFieldNames)
                 for iSeq=2:nSeq
-                    if  xor(isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
-                            isempty(seqIn(   1).(selFieldNames{iFld}))) || ...
-                       ~any([isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
-                             isempty(seqIn(   1).(selFieldNames{iFld}))]) && ...
-                        any(seqIn(iSeq).(selFieldNames{iFld}) ~= ...
-                            seqIn(   1).(selFieldNames{iFld}))
+                    field1 = seqIn(   1).(selFieldNames{iFld});
+                    fieldI = seqIn(iSeq).(selFieldNames{iFld});
+                    if  xor(isempty(field1), isempty(fieldI)) || ...
+                        ( (~isempty(field1) && ~isempty(fieldI)) && ...
+                          (any(size(field1) ~= size(fieldI)) || ...
+                           any(field1(:) ~= fieldI(:))) )
                         error("mergeSequences: " + selFieldNames{iFld} + ...
                               " must be the same for all merged sequences");
                     end
@@ -874,11 +874,6 @@ classdef Us4R < handle
             for iPar=1:nPar
                 idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
                 obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
-            end
-
-            %% Tx Voltage
-            if numel(obj.seq.txVoltage) == 4
-                obj.seq.txVoltage = reshape(obj.seq.txVoltage, 2, 2);
             end
             
             %% Default decimation & DDC filter coefficients

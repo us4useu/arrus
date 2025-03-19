@@ -133,6 +133,18 @@ classdef CustomTxRxSequence
             
             obj.txInvert = double(obj.txInvert);
             
+            %% txVoltage & txVoltageId validation
+            mustBeProperNumber(obj.txVoltage);
+            if ~ismatrix(obj.txVoltage) || (~isscalar(obj.txVoltage) && ~all(size(obj.txVoltage)==[2 2]))
+                error("ARRUS:IllegalArgument", 'txVoltage must be scalar or 2x2 array');
+            end
+            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) <= obj.txVoltage(2,:))
+                error("ARRUS:IllegalArgument", 'txVoltage(1,:) must be higher than txVoltage(2,:)');
+            end
+            if ~all(any(obj.txVoltageId(:)==[0 1],2))
+                error("ARRUS:IllegalArgument", 'txVoltageId elements must be equal 0 or 1');
+            end
+            
         end
     end
 end
