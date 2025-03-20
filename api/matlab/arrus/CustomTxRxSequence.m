@@ -57,7 +57,7 @@ classdef CustomTxRxSequence
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txVoltage = 0;
+        txVoltage {mustBeNonnegative} = 0;
         txVoltageId (1,:) = 0
         txFrequency (1,:) {mustBeProperNumber}
         txNPeriods (1,:) {mustBeProperNumber}
@@ -65,10 +65,10 @@ classdef CustomTxRxSequence
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         hwDdcEnable (1,1) {mustBeLogical} = true
         decimation (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
-        nRepetitions (1,:) = 1
+        nRepetitions (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
-        tgcSlope (1,:) = 0
+        tgcSlope (1,1) = 0
         txInvert (1,:) {mustBeLogical} = false
         workMode {mustBeTextScalar} = "MANUAL"
         sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
@@ -83,10 +83,6 @@ classdef CustomTxRxSequence
             end
             for i = 1:2:nargin
                 obj.(varargin{i}) = varargin{i+1};
-            end
-            
-            if ischar(obj.nRepetitions)
-                obj.nRepetitions = convertCharsToStrings(obj.nRepetitions);
             end
             
             % Validate.
@@ -140,9 +136,6 @@ classdef CustomTxRxSequence
             end
             if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) <= obj.txVoltage(2,:))
                 error("ARRUS:IllegalArgument", 'txVoltage(1,:) must be higher than txVoltage(2,:)');
-            end
-            if ~all(any(obj.txVoltageId(:)==[0 1],2))
-                error("ARRUS:IllegalArgument", 'txVoltageId elements must be equal 0 or 1');
             end
             
         end

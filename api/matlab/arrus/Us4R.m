@@ -873,7 +873,7 @@ classdef Us4R < handle
             nPar = length(varargin)/2;
             for iPar=1:nPar
                 idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
-                obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
+                obj.seq.(seqParamMapping{idPar,2}) = varargin{iPar*2};
             end
             
             %% Default decimation & DDC filter coefficients
