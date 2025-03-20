@@ -239,6 +239,7 @@ public:
     MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
+    MOCK_METHOD(::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
