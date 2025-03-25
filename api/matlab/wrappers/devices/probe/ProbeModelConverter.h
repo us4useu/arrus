@@ -5,6 +5,8 @@
 #include "arrus/core/api/arrus.h"
 #include "api/matlab/wrappers/convert.h"
 #include "api/matlab/wrappers/devices/probe/ProbeModelIdConverter.h"
+#include "api/matlab/wrappers/devices/probe/LensConverter.h"
+#include "api/matlab/wrappers/devices/probe/MatchingLayerConverter.h"
 
 #include <mex.hpp>
 #include <mexAdapter.hpp>
@@ -29,7 +31,9 @@ public:
             ARRUS_MATLAB_GET_CPP_VECTOR(ctx, double, pitch, object),
             ARRUS_MATLAB_GET_CPP_PAIR(ctx, float, txFrequencyRange, object),
             ARRUS_MATLAB_GET_CPP_PAIR(ctx, Voltage, voltageRange, object),
-            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, double, curvatureRadius, object)
+            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, double, curvatureRadius, object),
+            ARRUS_MATLAB_GET_CPP_OPTIONAL_OBJECT(ctx, Lens, LensConverter, modelId, object),
+            ARRUS_MATLAB_GET_CPP_OPTIONAL_OBJECT(ctx, MatchingLayer, MatchingLayerConverter, modelId, object),
         };
     }
 
@@ -42,7 +46,9 @@ public:
             object.getPitch().getValues(),
             object.getTxFrequencyRange().asPair(),
             object.getVoltageRange().asPair(),
-            object.getCurvatureRadius()
+            object.getCurvatureRadius(),
+            object.getLens(),
+            object.getMatchingLayer()
         };
     }
 
@@ -53,9 +59,12 @@ public:
         const std::vector<double> &pitch,
         const std::pair<float, float> &txFrequencyRange,
         const std::pair<Voltage, Voltage> &voltageRange,
-        double curvatureRadius)
+        double curvatureRadius,
+        std::optional<Lens> lens, std::optional<MatchingLayer> matchingLayer
+        )
         : ctx(std::move(ctx)), modelId(std::move(modelId)), nElements(numberOfElements), pitch(pitch),
-          txFrequencyRange(txFrequencyRange), voltageRange(voltageRange), curvatureRadius(curvatureRadius) {}
+          txFrequencyRange(txFrequencyRange), voltageRange(voltageRange), curvatureRadius(curvatureRadius),
+          lens(std::move(lens)), matchingLayer(std::move(matchingLayer)) {}
 
     // ProbeModelConverter -> C++ API object.
     [[nodiscard]] ::arrus::devices::ProbeModel toCore() const {
@@ -64,7 +73,9 @@ public:
             pitch,
             txFrequencyRange,
             voltageRange,
-            curvatureRadius
+            curvatureRadius,
+            lens,
+            matchingLayer
         };
     }
 
@@ -78,7 +89,9 @@ public:
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, double, pitch, pitch.getValues()),
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, float, txFrequencyRange, txFrequencyRange.asPair()),
                 ARRUS_MATLAB_GET_MATLAB_VECTOR_KV_EXPLICIT(ctx, Voltage, voltageRange, voltageRange.asPair()),
-                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, double, curvatureRadius)
+                ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, double, curvatureRadius),
+                ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, Lens, LensConverter, lens),
+                ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, MatchingLayer, MatchingLayerConverter, matchingLayer)
             }
         );
     }
@@ -91,6 +104,8 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
+    std::optional<Lens> lens;
+    std::optional<MatchingLayer> matchingLayer;
 };
 
 } //
