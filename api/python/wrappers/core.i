@@ -157,6 +157,22 @@ namespace std {
     }
 %}
 
+
+%typemap(in) std::optional<arrus::devices::Lens> {
+    if ($input == Py_None) {
+        $1 = std::nullopt;
+    } else {
+        $1 = std::make_optional(*reinterpret_cast<arrus::devices::Lens*>($input));
+    }
+}
+
+%typemap(out) std::optional<arrus::devices::Lens> {
+    if (!$1) {
+        Py_RETURN_NONE;
+    } else {
+        return SWIG_AsVal_arrus_devices_Lens(*$1);
+    }
+}
 %module(directors="1") core
 
 %{

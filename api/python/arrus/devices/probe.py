@@ -1,7 +1,7 @@
 import dataclasses
 import numpy as np
 import math
-from typing import Tuple
+from typing import Tuple, Optional
 
 from arrus.devices.device import DeviceType, DeviceId
 
@@ -15,12 +15,47 @@ class ProbeModelId:
 
 
 @dataclasses.dataclass(frozen=True)
+class Lens:
+    """
+    The lens applied on the surface of the probe.
+
+    Currently, the model of the lens is quite basic and accustomed mostly to
+    the linear array probes, e.g. we assume that the lens is dedicated to be
+    focusing in the elevation direction.
+
+    :param thickness: lens thickness of linear array, measured at center of the elevation [m],
+    :param speed_of_sound: the speed of sound in the lens material [m/s[,
+    :param focus: geometric focus (along elevation axis) measured in water [m]
+    """
+    thickness: float
+    speed_of_sound: float
+    focus: Optional[float]
+
+
+@dataclasses.dataclass(frozen=True)
+class MatchingLayer:
+    """
+    The matching layer between the lens and probe.
+
+    :param thickness: lens thickness of linear array, measured at center of the elevation,
+    :param speedOfSound: the speed of sound in the lens material,
+    """
+    thickness: float
+    speed_of_sound: float
+
+
+@dataclasses.dataclass(frozen=True)
 class ProbeModel:
+    """
+    Probe model.
+    """
     model_id: ProbeModelId
     n_elements: int
     pitch: float
     curvature_radius: float
     tx_frequency_range: Tuple[float, float] = None
+    lens: Optional[Lens] = None
+    matching_layer: Optional[MatchingLayer] = None
 
     def __post_init__(self):
         element_pos_x, element_pos_z, element_angle = self._compute_element_position()
