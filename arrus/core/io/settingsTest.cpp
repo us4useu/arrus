@@ -100,6 +100,13 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_EQ(us4rSettings.getTxRxLimits()->getVoltage(), ::arrus::Interval<Voltage>(10, 30));
     EXPECT_EQ(us4rSettings.getTxRxLimits()->getPri(), ::arrus::Interval<float>(2e-6, 1));
     EXPECT_EQ(us4rSettings.getTxRxLimits()->getPulseLength(), ::arrus::Interval<float>(1e-6, 10e-6));
+    EXPECT_TRUE(us4rSettings.getProbeSettings()->getModel().getLens().has_value());
+    // SL1543 from the test-data/dictionary.prototxt
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getThickness(), 1e-3f);
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getSpeedOfSound(), 1000);
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getFocus().value(), 2e-3);
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getThickness(), 0.1e-3f);
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getSpeedOfSound(), 2000);
 }
 
 TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
@@ -160,6 +167,12 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
     EXPECT_FALSE(rxSettings->getActiveTermination().has_value());
     EXPECT_FALSE(us4rSettings.getTxRxLimits().has_value());
 
+    // my_custom_probe
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getThickness(), 2e-3f);
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getSpeedOfSound(), 2000);
+    EXPECT_FALSE(us4rSettings.getProbeSettings()->getModel().getLens().value().getFocus().has_value());
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getThickness(), 0.3e-3f);
+    EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getSpeedOfSound(), 3000);
 }
 
 TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {

@@ -9,6 +9,8 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
+#include "arrus/core/api/devices/probe/Lens.h"
+#include "arrus/core/api/devices/probe/MatchingLayer.h"
 
 namespace arrus::devices {
 
@@ -26,10 +28,15 @@ public:
                // Float, because carrier frequency can be set only to specific values
                const Interval<float> &txFrequencyRange,
                const Interval<Voltage> &voltageRange,
-               const double curvatureRadius)
+               const double curvatureRadius,
+               std::optional<Lens> lens = std::nullopt,
+               std::optional<MatchingLayer> matchingLayer = std::nullopt
+               )
         : modelId(std::move(modelId)), numberOfElements(numberOfElements),
           pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange),
-          curvatureRadius(curvatureRadius) {
+          curvatureRadius(curvatureRadius),
+          lens(std::move(lens)),
+          matchingLayer(std::move(matchingLayer)) {
 
         if(numberOfElements.size() != pitch.size()) {
             throw IllegalArgumentException(
@@ -65,6 +72,9 @@ public:
         return curvatureRadius;
     }
 
+    const std::optional<Lens> &getLens() const { return lens; }
+    const std::optional<MatchingLayer> &getMatchingLayer() const { return matchingLayer; }
+
 private:
     ProbeModelId modelId;
     Tuple<ElementIdxType> numberOfElements;
@@ -72,6 +82,8 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
+    std::optional<Lens> lens;
+    std::optional<MatchingLayer> matchingLayer;
 };
 
 }

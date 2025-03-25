@@ -152,6 +152,25 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     }
 }
 
+Lens readProbeLens(const proto::Lens &lens) {
+    std::optional<float> focus = std::nullopt;
+    if(lens.focus__case() != proto::Lens::FOCUS__NOT_SET) {
+        focus = lens.focus();
+    }
+    return Lens {
+        ARRUS_SAFE_CAST(lens.thickness(), float),
+        ARRUS_SAFE_CAST(lens.speed_of_sound(), float),
+        focus
+    };
+}
+
+MatchingLayer readMatchingLayer(const proto::MatchingLayer &layer) {
+    return MatchingLayer {
+        ARRUS_SAFE_CAST(layer.thickness(), float),
+        ARRUS_SAFE_CAST(layer.speed_of_sound(), float)
+    };
+}
+
 ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     ProbeModelId id{proto.id().manufacturer(), proto.id().name()};
     using ElementIdxType = ProbeModel::ElementIdxType;
@@ -170,7 +189,9 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
                                          static_cast<float>(proto.tx_frequency_range().end())};
     ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
                                           static_cast<uint8>(proto.voltage_range().end())};
-    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius);
+    std::optional<Lens> lens = proto.has_lens() ? std::make_optional(readProbeLens(proto.lens())): std::nullopt;
+    std::optional<MatchingLayer> matchingLayer = proto.has_matching_layer()? std::make_optional(readMatchingLayer(proto.matching_layer())): std::nullopt;
+    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius, lens, matchingLayer);
 }
 
 std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapterConnection &connection) {
