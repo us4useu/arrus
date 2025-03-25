@@ -73,7 +73,17 @@ public:
     }
 
     const std::optional<Lens> &getLens() const { return lens; }
+    /** Returns true when the lens is defined for this probe model, otherwise false. */
+    bool isLensDefined() const {return lens.has_value(); }
+    /** Returns lens definition. If the lens is not defined for this probe, exception will be raised. */
+    const Lens &getLensOrRaiseException() {return lens.value(); }
+
     const std::optional<MatchingLayer> &getMatchingLayer() const { return matchingLayer; }
+    /** Returns true when the matching layer is defined for this probe model, otherwise false. */
+    bool isMatchingLayerDefined() const {return matchingLayer.has_value(); }
+    /** Returns matching layer definition. If the matching layer is not defined for this probe, exception will be raised. */
+    const MatchingLayer &getMatchingLayerOrRaiseException() {return matchingLayer.value(); }
+
 
 private:
     ProbeModelId modelId;

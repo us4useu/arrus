@@ -24,7 +24,7 @@ public:
 
     float getThickness() const { return thickness; }
     float getSpeedOfSound() const { return speedOfSound; }
-    const std::optional<float> &getFocus() const { return focus; }
+    std::optional<float> getFocus() const { return focus; }
 
 private:
     /* Lens thickness of linear array, measured at center of the elevation. */

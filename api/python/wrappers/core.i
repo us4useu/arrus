@@ -158,22 +158,9 @@ namespace std {
 %}
 
 
-%typemap(in) std::optional<arrus::devices::Lens> {
-    if ($input == Py_None) {
-        $1 = std::nullopt;
-    } else {
-        $1 = std::make_optional(*reinterpret_cast<arrus::devices::Lens*>($input));
-    }
-}
 
-%typemap(out) std::optional<arrus::devices::Lens> {
-    if (!$1) {
-        Py_RETURN_NONE;
-    } else {
-        return SWIG_AsVal_arrus_devices_Lens(*$1);
-    }
-}
 %module(directors="1") core
+
 
 %{
 #include <memory>
@@ -203,6 +190,12 @@ using namespace ::arrus;
 #define __attribute__(x)
 
 %include "arrus/core/api/common/macros.h"
+
+%feature("valuewrapper", "1");
+%include "arrus/core/api/devices/probe/Lens.h"
+%include "arrus/core/api/devices/probe/MatchingLayer.h"
+%feature("valuewrapper", "0");
+
 
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)
@@ -582,6 +575,8 @@ using namespace ::arrus::devices;
 %include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 %ignore operator<<(std::ostream &os, const ProbeModelId &id);
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
+%include "arrus/core/api/devices/probe/Lens.h"
+%include "arrus/core/api/devices/probe/MatchingLayer.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/ProbeSettings.h"
 %ignore operator<<(std::ostream &os, const HVModelId &id);
