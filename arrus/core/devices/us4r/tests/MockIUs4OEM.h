@@ -38,12 +38,7 @@ public:
     MOCK_METHOD(void, InitializeTX, (), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
-    MOCK_METHOD(float, SetTxDelay,
-            (const unsigned char channel, const float value, const unsigned short firing),
-    (override));
-    MOCK_METHOD(float, SetTxDelay,
-        (const unsigned char channel, const float value, const unsigned short firing, size_t profile),
-    (override));
+    MOCK_METHOD(::us4r::Vector<float>, SetTxDelays, (const ::us4r::Span<float> &delays, const uint16_t firing, size_t profile), (override));
     MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
@@ -181,8 +176,9 @@ public:
     MOCK_METHOD(void, SetStandardIODriveMode, (), (override));
     MOCK_METHOD(void, SetWaveformIODriveMode, (), (override));
     MOCK_METHOD(void, SetIOLevels, (uint8_t), (override));
-    MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint8_t), (override));
-    MOCK_METHOD(void, SetIOBSRegister, (uint8_t, uint8_t, uint8_t, bool, uint16_t), (override));
+    MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint16_t), (override));
+    MOCK_METHOD(void, SetIOBSRegister, (uint16_t, uint8_t, bool, uint16_t), (override));
+    MOCK_METHOD(uint32_t, GetIOBSRegister, (uint16_t), (override));
     MOCK_METHOD(void, ListPeriphs, (), (override));
     MOCK_METHOD(void, DumpPeriph, (std::string, uint32_t), (override));
     MOCK_METHOD(size_t, GetBaseAddr, (), (override));
@@ -217,22 +213,33 @@ public:
     MOCK_METHOD(uint32_t, HVPSReadRegister, (uint32_t), (override));
     MOCK_METHOD(void, HVPSSetVoltage, (float), (override));
     MOCK_METHOD(IHV*, getHVPS, (), (override));
-    MOCK_METHOD(uint32_t, GetTxOffset, (), (override));
     MOCK_METHOD(std::string, GetSerialNumber, (), (override));
     MOCK_METHOD(std::string, GetRevisionNumber, (), (override));
     MOCK_METHOD(void, EnableProbeCheck, (uint8_t), (override));
     MOCK_METHOD(bool, CheckProbeConnected, (), (override));
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
+    MOCK_METHOD(float, GetMinTxPulseLength, (), (const, override));
+    MOCK_METHOD(float, GetMaxTxPulseLength, (), (const, override));
     MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end, bool syncMode, uint32_t endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
-    MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t nSamples, float frequency), (override));
+    MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
-    MOCK_METHOD(void, ClearCallbacks, (), (override));
+    MOCK_METHOD(void, ClearDMACallbacks, (), (override));
     MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
-    MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD(void, VerifyTxWaveform, (), (override));
+    MOCK_METHOD(void, EnableTxTimeout, (), (override));
+    MOCK_METHOD(void, DisableTxTimeout, (), (override));
+    MOCK_METHOD(void, SetTxTimeout, (uint8_t id, uint16_t timeoutUs), (override));
+    MOCK_METHOD(void, SetFiringTxTimoutId, (uint16_t firing, uint8_t id), (override));
+    MOCK_METHOD(void, SetTxVoltageLevel, (uint8_t level, uint16_t firing), (override));
+    MOCK_METHOD(float, GetOCWSFrequency, (const float frequency), (override));
+    MOCK_METHOD(void, LogPulsersInterruptRegister, (), (override));
     MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
+    MOCK_METHOD(::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

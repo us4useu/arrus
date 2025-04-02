@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.10.4)
+set(PROJECT_VERSION 0.11.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
@@ -57,7 +57,7 @@ endif()
 # Common C++ compile options
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     # permissive- is required by range-v3/0.5.0
-    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS /permissive- /EHsc)
+    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS /permissive- /EHsc /bigobj)
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "/W4 /WX")
 
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
@@ -82,7 +82,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.11.4 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
+find_package(Us4 0.12.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)

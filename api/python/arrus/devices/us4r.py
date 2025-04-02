@@ -1,7 +1,7 @@
 import dataclasses
 import numpy as np
 
-from arrus.devices.device import Device, DeviceId, DeviceType
+from arrus.devices.device import Device, DeviceId, DeviceType, parse_device_id
 from arrus.devices.ultrasound import Ultrasound
 import arrus.exceptions
 import arrus.devices.probe
@@ -13,8 +13,10 @@ import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
 from collections.abc import Iterable
-from typing import Optional
+from typing import Optional, Union, Sequence
+from arrus.devices.probe import ProbeDTO
 
+from arrus.kernels.simple_tx_rx_sequence import get_sample_range
 
 DEVICE_TYPE = DeviceType("Us4R")
 
@@ -76,7 +78,7 @@ class Us4R(Device, Ultrasound):
         self._device_id = DeviceId(DEVICE_TYPE,
                                    self._handle.getDeviceId().getOrdinal())
         # Context for the currently running sequence.
-        self._kernel_context = None
+        self._tgc_context = None
         self._backplane = Backplane(self)
 
     def get_device_id(self):
@@ -88,12 +90,16 @@ class Us4R(Device, Ultrasound):
 
         :param samples: a given TGC to set.
         """
-        if isinstance(tgc_curve, arrus.ops.tgc.LinearTgc):
-            if self._kernel_context is None:
-                raise ValueError("There is no tx/rx sequence currently "
-                                 "uploaded.")
+        if tgc_curve is None:
+            self._handle.setTgcCurve([])
+            return
+        elif isinstance(tgc_curve, arrus.ops.tgc.LinearTgc):
+            if self._tgc_context is None:
+                raise ValueError("TGC context is currently not set. "
+                                 "Make sure a TX/RX sequence is uploaded and "
+                                 "a medium was specified. ")
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
-                self._kernel_context,
+                self._tgc_context,
                 self.current_sampling_frequency,
                 tgc_curve)
         elif not isinstance(tgc_curve, Iterable):
@@ -110,13 +116,29 @@ class Us4R(Device, Ultrasound):
             # points.
             self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
-    def set_hv_voltage(self, voltage):
+    def set_hv_voltage(self, *args):
         """
-        Enables HV and sets a given voltage.
+        Enables HV and sets a given voltage(s).
 
-        :param voltage: voltage to set
+        This method expects a list of integers or a list of pairs of integers
+        as input.
+        A single integer v means that the voltage should be set t +v and -v.
+        A pair (vm, vp) means that the -voltage should be set to vm,
+        -voltage to vp.
+
+        Voltage is always expected to be positive number (even for -v).
+
+        Examples:
+            set_hv_voltage(10) -- sets -10 +10 on amplitude level 0.
+            set_hv_voltage((10, 10), (5, 5)) -- sets -10, +10 on level 0,
+            -5, +5 on level 1.
+
+        :param voltage: a single value (for amplitude level 0)
+            or a list of tuples, where voltage[0] are (minus, plus) V level 0,
+            voltage[1] are (minus, plus) V level 1.
         """
-        self._handle.setVoltage(voltage)
+        voltages = arrus.utils.core.convert_to_hv_voltages(args)
+        self._handle.setVoltage(voltages)
 
     def disable_hv(self):
         """
@@ -186,33 +208,20 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.stop()
 
-    def set_kernel_context(self, kernel_context):
-        self._kernel_context = kernel_context
-        # Set TGC curve from the context.
-        seq = self._kernel_context.op
-        if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
-            if seq.tgc_start is not None and seq.tgc_slope is not None:
-                # NOTE: the below line has to be called after
-                # session.upload call, otherwise an invalid sampling
-                # frequency may be used.
-                self.set_tgc(arrus.ops.tgc.LinearTgc(
-                    start=seq.tgc_start,
-                    slope=seq.tgc_slope
-                ))
-            elif seq.tgc_curve is not None:
-                self.set_tgc(seq.tgc_curve)
-            else:
-                self.set_tgc([])
-        else:
-            self.set_tgc(seq.tgc_curve)
+    def set_tgc_and_context(self, sequences, medium):
+        self._tgc_context, tgc = self._get_unique_tgc_context_and_tgc(
+            sequences=sequences,
+            medium=medium
+        )
+        self.set_tgc(tgc)
 
-    def get_probe_model(self):
+    def get_probe_model(self, ordinal=0):
         """
         Returns probe model description.
         """
         import arrus.utils.core
         return arrus.utils.core.convert_to_py_probe_model(
-            core_model=self._handle.getProbe(0).getModel())
+            core_model=self._handle.getProbe(ordinal).getModel())
 
     def set_test_pattern(self, pattern):
         """
@@ -232,6 +241,14 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.setHpfCornerFrequency(frequency)
 
+    def get_lna_gain(self):
+        """
+        Returns current LNA gain value.
+
+        :return: LNA gain value [dB]
+        """
+        return self._handle.getLnaGain()
+
     def set_lna_gain(self, gain: int):
         """
         Sets LNA gain.
@@ -242,6 +259,14 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.setLnaGain(gain)
 
+    def get_pga_gain(self):
+        """
+        Returns current PGA gain value.
+
+        :return: PGA gain value [dB]
+        """
+        return self._handle.getPgaGain()
+
     def set_pga_gain(self, gain: int):
         """
         Sets PGA gain.
@@ -251,6 +276,28 @@ class Us4R(Device, Ultrasound):
         :param gain: gain value to set
         """
         self._handle.setPgaGain(gain)
+
+    def set_lpf_cutoff(self, frequency: int):
+        """
+        Sets low pass filter cutoff frequency.
+
+        Available: 10e6, 15e6, 20e6, 30e6, 35e6, 50e6 [Hz].
+
+        :param frequency: frequency value to set
+        """
+        self._handle.setLpfCutoff(frequency)
+
+    def set_active_termination(self, impedance: Optional[int]):
+        """
+        Sets the impedance value for active termination
+
+        Available: 50, 100, 200, 400 [Ohm] or None;
+        None turns off active termination.
+
+        Args:
+            impedance (int): the impedance value to set
+        """
+        self._handle.setActiveTermination(impedance)
 
     def set_dtgc_attenuation(self, attenuation: Optional[int]):
         """
@@ -287,34 +334,74 @@ class Us4R(Device, Ultrasound):
         """
         return self._handle.getAfe(addr)
 
+    def set_io_bitstream(self, id, levels, periods):
+        return self._handle.setIOBitstream(id, list(levels), list(periods))
 
     @property
     def channels_mask(self):
         """
-        Returns a list of system channels that are masked in the configuration.
+        Returns a list of system channels that are masked in the configuration, for Probe:0.
+        DEPRECATED, use get_channels_mask method.
         """
-        return self._handle.getChannelsMask()
+        return self.get_channels_mask(0)
+
+    def get_channels_mask(self, probe_nr):
+        """
+        Returns a list of system channels that are masked in the configuration, for Probe:{probe_nr}.
+        """
+        return self._handle.getChannelsMask(probe_nr)
+
+    def get_actual_frequency(self, frequency: float) -> float:
+        """
+        Return the system TX frequency that would be actually set for the given
+        TX frequency.
+        The output frequency depends on the frequency discretization performed
+        by the driver.
+
+        :param frequency: input frequency
+        :return: the actual frequency that will be set
+        """
+        return self._handle.getActualFrequency(frequency)
+
+    def set_stop_on_overflow(self, is_stop):
+        """
+        Set the system to stop when (RX or host) buffer overflow is detected (ASYNC mode only).
+        This property is set by default to true.
+        """
+        return self._handle.setStopOnOverflow(is_stop)
+
+    def get_number_of_probes(self):
+        return self._handle.getNumberOfProbes()
 
     def get_dto(self):
         import arrus.utils.core
-        probe_model = arrus.utils.core.convert_to_py_probe_model(
-            core_model=self._handle.getProbe(0).getModel())
-        probe_dto = arrus.devices.probe.ProbeDTO(model=probe_model)
+        n_probes = self._handle.getNumberOfProbes()
+        probes = []
+        for i in range(n_probes):
+            probe_model = arrus.utils.core.convert_to_py_probe_model(
+                core_model=self._handle.getProbe(i).getModel())
+            probe_dto = arrus.devices.probe.ProbeDTO(
+                device_id=DeviceId(arrus.devices.probe.DEVICE_TYPE, i),
+                model=probe_model
+            )
+            probes.append(probe_dto)
+
         return Us4RDTO(
-            probe=probe_dto,
-            sampling_frequency=self.sampling_frequency
+            probe=probes,
+            sampling_frequency=self.sampling_frequency,
+            data_sampling_frequency=self.current_sampling_frequency
         )
 
-    def get_data_description(self, upload_result, sequence):
+    def get_data_description(self, upload_result, sequence, array_id):
         # Prepare data buffer and constant context metadata
-        fcm = self._get_fcm(upload_result, sequence)
+        fcm = self._get_fcm(array_id, upload_result, sequence)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
             custom={"frame_channel_mapping": fcm}
         )
 
-    def get_data_description_updated_for_subsequence(self, upload_result, sequence):
-        fcm = self._get_fcm(upload_result, sequence)
+    def get_data_description_updated_for_subsequence(self, array_id, upload_result, sequence):
+        fcm = self._get_fcm(array_id, upload_result, sequence)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
             custom={"frame_channel_mapping": fcm}
@@ -337,7 +424,7 @@ class Us4R(Device, Ultrasound):
         self._handle.setMaximumPulseLength(max_length)
 
 
-    def _get_fcm(self, upload_result, sequence):
+    def _get_fcm(self, array_id, upload_result, sequence):
         """
         Returns frame channel mapping (FCM) extracted from the given upload result, assuming
         the given sequence is running. The new FCM considers whether a sub-sequence is already
@@ -345,9 +432,9 @@ class Us4R(Device, Ultrasound):
 
         :param upload_result: self.upload result
         :param sequence: the current sequence to consider
-        :return: new frame channel mapping 
+        :return: new frame channel mapping
         """
-        fcm = arrus.core.getFrameChannelMapping(upload_result)
+        fcm = arrus.core.getFrameChannelMapping(array_id, upload_result)
         fcm_us4oems, fcm_frame, fcm_channel, frame_offsets, n_frames = \
             arrus.utils.core.convert_fcm_to_np_arrays(fcm, self.n_us4oems)
         return arrus.devices.us4r.FrameChannelMapping(
@@ -358,12 +445,100 @@ class Us4R(Device, Ultrasound):
             n_frames=n_frames,
             batch_size=sequence.n_repeats)
 
+    def _get_unique_tgc_context_and_tgc(self, sequences, medium):
+        # Make sure that every sequence gives us the same TGC curve.
+        # For that:
+        # every should be the same
+        # every end_sample, speed_of_sound should be the same
+        tgcs = set()
+        tgc_contexts = set()
+        for seq in sequences:
+            if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
+                # Determine TGC context
+                c = seq.speed_of_sound
+                c = c if c is not None else medium.speed_of_sound
+                sample_range = get_sample_range(
+                    op=seq,
+                    fs=self.current_sampling_frequency,
+                    speed_of_sound=c
+                )
+                tgc_contexts.add(
+                    arrus.kernels.tgc.TgcCalculationContext(
+                        end_sample=sample_range[1],
+                        speed_of_sound=c
+                    )
+                )
+                # Determine TGC.
+                if seq.tgc_start is not None and seq.tgc_slope is not None:
+                    tgcs.add(arrus.ops.tgc.LinearTgc(
+                        start=seq.tgc_start,
+                        slope=seq.tgc_slope
+                    ))
+                else:
+                    tgcs.add(seq.tgc_curve)
+            elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
+                # Make the curve hashable.
+                curve = tuple(seq.tgc_curve.tolist())
+                tgcs.add(curve)
+                sample_range = seq.get_sample_range_unique()
+                if medium is None:
+                    # No context
+                    tgc_contexts.add(None)
+                else:
+                    c = medium.speed_of_sound
+                    tgc_contexts.add(
+                        arrus.kernels.tgc.TgcCalculationContext(
+                            end_sample=sample_range[1],
+                            speed_of_sound=c
+                        )
+                    )
+            else:
+                raise ValueError(f"Unsupported type of TX/RX sequence: "
+                                 f"{type(seq)}")
+        if len(tgc_contexts) != 1:
+            raise ValueError("The TGC setting context is not unique. "
+                             "Please make sure that all you sequences "
+                             "are of the same type,"
+                             "acquire the same number of samples and specify "
+                             "the same speed of sound. "
+                             f"Detected TGC contexts: {tgc_contexts}")
+        if len(tgcs) != 1:
+            raise ValueError("The TGC curve should be unique for all "
+                             "TX/RX sequences. Detected TGC curves: "
+                             f"{tgcs}")
+        tgc = next(iter(tgcs))
+        if isinstance(tgc, Iterable):
+            tgc = np.array(tgc)
+        return next(iter(tgc_contexts)), tgc
+
 
 # ------------------------------------------ LEGACY MOCK
 @dataclasses.dataclass(frozen=True)
 class Us4RDTO:
-    probe: arrus.devices.probe.ProbeDTO
-    sampling_frequency: float
+    """
+    Us4R Data Transfer Object.
 
-    def get_id(self):
-        return "Us4R:0"
+    :param probe: a probe/collections of probes connected to the Us4R device
+    :param sampling_frequency: nominal sampling frequency of the device
+    :param data_sampling_frequency: the actual data sampling frequency
+    """
+    probe: Union[ProbeDTO, Sequence[ProbeDTO]]
+    sampling_frequency: float
+    data_sampling_frequency: float
+    # TODO(0.12.0) make id obligatory (will break previous const metadata)
+    device_id: DeviceId = DeviceId(DEVICE_TYPE, 0)
+
+    def get_probe_by_id(self, id: Union[DeviceId, str]) -> ProbeDTO:
+        if isinstance(id, str):
+            id = parse_device_id(id)
+        probes = self.probe
+        if not isinstance(probes, Iterable):
+            probes = (probes, )
+        # NOTE: the number of probes is expected to be relatively small (< 10)
+        probes = [p for p in self.probe if p.device_id == id]
+        if len(probes) == 0:
+            raise ValueError(f"There is no probe with id: {id}")
+        if len(probes) > 1:
+            raise ValueError(f"Detected multiple probes with id: {id}")
+        return probes[0]
+

@@ -2,21 +2,23 @@
 
 #define CUDART_PI_F 3.141592654f
 
+// The below values are stored for ALL probe elements.
 __constant__ float xElemConst[256]; // [m]
+__constant__ float zElemConst[256]; // [m]
+__constant__ float angleElemConst[256]; // [rad]
 
 // Assumptions:
 // - TX and RX apertures have the same center position
-// - x/z/angle/Elem refers to the RX aperture (i.e. the first value is the position of first aperture element, relative
-// to the center of TX/RX aperture
 extern "C"
-__global__ void beamformPhasedArray(complex<float> *output, const complex<float> *input,
-                                    const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
-                                    const float *txAngles, // [rad]
-                                    const float initDelay, const float startTime,
-                                    const float c, const float fs, const float fc, float maxApodTang) {
+    __global__ void beamform(complex<float> *output, const complex<float> *input,
+             const unsigned nSeq, const unsigned nTx, const unsigned nRx, const unsigned nSamples,
+             const float *txAngles, // [rad]
+             const float initDelay, const float startTime,
+             const float c, const float fs, const float fc, float maxApodTang,
+             const size_t xElemConstOffset, const size_t zElemConstOffset, const size_t angleElemConstOffset) {
     complex<float> a, b;
-    float elementX, elementZ;
-    float rxTang, pixWgh = 0;
+    float elementX, elementZ, elementAngle;
+    float rxAng, rxTang, pixWgh = 0;
     float txDistance, rxDistance, time, s, txAngleSin, txAngleCos;
     float modSin, modCos;
     unsigned signalOffset;
@@ -32,13 +34,13 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
     if(sample >= nSamples || scanline >= nTx || frame >= nSeq) {
         return;
     }
-
     float txAngle = txAngles[scanline];
 
     float r = (sample/fs + startTime)*c/2;
     __sincosf(txAngle, &txAngleSin, &txAngleCos);
 
     // Note: relative to the center of aperture.
+    // coordinate system: aperture's center
     float pointX = r*txAngleSin;
     float pointZ = r*txAngleCos;
     txDistance = r;
@@ -46,20 +48,23 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
     unsigned txOffset = frame*nTx*nRx*nSamples + scanline*nRx*nSamples;
     float cInv = 1/c;
 
-    for(unsigned element = 0; element < nRx; ++element) {
-        // Note: relative to the center of aperture.
-        elementX = xElemConst[element];
-        elementZ = 0; // Linear array.
+    for(int element = 0; element < nRx; ++element) {
+        elementX = xElemConst[xElemConstOffset + element];
+        elementZ = zElemConst[zElemConstOffset + element];
+        elementAngle = angleElemConst[angleElemConstOffset + element];
 
         // RX apodization.
-        rxTang = (pointX-elementX)/(pointZ-elementZ);
+        rxAng = atan2f(pointX-elementX, pointZ-elementZ);
+        rxAng = rxAng-elementAngle;
+        rxTang = tanf(rxAng);
+
         if(fabs(rxTang) > maxApodTang) {
             continue;
         }
-        // RX distance and sample number for given RX element.
+        // RX distance and sample number for a given RX element.
         rxDistance = hypotf(elementX-pointX, elementZ-pointZ);
-        time = (txDistance + rxDistance) * cInv + initDelay;
-        s = time * fs;
+        time = (txDistance+rxDistance)*cInv + initDelay;
+        s = time*fs;
         sInt = (int) s;
 
         signalOffset = txOffset + element*nSamples;
@@ -67,7 +72,7 @@ __global__ void beamformPhasedArray(complex<float> *output, const complex<float>
             float ratio = s - sInt;
             a = input[signalOffset + sInt];
             b = input[signalOffset + sInt + 1];
-            currentResult = (1.0f - ratio) * a + ratio * b;
+            currentResult = (1.0f - ratio)*a + ratio*b;
         }
         else if(sInt == nSamples-1) {
             currentResult = input[signalOffset + sInt];

@@ -3,108 +3,126 @@
 
 #include "arrus/common/compiler.h"
 #include "arrus/common/format.h"
+#include "arrus/common/utils.h"
 
 #include <utility>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/common/collections.h"
 
 namespace arrus::devices {
 
-class Us4OEMBufferElementPart {
+/**
+ * A single Us4OEM element part currently corresponds to a single entry sequencer
+ * output, that is, a single RF frame (number of samples, number of us4OEM RX channels e.g. 32).
+ * Note: the size can be 0 -- this kind of Part is to inform
+ * that no transfer is performed in the given sequencer entry.
+ */
+class Us4OEMBufferArrayPart {
 public:
-    Us4OEMBufferElementPart(const size_t address, const size_t size, const uint16 firing, const unsigned nSamples)
-        : address(address), size(size), firing(firing), nSamples(nSamples) {}
+    Us4OEMBufferArrayPart(size_t address, size_t size, uint16 arrayId, uint16 entryId, unsigned int nSamples)
+        : address(address), size(size), arrayId(arrayId), entryId(entryId), nSamples(nSamples) {}
 
+    /** Returns address of this part, relative to the beginning of the array */
     size_t getAddress() const { return address; }
+
     size_t getSize() const { return size; }
-    uint16 getFiring() const { return firing; }
-    unsigned getNSamples() const { return nSamples; }
+
+    uint16 getArrayId() const { return arrayId; }
+
+    /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries for a given element)
+     * Global per sequence and number of repetitions. Local per element (i.e., calculated as for the first buffer
+     * element). */
+    uint16 getEntryId() const { return entryId; }
+
+    unsigned int getNSamples() const { return nSamples; }
+
+private:
+    size_t address;
+    size_t size;
+    uint16 arrayId;
+    uint16 entryId;
+    unsigned nSamples;
+};
+
+// A single array consits of multiple parts (frames).
+using Us4OEMBufferArrayParts = std::vector<Us4OEMBufferArrayPart>;
+// A single element consists of 0 or more arrays.
+using Us4OEMBufferElementParts = std::vector<Us4OEMBufferArrayParts>;
+
+class Us4OEMBufferArrayDef {
+public:
+    Us4OEMBufferArrayDef(size_t address, framework::NdArrayDef definition, Us4OEMBufferArrayParts parts)
+        : address(address), definition(std::move(definition)), parts(std::move(parts)) {}
+
+    /** Array address, relative to the buffer element address */
+    size_t getAddress() const { return address; }
+
+    const framework::NdArrayDef &getDefinition() const { return definition; }
+    const Us4OEMBufferArrayParts &getParts() const { return parts; }
+
+    /** The number of bytes this OEM produces. */
+    [[nodiscard]] size_t getSize() const {
+        size_t result = 0;
+        for (const auto &part : parts) {
+            result += part.getSize();
+        }
+        return result;
+    }
+
+private:
+    size_t address;
+    framework::NdArrayDef definition;
+    Us4OEMBufferArrayParts parts;
+};
+
+/**
+ * A description of a single us4oem buffer element (which is a tuple of batches of sequences).
+ *
+ * An element is described by:
+ * - src address
+ * - size - size of the element (in bytes)
+ * - global firing - a global firing number, that is, the number of the last sequencer entry that writes to this element
+ */
+class Us4OEMBufferElement {
+public:
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing) : address(address), size(size), firing(firing) {}
+
+    [[nodiscard]] size_t getAddress() const { return address; }
+
+    [[nodiscard]] size_t getSize() const { return size; }
+
+    /**
+     * Returns the number of the last (sequencer) entry, that writes the data to this element.
+     * NOTE: this is a globa firing number! That is, in particular, it ignores the fact that this element
+     * can be only a view to the target element.
+     */
+    [[nodiscard]] uint16 getGlobalFiring() const { return firing; }
 
 private:
     size_t address;
     size_t size;
     uint16 firing;
-    unsigned nSamples;
 };
 
-class Us4OEMBuffer;
-
-/**
- * A description of a single us4oem buffer element (which is now a batch of sequences).
- *
- * An element is described by:
- * - src address
- * - size - size of the element (in bytes)
- * - firing - a firing which ends the acquiring Tx/Rx sequence
- */
-class Us4OEMBufferElement {
-public:
-    Us4OEMBufferElement(size_t address, size_t viewSize, uint16 firing, const framework::NdArray::Shape &viewShape,
-                        framework::NdArray::DataType dataType)
-        : address(address), viewSize(viewSize), firing(firing), viewShape(viewShape), dataType(dataType) {}
-
-    /**
-     * Returns the address OF THE WHOLE BUFFER ELEMENT (i.e. [0, nParts)). Byte-addressing.
-     */
-    [[nodiscard]] size_t getAddress() const { return address; }
-
-    /**
-     * Returns the size of THIS BUFFER ELEMENT View (i.e. [start, end]). Number of bytes.
-     */
-    [[nodiscard]] size_t getViewSize() const { return viewSize; }
-
-    /**
-     * Last firing of this element (when considering the WHOLE BUFFER ELEMENT).
-     */
-    [[nodiscard]] uint16 getFiring() const { return firing; }
-
-    /**
-     * Returns the shape of THIS BUFFER ELEMENT View (i.e. [start, end]).
-     */
-    [[nodiscard]] const framework::NdArray::Shape &getViewShape() const { return viewShape; }
-
-    [[nodiscard]] framework::NdArray::DataType getDataType() const { return dataType; }
-
-private:
-    friend class Us4OEMBuffer;
-    size_t address;
-    size_t viewSize;
-    uint16 firing;
-    framework::NdArray::Shape viewShape;
-    framework::NdArray::DataType dataType;
-};
+class Us4OEMBufferBuilder;
 
 /**
  * A class describing a structure of a buffer that is located in the Us4OEM
  * memory.
- *
+ * - All elements are assumed to have the same number of arrays.
  * - All elements are assumed to have the same parts.
  * - All part addresses are relative to the beginning of each element.
+ *
+ * NOTE: all OEM buffers should have the same number of array definitions, regardless
+ * of whether this OEM acquires some data or not. For empty arrays, the array def should
+ * indicate empty array.
  */
 class Us4OEMBuffer {
 public:
-    static framework::NdArray::Shape getShape(bool isDDCOn, unsigned int totalNSamples, unsigned nChannels) {
-        framework::NdArray::Shape result;
-        if (isDDCOn) {
-            result = {totalNSamples, 2, nChannels};
-        } else {
-            result = {totalNSamples, nChannels};
-        }
-        return result;
-    }
-
-    static framework::NdArray::Shape getShape(const framework::NdArray::Shape &currentShape, unsigned int totalNSamples) {
-        if(currentShape.size() != 2 && currentShape.size() != 3) {
-            throw std::runtime_error("Illegal us4OEM output buffer element shape order: " + std::to_string(currentShape.size()));
-        }
-        auto nChannelsAxis = currentShape.size() == 0 ? uint32_t(0) : static_cast<uint32_t>(currentShape.size()-1);
-        bool isDDCOn = currentShape.size() == 3;
-        return getShape(isDDCOn, totalNSamples, static_cast<uint32_t>(currentShape.get(nChannelsAxis)));
-    }
-
-    explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements, std::vector<Us4OEMBufferElementPart> elementParts)
-        : elements(std::move(elements)), elementParts(std::move(elementParts)) {}
+    explicit Us4OEMBuffer(std::vector<Us4OEMBufferElement> elements, std::vector<Us4OEMBufferArrayDef> arrayDefs)
+        : elements(std::move(elements)), arrayDefs(std::move(arrayDefs)) {}
 
     [[nodiscard]] const Us4OEMBufferElement &getElement(size_t i) const { return elements[i]; }
 
@@ -112,72 +130,52 @@ public:
 
     [[nodiscard]] const std::vector<Us4OEMBufferElement> &getElements() const { return elements; }
 
-    [[nodiscard]] const std::vector<Us4OEMBufferElementPart> &getElementParts() const { return elementParts; }
+    [[nodiscard]] ArrayId getNumberOfArrays() const { return ARRUS_SAFE_CAST(arrayDefs.size(), ArrayId); }
 
-    /**
-     * Returns the view of this buffer for slice [start, end] (note: end is inclusive).
-     */
-    Us4OEMBuffer getView(uint16 start, uint16 end) const {
-        if (start > end) {
-            throw IllegalArgumentException("Us4OEMBufferView: start cannot exceed end");
-        }
-        if (end >= elementParts.size()) {
-            throw IllegalArgumentException(
-                format("The index is outside of the scope of us4OEM Buffer view (size: {})", end, elementParts.size()));
-        }
-        auto b = std::begin(elementParts);
+    [[nodiscard]] const std::vector<Us4OEMBufferArrayDef> &getArrayDefs() const { return arrayDefs; }
 
-        // NOTE: +1 because end is inclusive
-        std::vector<Us4OEMBufferElementPart> newParts(b + start, b + end + 1);
-        std::vector<Us4OEMBufferElement> newElements;
-        size_t oldSize = getUniqueElementSize(elements);
-        IGNORE_UNUSED(oldSize);
-        auto oldShape = getUniqueShape(elements);
-        size_t newSize = std::accumulate(std::begin(newParts), std::end(newParts), (size_t)0,
-            [](const auto &a, const auto &b){return a + b.getSize();});
-        unsigned newNSamples = std::accumulate(std::begin(newParts), std::end(newParts), 0,
-            [](const auto &a, const auto &b){return a + b.getNSamples();});
-        auto newShape = getShape(oldShape, newNSamples);
-        for(const auto &oldElement: elements) {
-            Us4OEMBufferElement newElement(oldElement);
-            newElement.address = oldElement.address + newParts.at(0).getAddress();
-            newElement.viewSize = newSize;
-            newElement.viewShape = newShape;
-            newElements.push_back(newElement);
+    [[nodiscard]] const Us4OEMBufferArrayDef &getArrayDef(size_t i) const {
+        if(i >= arrayDefs.size()) {
+            throw IllegalArgumentException(format(
+                "Us4OEMBufferView: array id exceeds the number of arrays defined for "
+                "the given OEM buffer, got: {}, number of arrays: {}.", i, getArrayDefs().size()));
         }
-        return Us4OEMBuffer(newElements, newParts);
+        return arrayDefs[i];
+    }
+
+    [[nodiscard]] const Us4OEMBufferArrayParts &getParts(ArrayId arrayId) const {
+        ARRUS_REQUIRES_TRUE_IAE(arrayId < arrayDefs.size(), "Array number out of the bounds.");
+        return arrayDefs.at(arrayId).getParts();
+    }
+
+    /** array id -> array address, relative to the beginning of an element */
+    [[nodiscard]] size_t getArrayAddressRelative(uint16 arrayId) const { return arrayDefs.at(arrayId).getAddress(); }
+
+private:
+    std::vector<Us4OEMBufferElement> elements;
+    /** Array id -> array defintion (NdArray defintion + parts) */
+    std::vector<Us4OEMBufferArrayDef> arrayDefs;
+};
+
+class Us4OEMBufferBuilder {
+public:
+
+    void add(Us4OEMBufferArrayDef def) {
+        arrays.emplace_back(def);
+    }
+
+    void add(Us4OEMBufferElement element) {
+        elements.emplace_back(element);
+    }
+
+    Us4OEMBuffer build() {
+        return Us4OEMBuffer{elements, arrays};
     }
 
 private:
-    size_t getUniqueElementSize(const std::vector<Us4OEMBufferElement> &els) const {
-        std::unordered_set<size_t> sizes;
-        for (auto &element: els) {
-            sizes.insert(element.getViewSize());
-        }
-        if (sizes.size() > 1) {
-            throw ArrusException("Each us4oem buffer element should have the same size.");
-        }
-        // This is the size of a single element produced by this us4oem.
-        const size_t elementSize = *std::begin(sizes);
-        return elementSize;
-    }
-
-    framework::NdArray::Shape getUniqueShape(const std::vector<Us4OEMBufferElement> &elems) const {
-        if(elems.empty()) {
-            throw std::runtime_error("List of elements cannot be empty");
-        }
-        auto &shape = elems.at(0).getViewShape();
-        for(size_t i = 0; i < elems.size(); ++i) {
-            auto &otherShape = elems.at(i).getViewShape();
-            if(shape != otherShape) {
-                throw IllegalArgumentException("The shape of element's NdArray must be unique for each us4OEM.");
-            }
-        }
-        return shape;
-    }
-
     std::vector<Us4OEMBufferElement> elements;
-    std::vector<Us4OEMBufferElementPart> elementParts;
+    // Array -> parts
+    std::vector<Us4OEMBufferArrayDef> arrays;
 };
 
 }// namespace arrus::devices

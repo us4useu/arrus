@@ -1,8 +1,45 @@
 Release notes
 =============
 
+0.11.x
+-----
+
+0.11.0
+
+- core (C++):
+
+    - The .prototxt field us4oem_channels_mask is no longer required #ARRUS-197.
+    - arrus::devices::Us4RSettings::getUs4OEMChannelsMask() is no longer available # ARRUS-197.
+    - The arrus::devices::Us4RSettings::Us4RSettings constructor now takes a different set of parameters #ARRUS-197:
+
+        - the us4oemChannelsMask is no longer available,
+        - the channelsMask now takes a list of unordered_sets; each set represents a channel mask for a given probe.
+
+    - Adjusted RF/IQ data start sample number (i.e. corresponding to the TX delay = 0) #US4R-513.
+
+        - Removed Us4OEM::getTxOffset() method.
+
+    - Increased the maximum PRF that can be set for the OEM+ devices: decreased the TX pulsers reprogramming time #US4R-525.
+
+- MATLAB API:
+
+    - Fixed the RX apodization #ARRUS-288.
+    - Exposed SYNC/ASYNC modes and switchable multi-sequences; Added coherent filtering and compounding flags; Implemented cineloop buffers; Improved processing speed; Removed "nElements" option for tx/rx aperture size; #ARRUS-195;
+
+
 0.10.x
 -----
+
+
+0.10.5
+
+- core (C++, HAL):
+
+    - Fixed exception handling for exceptions that occurred before/on OEM+ initialization and might cause host PC restart #US4R-572.
+    - AFE58JD18 PGA LPF setting bugfix #US4R-584.
+    - Initial HVPS calibration time adjustment #US4R-585.
+    - Do not verify voltages measured by OEM+ with the external HV #US4R-586.
+
 
 0.10.4
 
@@ -52,7 +89,7 @@ Release notes
 - core (C++):
 
     - Implemented the possibility to select TX/RX subsequence #ARRUS-280.
-    - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined uffer overflow interrupts handling, #US4R-456.
+    - Fixed SYNC mode fixed the SYNC mode mechanism to work in a expected manner; fixed user-defined buffer overflow interrupts handling, #US4R-456.
     - Removed HV enable on HVPS initialization #US4R-455.
 
 

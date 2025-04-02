@@ -20,14 +20,14 @@ classdef Session < handle
             device = res{1, 1};
         end
 
-        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels] = upload(obj, scheme)
+        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels, rxOffset] = upload(obj, scheme)
             % Uploads a given scheme on the available devices.
             % Currently, the scheme upload is performed on the Us4R:0 device only.
             % After uploading a new sequence the previously returned output buffers will be in invalid state.
             %
             % :param scheme: scheme to upload (arrus.ops.us4r.Scheme)
             % :return: upload result information: output data buffer, metadata describing the data that will be generated
-            res = obj.ptr.callMethod("upload", 6, scheme); % Note: 6 == number of output arrays
+            res = obj.ptr.callMethod("upload", 7, scheme); % Note: 7 == number of output arrays
             buffer = arrus.framework.Buffer(res{1, 1});
             % FCM
             %% NOTE! bellow we assume numbering starting from 0!
@@ -55,12 +55,39 @@ classdef Session < handle
             %% us4oemFirstFrame = frameOffsets(us4oem);
             %% value = data(channel, :, us4oemFirstFrame+frame); % assume we have resized
                                                                  % raw data to (nPhysicalFrames, nSamples, nPhysicalChannels)
+            %% rxOffset: Rx offset between tx time = 0 and rx time = 0 moments, scalar, unit: clock cycles. 
 
             frameOffsets = res{1, 2};
             numberOfFrames = res{1, 3};
             us4oems = res{1, 4};
             frames = res{1, 5};
             channels = res{1, 6};
+            rxOffset = res{1, 7};
+        end
+
+        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels, rxOffset] = setSubsequence(obj, start, stop, sri, arrayId)
+            % Sets the current TX/RX sequence to the [start, stop] subsequence (both ends inclusive).
+            % 
+            % This method requires that:
+            % - start <= stop (when start == stop, the system will run a single TX/RX sequence),
+            % - the scheme was uploaded,
+            % - the TX/RX sequence length is greater than the `stop` value,
+            % - the scheme is stopped.
+            % 
+            % :param start: the TX/RX number which should now be the first TX/RX
+            % :param stop: the TX/RX number which should now be the last TX/RX
+            % :param sri: the new SRI to apply [s], optional
+            % :return: the new data buffer and metadata
+
+            % Note: 7 == number of output arrays
+            res = obj.ptr.callMethod("setSubsequence", 7, start, stop, sri, arrayId);
+            buffer = arrus.framework.Buffer(res{1, 1});
+            frameOffsets = res{1, 2};
+            numberOfFrames = res{1, 3};
+            us4oems = res{1, 4};
+            frames = res{1, 5};
+            channels = res{1, 6};
+            rxOffset = res{1, 7};
         end
 
         function run(obj)

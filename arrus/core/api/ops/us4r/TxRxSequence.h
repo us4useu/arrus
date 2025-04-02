@@ -1,14 +1,18 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_TXRXSEQUENCE_H
 #define ARRUS_CORE_API_OPS_US4R_TXRXSEQUENCE_H
 
-#include <utility>
 #include <optional>
+#include <utility>
+#include <algorithm>
+#include <iterator>
 
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/framework.h"
-#include "arrus/core/api/ops/us4r/tgc.h"
-#include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/Rx.h"
+#include "arrus/core/api/ops/us4r/Tx.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
+
+#include <unordered_set>
 
 namespace arrus::ops::us4r {
 
@@ -17,10 +21,10 @@ namespace arrus::ops::us4r {
  */
 class TxRx {
 public:
-    TxRx():tx(std::vector<bool>{}, std::vector<float>{}, Pulse(0, 0, false)),
-           rx(std::vector<bool>{}, std::make_pair<unsigned int, unsigned int>((unsigned int)0, (unsigned int)0)),
-           pri(0.0f)
-    {}
+    TxRx()
+        : tx(std::vector<bool>{}, std::vector<float>{}, Pulse(0, 0, false)),
+          rx(std::vector<bool>{}, std::make_pair<unsigned int, unsigned int>((unsigned int) 0, (unsigned int) 0)),
+          pri(0.0f) {}
 
     /**
      * TxRx constructor.
@@ -31,17 +35,11 @@ public:
      */
     TxRx(Tx tx, Rx rx, float pri) : tx(std::move(tx)), rx(std::move(rx)), pri(pri) {}
 
-    const Tx &getTx() const {
-        return tx;
-    }
+    const Tx &getTx() const { return tx; }
 
-    const Rx &getRx() const {
-        return rx;
-    }
+    const Rx &getRx() const { return rx; }
 
-    float getPri() const {
-        return pri;
-    }
+    float getPri() const { return pri; }
 
 private:
     Tx tx;
@@ -70,32 +68,50 @@ public:
     /**
      * Returns vector of operations to perform.
      */
-    const std::vector<TxRx> &getOps() const {
-        return txrxs;
-    }
+    const std::vector<TxRx> &getOps() const { return txrxs; }
 
     /**
      * Initial TGC curve points.
      */
-    const TGCCurve &getTgcCurve() const {
-        return tgcCurve;
-    }
+    const TGCCurve &getTgcCurve() const { return tgcCurve; }
 
     /**
      * Returns sequence repetition interval (the total time the given sequence should actually take).
      * nullopt means that the frame acquisition time should be determined by total PRI only.
      */
     const std::optional<float> getSri() const {
-        if(sri.value() != NO_SRI) {
+        if (sri.value() != NO_SRI) {
             return sri;
-        }
-        else {
+        } else {
             return std::optional<float>();
         }
     }
 
-    int16 getNRepeats() const {
-        return nRepeats;
+    int16 getNRepeats() const { return nRepeats; }
+
+    /**
+     * Returns the ordinal number of the probe used for RX. If the RX probe is not-unique,
+     * this method will throw IllegalStateException.
+     */
+    devices::DeviceId getRxProbeId() const {
+        std::unordered_set<devices::Ordinal> p;
+        auto toRxProbe = [](const TxRx &op) { return op.getRx().getPlacement().getOrdinal(); };
+        std::transform(std::begin(txrxs), std::end(txrxs), std::inserter(p, std::begin(p)), toRxProbe);
+        ARRUS_REQUIRES_TRUE_E(p.size() == 1, IllegalStateException("There should be exactly one RX probe in the sequence."));
+        devices::Ordinal ordinal = *std::begin(p);
+        return devices::DeviceId{devices::DeviceType::Probe, ordinal};
+    }
+    /**
+     * Returns the ordinal number of the probe used for RX. If the RX probe is not-unique,
+     * this method will throw IllegalStateException.
+     */
+    devices::DeviceId getTxProbeId() const {
+        std::unordered_set<devices::Ordinal> p;
+        auto toTxProbe = [](const TxRx &op) { return op.getTx().getPlacement().getOrdinal(); };
+        std::transform(std::begin(txrxs), std::end(txrxs), std::inserter(p, std::begin(p)), toTxProbe);
+        ARRUS_REQUIRES_TRUE_E(p.size() == 1, "There should be exactly one TX probe in the sequence.");
+        devices::Ordinal ordinal = *std::begin(p);
+        return devices::DeviceId{devices::DeviceType::Probe, ordinal};
     }
 
 private:
@@ -105,6 +121,6 @@ private:
     int16 nRepeats;
 };
 
-}
+}// namespace arrus::ops::us4r
 
-#endif //ARRUS_CORE_API_OPS_US4R_TXRXSEQUENCE_H
+#endif//ARRUS_CORE_API_OPS_US4R_TXRXSEQUENCE_H

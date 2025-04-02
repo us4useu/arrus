@@ -60,6 +60,35 @@ const std::vector<uint32> &FrameChannelMappingImpl::getFrameOffsets() const {
 const std::vector<uint32> &FrameChannelMappingImpl::getNumberOfFrames() const {
     return numberOfFrames;
 }
+std::string FrameChannelMappingImpl::toString() const {
+    std::stringstream s;
+    auto nFrames = this->getNumberOfLogicalFrames();
+    auto nChannels = this->getNumberOfLogicalChannels();
+
+    s << "FCM shape: (" << nFrames << ", " << nChannels << ")" << std::endl;
+    s << "oems: " << std::endl;
+    for(FrameNumber frame = 0; frame < this->getNumberOfLogicalFrames(); ++frame) {
+        for(ChannelIdx ch = 0; ch < this->getNumberOfLogicalChannels(); ++ch) {
+            auto addr = this->getLogical(frame, ch);
+            s << (int)addr.getUs4oem() << ", ";
+        }
+    }
+    s << "frames: " << std::endl;
+    for(FrameNumber frame = 0; frame < this->getNumberOfLogicalFrames(); ++frame) {
+        for(ChannelIdx ch = 0; ch < this->getNumberOfLogicalChannels(); ++ch) {
+            auto addr = this->getLogical(frame, ch);
+            s << (int)addr.getFrame() << ", ";
+        }
+    }
+    s << "channels: " << std::endl;
+    for(FrameNumber frame = 0; frame < this->getNumberOfLogicalFrames(); ++frame) {
+        for(ChannelIdx ch = 0; ch < this->getNumberOfLogicalChannels(); ++ch) {
+            auto addr = this->getLogical(frame, ch);
+            s << (int)addr.getChannel() << ", ";
+        }
+    }
+    return s.str();
+}
 
 void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, ChannelIdx logicalChannel,
                                                    uint8 us4oem, FrameNumber physicalFrame, int8 physicalChannel) {
@@ -68,7 +97,7 @@ void FrameChannelMappingBuilder::setChannelMapping(FrameNumber logicalFrame, Cha
     channelMapping(logicalFrame, logicalChannel) = physicalChannel;
 }
 
-FrameChannelMappingImpl::Handle FrameChannelMappingBuilder::build() {
+FrameChannelMappingImpl::Handle FrameChannelMappingBuilder::build() const {
     return std::make_unique<FrameChannelMappingImpl>(this->us4oemMapping, this->frameMapping, this->channelMapping,
                                                      this->frameOffsets, this->numberOfFrames);
 }

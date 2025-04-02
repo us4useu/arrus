@@ -73,6 +73,9 @@ Custom Tx/Rx sequences
 Devices
 =======
 
+Ultrasound
+----------
+
 **Do not create instances of the below classes directly**. Use
 ``session.get_device`` to acquire the appropriate device, for example:
 ``session.get_device('/Us4R:0')``.
@@ -82,6 +85,58 @@ Devices
     :exclude-members: start, stop, get_probe_model
     :show-inheritance:
 
+
+The table below shows which TX/RX parameters can be changed in the system run-time (i.e. after starting
+the system with `start_scheme()` method), and which currently require performing the `session.upload` method.
+
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| **Name**                                           | **Possible to change in run-time?**   | **Interface**                       | **Possible to set per TX/RX?**   |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| **RX**                                                                                                                                                              |
+|                                                                                                                                                                     |
+|                                                                                                                                                                     |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Aperture                                           | No                                | session.upload(),                       | Yes (local)                      |
+|                                                    |                                   | arrus.ops.us4r.Rx()                     |                                  |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Sample Range                                       | No                                | session.upload(),                       | Yes (local), however all Rxs     |
+|                                                    |                                   | arrus.ops.us4r.Rx()                     | must acquire the same number of  |
+|                                                    |                                   |                                         | samples                          |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Downsampling factor                                | No                                | session.upload(),                       | No (global per sequence)         |
+|                                                    |                                   | arrus.ops.us4r.Rx()                     |                                  |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| PGA gain                                           | Yes                               | set_pga_gain()                          | No (global)                      |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| LNA gain                                           | Yes                               | set_lna_gain()                          | No (global)                      |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Analog TGC curve                                   | Yes                               | set_tgc()                               | No (global)                      |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| DTGC attenuation                                   | Yes                               | set_dtgc_attenuation()                  | No (global)                      |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Digital high-pass filter (HPF) corner frequency    | Yes                               | set_hpf_frequency(), disable_hpf()      | No (global)                      |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Digital Down Conversion (demodulation frequencies, | No                                | session.upload(),                       | No (global)                      |
+| filter coefficients)                               |                                   | arrus.ops.us4r.DigitalDownConersion     |                                  |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| **TX**                                                                                                                                                              |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Aperture                                           | No                                | session.upload(),                       | Yes (local)                      |
+|                                                    |                                   | arrus.ops.us4r.Tx()                     |                                  |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Excitation                                         | No                                | session.upload(),                       | Yes (local)                      |
+|                                                    |                                   | arrus.ops.us4r.Tx(),                    |                                  |
+|                                                    |                                   | arrus.ops.us4r.Pulse()                  |                                  |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Delays/TX focus, angle, speed of sound             | Partially yes: possible to create | session.upload(),                       | Yes (local)                      |
+|                                                    | a set of pre-defined TX focuses.  | arrus.ops.us4r.Tx()                     |                                  |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| **TX/RX**                                                                                                                                                           |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| PRI                                                | No                                | session.upload(), arrus.ops.us4r.TxRx() | Yes (local)                      |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+
+
 .. autoclass:: arrus.devices.us4oem.Us4OEM
     :members:
     :show-inheritance:
@@ -89,6 +144,10 @@ Devices
 .. autoclass:: arrus.devices.us4r.Backplane
     :members:
     :show-inheritance:
+
+
+Processing devices
+------------------
 
 .. autoclass:: arrus.devices.gpu.GPU
     :show-inheritance:
@@ -165,9 +224,6 @@ B-mode imaging pipeline using cupy/numpy
     :show-inheritance:
 
 .. autoclass:: arrus.utils.imaging.Lambda
-    :show-inheritance:
-
-.. autoclass:: arrus.utils.imaging.Enqueue
     :show-inheritance:
 
 .. autoclass:: arrus.utils.imaging.SelectFrames

@@ -21,7 +21,7 @@ public:
         this->position = position;
     }
 
-    ~FileBufferElement() {
+    ~FileBufferElement() override {
         delete data;
     }
 
@@ -70,11 +70,19 @@ public:
         this->dataView = ndarray.slice(i, begin, end);
     }
 
-    arrus::framework::NdArray &getData() override { return dataView; }
+    framework::NdArray &getData() override { return dataView; }
+    framework::NdArray &getData(ArrayId) override {
+        throw ArrusException("get data (ordinal) for file device is not implemented.");
+    }
+    uint16 getNumberOfArrays() const override {
+        return 1;
+    }
+
     arrus::framework::NdArray &getAllData() {return ndarray; }
     size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }
     State getState() const override { return state; }
+
 private:
     std::mutex stateMutex;
     std::condition_variable readyForWrite;

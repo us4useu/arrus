@@ -709,6 +709,7 @@ class ProbeHealthVerifier:
             tx_frequency: float,
             nrx: int=32,
             voltage: int=_VOLTAGE,
+            probe_nr: int = 0
     )-> Footprint:
         """
         Creates and returns Footprint object.
@@ -738,7 +739,9 @@ class ProbeHealthVerifier:
             nrx: int=32,
             voltage: int=_VOLTAGE,
             footprint: Footprint=None,
-            signal_type: str="rf"
+            signal_type: str="rf",
+            probe_nr: int = 0,
+            hpf_corner_frequency: float = None
     )-> ProbeHealthReport:
         """
         Checks probe elements by validating selected features
@@ -770,8 +773,11 @@ class ProbeHealthVerifier:
         :param voltage: voltage to be used in tx/rx scheme
         :param footprint: object of the Footprint class;
                           if given, footprint tx/rx scheme will be used
-        :param signal_type: type of signal to be verified; available values: rf, hvps_current.
+        :param signal_type: type of signal to be verified; available values: rf, hvps.
                            NOTE: hvps is only available for the us4OEM+ rev 1 or later.
+        :param probe_nr: number of the probe to verify
+        :param hpf_corner_frequency: HPF corner frequency to apply (see Us4R documentation). Doesn't matter when signal_type == 'hvps'
+
         :return: an instance of the ProbeHealthReport
         """
         if signal_type == "rf":
@@ -782,6 +788,8 @@ class ProbeHealthVerifier:
                 nrx=nrx,
                 voltage=voltage,
                 footprint=footprint,
+                probe_nr=probe_nr,
+                hpf_corner_frequency=hpf_corner_frequency
             )
         elif signal_type == "hvps":
             data, metadata, masked_elements, aux = self._acquire_hvps_current(
@@ -790,6 +798,7 @@ class ProbeHealthVerifier:
                 tx_frequency=tx_frequency,
                 voltage=voltage,
                 footprint=footprint,
+                probe_nr=probe_nr,
             )
         else:
             raise ValueError(f"Unsupported signal type: {signal_type}")
@@ -896,6 +905,8 @@ class ProbeHealthVerifier:
             nrx,
             voltage,
             footprint=None,
+            probe_nr: int = 0,
+            hpf_corner_frequency: float = None
     ):
         """
         Acquires rf data. If footprint is given the footprint sequence is used,
@@ -908,8 +919,10 @@ class ProbeHealthVerifier:
                 placement="/GPU:0"
             )
             us4r = sess.get_device("/Us4R:0")
-            n_elements = us4r.get_probe_model().n_elements
-            masked_elements = us4r.channels_mask
+            if hpf_corner_frequency is not None:
+                us4r.set_hpf_corner_frequency(hpf_corner_frequency)
+            n_elements = us4r.get_probe_model(probe_nr).n_elements
+            masked_elements = us4r.get_channels_mask(probe_nr)
             if footprint is None:
                 seq = LinSequence(
                     tx_aperture_center_element=np.arange(0, n_elements),
@@ -928,6 +941,8 @@ class ProbeHealthVerifier:
                     tgc_slope=0,
                     downsampling_factor=1,
                     speed_of_sound=1490,
+                    tx_placement=f"Probe:{probe_nr}",
+                    rx_placement=f"Probe:{probe_nr}",
                 )
             else:
                 seq = footprint.get_sequence()
@@ -971,14 +986,15 @@ class ProbeHealthVerifier:
             tx_frequency,
             voltage,
             footprint=None,
-            acquisition_parameters: Dict[str, Any]=None
+            acquisition_parameters: Dict[str, Any]=None,
+            probe_nr: int = 0,
     ):
         if voltage > 15:
             raise ValueError("The voltage can not be higher than 15V for probe check")
 
         if acquisition_parameters is None:
             acquisition_parameters = {}
-        
+
         pulse_length = acquisition_parameters.get("pulse_length", 150e-6)
 
         with arrus.session.Session(cfg_path) as sess:
@@ -996,9 +1012,12 @@ class ProbeHealthVerifier:
                     aperture[ch] = True
                     op = TxRx(
                         Tx(aperture=aperture,
-                            excitation=Pulse(center_frequency=tx_frequency, n_periods=ncycles, inverse=False),
-                            delays=[0]),
-                        Rx(aperture=aperture, sample_range=(0, 4096), downsampling_factor=1),
+                           excitation=Pulse(center_frequency=tx_frequency, n_periods=ncycles, inverse=False),
+                           delays=[0],
+                           placement=f"Probe:{probe_nr}"),
+                        Rx(aperture=aperture, sample_range=(0, 4096),
+                           downsampling_factor=1,
+                           placement=f"Probe:{probe_nr}"),
                         pri=20e-3
                     )
                     ops.append(op)
@@ -1037,7 +1056,7 @@ class ProbeHealthVerifier:
                     sess.run(sync=True, timeout=5000)
 
                     # Wait for the measurement to be finished on all OEMs (we turned on HVPS
-                    # measurement on all OEMs, so to avoid unhandled IRQs error, just wait for 
+                    # measurement on all OEMs, so to avoid unhandled IRQs error, just wait for
                     # all OEMs to finish the measurement).
                     for nr in range(us4r.n_us4oems):
                         us4r.get_us4oem(nr).wait_for_hvps_measurement_done(timeout=5000)

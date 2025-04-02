@@ -3,6 +3,10 @@ import numpy as np
 import math
 from typing import Tuple
 
+from arrus.devices.device import DeviceType, DeviceId
+
+DEVICE_TYPE = DeviceType("Probe")
+
 
 @dataclasses.dataclass(frozen=True)
 class ProbeModelId:
@@ -32,7 +36,7 @@ class ProbeModel:
 
         if not self.is_convex_array():
             x_pos = element_position
-            z_pos = np.zeros((1, self.n_elements))
+            z_pos = np.zeros(self.n_elements)
             angle = np.zeros(self.n_elements)
         else:
             angle = element_position / self.curvature_radius
@@ -63,6 +67,5 @@ class ProbeModel:
 @dataclasses.dataclass(frozen=True)
 class ProbeDTO:
     model: ProbeModel
-
-    def get_id(self):
-        return "Probe:0"
+    # TODO(0.12.0) make id obligatory (will break previous const metadata)
+    device_id: DeviceId = DeviceId(DEVICE_TYPE, 0)

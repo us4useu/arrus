@@ -317,14 +317,7 @@ classdef DuplexDisplay < handle
                     obj.hQvr.Head.LineWidth = 1.5;
                 end
                 
-                % TODO removed below pause
-                % Applied the pause to make the figure window more
-                % responsive. Removing this pause may introduce some
-                % issues when closing the figure - e.g. a long delay
-                % between pressing the window close button and the 
-                % reaction to that close.
-                % That was an issue on MATLAB 2018b, testenv2.
-                pause(0.01);
+                drawnow limitrate;
                 
             catch ME
                 if(strcmp(ME.identifier, 'MATLAB:class:InvalidHandle'))

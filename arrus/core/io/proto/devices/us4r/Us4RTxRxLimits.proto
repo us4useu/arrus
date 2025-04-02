@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package arrus.proto;
+
+import "io/proto/common/IntervalDouble.proto";
+import "io/proto/common/IntervalInteger.proto";
+
+// All fields are optional here (implemented using oneof).
+message Us4RTxRxLimits {
+    IntervalDouble pulse_length = 1;
+    IntervalInteger voltage = 2;
+    IntervalDouble pri = 3;
+}
+

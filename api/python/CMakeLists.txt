@@ -101,23 +101,15 @@ set(SOURCE_FILES
         )
 
 set(TEST_FILES
+    # Image reconstruction tests.
+    arrus/utils/tests/processing_test.py
+    arrus/utils/tests/imaging/preprocessing_test.py
+    arrus/utils/tests/imaging/filters_test.py
+    arrus/utils/tests/imaging/reconstruction_test.py
     # Computing TX/RX delays (obsolete).
     arrus/kernels/tests/simple_tx_rx_sequence_test.py
     arrus/kernels/tests/tx_rx_sequence_test.py
-    # Image reconstruction tests.
-    arrus/utils/tests/imaging/filters_test.py
-    arrus/utils/tests/imaging/preprocessing_test.py
-    arrus/utils/tests/imaging/reconstruction_test.py
 )
-
-if(ARRUS_CUDA)
-    # CUDA GPU specific tests.
-    # CuPy is required.
-    set(TEST_FILES
-        arrus/utils/tests/pipeline_test.py
-        ${TEST_FILES})
-endif()
-
 
 set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
 set(SETUP_PY_OUT "${CMAKE_CURRENT_BINARY_DIR}/setup.py")

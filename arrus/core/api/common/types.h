@@ -23,6 +23,16 @@ using float64 = double;
 using ChannelIdx = uint16;
 typedef std::vector<bool> BitMask;
 using Voltage = uint8;
+using BitstreamId = uint16;
+using TxTimeoutId = uint8;
+using TxTimeout = uint16_t; // [us]
+
+// ultrasound output dimensions.
+using BatchId = uint16;
+using SequenceId = uint16;
+using RepetitionId = uint16;
+using OpId = uint16;
+using ArrayId = SequenceId;
 
 template<typename T> using PtrHandle = T *;
 

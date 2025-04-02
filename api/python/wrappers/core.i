@@ -32,12 +32,14 @@ private:
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/devices/us4r/HVVoltage.h"
 using namespace ::arrus;
 %};
 
 %include "arrus/core/api/common/types.h"
 
 %feature("valuewrapper", "1");
+%include "arrus/core/api/devices/us4r/HVVoltage.h"
 %include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
 %feature("valuewrapper", "0");
 
@@ -46,9 +48,10 @@ namespace std {
 %template(VectorBool) vector<bool>;
 %template(VectorFloat) vector<float>;
 %template(VectorUInt16) vector<unsigned short>;
+%template(VectorUInt8) vector<unsigned char>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
-
+%template(VectorHVVoltage) vector<arrus::devices::HVVoltage>;
 };
 
 // ------------------------------------------ EXCEPTION HANDLING
@@ -184,7 +187,6 @@ using namespace ::arrus;
 #define __attribute__(x)
 
 %include "arrus/core/api/common/macros.h"
-%include "arrus/core/api/common/types.h"
 
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)
@@ -234,6 +236,9 @@ using namespace ::arrus;
 
 %inline %{
     size_t castToInt(short* ptr) {
+        return (size_t)ptr;
+    }
+    size_t castUint8ToInt(unsigned char* ptr) {
         return (size_t)ptr;
     }
 %};
@@ -350,8 +355,8 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
     return res;
 }
 
-std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(arrus::session::UploadResult* uploadResult) {
-    return uploadResult->getConstMetadata()->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
+std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(size_t arrayId, arrus::session::UploadResult* uploadResult) {
+    return uploadResult->getConstMetadata(arrayId)->get<arrus::devices::FrameChannelMapping>("frameChannelMapping");
 }
 
 std::shared_ptr<arrus::framework::DataBuffer> getFifoLockFreeBuffer(arrus::session::UploadResult* uploadResult) {
@@ -403,6 +408,9 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/DeviceId.h"
 %include "arrus/core/api/devices/Device.h"
 %include "arrus/core/api/devices/DeviceWithComponents.h"
+%include "arrus/core/api/devices/probe/ProbeModelId.h"
+%include "arrus/core/api/devices/probe/ProbeModel.h"
+%include "arrus/core/api/devices/probe/Probe.h"
 %include "arrus/core/api/devices/us4r/Us4OEM.h"
 %include "arrus/core/api/devices/us4r/Us4R.h"
 %include "arrus/core/api/devices/File.h"

@@ -2,8 +2,9 @@
 #define ARRUS_CORE_API_DEVICES_US4R_US4OEM_H
 
 #include <memory>
-#include "arrus/core/api/devices/Device.h"
+
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/TriggerGenerator.h"
 #include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
 
@@ -135,11 +136,6 @@ public:
     virtual uint32 getTxFirmwareVersion() = 0;
 
     /**
-     * Returns Tx offset
-    */
-    virtual uint32_t getTxOffset() = 0;
-
-    /**
      * Returns OEM version (OEM/OEM+)
     */
     virtual uint32_t getOemVersion() = 0;
@@ -201,6 +197,15 @@ public:
      * This method is intended to be used in the probe_check implementation.
      */
     virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) = 0;
+
+    /**
+     * Return the system TX frequency that would be actually set for the given TX frequency.
+     * The output frequency depends on the frequency discretization performed by the driver.
+     *
+     * @param frequency input frequency
+     * @return the actual frequency that will be set
+     */
+    virtual float getActualTxFrequency(float frequency) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

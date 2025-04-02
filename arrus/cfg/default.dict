@@ -309,6 +309,38 @@ probe_adapter_models: [
     {
         id: {
             manufacturer: "us4us"
+            name: "pau_rev1.0"
+        }
+        n_channels: 128
+        channel_mapping_regions: [
+            {
+                us4oem: 0
+                region: {begin: 0, end: 31}
+            },
+            {
+                us4oem: 1
+                channels: [63, 62, 61, 60, 59, 58, 57, 56,
+                           55, 54, 53, 52, 51, 50, 49, 48,
+                           47, 46, 45, 44, 43, 42, 41, 40,
+                           39, 38, 37, 36, 35, 34, 33, 32]
+            },
+            {
+                us4oem: 0
+                region: {begin: 32, end: 63}
+            },
+            {
+                us4oem: 1
+                channels: [31, 30, 29, 28, 27, 26, 25, 24,
+                           23, 22, 21, 20, 19, 18, 17, 16,
+                           15, 14, 13, 12, 11, 10, 9, 8,
+                           7, 6, 5, 4, 3, 2, 1, 0]
+            }
+        ]
+    },
+
+    {
+        id: {
+            manufacturer: "us4us"
             name: "atl/philips"
         }
         n_channels: 128
@@ -968,6 +1000,22 @@ probe_models: [
     },
     {
         id: {
+            manufacturer: "ultrasonix"
+            name: "l9-4/38"
+        }
+        n_elements: 128
+        pitch: 0.3048e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range: {
+	    begin: 0,
+	    end: 90
+	}
+    },
+    {
+        id: {
             manufacturer: "olympus"
             name: "10l128"
         }
@@ -1075,7 +1123,7 @@ probe_models: [
         },
         voltage_range: {
 			begin: 0,
-			end: 15
+			end: 30
 		}
     },
     {
@@ -1126,6 +1174,38 @@ probe_models: [
     	    begin: 0,
     		end: 90
     	}
+    },
+    {
+        id: {
+            manufacturer: "Vermon"
+            name: "RCA/6/256"
+        }
+        n_elements: 256,
+        pitch: 0.2e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 15e6
+        },
+        voltage_range {
+            begin: 0,
+            end: 90
+        }
+    },
+    {
+        id: {
+            manufacturer: "Vermon"
+            name: "RCA/3/64+64"
+        }
+        n_elements: 128,
+        pitch: 0.28e-3,
+        tx_frequency_range: {
+            begin: 1e6,
+            end: 10e6
+        },
+        voltage_range {
+            begin: 0,
+            end: 90
+        }
     }
 ]
 
@@ -1328,7 +1408,7 @@ probe_to_adapter_connections: [
             }
          ]
      },
-    {
+     {
          probe_model_id: {
              manufacturer: "ultrasonix"
              name: "l14-5/38"
@@ -1341,13 +1421,41 @@ probe_to_adapter_connections: [
              {
                  manufacturer: "us4us"
                  name: "ultrasonix-us4r"
+             },
+             {
+                 manufacturer: "us4us"
+                 name: "pau_rev1.0"
              }
          ]
          channel_mapping_ranges: {
                 begin: 0
                 end: 127
          }
-     },
+    },
+    {
+         probe_model_id: {
+             manufacturer: "ultrasonix"
+             name: "l9-4/38"
+         }
+         probe_adapter_model_id: [
+             {
+                 manufacturer: "us4us"
+                 name: "ultrasonix"
+             },
+             {
+                 manufacturer: "us4us"
+                 name: "ultrasonix-us4r"
+             },
+             {
+                 manufacturer: "us4us"
+                 name: "pau_rev1.0"
+             }
+         ]
+         channel_mapping_ranges: {
+                begin: 0
+                end: 127
+         }
+    },
     {
         probe_model_id: {
             manufacturer: "olympus"
@@ -1544,5 +1652,41 @@ probe_to_adapter_connections: [
             begin: 0
             end: 127
         }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "Vermon"
+            name: "RCA/6/256"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "dlp408r"
+            }
+        ]
+        channel_mapping_ranges: {
+            begin: 0
+            end: 255
+        }
+    },
+    {
+        probe_model_id: {
+            manufacturer: "Vermon"
+            name: "RCA/3/64+64"
+        }
+        probe_adapter_model_id: [
+            {
+                manufacturer: "us4us"
+                name: "dlp408r"
+            }
+        ]
+        channel_mapping: [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 34, 32, 30, 28, 26, 24,
+                          54, 52, 50, 48, 46, 44, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74,
+                          5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 35, 33, 31, 29, 27, 25,
+                          55, 53, 51, 49, 47, 45, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75,
+                          84, 86, 88, 90, 92, 94, 96, 98, 100, 102, 114, 112, 110, 108, 106, 104,
+                          134, 132, 130, 128, 126, 124, 136, 138, 140, 142, 144, 146, 148, 150, 152, 154,
+                          85, 87, 89, 91, 93, 95, 97, 99, 101, 103, 115, 113, 111, 109, 107, 105,
+                          135, 133, 131, 129, 127, 125, 137, 139, 141, 143, 145, 147, 149, 151, 153, 155]
     }
 ]

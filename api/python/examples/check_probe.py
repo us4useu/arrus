@@ -226,8 +226,8 @@ def print_health_info(report):
                       f"valid range: {result.valid_range}.")
 
 
-def get_data_dimensions(metadata):
-    n_elements = metadata.context.device.probe.model.n_elements
+def get_data_dimensions(metadata, probe_nr):
+    n_elements = metadata.context.device.probe[probe_nr].model.n_elements
     sequence = metadata.context.raw_sequence
     start_sample, end_sample = sequence.ops[0].rx.sample_range
     n_samples = end_sample - start_sample
@@ -385,6 +385,22 @@ def main():
         required=False,
         action="store_true",
     )
+    parser.add_argument(
+        "--probe_nr", dest="probe_nr",
+        help="Number of the probe to use.",
+        required=False,
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        "--hpf_corner_frequency", dest="hpf_corner_frequency",
+        help="AFE High-pass filter corner frequency to apply, None means that the system's default value should be used.",
+        required=False,
+        type=int,
+        default=None,
+    )
+
+
     args = parser.parse_args()
 
     verifier = ProbeHealthVerifier()
@@ -489,6 +505,8 @@ def main():
         features=features,
         validator=validator,
         footprint=footprint,
+        probe_nr=args.probe_nr,
+        hpf_corner_frequency=args.hpf_corner_frequency,
         signal_type=args.signal_type,
         voltage=args.tx_voltage
     )
@@ -497,7 +515,7 @@ def main():
     print_health_info(report)
     print("----------------------------------------------")
 
-    n_elements, n_samples = get_data_dimensions(report.sequence_metadata)
+    n_elements, n_samples = get_data_dimensions(report.sequence_metadata, probe_nr=args.probe_nr)
 
     if args.display_tx_channel is not None:
         if args.signal_type != "rf":

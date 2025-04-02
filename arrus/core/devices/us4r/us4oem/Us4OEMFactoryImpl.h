@@ -1,13 +1,14 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMFACTORYIMPL_H
 
-#include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "Us4OEMDescriptorFactory.h"
 #include "arrus/common/asserts.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
-#include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMFactory.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMSettingsValidator.h"
 
 namespace arrus::devices {
 class Us4OEMFactoryImpl : public Us4OEMFactory {
@@ -15,15 +16,19 @@ public:
     Us4OEMFactoryImpl() = default;
 
     Us4OEMImplBase::Handle getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem, const Us4OEMSettings &cfg,
-                                     bool isExternalTrigger, bool acceptRxNops = false) override {
+                                     bool isExternalTrigger, bool acceptRxNops,
+                                     const std::optional<Us4RTxRxLimits> &limits) override {
         // Validate settings.
-        Us4OEMSettingsValidator validator(ordinal);
+        Us4OEMDescriptor descriptor = getOEMDescriptor(ordinal, ius4oem, limits);
+
+        Us4OEMSettingsValidator validator(ordinal, descriptor);
+
         validator.validate(cfg);
         validator.throwOnErrors();
 
         // We assume here, that the ius4oem is already initialized.
         // Configure IUs4OEM
-        ChannelIdx chGroupSize = Us4OEMImpl::N_RX_CHANNELS;
+        ChannelIdx chGroupSize = descriptor.getNRxChannels();
         ARRUS_REQUIRES_TRUE(IUs4OEM::NCH % chGroupSize == 0,
                             arrus::format("Number of Us4OEM channels ({}) is not divisible by the size of channel group ({})",
                                     IUs4OEM::NCH, chGroupSize));
@@ -66,12 +71,48 @@ public:
         // TGC
         // TODO replace the below calls with calls to the Us4OEM methods, i.e. remove the below code duplicate
         return std::make_unique<Us4OEMImpl>(DeviceId(DeviceType::Us4OEM, ordinal),
-                                            std::move(ius4oem), cfg.getActiveChannelGroups(),
-                                            channelMapping, cfg.getRxSettings(),
-                                            cfg.getChannelsMask(), cfg.getReprogrammingMode(),
+                                            std::move(ius4oem),
+                                            channelMapping,
+                                            cfg.getRxSettings(),
+                                            cfg.getReprogrammingMode(),
+                                            descriptor,
                                             isExternalTrigger, acceptRxNops);
     }
 
+
+    [[nodiscard]] static Us4OEMDescriptor getOEMDescriptor(Ordinal ordinal, const IUs4OEMHandle &ius4oem,
+                                                           const std::optional<Us4RTxRxLimits> &limits) {
+        auto descriptor = Us4OEMDescriptorFactory::getDescriptor(ius4oem, ordinal == 0);
+        if(limits.has_value()) {
+            // Update the defualt limits with the limits defined by the user.
+            ops::us4r::TxRxSequenceLimitsBuilder sequenceLimitsBuilder{descriptor.getTxRxSequenceLimits()};
+            ops::us4r::TxLimitsBuilder txLimitsBuilder{descriptor.getTxRxSequenceLimits().getTxRx().getTx1()};
+            if(limits->getPulseLength().has_value()) {
+                txLimitsBuilder.setPulseLength(limits->getPulseLength().value());
+            }
+            if(limits->getVoltage().has_value()) {
+                txLimitsBuilder.setVoltage(limits->getVoltage().value());
+            }
+            Interval<float> newPri;
+            if(limits->getPri().has_value()) {
+                newPri = limits->getPri().value();
+            }
+            else {
+                newPri = descriptor.getTxRxSequenceLimits().getTxRx().getPri();
+            }
+            auto newTxLimits = txLimitsBuilder.build();
+            auto currentRxLimits = descriptor.getTxRxSequenceLimits().getTxRx().getRx();
+            sequenceLimitsBuilder.setTxRxLimits(descriptor.getTxRxSequenceLimits().getTxRx().getTx0(), newTxLimits, currentRxLimits, newPri);
+            auto txRxSequenceLimits = sequenceLimitsBuilder.build();
+            auto newDescriptor = Us4OEMDescriptorBuilder{descriptor}
+                                     .setTxRxSequenceLimits(txRxSequenceLimits)
+                                     .build();
+            return newDescriptor;
+        }
+        else {
+            return descriptor;
+        }
+    }
 private:
 
     static bool

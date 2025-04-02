@@ -7,7 +7,7 @@ function[rfOut] = downConversion(rfIn,acq,proc)
 % 
 % Inputs:
 % 
-% rfIn                      - (nSamp,nRx,nTx) input rf data
+% rfIn                      - (nSamp,nRx,nTx,nRep) input rf data
 % 
 % acq                       - acquisition-related parameters
 % acq.rxSampFreq            - [Hz] sampling frequency
@@ -18,13 +18,14 @@ function[rfOut] = downConversion(rfIn,acq,proc)
 % proc.dec                  - [] decimation factor
 
 %% Quadrature demodulation
-nSample = size(rfIn,1);
-t = (0:nSample-1)'/acq.rxSampFreq;
+[nSamp,nRx,nTx,nRep] = size(rfIn);
+t = (0:nSamp-1)'/acq.rxSampFreq;
 
 rfOut = 2*rfIn.*exp(-2i*pi*reshape(acq.txFreq,1,1,[]).*t);
 
 %% Downsampling (filtration + decimation)
-rfOut = convn(rfOut,proc.ddcFirCoeff(:),'same');
+rfOut = conv2(rfOut(:,:),proc.ddcFirCoeff(:),'same');
+rfOut = reshape(rfOut,nSamp,nRx,nTx,nRep);
 rfOut = rfOut(proc.dec:proc.dec:end,:,:,:);
 
 end

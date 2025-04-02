@@ -26,6 +26,8 @@ classdef Reconstruction
     % :param wcFilterACoeff: 1-D filter denominator coefficient (Wall Clutter Filter for Color/Vector Doppler)
     % :param wcFilterBCoeff: 1-D filter numerator coefficient (Wall Clutter Filter for Color/Vector Doppler)
     % :param wcFiltInitSize: number of initial filter output samples to be rejected
+    % :param cohFiltEnable: boolean, enables filtration with a coherence factor.
+    % :param cohCompEnable: boolean, enables coherent compounding.
     % * K, M, N - length of bmodeFrames, colorFrames, and vector0Frames or vector1Frames, respectively.
 
     properties
@@ -35,7 +37,7 @@ classdef Reconstruction
         filterBCoeff
         filterDelay = 0
         swDdcEnable
-        decimation
+        decimation {mustBeFinite, mustBeInteger, mustBePositive}
         xGrid
         zGrid
         sos
@@ -54,6 +56,8 @@ classdef Reconstruction
         wcFilterACoeff
         wcFilterBCoeff = 1
         wcFiltInitSize = 0
+        cohFiltEnable = false
+        cohCompEnable = false
     end
     
     methods
