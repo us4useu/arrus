@@ -519,6 +519,21 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
+    WatchdogSettings watchdog = WatchdogSettings::defaultSettings();
+    if(us4r.has_watchdog()) {
+        auto enabled = us4r.watchdog().enabled();
+        if(enabled) {
+            watchdog = WatchdogSettings{
+                ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold0(), float),
+                ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold1(), float),
+                ARRUS_SAFE_CAST(us4r.watchdog().host_threshold(), float)
+            };
+        }
+        else {
+            watchdog = WatchdogSettings::disabled();
+        }
+    }
+
     ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
     std::vector<ProbeSettings> probeSettings =
         readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
@@ -542,7 +557,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             txFrequencyRange,
             digitalBackplaneSettings,
             bitstreams,
-            limits
+            limits,
+            watchdog
     };
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

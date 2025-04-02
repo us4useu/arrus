@@ -100,6 +100,10 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_EQ(us4rSettings.getTxRxLimits()->getVoltage(), ::arrus::Interval<Voltage>(10, 30));
     EXPECT_EQ(us4rSettings.getTxRxLimits()->getPri(), ::arrus::Interval<float>(2e-6, 1));
     EXPECT_EQ(us4rSettings.getTxRxLimits()->getPulseLength(), ::arrus::Interval<float>(1e-6, 10e-6));
+    EXPECT_TRUE(us4rSettings.getWatchdogSettings().isEnabled());
+    EXPECT_EQ(us4rSettings.getWatchdogSettings().getOEMThreshold0(), 1.0f);
+    EXPECT_EQ(us4rSettings.getWatchdogSettings().getOEMThreshold1(), 2.0f);
+    EXPECT_EQ(us4rSettings.getWatchdogSettings().getHostThreshold(), 3.0f);
     EXPECT_TRUE(us4rSettings.getProbeSettings()->getModel().getLens().has_value());
     // SL1543 from the test-data/dictionary.prototxt
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getThickness(), 1e-3f);
@@ -107,6 +111,15 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getFocus().value(), 2e-3);
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getThickness(), 0.1e-3f);
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getSpeedOfSound(), 2000);
+}
+
+TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithDisabledWatchdog) {
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
+        boost::filesystem::path("us4r_disabled_watchdog.prototxt");
+    ::arrus::session::SessionSettings settings = arrus::io::readSessionSettings(
+        filepath.string());
+    auto const &us4rSettings = settings.getUs4RSettings();
+    EXPECT_FALSE(us4rSettings.getWatchdogSettings().isEnabled());
 }
 
 TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {

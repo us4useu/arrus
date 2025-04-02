@@ -157,7 +157,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     ius4oem->ResetSequencer();
     ius4oem->SetNumberOfFirings(ARRUS_SAFE_CAST(getNumberOfFirings(sequences), uint16_t));
     ius4oem->ClearScheduledReceive();
-    ius4oem->ResetCallbacks();
+    ius4oem->ResetRuntimeCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
     setTxTimeouts(txTimeouts);
@@ -876,7 +876,7 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
 }
 
 void Us4OEMImpl::clearDMACallbacks() {
-    this->ius4oem->ClearDMACallbacks();
+    this->ius4oem->ResetDMACallbacks();
 }
 
 std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(

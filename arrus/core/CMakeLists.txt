@@ -25,6 +25,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/DigitalBackplaneSettings.proto
     io/proto/devices/us4r/Bitstream.proto
     io/proto/devices/us4r/Us4RTxRxLimits.proto
+    io/proto/devices/us4r/WatchdogSettings.proto
 )
 ################################################################################
 # Target
@@ -204,6 +205,7 @@ set(SRC_FILES
     devices/us4r/TxTimeoutRegister.h
     devices/us4r/Us4RSubsequence.h
     devices/us4r/types.h
+    api/devices/us4r/WatchdogSettings.h
     api/devices/probe/Lens.h
     api/devices/probe/MatchingLayer.h
 )
