@@ -20,6 +20,7 @@ Release notes
         - Removed Us4OEM::getTxOffset() method.
 
     - Increased the maximum PRF that can be set for the OEM+ devices: decreased the TX pulsers reprogramming time #US4R-525.
+    - Added lens and matching layer to the probe model description #ARRUS-425.
 
 - MATLAB API:
 
