@@ -155,7 +155,7 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
 Lens readProbeLens(const proto::Lens &lens) {
     std::optional<float> focus = std::nullopt;
     if(lens.focus__case() != proto::Lens::FOCUS__NOT_SET) {
-        focus = lens.focus();
+        focus = ARRUS_SAFE_CAST(lens.focus(), float);
     }
     return Lens {
         ARRUS_SAFE_CAST(lens.thickness(), float),

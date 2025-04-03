@@ -23,6 +23,8 @@ classdef ProbeModel
         txFrequencyRange
         voltageRange
         curvatureRadius
+        lens
+        matchingLayer
     end
     
     methods
