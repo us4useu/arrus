@@ -62,7 +62,7 @@ public:
                 32, // RX channels
                 20e-6f,  // min. RX time,
                 0e-6f, // RX time epsilon,
-                6e-6f, // TX parameters reprogramming time,
+                7e-6f, // TX parameters reprogramming time,
                 65e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
                 1ull << (14+12), // Max transfer size [B]
