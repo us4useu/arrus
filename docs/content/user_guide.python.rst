@@ -347,7 +347,7 @@ The ``Scheme`` describes:
 - `optional`: data processing pipeline to run when new data arrives,
 - `optional`: description of the output buffer on host computer, to which the
   data should be written,
-- `optional`: ultrasound device work mode: "HOST" or "ASYNC" mode.
+- `optional`: ultrasound device work mode: "HOST", "SYNC", or "ASYNC" mode.
 
 .. code-block:: python
 
@@ -510,6 +510,19 @@ This mode of operations is useful when:
 
 If (2) and (3) takes too long/cannot keep strict processing time regime,
 its necessary to increase PRI, or set SRI or use HOST work mode.
+
+
+Work mode SYNC
+''''''''''''''
+The SYNC mode works the same way as ASYNC, except that the ultrasound system
+halts signal acquisition if it encounters a situation where buffer memory has
+not been released quickly enough. In this mode, you can treat the buffers between
+the us4R-lite system and the host PC as blocking queues.
+
+This mode is generally preferred over ASYNC because it always ensures data consistency,
+at the cost of potentially uneven PRF—but only in cases where data transfer or
+processing is not fast enough.
+
 
 .. _arrus-running-scheme:
 

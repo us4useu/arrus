@@ -1,0 +1,10 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+message WatchdogSettings {
+  bool enabled = 1;
+  double oem_threshold0 = 2;
+  double oem_threshold1 = 3;
+  double host_threshold = 4;
+}

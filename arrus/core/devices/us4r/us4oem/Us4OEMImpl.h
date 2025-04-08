@@ -44,6 +44,10 @@ public:
     using RawDataType = int16;
     static constexpr framework::NdArray::DataType DataType = framework::NdArray::DataType::INT16;
 
+    static bool isOEMPlus(uint32_t version)  {
+        return version >= 2;
+    }
+
     /**
      * Us4OEMImpl constructor.
      *
@@ -73,10 +77,8 @@ public:
     void start() override;
     void stop() override;
     void setTgcCurve(const RxSettings &cfg);
-
-
-    void enableSequencer(uint16_t startEntry) override;
-
+    Ius4OEMRawHandle getIUs4OEM() override;
+    void enableSequencer(uint16 startEntry) override;
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &newSettings) override;
     float getFPGATemperature() override;
@@ -107,7 +109,6 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
     Interval<Voltage> getAcceptedVoltageRange() override;
-    void clearCallbacks() override;
     Us4OEMDescriptor getDescriptor() const override;
 
     HVPSMeasurement getHVPSMeasurement() override;
@@ -121,10 +122,11 @@ public:
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
     float getActualTxFrequency(float frequency) override;
 
+
     bool isOEMPlus() {
-        return getOemVersion() == 2;
+        return isOEMPlus(getOemVersion());
     }
-    Ius4OEMRawHandle getIUs4OEM() override;
+    void clearDMACallbacks() override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
@@ -189,6 +191,8 @@ private:
     std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> filterAperture(
         std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
         const std::unordered_set<ChannelIdx> &channelsMask);
+    void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
+    void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) override;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -214,7 +218,6 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
-    void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
 };
 
 }// namespace arrus::devices
