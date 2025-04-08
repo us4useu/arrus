@@ -33,7 +33,7 @@ public:
             ARRUS_MATLAB_GET_CPP_PAIR(ctx, Voltage, voltageRange, object),
             ARRUS_MATLAB_GET_CPP_SCALAR(ctx, double, curvatureRadius, object),
             ARRUS_MATLAB_GET_CPP_OPTIONAL_OBJECT(ctx, Lens, LensConverter, modelId, object),
-            ARRUS_MATLAB_GET_CPP_OPTIONAL_OBJECT(ctx, MatchingLayer, MatchingLayerConverter, modelId, object),
+            ARRUS_MATLAB_GET_CPP_OPTIONAL_OBJECT(ctx, MatchingLayer, MatchingLayerConverter, modelId, object)
         };
     }
 
@@ -60,7 +60,8 @@ public:
         const std::pair<float, float> &txFrequencyRange,
         const std::pair<Voltage, Voltage> &voltageRange,
         double curvatureRadius,
-        std::optional<Lens> lens, std::optional<MatchingLayer> matchingLayer
+        std::optional<Lens> lens,
+        std::optional<MatchingLayer> matchingLayer
         )
         : ctx(std::move(ctx)), modelId(std::move(modelId)), nElements(numberOfElements), pitch(pitch),
           txFrequencyRange(txFrequencyRange), voltageRange(voltageRange), curvatureRadius(curvatureRadius),

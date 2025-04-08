@@ -24,7 +24,7 @@ public:
         return MatchingLayerConverter{
             ctx,
             object.getThickness(),
-            object.getSpeedOfSound(),
+            object.getSpeedOfSound()
         };
     }
 
