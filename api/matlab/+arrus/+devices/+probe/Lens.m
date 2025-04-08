@@ -5,9 +5,9 @@ classdef Lens
     % the linear array probes, e.g. we assume that the lens is dedicated to be
     % focusing in the elevation direction.
 
-    % :param thickness: lens thickness of linear array, measured at center of the elevation [m],
-    % :param speedOfSound: the speed of sound in the lens material [m/s[,
-    % :param focus: geometric focus (along elevation axis) measured in water [m]
+    % :param thickness: lens thickness measured at center of the elevation [m],
+    % :param speedOfSound: the speed of sound in the lens material [m/s],
+    % :param focus: geometric elevation focus in water [m]
 
 
     properties(Constant, Hidden=true)

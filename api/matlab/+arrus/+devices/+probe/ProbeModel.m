@@ -2,9 +2,9 @@ classdef ProbeModel
     % Probe model.
     % 
     % :param modelId: id of the model
-    % :param nElements: (scalar (for 2-D probe) or a pair (for 3-D probe))\
+    % :param nElements: (scalar (for 1-D probe) or a pair (for 2-D probe))\
     %   probe's number of elements 
-    % :param pitch: (scalar (for 2-D probe) or a pair (for 3-D probe))\
+    % :param pitch: (scalar (for 1-D probe) or a pair (for 2-D probe))\
     %   probe's element pitch [m]
     % :param txFrequencyRange: (a pair - two-element vector) 
     %   a range [min, max] of the available tx center frequencies

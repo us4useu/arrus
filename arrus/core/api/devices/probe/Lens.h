@@ -13,9 +13,9 @@ namespace arrus::devices {
  * focusing in the elevation direction.
  *
  * Parameters:
- * - thickness: lens thickness of linear array, measured at center of the elevation,
+ * - thickness: lens thickness measured at center of the elevation,
  * - speedOfSound: the speed of sound in the lens material,
- * - focus: geometric focus (along elevation axis) measured in water
+ * - focus: geometric elevation focus in water
  */
 class Lens {
 public:
@@ -27,11 +27,11 @@ public:
     std::optional<float> getFocus() const { return focus; }
 
 private:
-    /* Lens thickness of linear array, measured at center of the elevation. */
+    /* Lens thickness measured at center of the elevation. */
     float thickness;
     /** The speed of sound in the lens material. */
     float speedOfSound;
-    /** Geometric elevation focus measured in water */
+    /** Geometric elevation focus in water */
     std::optional<float> focus;
 };
 

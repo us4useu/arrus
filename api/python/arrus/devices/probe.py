@@ -23,9 +23,9 @@ class Lens:
     the linear array probes, e.g. we assume that the lens is dedicated to be
     focusing in the elevation direction.
 
-    :param thickness: lens thickness of linear array, measured at center of the elevation [m]
+    :param thickness: lens thickness measured at center of the elevation [m]
     :param speed_of_sound: the speed of sound in the lens material [m/s]
-    :param focus: geometric focus (along elevation axis) measured in water [m]
+    :param focus: geometric elevation focus in water [m]
     """
     thickness: float
     speed_of_sound: float
@@ -35,10 +35,10 @@ class Lens:
 @dataclasses.dataclass(frozen=True)
 class MatchingLayer:
     """
-    The matching layer between the lens and probe.
+    The matching layer applied directly on the probe elements.
 
-    :param thickness: lens thickness of linear array, measured at center of the elevation [m]
-    :param speed_of_sound: the speed of sound in the lens material [m/s]
+    :param thickness: matching layer thickness [m]
+    :param speed_of_sound: matching layer speed of sound [m/s]
     """
     thickness: float
     speed_of_sound: float

@@ -1,8 +1,8 @@
 classdef MatchingLayer
-    % The matching layer between the lens and probe.
+    % The matching layer applied directly on the probe elements.
     %
-    % :param thickness: lens thickness of linear array, measured at center of the elevation [m]
-    % :param speedOfSound: the speed of sound in the lens material [m/s]
+    % :param thickness: matching layer thickness [m]
+    % :param speedOfSound: matching layer speed of sound [m/s]
 
     properties(Constant, Hidden=true)
         REQUIRED_PARAMS = {"thickness", "speedOfSound"};

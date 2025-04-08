@@ -162,8 +162,9 @@ The following ``lens`` attributes can be specified:
 
 The following ``matching_layer`` attributes can be specified:
 
-- ``thickness``: lens thickness measured at center of the elevation [m],
-- ``speed_of_sound``: the speed of sound in the lens material [m/s].
+- ``thickness``: matching layer thickness [m],
+- ``speed_of_sound``: matching layer speed of sound [m/s].
+
 
 2. specify probe model by providing ``probe_id``:
 

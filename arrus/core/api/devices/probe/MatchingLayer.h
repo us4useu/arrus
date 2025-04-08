@@ -4,11 +4,11 @@
 namespace arrus::devices {
 
 /**
- * The matching layer between the lens and probe.
+ * The matching layer applied directly on the probe elements.
  *
  * Parameters:
- * - thickness: lens thickness of linear array, measured at center of the elevation,
- * - speedOfSound: the speed of sound in the lens material,
+ * - thickness: matching layer thickness,
+ * - speedOfSound: matching layer speed of sound,
  */
 
 class MatchingLayer {
