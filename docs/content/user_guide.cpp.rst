@@ -129,6 +129,15 @@ following ways:
         begin: 0,
         end: 100
       }
+      lens: {
+        thickness: 1e-3,
+        speed_of_sound: 2000,
+        focus: 20e-3
+      }
+      matching_layer: {
+        thickness: 0.1e-3,
+        speed_of_sound: 2100
+      }
     }
 
 The following ``probe`` attributes can be specified:
@@ -139,6 +148,22 @@ The following ``probe`` attributes can be specified:
 - ``curvature_radius``: radius of probe’s curvature; when omitted and n_elements is a scalar, a linear probe type is assumed [m],
 - ``tx_frequency_range``: acceptable range of center frequencies for this probe [min, max] (a closed interval) [Hz],
 - ``voltage_range``: range of acceptable voltage values, 0.5*Vpp.
+
+Optionally, you can also provide the following attributes:
+
+- ``lens``: probe's lens parameters,
+- ``matching_layer`` probe's matching layer parameters.
+
+The following ``lens`` attributes can be specified:
+
+- ``thickness``: lens thickness measured at center of the elevation [m],
+- ``speed_of_sound``: the speed of sound in the lens material [m/s],
+- ``focus``: OPTIONAL, geometric elevation focus in water [m].
+
+The following ``matching_layer`` attributes can be specified:
+
+- ``thickness``: matching layer thickness [m],
+- ``speed_of_sound``: matching layer speed of sound [m/s].
 
 
 2. specify probe model by providing ``probe_id``:

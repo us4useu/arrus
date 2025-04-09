@@ -12,6 +12,14 @@ us4r: {
             begin: 1e6,
             end: 40e6
         }
+        lens: {
+            thickness: 2e-3,
+            speed_of_sound: 2000
+        }
+        matching_layer: {
+            thickness: 0.3e-3,
+            speed_of_sound: 3000
+        }
     }
     adapter: {
         id: {

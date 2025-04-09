@@ -10,6 +10,8 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/common/IntervalDouble.proto
     io/proto/common/LinearFunction.proto
     io/proto/devices/probe/ProbeModel.proto
+    io/proto/devices/probe/Lens.proto
+    io/proto/devices/probe/MatchingLayer.proto
     io/proto/devices/us4r/ProbeAdapterModel.proto
     io/proto/devices/us4r/ProbeToAdapterConnection.proto
     io/proto/devices/us4r/RxSettings.proto
@@ -204,6 +206,8 @@ set(SRC_FILES
     devices/us4r/Us4RSubsequence.h
     devices/us4r/types.h
     api/devices/us4r/WatchdogSettings.h
+    api/devices/probe/Lens.h
+    api/devices/probe/MatchingLayer.h
 )
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
