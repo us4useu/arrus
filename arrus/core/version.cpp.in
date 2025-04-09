@@ -4,6 +4,7 @@ namespace arrus {
 
 const char *VERSION = "${ARRUS_PROJECT_VERSION}";
 
+ARRUS_CPP_EXPORT
 const char* version() {
     return VERSION;
 }

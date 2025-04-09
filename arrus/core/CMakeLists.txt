@@ -321,7 +321,7 @@ if (ARRUS_RUN_TESTS)
         ops/us4r/Scheme.cpp
         ops/us4r/DigitalDownConversion.cpp
     )
-    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}" Us4::US4OEM)
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
     create_core_test(io/settingsTest.cpp
