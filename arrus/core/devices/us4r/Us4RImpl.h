@@ -179,8 +179,11 @@ private:
                     const std::vector<framework::NdArray> &txDelayProfiles);
     us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
     std::vector<us4r::TxRxParametersSequence>
-    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
-                               const TxTimeoutRegister &timeoutRegister);
+    convertToInternalSequences(
+        const std::vector<ops::us4r::TxRxSequence> &sequences,
+        const TxTimeoutRegister &timeoutRegister,
+        const std::vector<std::vector<float>> &rxDelays
+    );
 
     /**
      * Applies a given function on all functions.
@@ -246,6 +249,7 @@ private:
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
     std::optional<float> currentRxTimeOffset;
+    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
 };
 
 }// namespace arrus::devices

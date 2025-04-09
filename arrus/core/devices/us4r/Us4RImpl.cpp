@@ -469,16 +469,20 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<ProbeToAdapterMappingConverter> probe2Adapter;
     // Sequence id -> converter
     std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
+    // Calculate RX delays
+    std::vector<std::vector<float>> rxDelays = getRxDelays(sequences);
     // Calculate TX timeouts
     TxTimeoutRegisterFactory txTimeoutRegisterFactory{
         oemDescriptor.getNTimeouts(),
         [this](const float frequency) {
             return this->getActualTxFrequency(frequency);
-        }};
+        },
+        rxDelays
+    };
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
 
     // Convert API sequences to internal representation.
-    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
+    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts, rxDelays);
     // Initialize converters.
     auto oemMappings = getOEMMappings();
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -574,7 +578,8 @@ TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequenc
 
 std::vector<us4r::TxRxParametersSequence>
 Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
-                                     const TxTimeoutRegister &txTimeoutRegister) {
+                                     const TxTimeoutRegister &txTimeoutRegister,
+                                     const std::vector<std::vector<float>> &rxDelays) {
     std::vector<TxRxParametersSequence> result;
     std::optional<BitstreamId> currentBitstreamId = std::nullopt;
     SequenceId sequenceId = 0;
@@ -594,7 +599,7 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
         OpId opId = 0;
         for (const auto &txrx : sequence.getOps()) {
             TxRxParametersBuilder builder(txrx);
-            auto rxDelay = getRxDelay(txrx);
+            auto rxDelay = rxDelays.at(sequenceId).at(opId);
             builder.setRxDelay(rxDelay);
             if (hasIOBitstreamAdressing) {
                 builder.setBitstreamId(BitstreamId(0));
@@ -1190,6 +1195,23 @@ void Us4RImpl::handlePulserInterrupt() {
     for(auto &oem: this->us4oems) {
         oem->getIUs4OEM()->LogPulsersInterruptRegister();
     }
+}
+
+/**
+ * Returns RX delays calculated for each TX/RX.
+ */
+std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequence> &seqs) {
+    std::vector<std::vector<float>> result(seqs.size());
+    for(size_t i = 0; i < seqs.size(); ++i) {
+        const auto &seq = seqs.at(i);
+        const auto &ops = seq.getOps();
+        auto &outputDelays = result.at(i);
+        outputDelays.resize(ops.size());
+        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=](const auto &op) {
+            return this->getRxDelay(op);
+        });
+    }
+    return result;
 }
 
 }// namespace arrus::devices
