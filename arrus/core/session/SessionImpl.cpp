@@ -7,6 +7,7 @@
 
 #include "arrus/common/compiler.h"
 #include "arrus/common/format.h"
+#include "arrus/core/common/os.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/devices/utils.h"
 
@@ -69,7 +70,11 @@ SessionImpl::SessionImpl(
     )
     : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)) {
     getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
-    getDefaultLogger()->log(LogSeverity::INFO, arrus::format("ARRUS version: {}.", ::arrus::version()));
+    getDefaultLogger()->log(
+        LogSeverity::INFO, arrus::format("ARRUS version: {}.", ::arrus::version(), ::arrus::OS_NAME));
+    // Debug info.
+    getDefaultLogger()->log(
+        LogSeverity::DEBUG, arrus::format("OS: {}.", ::arrus::OS_NAME));
     getDefaultLogger()->log(
         LogSeverity::DEBUG,
         arrus::format("Configuring session with the following settings {}", ::arrus::toString(sessionSettings)));
@@ -249,5 +254,6 @@ UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional
     auto[buffer, metadata] = ultrasound->setSubsequence(arrayId, start, end, sri);
     return UploadResult(buffer, {metadata});
 }
+
 
 }// namespace arrus::session

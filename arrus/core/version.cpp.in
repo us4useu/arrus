@@ -1,0 +1,15 @@
+#include "arrus/core/api/version.h"
+
+namespace arrus {
+
+const char *VERSION = "${ARRUS_PROJECT_VERSION}";
+
+const char* version() {
+    return VERSION;
+}
+
+}
+
+
+
+

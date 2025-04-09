@@ -1,16 +1,13 @@
 #ifndef ARRUS_CORE_API_VERSION_H
 #define ARRUS_CORE_API_VERSION_H
 
-#define ARRUS_VERSION "${ARRUS_PROJECT_VERSION}"
+#include <string_view>
 
 namespace arrus {
-
     /**
      Returns ARRUS version. Format: "major.minor.patch" (optionally-dev[date]).
      */
-    inline const char *version() {
-        return ARRUS_VERSION;
-    }
+     const char *version();
 }
 
 

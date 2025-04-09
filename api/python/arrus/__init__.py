@@ -25,6 +25,10 @@ if arrus_core_module_exists:
     )
     # Session
     from arrus.session import Session
+    # Put Python version into log file.
+    import arrus.logging
+    import sys
+    arrus.logging.log(arrus.logging.DEBUG, f"ARRUS Python API. Python version: {sys.version}")
 
 else:
     print("Warning: running without arrus.core module.")
