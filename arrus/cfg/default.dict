@@ -932,7 +932,7 @@ probe_models: [
 			begin: 0,
 			end: 90
 		},
-		lens: {
+        lens: {
             thickness: 0.5e-3,
             speed_of_sound: 992,
             focus: 18e-3
@@ -954,7 +954,7 @@ probe_models: [
     	    begin: 0,
     		end: 90
     	},
-		lens: {
+        lens: {
             thickness: 0.77e-3,
             speed_of_sound: 980,
             focus: 65e-3
@@ -975,7 +975,7 @@ probe_models: [
 			begin: 0,
 			end: 90
 		},
-		lens: {
+        lens: {
             thickness: 0.53e-3,
             speed_of_sound: 1060,
             focus: 35e-3
@@ -996,7 +996,7 @@ probe_models: [
 			begin: 0,
 			end: 90
 		},
-		lens: {
+        lens: {
             thickness: 1.3e-3,
             speed_of_sound: 980,
             focus: 90e-3
