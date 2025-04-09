@@ -5,18 +5,26 @@ classdef CustomTxRxSequence
     % :param txApertureCenter: vector of tx aperture center positions [m]
     % :param txApertureSize: vector of tx aperture sizes [element]
     % :param rxCenterElement: vector of rx aperture center elements [element]
-    % :param rxApertureCenter: vector of rx aperture center positions [m].
+    % :param rxApertureCenter: vector of rx aperture center positions [m]
     % :param rxApertureSize: size of the rx aperture [element]
     % :param txFocus: vector of tx focal lengths [m]
     % :param txAngle: vector of tx angles [rad]
     % :param speedOfSound: speed of sound for [m/s]
-    % :param txVoltage: tx voltage amplitude (Vpp/2) [V]
+    % :param txVoltage: tx voltage level [V]. Can be: \
+    %   scalar (pulse voltage range is [-txVoltage +txVoltage] for the \
+    %   whole sequence), or 2x2 array (defines two sets of negative and \
+    %   positive tx voltage amplitudes: [v0neg, v0pos; v1neg, v1pos]; the \
+    %   voltage range can be selected individually for each tx using txVoltageId). \
+    %   txVoltage must always be nonnegative and v0 must be higher than v1. \
+    %   "Legacy" systems only support scalar txVoltage
+    % :param txVoltageId: vector of tx voltage level identifiers (can be 0 \
+    %   for [-v0neg +v0pos] range or 1 for [-v1neg +v1pos] range)
     % :param txFrequency: vector of tx frequencies [Hz]
     % :param txNPeriods: vector of numbers of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
-    % :param rxDepthRange: defines the end (if scalar) or
+    % :param rxDepthRange: defines the end (if scalar) or \
     %   the begining and the end (if two-element vector) \ 
     %   of the acquisition expressed by depth range [m]
-    % :param rxNSamples: number of samples (if scalar) or 
+    % :param rxNSamples: number of samples (if scalar) or \
     %   starting and ending sample numbers (if 2-element vector) \ 
     %   of recorded signal [sample]
     % :param hwDdcEnable: enables complex iq output
@@ -24,15 +32,15 @@ classdef CustomTxRxSequence
     %   it must be positive integer, for complex output (hwDdcEnable==true) \
     %   it must be multiple of 0.25 and be >=2
     % :param nRepetitions: number of repetitions of the sequence (positive \
-    %   integer).
+    %   integer)
     % :param txPri: tx pulse repetition interval [s]
     % :param tgcStart: TGC starting gain [dB]
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param txInvert: tx pulse polarity marker
     % :param workMode: system mode of operation, can be "MANUAL","HOST","SYNC", \
-    %   or "ASYNC".
+    %   or "ASYNC"
     % :param sri: sequence repeting interval [s]
-    % :param bufferSize: number of buffer elements (each element contains 
+    % :param bufferSize: number of buffer elements (each element contains \
     %   data for a single sequence execution)
     % 
     % TGC gain = tgcStart + tgcSlope * propagation distance
@@ -49,17 +57,18 @@ classdef CustomTxRxSequence
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txVoltage (1,1) {mustBeNonnegative} = 0;
+        txVoltage {mustBeNonnegative} = 0;
+        txVoltageId (1,:) = 0
         txFrequency (1,:) {mustBeProperNumber}
         txNPeriods (1,:) {mustBeProperNumber}
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         hwDdcEnable (1,1) {mustBeLogical} = true
         decimation (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
-        nRepetitions (1,:) = 1
+        nRepetitions (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
-        tgcSlope (1,:) = 0
+        tgcSlope (1,1) = 0
         txInvert (1,:) {mustBeLogical} = false
         workMode {mustBeTextScalar} = "MANUAL"
         sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
@@ -74,10 +83,6 @@ classdef CustomTxRxSequence
             end
             for i = 1:2:nargin
                 obj.(varargin{i}) = varargin{i+1};
-            end
-            
-            if ischar(obj.nRepetitions)
-                obj.nRepetitions = convertCharsToStrings(obj.nRepetitions);
             end
             
             % Validate.
@@ -116,12 +121,22 @@ classdef CustomTxRxSequence
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
             obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
+            obj.txVoltageId         = mustBeProperLength(obj.txVoltageId,nTx);
             obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
             if ~isstring(obj.txApertureSize)
                 obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
             end
-
+            
             obj.txInvert = double(obj.txInvert);
+            
+            %% txVoltage & txVoltageId validation
+            mustBeProperNumber(obj.txVoltage);
+            if ~ismatrix(obj.txVoltage) || (~isscalar(obj.txVoltage) && ~all(size(obj.txVoltage)==[2 2]))
+                error("ARRUS:IllegalArgument", 'txVoltage must be scalar or 2x2 array');
+            end
+            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) <= obj.txVoltage(2,:))
+                error("ARRUS:IllegalArgument", 'txVoltage(1,:) must be higher than txVoltage(2,:)');
+            end
             
         end
     end
