@@ -208,7 +208,11 @@ set(SRC_FILES
     api/devices/us4r/WatchdogSettings.h
     api/devices/probe/Lens.h
     api/devices/probe/MatchingLayer.h
+    api/version.h.in
 )
+
+# Generate version.h file.
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/api/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/api/version.h")
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -231,7 +235,9 @@ target_compile_definitions(${TARGET_NAME}
 target_include_directories(${TARGET_NAME}
     PRIVATE
     ${ARRUS_ROOT_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR})
+    ${CMAKE_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 ################################################################################
 # Dependencies
@@ -372,4 +378,4 @@ install(
 ################################################################################
 add_executable(pwi-example examples/PwiExample.cpp)
 target_link_libraries(pwi-example PRIVATE arrus-core)
-target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
+target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR} ${CMAKE_BINARY_DIR})

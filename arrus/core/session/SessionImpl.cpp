@@ -10,6 +10,7 @@
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/devices/utils.h"
 
+#include "arrus/core/api/version.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/devices/us4r/Us4RFactoryImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverterImpl.h"
@@ -67,8 +68,11 @@ SessionImpl::SessionImpl(
     FileFactory::Handle fileFactory
     )
     : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)) {
-    getDefaultLogger()->log(LogSeverity::DEBUG,
-                            arrus::format("Configuring session: {}", ::arrus::toString(sessionSettings)));
+    getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
+    getDefaultLogger()->log(LogSeverity::INFO, arrus::format("ARRUS version: {}.", ::arrus::version()));
+    getDefaultLogger()->log(
+        LogSeverity::DEBUG,
+        arrus::format("Configuring session with the following settings {}", ::arrus::toString(sessionSettings)));
     configureDevices(sessionSettings);
 }
 
