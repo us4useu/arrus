@@ -215,7 +215,7 @@ set(SRC_FILES
 
 set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
 
-# Generate version.h file.
+# Generate version.cpp file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS

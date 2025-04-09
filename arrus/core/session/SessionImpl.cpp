@@ -71,7 +71,7 @@ SessionImpl::SessionImpl(
     : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)) {
     getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
     getDefaultLogger()->log(
-        LogSeverity::INFO, arrus::format("ARRUS version: {}.", ::arrus::version(), ::arrus::OS_NAME));
+        LogSeverity::INFO, arrus::format("ARRUS version: {}.", ::arrus::version()));
     // Debug info.
     getDefaultLogger()->log(
         LogSeverity::DEBUG, arrus::format("OS: {}.", ::arrus::OS_NAME));
@@ -124,6 +124,10 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs(); ++i) {
         const Us4RSettings &settings = sessionSettings.getUs4RSettings(Ordinal(i));
         Us4R::Handle us4r = us4rFactory->getUs4R(Ordinal(i), settings);
+        getDefaultLogger()->log(
+            LogSeverity::INFO,
+            format("Connected with device: {}, details: {}", us4r->getDeviceId().toString(), us4r->getDescription())
+        );
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), us4r.get());
         devices.emplace(us4r->getDeviceId(), std::move(us4r));
         ultrasoundOrdinal++;
@@ -132,6 +136,10 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     for(size_t i = 0; i < sessionSettings.getNumberOfFiles(); ++i) {
         const FileSettings &settings = sessionSettings.getFileSettings(Ordinal(i));
         File::Handle file = fileFactory->getFile(Ordinal(i), settings);
+        getDefaultLogger()->log(
+            LogSeverity::INFO,
+            format("Connected with device: {}, details: {}", file->getDeviceId().toString(), file->getDescription())
+        );
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), file.get());
         devices.emplace(file->getDeviceId(), std::move(file));
         ultrasoundOrdinal++;

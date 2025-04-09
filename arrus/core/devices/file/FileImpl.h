@@ -53,7 +53,7 @@ public:
     int getNumberOfProbes() const override;
     std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
     setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override;
-
+    std::string getDescription() const override;
 
 private:
     using Frame = std::vector<int16_t>;

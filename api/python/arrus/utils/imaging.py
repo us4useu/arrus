@@ -698,9 +698,9 @@ class ProcessingRunner:
     def _log_gpu_info(self):
         import arrus.logging
         ngpus = self.cp.cuda.runtime.getDeviceCount()
-        arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPUs: {ngpus}")
         arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
         arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
+        arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {ngpus}")
         for i in range(ngpus):
             props = self.cp.cuda.runtime.getDeviceProperties(i)
             free_mem, total_mem = self.cp.cuda.runtime.memGetInfo()

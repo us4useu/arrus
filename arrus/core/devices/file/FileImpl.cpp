@@ -230,4 +230,8 @@ FileImpl::setSubsequence(SequenceId, uint16, uint16, const std::optional<float> 
 float FileImpl::getSamplingFrequency() const { return 65e6; }
 float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 
+std::string FileImpl::getDescription() const {
+    return format("File device: {}", settings.getFilepath());
+}
+
 }// namespace arrus::devices
