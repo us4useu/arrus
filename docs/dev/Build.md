@@ -80,7 +80,7 @@ The following CMake options are available:
 
 ##### Prerequisites
 - the following Python packages: `setuptools virtualenv wheel`
-- [SWIG](http://www.swig.org/download.html) at least 4.0.1
+- [SWIG](http://www.swig.org/download.html) 4.0.2
 
 ##### Building
 
