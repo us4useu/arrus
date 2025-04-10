@@ -17,6 +17,7 @@ import importlib.util
 arrus_core_module_exists = importlib.util.find_spec("arrus.core") is not None
 # Logging
 
+
 if arrus_core_module_exists:
 
     from arrus.logging import (
@@ -25,10 +26,6 @@ if arrus_core_module_exists:
     )
     # Session
     from arrus.session import Session
-    # Put Python version into log file.
-    import arrus.logging
-    import sys
-    arrus.logging.log(arrus.logging.DEBUG, f"ARRUS Python API. Python version: {sys.version}")
 
 else:
     print("Warning: running without arrus.core module.")

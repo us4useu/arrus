@@ -1,6 +1,7 @@
 import abc
 import queue
 import copy
+import sys
 
 import numpy as np
 import importlib
@@ -77,12 +78,14 @@ class Session(AbstractSession):
         :param medium: medium description to set in context
         """
         super().__init__()
+        import arrus.logging
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing: arrus.utils.imaging.Processing = None
         # Current metadata (for the full sequence)
         self.metadatas = None
+        arrus.logging.log(arrus.logging.DEBUG, f"ARRUS Python API. Python version: {sys.version}")
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
