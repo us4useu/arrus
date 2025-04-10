@@ -71,10 +71,10 @@ SessionImpl::SessionImpl(
     : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)) {
     getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
     getDefaultLogger()->log(
-        LogSeverity::INFO, arrus::format("ARRUS version: {}.", ::arrus::version()));
+        LogSeverity::INFO, arrus::format("ARRUS version: {}", ::arrus::version()));
     // Debug info.
     getDefaultLogger()->log(
-        LogSeverity::DEBUG, arrus::format("OS: {}.", ::arrus::OS_NAME));
+        LogSeverity::DEBUG, arrus::format("OS: {}", ::arrus::OS_NAME));
     getDefaultLogger()->log(
         LogSeverity::DEBUG,
         arrus::format("Configuring session with the following settings {}", ::arrus::toString(sessionSettings)));
