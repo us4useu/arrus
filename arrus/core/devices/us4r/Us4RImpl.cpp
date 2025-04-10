@@ -1220,7 +1220,7 @@ string Us4RImpl::getDescription() const {
     stream << "us4r-api version: " << ::us4r::version();
     stream << ", Number of us4OEMs: " << us4oems.size();
     stream << ", probe adapter: " << probeAdapterSettings.getModelId().toString();
-    stream << "probes: ";
+    stream << ", probes: ";
     for(const auto &probe: probeSettings) {
         stream << probe.getModel().getModelId().toString() << "; ";
     }
