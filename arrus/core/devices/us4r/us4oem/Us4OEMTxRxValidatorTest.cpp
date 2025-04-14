@@ -132,7 +132,7 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsInvalidAmplitudeLevel) {
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse = Pulse(2e6, 2.0f, false, 2))
+            (x.pulse = Pulse(2e6, 2.0f, false, 0))
                 )
             .get()
     };
