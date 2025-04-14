@@ -123,8 +123,6 @@ class Us4R(Device, Ultrasound):
         This method expects a list of integers or a list of pairs of integers
         as input.
         A single integer v means that the voltage should be set t +v and -v.
-        A pair (vm, vp) means that the -voltage should be set to vm,
-        -voltage to vp.
 
         Voltage is always expected to be positive number (even for V-).
 
@@ -133,8 +131,8 @@ class Us4R(Device, Ultrasound):
             set_hv_voltage((5, 6), (10, 11)) -- sets -5 V for TX state -1, +6 V for TX state +1, -10 V for TX state -2, +11 V for TX state +2
 
         :param voltage: a single value (for amplitude level 0)
-            or a list of tuples, where voltage[0] are (minus, plus) V level 0,
-            voltage[1] are (minus, plus) V level 1.
+            or a list of tuples, where voltage[0] are (minus, plus) V level 1,
+            voltage[1] are (minus, plus) V level 2.
         """
         if len(args) == 1:
             arrus.utils.core.assert_hv_voltage_correct(args[0])
