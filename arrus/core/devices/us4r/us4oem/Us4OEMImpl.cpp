@@ -258,7 +258,19 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
             ius4oem->SetTxInvert(op.getTxPulse().isInverse(), firingId);
             if(isOEMPlus()) {
-                ius4oem->SetTxVoltageLevel(op.getTxPulse().getAmplitudeLevel(), firingId);
+                uint8_t ius4oemLevel;
+                // We need to translate TX amplitude level 1, 2 (exposed to the user) to levels 1, 0 (exposed by us4r-api).
+                switch(op.getTxPulse().getAmplitudeLevel()) {
+                case 1:
+                    ius4oemLevel = 1;
+                    break;
+                case 2:
+                    ius4oemLevel = 0;
+                    break;
+                default:
+                    throw IllegalArgumentException(format("Unsupported TX voltage level: {}", op.getTxPulse().getAmplitudeLevel()));
+                }
+                ius4oem->SetTxVoltageLevel(ius4oemLevel, firingId);
             }
             ius4oem->SetRxTime(rxTime, firingId);
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
