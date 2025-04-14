@@ -16,9 +16,9 @@ public:
 	 * @param centerFrequency center frequency of the transmitted pulse
 	 * @param nPeriods pulse number of periods, should be a multiple of 0.5
 	 * @param inverse if set to true - inverse the pulse polarity
-	 * @param amplitudeLevel amplitude level to use, default: 0
+	 * @param amplitudeLevel amplitude level to use, default: 2 (HVM/P 0)
 	 */
-    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 0)
+    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 2)
         : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel) {}
 
     float getCenterFrequency() const {
@@ -52,7 +52,7 @@ private:
     float centerFrequency;
     float nPeriods;
     bool inverse;
-    AmplitudeLevel amplitudeLevel = 0;
+    AmplitudeLevel amplitudeLevel = 2;
 };
 
 }

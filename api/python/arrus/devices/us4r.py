@@ -126,19 +126,22 @@ class Us4R(Device, Ultrasound):
         A pair (vm, vp) means that the -voltage should be set to vm,
         -voltage to vp.
 
-        Voltage is always expected to be positive number (even for -v).
+        Voltage is always expected to be positive number (even for V-).
 
         Examples:
-            set_hv_voltage(10) -- sets -10 +10 on amplitude level 0.
-            set_hv_voltage((10, 10), (5, 5)) -- sets -10, +10 on level 0,
-            -5, +5 on level 1.
+            set_hv_voltage(10) -- sets -10 +10 on TX amplitude 2.
+            set_hv_voltage((5, 6), (10, 11)) -- sets -5 V for TX state -1, +6 V for TX state +1, -10 V for TX state -2, +11 V for TX state +2
 
         :param voltage: a single value (for amplitude level 0)
             or a list of tuples, where voltage[0] are (minus, plus) V level 0,
             voltage[1] are (minus, plus) V level 1.
         """
-        voltages = arrus.utils.core.convert_to_hv_voltages(args)
-        self._handle.setVoltage(voltages)
+        if len(args) == 1:
+            arrus.utils.core.assert_hv_voltage_correct(args[0])
+            self._handle.setVoltage(args[0])
+        else:
+            voltages = arrus.utils.core.convert_to_hv_voltages(args)
+            self._handle.setVoltage(voltages)
 
     def disable_hv(self):
         """
