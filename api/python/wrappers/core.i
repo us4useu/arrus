@@ -272,6 +272,7 @@ namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
     %template(TupleSizeT) Tuple<size_t>;
     %template(IntervalFloat) Interval<float>;
+    %template(IntervalVoltage) Interval<Voltage>;
 };
 
 %ignore arrus::framework::NdArray::NdArray;
