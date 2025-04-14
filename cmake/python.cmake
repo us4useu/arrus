@@ -136,7 +136,7 @@ function(install_cupy_package TARGET_NAME VENV_TARGET CUDA_VERSION)
         COMMAND
             ${CMAKE_COMMAND} -E touch ${INSTALL_TIMESTAMP}
         COMMAND
-            ${INSTALL_VENV_EXECUTABLE} -m pip install cupy-cuda12x
+            ${INSTALL_VENV_EXECUTABLE} -m pip install cupy-cuda${CUDA_CUPY_VERSION}==10.6.0
         DEPENDS
             ${VENV_TARGET}
         WORKING_DIRECTORY
