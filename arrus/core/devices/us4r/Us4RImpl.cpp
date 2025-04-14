@@ -313,17 +313,22 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     float tolerance = 4.0f;// 4V tolerance
     int retries = 5;
 
-    if(isHV256) {
+     if(isHV256) {
         Voltage actualVoltage = this->getVoltage();
         // For HV256 we expect only a single voltage level, and +V == -V.
         auto expectedVoltage = voltages.at(1)->getVoltagePlus();
         if (actualVoltage != expectedVoltage) {
             disableHV();
             throw IllegalStateException(
-	@@ -238,8 +317,8 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
+                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",
+                    actualVoltage, expectedVoltage));
+        }
+    } else if(!isHVPS) {
+        this->logger->log(LogSeverity::INFO,
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
+    
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, isHV256);
 }
