@@ -56,6 +56,7 @@ class ProbeModel:
     tx_frequency_range: Tuple[float, float] = None
     lens: Optional[Lens] = None
     matching_layer: Optional[MatchingLayer] = None
+    voltage_range: Tuple[int, int] = None
 
     def __post_init__(self):
         element_pos_x, element_pos_z, element_angle = self._compute_element_position()

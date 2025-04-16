@@ -23,6 +23,10 @@ Release notes
     - Added lens and matching layer to the probe model description #ARRUS-425.
     - Improved logging #ARRUS-432, #US4R-451.
 
+- Python API:
+
+    - Exposed probe's voltage range #ARRUS-422.
+
 - MATLAB API:
 
     - Fixed the RX apodization #ARRUS-288.
