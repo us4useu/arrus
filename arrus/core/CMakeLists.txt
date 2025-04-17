@@ -208,7 +208,15 @@ set(SRC_FILES
     api/devices/us4r/WatchdogSettings.h
     api/devices/probe/Lens.h
     api/devices/probe/MatchingLayer.h
+    api/version.h
+    common/os.h
+    version.cpp.in
 )
+
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+
+# Generate version.cpp file.
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -216,7 +224,7 @@ set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
 # We do not use strict compile options (-wall, /w4, etc.) for auto generated files,
 # because some of those files generate compile warnings (e.g. protobuf files).
 
-add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS})
+add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS} ${GENERATED_FILES})
 ################################################################################
 # Compile definitions
 ################################################################################
@@ -231,7 +239,9 @@ target_compile_definitions(${TARGET_NAME}
 target_include_directories(${TARGET_NAME}
     PRIVATE
     ${ARRUS_ROOT_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR})
+    ${CMAKE_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 ################################################################################
 # Dependencies
@@ -311,7 +321,7 @@ if (ARRUS_RUN_TESTS)
         ops/us4r/Scheme.cpp
         ops/us4r/DigitalDownConversion.cpp
     )
-    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}" Us4::US4OEM)
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
     create_core_test(io/settingsTest.cpp
