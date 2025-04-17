@@ -386,6 +386,7 @@ class ProcessingRunner:
     def __init__(self, input_buffer, metadata, processing):
         import cupy as cp
         self.cp = cp
+        self._log_gpu_info()
         # Input buffer, stored in the host PC memory.
         self.host_input_buffer = input_buffer
         self.processing = processing
@@ -695,6 +696,28 @@ class ProcessingRunner:
         import cupy as cp
         for element in buffer.elements:
             cp.cuda.runtime.hostUnregister(data_getter(element).ctypes.data)
+
+    def _log_gpu_info(self):
+        import arrus.logging
+        ngpus = self.cp.cuda.runtime.getDeviceCount()
+        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
+        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
+        arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {ngpus}")
+        for i in range(ngpus):
+            props = self.cp.cuda.runtime.getDeviceProperties(i)
+            free_mem, total_mem = self.cp.cuda.runtime.memGetInfo()
+            arrus.logging.log(
+                arrus.logging.DEBUG,
+                f"""
+f=== GPU #{i} ===
+Name:                 {props['name'].decode('utf-8')}
+Multiprocessors:      {props['multiProcessorCount']}
+Total memory:         {props['totalGlobalMem'] // (1024**2)} MiB
+Free memory:          {free_mem // (1024**2)} MiB
+Compute capability:   {props['major']}.{props['minor']}
+Clock:                {props['clockRate'] / 1000} MHz
+                """
+            )
 
 
 class Operation:

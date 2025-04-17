@@ -7,9 +7,11 @@
 
 #include "arrus/common/compiler.h"
 #include "arrus/common/format.h"
+#include "arrus/core/common/os.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/devices/utils.h"
 
+#include "arrus/core/api/version.h"
 #include "arrus/core/api/io/settings.h"
 #include "arrus/core/devices/us4r/Us4RFactoryImpl.h"
 #include "arrus/core/devices/us4r/Us4RSettingsConverterImpl.h"
@@ -67,8 +69,15 @@ SessionImpl::SessionImpl(
     FileFactory::Handle fileFactory
     )
     : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)) {
-    getDefaultLogger()->log(LogSeverity::DEBUG,
-                            arrus::format("Configuring session: {}", ::arrus::toString(sessionSettings)));
+    getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
+    getDefaultLogger()->log(
+        LogSeverity::INFO, arrus::format("ARRUS version: {}", ::arrus::version()));
+    // Debug info.
+    getDefaultLogger()->log(
+        LogSeverity::DEBUG, arrus::format("OS: {}", ::arrus::OS_NAME));
+    getDefaultLogger()->log(
+        LogSeverity::DEBUG,
+        arrus::format("Configuring session with the following settings {}", ::arrus::toString(sessionSettings)));
     configureDevices(sessionSettings);
 }
 
@@ -115,6 +124,10 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs(); ++i) {
         const Us4RSettings &settings = sessionSettings.getUs4RSettings(Ordinal(i));
         Us4R::Handle us4r = us4rFactory->getUs4R(Ordinal(i), settings);
+        getDefaultLogger()->log(
+            LogSeverity::INFO,
+            format("Connected with device: {}, details: {}", us4r->getDeviceId().toString(), us4r->getDescription())
+        );
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), us4r.get());
         devices.emplace(us4r->getDeviceId(), std::move(us4r));
         ultrasoundOrdinal++;
@@ -123,6 +136,10 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     for(size_t i = 0; i < sessionSettings.getNumberOfFiles(); ++i) {
         const FileSettings &settings = sessionSettings.getFileSettings(Ordinal(i));
         File::Handle file = fileFactory->getFile(Ordinal(i), settings);
+        getDefaultLogger()->log(
+            LogSeverity::INFO,
+            format("Connected with device: {}, details: {}", file->getDeviceId().toString(), file->getDescription())
+        );
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), file.get());
         devices.emplace(file->getDeviceId(), std::move(file));
         ultrasoundOrdinal++;
@@ -245,5 +262,6 @@ UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional
     auto[buffer, metadata] = ultrasound->setSubsequence(arrayId, start, end, sri);
     return UploadResult(buffer, {metadata});
 }
+
 
 }// namespace arrus::session

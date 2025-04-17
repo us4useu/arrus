@@ -17,6 +17,13 @@ public:
         return id;
     }
 
+    /**
+     * Returns description of the device (e.g. the number components, etc.).
+     */
+    virtual std::string getDescription() const {
+        return "Unknown Device";
+    }
+
     virtual ~Device() = default;
 
     virtual void setParameters(const Parameters &) {
