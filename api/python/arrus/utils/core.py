@@ -115,7 +115,9 @@ def convert_to_py_probe_model(core_model):
     curvature_radius = core_model.getCurvatureRadius()
     model_id = core_model.getModelId()
     core_fr = core_model.getTxFrequencyRange()
+    core_vr = core_model.getVoltageRange()
     tx_frequency_range = (core_fr.start(), core_fr.end())
+    voltage_range = (core_vr.start(), core_vr.end())
     if core_model.isLensDefined():
         lens = core_model.getLensOrRaiseException()
         lens = arrus.devices.probe.Lens(
@@ -142,7 +144,8 @@ def convert_to_py_probe_model(core_model):
         curvature_radius=curvature_radius,
         tx_frequency_range=tx_frequency_range,
         lens=lens,
-        matching_layer=matching_layer
+        matching_layer=matching_layer,
+        voltage_range=voltage_range
     )
 
 

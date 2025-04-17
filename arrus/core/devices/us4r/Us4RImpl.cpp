@@ -6,6 +6,7 @@
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
+#include "us4r_api_version.h"
 #include <chrono>
 #include <future>
 #include <memory>
@@ -501,16 +502,16 @@ void Us4RImpl::stopDevice() {
             this->digitalBackplane.value()->enableInternalTrigger();
         }
         this->getMasterOEM()->stop();
-        try {
-            for (auto &us4oem : us4oems) {
+        for (auto &us4oem : us4oems) {
+            try {
                 us4oem->getIUs4OEM()->WaitForPendingTransfers();
                 us4oem->getIUs4OEM()->DisableRuntimeInterrupts();
             }
-        }
-        catch(const std::exception &e) {
-            logger->log(
-                LogSeverity::WARNING,
-                arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
+            catch (const std::exception &e) {
+                logger->log(
+                        LogSeverity::WARNING,
+                        arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
+            }
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
@@ -1293,6 +1294,18 @@ std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequ
         });
     }
     return result;
+}
+
+string Us4RImpl::getDescription() const {
+    std::stringstream stream;
+    stream << "us4r-api version: " << ::us4r::version();
+    stream << ", Number of us4OEMs: " << us4oems.size();
+    stream << ", probe adapter: " << probeAdapterSettings.getModelId().toString();
+    stream << ", probes: ";
+    for(const auto &probe: probeSettings) {
+        stream << probe.getModel().getModelId().toString() << "; ";
+    }
+    return stream.str();
 }
 
 }// namespace arrus::devices

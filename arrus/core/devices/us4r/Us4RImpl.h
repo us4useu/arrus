@@ -154,6 +154,7 @@ public:
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
+    std::string getDescription() const override;
 
 private:
     struct VoltageLogbook {

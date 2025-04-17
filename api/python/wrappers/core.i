@@ -272,6 +272,7 @@ namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
     %template(TupleSizeT) Tuple<size_t>;
     %template(IntervalFloat) Interval<float>;
+    %template(IntervalVoltage) Interval<Voltage>;
 };
 
 %ignore arrus::framework::NdArray::NdArray;
@@ -362,6 +363,10 @@ using namespace ::arrus::session;
 std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::string& filepath) {
     std::shared_ptr<Session> res = createSession(filepath);
     return res;
+}
+
+float getRxOffset(size_t arrayId, arrus::session::UploadResult* uploadResult) {
+    return *uploadResult->getConstMetadata(arrayId)->get<float>("rxOffset");
 }
 
 std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(size_t arrayId, arrus::session::UploadResult* uploadResult) {
