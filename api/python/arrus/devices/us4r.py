@@ -395,16 +395,24 @@ class Us4R(Device, Ultrasound):
     def get_data_description(self, upload_result, sequence, array_id):
         # Prepare data buffer and constant context metadata
         fcm = self._get_fcm(array_id, upload_result, sequence)
+        rx_offset = self.arrus.core.getRxOffset(array_id, upload_result)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
-            custom={"frame_channel_mapping": fcm}
+            custom={
+                "frame_channel_mapping": fcm,
+                "rx_offset": rx_offset
+            }
         )
 
     def get_data_description_updated_for_subsequence(self, array_id, upload_result, sequence):
         fcm = self._get_fcm(array_id, upload_result, sequence)
+        rx_offset = self.arrus.core.getRxOffset(array_id, upload_result)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
-            custom={"frame_channel_mapping": fcm}
+            custom={
+                "frame_channel_mapping": fcm,
+                "rx_offset": rx_offset
+            }
         )
 
     def set_stop_on_overflow(self, is_stop):
