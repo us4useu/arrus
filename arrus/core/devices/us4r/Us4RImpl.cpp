@@ -421,16 +421,16 @@ void Us4RImpl::stopDevice() {
             this->digitalBackplane.value()->enableInternalTrigger();
         }
         this->getMasterOEM()->stop();
-        try {
-            for (auto &us4oem : us4oems) {
+        for (auto &us4oem : us4oems) {
+            try {
                 us4oem->getIUs4OEM()->WaitForPendingTransfers();
                 us4oem->getIUs4OEM()->DisableRuntimeInterrupts();
             }
-        }
-        catch(const std::exception &e) {
-            logger->log(
-                LogSeverity::WARNING,
-                arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
+            catch (const std::exception &e) {
+                logger->log(
+                        LogSeverity::WARNING,
+                        arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
+            }
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
