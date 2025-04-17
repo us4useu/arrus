@@ -32,7 +32,6 @@ from arrus.ops.us4r import TxRxSequence
 from arrus.ops.imaging import SimpleTxRxSequence
 from functools import reduce
 import arrus.ops.us4r
-from build.lib.example.cfg.parameters import speed_of_sound
 
 
 def is_package_available(package_name):

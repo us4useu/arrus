@@ -366,7 +366,7 @@ std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::st
 }
 
 float getRxOffset(size_t arrayId, arrus::session::UploadResult* uploadResult) {
-    return uploadResult->getConstMetadata(arrayId)->get<float>("rxOffset");
+    return *uploadResult->getConstMetadata(arrayId)->get<float>("rxOffset");
 }
 
 std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(size_t arrayId, arrus::session::UploadResult* uploadResult) {
