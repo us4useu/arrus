@@ -211,9 +211,8 @@ private:
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
-    void registerPulserIRQCallback();
-    void handleEvents();
     void handlePulserInterrupt();
+    void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
 
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
                            bool cleanupSequencerTransfers = false);

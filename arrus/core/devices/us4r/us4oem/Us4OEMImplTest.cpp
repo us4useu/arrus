@@ -40,6 +40,7 @@ protected:
         // Default values returned by us4oem.
         ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+ variant 0
     }
 
     Us4OEMUploadResult upload(const TxParametersSequenceColl &sequences) {
@@ -173,6 +174,30 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
         .get()
     };
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(61, 0));
+    upload(seq);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectAmplitudeLevel1) {
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(10e6, 30.5, false, 1))
+                )
+            .get()
+    };
+    EXPECT_CALL(*ius4oemPtr, SetTxVoltageLevel(1, 0));
+    upload(seq);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectAmplitudeLevel2) {
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (x.pulse = Pulse(10e6, 30.5, false, 2))
+                )
+            .get()
+    };
+    EXPECT_CALL(*ius4oemPtr, SetTxVoltageLevel(0, 0));
     upload(seq);
 }
 
