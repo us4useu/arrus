@@ -523,6 +523,14 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     if(us4r.has_watchdog()) {
         auto enabled = us4r.watchdog().enabled();
         if(enabled) {
+            if(us4r.watchdog().oem_threshold0() == 0.0 
+                    || us4r.watchdog().oem_threshold1() == 0.0 
+                    || us4r.watchdog().host_threshold() == 0.0) {
+                throw IllegalArgumentException(
+                        "When the watchdog is explicitly enabled, "
+                        "the parameters oem_threshold0, oem_threshold1, and host_threshold should also be explicitly specified and should be greater than 0. "
+                        "NOTE: to use the default watchdog settings, just skip the watchdog field in the configuration file.");
+            }
             watchdog = WatchdogSettings{
                 ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold0(), float),
                 ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold1(), float),
