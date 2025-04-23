@@ -23,7 +23,6 @@ import arrus.ops.tgc
 import arrus.kernels.tgc
 import arrus.kernels.kernel
 import arrus.utils
-import arrus.utils.imaging
 import arrus.utils.core
 import arrus.framework
 from typing import Sequence, Dict, Iterable
@@ -82,7 +81,7 @@ class Session(AbstractSession):
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
-        self._current_processing: arrus.utils.imaging.Processing = None
+        self._current_processing = None
         # Current metadata (for the full sequence)
         self.metadatas = None
         arrus.logging.log(arrus.logging.DEBUG, f"ARRUS Python API. Python version: {sys.version}")
@@ -362,7 +361,7 @@ class Session(AbstractSession):
                     graph=processing,
                     callback=None,
                 )
-            processing_runner = arrus.utils.imaging.ProcessingRunner(
+            processing_runner = _imaging.ProcessingRunner(
                 input_buffer=buffer, metadata=metadatas, processing=processing,
             )
             outputs = processing_runner.outputs
