@@ -407,14 +407,6 @@ probe_adapter_models: [
                 region: {begin: 32, end: 63}
             }
         ]
-        io_settings: {
-            capabilities: [
-                {
-                    capability: PROBE_CONNECTED_CHECK,
-                    addresses: [{us4oem: 0, io: 0}]
-                }
-            ]
-        }
     },
 
     {
