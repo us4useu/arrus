@@ -256,7 +256,7 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
 TEST(Us4OEMFactoryTest, SetsAppropriateTxRxLimits) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
+    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(2));
 
     // All parameters set
     Interval<float> pulseLengthLimits{1e-6f, 10e-6f};

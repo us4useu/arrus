@@ -27,6 +27,10 @@ public:
 
     ~Ultrasound() override = default;
 
+    std::string getDescription() const override {
+        return "Ultrasound device";
+    }
+
     virtual std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 
@@ -79,7 +83,7 @@ public:
     virtual int getNumberOfProbes() const = 0;
 
     virtual std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) = 0;
+    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) = 0;
 
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;

@@ -97,7 +97,7 @@ public:
     MOCK_METHOD(void, EnableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, EnableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, SyncReceive, (), (override));
-    MOCK_METHOD(void, ResetCallbacks, (), (override));
+    MOCK_METHOD(void, ResetRuntimeCallbacks, (), (override));
     MOCK_METHOD(float, GetFPGATemp, (), (override));
     MOCK_METHOD(void, WaitForPendingTransfers, (), (override));
     MOCK_METHOD(void, ClearUCDFaults, (), (override));
@@ -117,8 +117,8 @@ public:
     MOCK_METHOD(void, ClearUCDLog, (), (override));
     MOCK_METHOD(bool, CheckUCDLogNotEmpty, (), (override));
     MOCK_METHOD(void, ClearUCDBlackBox, (), (override));
-    MOCK_METHOD(void, EnableInterrupts, (), (override));
-    MOCK_METHOD(void, DisableInterrupts, (), (override));
+    MOCK_METHOD(void, EnableRuntimeInterrupts, (), (override));
+    MOCK_METHOD(void, DisableRuntimeInterrupts, (), (override));
 
     MOCK_METHOD(void, AfeWriteRegister, (uint8_t, uint8_t, uint16_t), (override));
     MOCK_METHOD(void, AfeDemodEnable, (), (override));
@@ -154,7 +154,6 @@ public:
     MOCK_METHOD(uint16_t, AfeReadRegister, (uint8_t, uint8_t), (override));
     MOCK_METHOD(void, AfeSoftReset, (uint8_t), (override));
     MOCK_METHOD(void, AfeSoftReset, (), (override));
-    MOCK_METHOD(void, WaitForPendingInterrupts, (), (override));
     MOCK_METHOD(uint32_t, GetSequencerConfRegister, (), (override));
     MOCK_METHOD(uint32_t, GetSequencerCtrlRegister, (), (override));
     MOCK_METHOD(void, SetStandardIODriveMode, (), (override));
@@ -212,7 +211,6 @@ public:
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
-    MOCK_METHOD(void, ClearDMACallbacks, (), (override));
     MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));
@@ -229,7 +227,16 @@ public:
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
     MOCK_METHOD((std::pair<float, float>), GetTGCValueRange, (), (const, override));
     MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
-    MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short firing), (override));
+    MOCK_METHOD(::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
+    MOCK_METHOD(void, DisableWatchdog, (), (override));
+    MOCK_METHOD(void, SetOEMWatchdogThresholds, (uint16_t threshold0, uint16_t threshold1), (override));
+    MOCK_METHOD(void, SetHostWatchdogThresholds, (uint16_t threshold), (override));
+    MOCK_METHOD(void, EnableInterrupts, (), (override));
+    MOCK_METHOD(void, EnableSystemInterrupts, (const IUs4OEM::CallbacksMap&), (override));
+    MOCK_METHOD(void, ResetDMACallbacks, (), (override));
+    MOCK_METHOD(void, SetPulserInterruptCallback, (const std::function<void()> &), (override));
+    MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
+    MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

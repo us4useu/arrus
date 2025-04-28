@@ -38,6 +38,7 @@ public:
         ARRUS_MATLAB_ADD_METHOD("getLnaGain", getLnaGain);
         ARRUS_MATLAB_ADD_METHOD("setPgaGain", setPgaGain);
         ARRUS_MATLAB_ADD_METHOD("getPgaGain", getPgaGain);
+        ARRUS_MATLAB_ADD_METHOD("setMaximumPulseLength", setMaximumPulseLength);
         ARRUS_MATLAB_ADD_METHOD("setLpfCutoff", setLpfCutoff);
         ARRUS_MATLAB_ADD_METHOD("disableLnaHpf", disableLnaHpf);
         ARRUS_MATLAB_ADD_METHOD("setLnaHpfCornerFrequency", setLnaHpfCornerFrequency);
@@ -52,9 +53,41 @@ public:
     }
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        ::arrus::Voltage value = inputs[0][0];
-        ctx->logInfo(format("Us4R: setting voltage {}", value));
-        get(obj)->setVoltage(value);
+        auto value = inputs[0];
+        if(isArrayScalar(value)) {
+            ::arrus::Voltage scalarValue = value[0];
+            ctx->logInfo(format("Us4R: setting voltage {}", scalarValue));
+            get(obj)->setVoltage(scalarValue);
+        }
+        else {
+            // non scalar -- must be 2x2
+            // row 1: level 1 [minus plus]
+            // row 2: level 2 [minus plus]
+            std::vector<size_t> expectedDimensions = {2, 2};
+            if(value.getDimensions() != expectedDimensions) {
+                throw IllegalArgumentException("The Us4R voltage values should be either a scalar value "
+                                               "(level 0 -/+ amplitude) "
+                                               "or a matrix 2x2 [level 0 -,+; level 1 -,+]");
+            }
+
+	        ::arrus::Voltage level1Minus = value[0][0]; // row 1, column 1
+            ::arrus::Voltage level1Plus = value[0][1];  // row 1, column 2
+            ::arrus::Voltage level2Minus = value[1][0]; // row 2, column 1
+            ::arrus::Voltage level2Plus = value[1][1];  // row 2, column 2
+
+            std::vector<HVVoltage> voltages = {HVVoltage{level1Minus, level1Plus}, HVVoltage{level2Minus, level2Plus}};
+            ctx->logInfo(format(
+                "Us4R: setting voltage "
+                "level 1: -{}, +{}, "
+                "level 2: -{}, +{}",
+                voltages.at(0).getVoltageMinus(),
+                voltages.at(0).getVoltagePlus(),
+                voltages.at(1).getVoltageMinus(),
+                voltages.at(1).getVoltagePlus()
+            ));
+            get(obj)->setVoltage(voltages);
+        }
+
     }
 
     void getSamplingFrequency(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -125,6 +158,11 @@ public:
     void getPgaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         float gain = get(obj)->getPgaGain();
         outputs[0] = ARRUS_MATLAB_GET_MATLAB_SCALAR(ctx, uint16, gain);
+    }
+
+    void setMaximumPulseLength(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        float value = inputs[0][0];
+        get(obj)->setMaximumPulseLength(value);
     }
 
     void setLpfCutoff(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {

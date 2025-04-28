@@ -19,6 +19,7 @@
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
+#include "utils.h"
 #include "arrus/core/devices/us4r/TxWaveformConverter.h"
 
 namespace arrus::devices {
@@ -144,7 +145,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     ius4oem->ResetSequencer();
     ius4oem->SetNumberOfFirings(ARRUS_SAFE_CAST(getNumberOfFirings(sequences), uint16_t));
     ius4oem->ClearScheduledReceive();
-    ius4oem->ResetCallbacks();
+    ius4oem->ResetRuntimeCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
     setTxTimeouts(txTimeouts);
@@ -220,9 +221,9 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                            txrxTime, op.getPri()));
             // Upload
             ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
-            ius4oem->SetRxDelay(0.0f, firingId);
             ius4oem->SetTxAperture(filteredTxAperture, firingId);
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
+            ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
             // Set delay definition tables.
             for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
@@ -257,6 +258,9 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
+    if(isOEMPlus()) {
+        ius4oem->BuildSequenceWaveforms(false);
+    }
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
@@ -370,13 +374,15 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
                     }
                     if (batchId == 0) {
                         size_t partSize = 0;
+                        size_t actualNumberOfSamples = 0;
                         if (!op.isRxNOP() || acceptRxNops) {
                             partSize = nBytes;
+                            actualNumberOfSamples = nSamples;
                         }
                         // Otherwise, make an empty part (i.e. partSize = 0).
                         // (note: the firing number will be needed for transfer configuration to release element in
                         // us4oem sequencer).
-                        parts.emplace_back(outputAddress, partSize, seqId, entryId);
+                        parts.emplace_back(outputAddress, partSize, seqId, entryId, ARRUS_SAFE_CAST(actualNumberOfSamples, uint32_t));
                     }
                     if (!op.isRxNOP() || acceptRxNops) {
                         // Also, allows rx nops for OEM that is acceptable, in order to acquire frame metadata.
@@ -432,7 +438,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
     FiringId entryId = 0;
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
 
-    bool triggerSyncPerBatch = arrus::ops::us4r::Scheme::isWorkModeManual(workMode) || workMode == ops::us4r::Scheme::WorkMode::HOST;
+    bool triggerSyncPerBatch = isWaitForSoftMode(workMode);
     bool triggerSyncPerTxRx = workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP;
 
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
@@ -485,7 +491,7 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
 
     auto maxFirings = descriptor.getTxRxSequenceLimits().getMaxNumberOfFirings();
 
-    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, format("Exceeded the maximum ({}) number of timeoutIds: {}", maxFirings, nFirings));
+    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, format("Exceeded the maximum ({}) number of firings: {}", maxFirings, nFirings));
     const auto maxSequenceSize = descriptor.getTxRxSequenceLimits().getSize().end();
     ARRUS_REQUIRES_AT_MOST(nTriggers, maxSequenceSize,
                            format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
@@ -760,8 +766,8 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
     ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId);
 }
 
-void Us4OEMImpl::clearCallbacks() {
-    this->ius4oem->ClearDMACallbacks();
+void Us4OEMImpl::clearDMACallbacks() {
+    this->ius4oem->ResetDMACallbacks();
 }
 
 std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(
@@ -783,20 +789,28 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     if(ius4oem->GetOemVersion() != 2 && maxLength.has_value()) {
         throw IllegalArgumentException("Currently it is possible to set maxLength value only for OEM+ (type 2)");
     }
-    TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTx0()};
+    TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTx2()};
     if(maxLength.has_value()) {
         txBuilder.setPulseLength(Interval<float>{0.0f, maxLength.value()});
     }
     else {
         txBuilder.setPulseLength(Interval<float>{0.0f, 0.0f});
         // Set the default setting.
-        auto defaultLimits = Us4OEMDescriptorFactory::getDescriptor(ius4oem, isMaster()).getTxRxSequenceLimits().getTxRx().getTx0().getPulseCycles();
+        auto defaultLimits = Us4OEMDescriptorFactory::getDescriptor(ius4oem, isMaster())
+                                 .getTxRxSequenceLimits()
+                                 .getTxRx()
+                                 .getTx2().getPulseCycles();
         txBuilder.setPulseCycles(defaultLimits);
     }
     TxLimits txLimits = txBuilder.build();
     TxRxSequenceLimitsBuilder seqBuilder{descriptor.getTxRxSequenceLimits()};
-    seqBuilder.setTxRxLimits(txLimits, descriptor.getTxRxSequenceLimits().getTxRx().getTx1(), descriptor.getTxRxSequenceLimits().getTxRx().getRx(),
-                             descriptor.getTxRxSequenceLimits().getTxRx().getPri());
+    seqBuilder.setTxRxLimits(
+        // TX amplitude level 1 / HV rail 1
+        descriptor.getTxRxSequenceLimits().getTxRx().getTx1(),
+        // TX amplitude level 2 / HV rail 0
+        txLimits,
+        descriptor.getTxRxSequenceLimits().getTxRx().getRx(),
+        descriptor.getTxRxSequenceLimits().getTxRx().getPri());
     Us4OEMDescriptorBuilder builder{descriptor};
     builder.setTxRxSequenceLimits(seqBuilder.build());
     // Set the new descriptor.
@@ -863,6 +877,10 @@ void Us4OEMImpl::setRxSettings(const RxSettings &settings) {
 
 std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
     return ius4oem->GetTGCValueRange();
+}
+
+void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
+    this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
 }
 
 }// namespace arrus::devices

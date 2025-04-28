@@ -342,8 +342,19 @@ T getCppObject(const MexContext::SharedHandle &ctx, const MatlabElementRef &obje
     getCppObjectVector<Type, Converter>(ctx, array, #field)
 
 // C++ scalar -> MATLAB ARRAY
-template<typename T>::matlab::data::TypedArray<T> getMatlabScalar(const MexContext::SharedHandle &ctx, T value) {
+template<typename T>
+::matlab::data::Array getMatlabScalar(const MexContext::SharedHandle &ctx, T value) {
     return ctx->createScalar<T>(value);
+}
+
+template<typename T>
+::matlab::data::Array getMatlabScalar(const MexContext::SharedHandle &ctx, const std::optional<T> &t) {
+    if(!t.has_value()) {
+        return ctx->getArrayFactory().createEmptyArray();
+    }
+    else {
+        return getMatlabScalar<T>(ctx, t.value());
+    }
 }
 
 ::matlab::data::TypedArray<::matlab::data::MATLABString> getMatlabString(const MexContext::SharedHandle &ctx,

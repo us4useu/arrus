@@ -128,7 +128,26 @@ def convert_to_py_probe_model(core_model):
     curvature_radius = core_model.getCurvatureRadius()
     model_id = core_model.getModelId()
     core_fr = core_model.getTxFrequencyRange()
+    core_vr = core_model.getVoltageRange()
     tx_frequency_range = (core_fr.start(), core_fr.end())
+    voltage_range = (core_vr.start(), core_vr.end())
+    if core_model.isLensDefined():
+        lens = core_model.getLensOrRaiseException()
+        lens = arrus.devices.probe.Lens(
+            thickness=lens.getThickness(),
+            speed_of_sound=lens.getSpeedOfSound(),
+            focus=lens.getFocus()
+        )
+    else:
+        lens = None
+    if core_model.isMatchingLayerDefined():
+        matching_layer = core_model.getMatchingLayerOrRaiseException()
+        matching_layer = arrus.devices.probe.MatchingLayer(
+            thickness=matching_layer.getThickness(),
+            speed_of_sound=matching_layer.getSpeedOfSound(),
+        )
+    else:
+        matching_layer = None
     return arrus.devices.probe.ProbeModel(
         model_id=arrus.devices.probe.ProbeModelId(
             manufacturer=model_id.getManufacturer(),
@@ -136,7 +155,10 @@ def convert_to_py_probe_model(core_model):
         n_elements=n_elements,
         pitch=pitch,
         curvature_radius=curvature_radius,
-        tx_frequency_range=tx_frequency_range
+        tx_frequency_range=tx_frequency_range,
+        lens=lens,
+        matching_layer=matching_layer,
+        voltage_range=voltage_range
     )
 
 
@@ -247,11 +269,14 @@ def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
         else:
             raise ValueError("Voltages are expected to be integers "
                              "or pair of integers.")
-
-        min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
-        if not (min_v <= vm <= max_v) or not (min_v <= vp <= max_v):
-            raise ValueError("Voltages are expected to be values in range "
-                             f"[{min_v}, {max_v}]")
+        assert_hv_voltage_correct(vm)
+        assert_hv_voltage_correct(vp)
         result.append(arrus.core.HVVoltage(vm, vp))
     return arrus.core.VectorHVVoltage(result)
 
+
+def assert_hv_voltage_correct(value):
+    min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
+    if not (min_v <= value <= max_v):
+        raise ValueError("Voltages are expected to be values in range "
+                         f"[{min_v}, {max_v}]")

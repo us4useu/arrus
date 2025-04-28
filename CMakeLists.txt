@@ -57,7 +57,7 @@ endif()
 # Common C++ compile options
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     # permissive- is required by range-v3/0.5.0
-    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS /permissive- /EHsc)
+    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS /permissive- /EHsc /bigobj)
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "/W4 /WX")
 
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS

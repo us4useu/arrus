@@ -10,6 +10,8 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/common/IntervalDouble.proto
     io/proto/common/LinearFunction.proto
     io/proto/devices/probe/ProbeModel.proto
+    io/proto/devices/probe/Lens.proto
+    io/proto/devices/probe/MatchingLayer.proto
     io/proto/devices/us4r/ProbeAdapterModel.proto
     io/proto/devices/us4r/ProbeToAdapterConnection.proto
     io/proto/devices/us4r/RxSettings.proto
@@ -23,6 +25,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/DigitalBackplaneSettings.proto
     io/proto/devices/us4r/Bitstream.proto
     io/proto/devices/us4r/Us4RTxRxLimits.proto
+    io/proto/devices/us4r/WatchdogSettings.proto
 )
 ################################################################################
 # Target
@@ -192,9 +195,22 @@ set(SRC_FILES
     api/devices/us4r/HVPSMeasurement.h
     api/devices/us4r/Us4RTxRxLimits.h
     devices/us4r/TxTimeoutRegister.h
+    devices/us4r/Us4RSubsequence.h
+    devices/us4r/types.h
+    api/devices/us4r/WatchdogSettings.h
+    api/devices/probe/Lens.h
+    api/devices/probe/MatchingLayer.h
+    api/version.h
+    common/os.h
+    version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
 )
+
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+
+# Generate version.cpp file.
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
 
 set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
     "${ARRUS_CPP_STRICT_COMPILE_OPTIONS}")
@@ -202,7 +218,7 @@ set_source_files_properties(${SRC_FILES} PROPERTIES COMPILE_FLAGS
 # We do not use strict compile options (-wall, /w4, etc.) for auto generated files,
 # because some of those files generate compile warnings (e.g. protobuf files).
 
-add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS})
+add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS} ${GENERATED_FILES})
 ################################################################################
 # Compile definitions
 ################################################################################
@@ -217,7 +233,9 @@ target_compile_definitions(${TARGET_NAME}
 target_include_directories(${TARGET_NAME}
     PRIVATE
     ${ARRUS_ROOT_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR})
+    ${CMAKE_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 ################################################################################
 # Dependencies
@@ -298,7 +316,7 @@ if (ARRUS_RUN_TESTS)
         ops/us4r/Scheme.cpp
         ops/us4r/DigitalDownConversion.cpp
     )
-    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}" Us4::US4OEM)
     # core::io tests
     set(ARRUS_CORE_IO_TEST_DATA ${CMAKE_CURRENT_SOURCE_DIR}/io/test-data)
     create_core_test(io/settingsTest.cpp
@@ -307,6 +325,7 @@ if (ARRUS_RUN_TESTS)
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
     create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/Us4RSubsequenceTest.cpp "devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp")
     create_core_test(devices/us4r/TxWaveformConverterTest.cpp common/logging.cpp)
 endif ()
 
@@ -346,11 +365,6 @@ install(
     DESTINATION
     ${ARRUS_INCLUDE_INSTALL_DIR}/arrus/core
 )
-
-# US4R dependency
-
-
-# binaries should be handled
 
 install(
     DIRECTORY

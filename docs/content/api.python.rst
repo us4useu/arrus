@@ -73,6 +73,22 @@ Custom Tx/Rx sequences
 Devices
 =======
 
+Probe
+-----
+
+.. autoclass:: arrus.devices.probe.ProbeModel
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.devices.probe.Lens
+    :members:
+    :show-inheritance:
+
+.. autoclass:: arrus.devices.probe.MatchingLayer
+    :members:
+    :show-inheritance:
+
+
 Ultrasound
 ----------
 
