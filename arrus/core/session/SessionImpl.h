@@ -36,7 +36,7 @@ public:
     void close() override;
     void setParameters(const Parameters &params) override;
     State getCurrentState() override;
-    UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri) override;
+    UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, ArrayId arrayId) override;
 
 private:
     ARRUS_DEFINE_ENUM_TO_STRING(
@@ -49,6 +49,9 @@ private:
             // The connection with devices is closed.
             (CLOSED)
     );
+    void verifyScheme(const ops::us4r::Scheme &scheme);
+
+
 
     using DeviceMap = std::unordered_map<
         arrus::devices::DeviceId,
@@ -69,7 +72,6 @@ private:
     std::recursive_mutex stateMutex;
     std::optional<ops::us4r::Scheme> currentScheme;
     State state{State::STOPPED};
-    void verifyScheme(const ops::us4r::Scheme &scheme);
 };
 
 

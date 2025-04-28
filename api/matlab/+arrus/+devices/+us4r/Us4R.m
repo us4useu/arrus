@@ -21,10 +21,24 @@ classdef Us4R < handle
         end
 
         function setVoltage(obj, voltage)
+            % Enables HV and sets a given voltage(s).
             %
-            % Sets the voltage to given value.
+            % This method expects a scalar integer or a 2x2 array of integers
+            % as input.
+            % A single integer v defines the voltage range as [-v, +v].
+            % A 2x2 array [v0m, v0p; v1m, v1p] defines two separate voltage ranges:
+            % [-v0m +v0p], and [-v1m, +v1p]. The voltage range can be selected
+            % individually for each tx pulse using "amplitudeLevel" property of Pulse class.
             %
-            % :param voltage: value to set
+            % Voltage is always expected to be positive number (even for v0m and v1m).
+            % v0m and v0p are always expected to be higher than v1m and v1p, respectively.
+            %
+            % Examples:
+            %      setVoltage(10) -- sets -10 +10 on TX amplitude 2.
+            %      setVoltage([5, 6; 10, 11]) -- sets -5 V for TX state -1, +6 V for TX state +1, -10 V for TX state -2, +11 V for TX state +2
+            %
+            % :param voltage: voltage to set: a single value (for amplitude level 0)
+            % or a 2x2 matrix, where voltage(1, :) are [minus plus] V level 1, voltage(2, :) are [minus plus] V level 2.
             obj.ptr.callMethod("setVoltage", 0, voltage);
         end
 
@@ -117,6 +131,14 @@ classdef Us4R < handle
             %
             % :param gain: gain value to set [dB]
             obj.ptr.callMethod("setPgaGain", 0, gain);
+        end
+
+        function setMaximumPulseLength(obj, value)
+            %
+            % Set maximum TX pulse length.
+            %
+            % :param value: pulse length to set [seconds]
+            obj.ptr.callMethod("setMaximumPulseLength", 0, value);
         end
 
         function disableLnaHpf(obj)

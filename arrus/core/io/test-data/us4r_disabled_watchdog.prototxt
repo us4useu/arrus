@@ -1,0 +1,58 @@
+dictionary_file: "dictionary.prototxt"
+
+us4r: {
+    probe_id: {
+        manufacturer: "esaote"
+        name: "sl1543"
+    }
+
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "esaote2"
+    }
+
+    # Default initial values.
+    rx_settings: {
+        lna_gain: 24
+        pga_gain: 30
+        lpf_cutoff: 15000000
+        active_termination: 200
+    }
+
+    hv: {
+        model_id {
+            manufacturer: "us4us"
+            name: "hv256"
+        }
+    }
+
+    channels_mask: {}
+
+    us4oem_channels_mask: [
+        {},
+        {}
+    ]
+    nus4oems: 2
+    adapter_to_us4r_module_nr: [1, 0]
+
+    tx_rx_limits: {
+        voltage: {
+            begin: 10
+            end: 30
+        }
+        pulse_length: {
+            begin: 1e-6
+            end: 10e-6
+        }
+        pri: {
+            begin: 2e-6,
+            end: 1
+        }
+    }
+
+    watchdog: {
+        enabled: false
+    }
+}
+
+

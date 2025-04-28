@@ -72,7 +72,7 @@ classdef Session < handle
             rxOffset = res{1, 7};
         end
 
-        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels, rxOffset] = setSubsequence(obj, start, stop, sri)
+        function [buffer, frameOffsets, numberOfFrames, us4oems, frames, channels, rxOffset] = setSubsequence(obj, start, stop, sri, arrayId)
             % Sets the current TX/RX sequence to the [start, stop] subsequence (both ends inclusive).
             % 
             % This method requires that:
@@ -87,7 +87,7 @@ classdef Session < handle
             % :return: the new data buffer and metadata
 
             % Note: 7 == number of output arrays
-            res = obj.ptr.callMethod("setSubsequence", 7, start, stop, sri);
+            res = obj.ptr.callMethod("setSubsequence", 7, start, stop, sri, arrayId);
             buffer = arrus.framework.Buffer(res{1, 1});
             frameOffsets = res{1, 2};
             numberOfFrames = res{1, 3};

@@ -1,6 +1,7 @@
 import abc
 import queue
 import copy
+import sys
 
 import numpy as np
 import importlib
@@ -22,7 +23,6 @@ import arrus.ops.tgc
 import arrus.kernels.tgc
 import arrus.kernels.kernel
 import arrus.utils
-import arrus.utils.imaging
 import arrus.utils.core
 import arrus.framework
 from typing import Sequence, Dict, Iterable
@@ -77,12 +77,14 @@ class Session(AbstractSession):
         :param medium: medium description to set in context
         """
         super().__init__()
+        import arrus.logging
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
-        self._current_processing: arrus.utils.imaging.Processing = None
+        self._current_processing = None
         # Current metadata (for the full sequence)
-        self.const_metadata = None
+        self.metadatas = None
+        arrus.logging.log(arrus.logging.DEBUG, f"ARRUS Python API. Python version: {sys.version}")
 
     def upload(self, scheme: arrus.ops.us4r.Scheme):
         """
@@ -305,7 +307,7 @@ class Session(AbstractSession):
         """
         self._context = SessionContext(medium=value)
 
-    def set_subsequence(self, start, end, processing=None, sri=None):
+    def set_subsequence(self, start, end, array_id=0, processing=None, sri=None):
         """
         Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
 
@@ -320,23 +322,20 @@ class Session(AbstractSession):
 
         :return: the new data buffer and metadata
         """
-        if len(self.const_metadata) > 1:
-            raise ValueError("Set sub-sequence works only for "
-                             "single-sequence schemes.")
-
-        upload_result = self._session_handle.setSubsequence(start, end, sri)
+        metadata = self.metadatas[array_id]
+        upload_result = self._session_handle.setSubsequence(start, end, sri, array_id)
         # Get the new buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
         # Create new metadata
-        metadata = copy.deepcopy(self.const_metadata)
+        metadata = copy.deepcopy(metadata)
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
         input_shape = self.buffer.elements[0].data.shape
-        sequence = self.const_metadata.context.sequence.get_subsequence(start, end)
-        raw_sequence = self.const_metadata.context.raw_sequence.get_subsequence(start, end)
-        data_description = us_device.get_data_description_updated_for_subsequence(upload_result, sequence)
+        sequence = metadata.context.sequence.get_subsequence(start, end)
+        raw_sequence = metadata.context.raw_sequence.get_subsequence(start, end)
+        data_description = us_device.get_data_description_updated_for_subsequence(array_id, upload_result, sequence)
         fac = dataclasses.replace(
-            self.const_metadata.context,
+            metadata.context,
             sequence=sequence,
             raw_sequence=raw_sequence
         )
@@ -345,7 +344,7 @@ class Session(AbstractSession):
             data_desc=data_description,
             context=fac,
         )
-        return self._set_processing(self.buffer, metadata, processing, [sequence])
+        return self._set_processing(self.buffer, [metadata], processing, [sequence])
 
     def _set_processing(self, buffer, metadatas, processing, sequences):
         # setup processing
@@ -362,7 +361,7 @@ class Session(AbstractSession):
                     graph=processing,
                     callback=None,
                 )
-            processing_runner = arrus.utils.imaging.ProcessingRunner(
+            processing_runner = _imaging.ProcessingRunner(
                 input_buffer=buffer, metadata=metadatas, processing=processing,
             )
             outputs = processing_runner.outputs

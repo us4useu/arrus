@@ -1,0 +1,8 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+message MatchingLayer {
+  double thickness = 1;
+  double speed_of_sound = 2;
+}

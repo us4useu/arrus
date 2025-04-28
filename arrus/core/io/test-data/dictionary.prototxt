@@ -242,7 +242,16 @@ probe_models: [
         voltage_range: {
 			begin: 0,
 			end: 75
-		}
+		},
+		lens: {
+            thickness: 1e-3,
+            speed_of_sound: 1000,
+            focus: 2e-3
+        },
+        matching_layer: {
+            thickness: 0.1e-3,
+            speed_of_sound: 2000
+        }
     },
     {
         id: {

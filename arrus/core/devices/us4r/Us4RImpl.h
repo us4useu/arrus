@@ -11,6 +11,7 @@
 #include "TxTimeoutRegister.h"
 #include "BlockingQueue.h"
 #include "Us4REvent.h"
+#include "Us4RSubsequence.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -93,7 +94,7 @@ public:
     void setVoltage(const std::vector<HVVoltage> &voltages) override;
 
     void disableHV() override;
-    void cleanupBuffers();
+    void cleanupBuffers(bool cleanupSequencerTransfers = false);
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
     void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
@@ -149,10 +150,11 @@ public:
     }
 
     std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override;
+    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
+    std::string getDescription() const override;
     static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
 
     float getMinimumTGCValue() const override;
@@ -176,14 +178,23 @@ private:
 
     void stopDevice();
 
-    std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
+    std::tuple<
+        std::vector<Us4OEMBuffer>,
+        std::vector<FrameChannelMappingImpl::Handle>,
+        float,
+        std::vector<LogicalToPhysicalOp>,
+        std::vector<std::vector<::arrus::devices::us4r::TxRxParametersSequence>>
+    >
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
                     const std::vector<framework::NdArray> &txDelayProfiles);
     us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
     std::vector<us4r::TxRxParametersSequence>
-    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
-                               const TxTimeoutRegister &timeoutRegister);
+    convertToInternalSequences(
+        const std::vector<ops::us4r::TxRxSequence> &sequences,
+        const TxTimeoutRegister &timeoutRegister,
+        const std::vector<std::vector<float>> &rxDelays
+    );
 
     /**
      * Applies a given function on all functions.
@@ -209,9 +220,14 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
-    void registerPulserIRQCallback();
-    void handleEvents();
+    float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
     void handlePulserInterrupt();
+    void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
+
+    void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
+                           bool cleanupSequencerTransfers = false);
+    std::vector<arrus::session::Metadata::SharedHandle>
+    createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
 
     std::mutex deviceStateMutex;
     Logger::Handle logger;
@@ -236,12 +252,14 @@ private:
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
-
-    BlockingQueue<Us4REvent> eventQueue{1000};
-    std::thread eventHandlerThread;
-    std::unordered_map<std::string, std::function<void()>> eventHandlers;
-
     bool isExternalTrigger;
+
+    std::optional<Us4RSubsequenceFactory> subsequenceFactory;
+    std::optional<Us4RSubsequence> currentSubsequenceParams;
+    /** The currently uploaded scheme */
+    std::optional<::arrus::ops::us4r::Scheme> currentScheme;
+    std::optional<float> currentRxTimeOffset;
+    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
 };
 
 }// namespace arrus::devices

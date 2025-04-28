@@ -33,6 +33,7 @@ from arrus.ops.imaging import SimpleTxRxSequence
 from functools import reduce
 import arrus.ops.us4r
 
+
 def is_package_available(package_name):
     return importlib.util.find_spec(package_name) is not None
 
@@ -384,6 +385,7 @@ class ProcessingRunner:
     def __init__(self, input_buffer, metadata, processing):
         import cupy as cp
         self.cp = cp
+        self._log_gpu_info()
         # Input buffer, stored in the host PC memory.
         self.host_input_buffer = input_buffer
         self.processing = processing
@@ -693,6 +695,28 @@ class ProcessingRunner:
         import cupy as cp
         for element in buffer.elements:
             cp.cuda.runtime.hostUnregister(data_getter(element).ctypes.data)
+
+    def _log_gpu_info(self):
+        import arrus.logging
+        ngpus = self.cp.cuda.runtime.getDeviceCount()
+        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
+        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
+        arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {ngpus}")
+        for i in range(ngpus):
+            props = self.cp.cuda.runtime.getDeviceProperties(i)
+            free_mem, total_mem = self.cp.cuda.runtime.memGetInfo()
+            arrus.logging.log(
+                arrus.logging.DEBUG,
+                f"""
+f=== GPU #{i} ===
+Name:                 {props['name'].decode('utf-8')}
+Multiprocessors:      {props['multiProcessorCount']}
+Total memory:         {props['totalGlobalMem'] // (1024**2)} MiB
+Free memory:          {free_mem // (1024**2)} MiB
+Compute capability:   {props['major']}.{props['minor']}
+Clock:                {props['clockRate'] / 1000} MHz
+                """
+            )
 
 
 class Operation:
@@ -1510,6 +1534,33 @@ class Decimation(Operation):
         return data_out
 
 
+
+def _get_lens_compensation_time(probe_model, assumed_speed_of_sound):
+    # propgation time through lens, matching layer
+    lens_compensation = 0.0
+    matching_layer_compensation = 0.0
+    # the redundant delay due to the incorrect speed of sound assumption
+    lens_layer_reduction = 0.0
+
+    lens = probe_model.lens
+    matching_layer = probe_model.matching_layer
+
+    if lens is not None:
+        assert lens.thickness is not None, "The lens thickness should be provided"
+        assert lens.speed_of_sound is not None, "The speed of sound in the lens material should be provided"
+        lens_compensation = lens.thickness / lens.speed_of_sound
+        lens_layer_reduction += lens.thickness / assumed_speed_of_sound
+
+    if matching_layer is not None:
+        assert matching_layer.thickness is not None, "The matching layer thickness should be provided"
+        assert matching_layer.speed_of_sound is not None, "The speed of sound in the matching layer should be provided"
+        matching_layer_compensation= matching_layer.thickness / matching_layer.speed_of_sound
+        lens_layer_reduction += matching_layer.thickness / assumed_speed_of_sound
+
+    return 2*(lens_compensation + matching_layer_compensation - lens_layer_reduction)
+
+
+
 RX_BEAMFORMING_KERNEL_MODULE = _read_kernel_module("rx_beamforming.cu")
 class RxBeamforming(Operation):
     """
@@ -1540,6 +1591,9 @@ class RxBeamforming(Operation):
 
         fs = const_metadata.data_description.sampling_frequency
         seq: Union[TxRxSequence, SimpleTxRxSequence] = const_metadata.context.sequence
+
+        # The RX offset caused by IQ hardware demodulator (if used, otherwise use 0.0).
+        rx_time_offset = const_metadata.data_description.custom.get("rx_offset", 0.0)
 
         if isinstance(seq, SimpleTxRxSequence):
             rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
@@ -1592,6 +1646,7 @@ class RxBeamforming(Operation):
             rx_sample_range = ref_rx.sample_range
             rx_aperture_center_elements = [op.rx.aperture.center_element for op in seq.ops]
             rx_aperture_size = ref_rx.aperture.size
+            init_delay = 0
             if ref_rx.init_delay == "tx_start":
                 burst_factor = n_periods / (2 * fc)
                 tx_center_delay = arrus.kernels.tx_rx_sequence.get_center_delay(
@@ -1621,6 +1676,11 @@ class RxBeamforming(Operation):
         acq_fs = (device_fs / downsampling_factor)
         start_sample, end_sample = rx_sample_range
         init_delay -= start_sample / acq_fs
+        init_delay += rx_time_offset + _get_lens_compensation_time(
+            probe_model=probe_model,
+            assumed_speed_of_sound=c
+        )
+
         lambd = c/fc
         max_tang = abs(math.tan(math.asin(min(1, 2/3*lambd/probe_model.pitch))))
         self.fc = cp.float32(fc)
@@ -2915,6 +2975,11 @@ class ReconstructLri(Operation):
         self.tx_foc = self.num_pkg.asarray(focus, dtype=self.num_pkg.float32)
         burst_factor = tx_op.excitation.n_periods/(2 * self.fn)
         self.initial_delay = -start_sample/device_sampling_frequency+burst_factor+tx_center_delay
+        rx_time_offset = const_metadata.data_description.custom.get("rx_offset", 0.0)
+        self.initial_delay += rx_time_offset + _get_lens_compensation_time(
+            probe_model=probe_model,
+            assumed_speed_of_sound=self.sos
+        )
         self.initial_delay = self.num_pkg.float32(self.initial_delay)
         # Output metadata
         new_signal_description = dataclasses.replace(
