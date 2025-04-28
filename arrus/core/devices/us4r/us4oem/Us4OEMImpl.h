@@ -136,6 +136,8 @@ public:
         return getOemVersion() == 3;
     }
     void clearDMACallbacks() override;
+    std::pair<float, float> getTGCValueRange() const override;
+
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;

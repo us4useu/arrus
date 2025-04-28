@@ -121,7 +121,7 @@ public:
      *
      * TGC curve can have up to 1022 samples.
      *
-     * @param tgcCurvePoints tgc curve points to set.
+     * @param tgcCurvePoints tgc curve points to set (gain [dB])
      * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
@@ -142,7 +142,7 @@ public:
      * NOTE: TGC curve can have up to 1022 samples.
      *
      * @param t sampling time, relative to the "sample 0"
-     * @param y values to apply at given sampling time
+     * @param y gain values to apply at given sampling time [dB]
      * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
@@ -156,6 +156,47 @@ public:
      * @return TGC time points at which TGC curve sample takes place
      */
     virtual std::vector<float> getTgcCurvePoints(float maxT) const  = 0;
+
+    /**
+     * Sets VCAT time points asynchronously.
+     *
+     * Setting empty vectors t and y turns off analog TGC. Setting non-empty vector turns off DTGC
+     * and turns on analog TGC.
+     *
+     * Vectors t and y should have exactly the same size. The input t and y values will be interpolated
+     * into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
+     * Linear interpolation will be performed, the TGC curve will be extrapolated with the first (left-side of the cure)
+     * and the last sample (right side of the curve).
+     *
+     * NOTE: the curve can have up to 1022 samples.
+     *
+     * @param t sampling time, relative to the "sample 0"
+     * @param y attenuation values to apply at given sampling time [dB]
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     */
+    virtual void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic)  = 0;
+
+    /**
+     * Equivalent to setVcat(curve, true).
+     */
+    virtual void setVcat(const std::vector<float> &tgcCurvePoints)  = 0;
+
+    /**
+     * Sets VCAT points asynchronously.
+     *
+     * Setting empty vector turns off analog TGC.
+     * Setting non-empty vector turns off DTGC and turns on analog TGC.
+     *
+     * The curve can have up to 1022 samples.
+     *
+     * @param tgcCurvePoints tgc curve points to set (gain [dB])
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     */
+    virtual void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic)  = 0;
 
     /**
      * Sets PGA gain.
@@ -286,8 +327,6 @@ public:
     /**
      * Enables LNA analog high-pass filter and sets a given corner frequency.
      *
-     * Available corner frequency values (Hz): 20'000, 50'000, 100'000.
-     *
      * @param frequency LNA high-pass filter corner frequency to set
      */
     virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
@@ -299,8 +338,6 @@ public:
 
     /**
      * Enables ADC digital high-pass filter and sets a given corner frequency.
-     *
-     * Available corner frequency values (Hz): 150'000, 300'000, 600'000, 1'200'000, 2'400'000.
      *
      * @param frequency ADC high-pass filter corner frequency to set
      */

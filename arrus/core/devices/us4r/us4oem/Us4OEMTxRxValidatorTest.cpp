@@ -129,15 +129,8 @@ TEST_F (Us4OEMTxRxValidatorTest, PreventsTooLongPri) {
 }
 
 TEST_F(Us4OEMTxRxValidatorTest, PreventsInvalidAmplitudeLevel) {
-    std::vector<TxRxParameters> txrxs = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pulse = Pulse(2e6, 2.0f, false, 0))
-                )
-            .get()
-    };
-    TxRxParametersSequence seq = getSequence(txrxs);
-    EXPECT_THROW(validate(seq), IllegalArgumentException);
+    // NOTE: this should be validated directly in the Pulse constructor.
+    EXPECT_THROW(Pulse(2e6, 2.0f, false, 0), IllegalArgumentException);
 }
 
 TEST_F(Us4OEMTxRxValidatorTest, PreventsInvalidNPeriods) {

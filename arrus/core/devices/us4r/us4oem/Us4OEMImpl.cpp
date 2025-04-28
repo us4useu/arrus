@@ -119,36 +119,16 @@ void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
 }
 
 void Us4OEMImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
-    uint8_t coefficient = 0;
-    switch (frequency) {
-    case 20'000: coefficient = 8; break;
-    case 50'000: coefficient = 15; break;
-    case 100'000: coefficient = 0; break;
-    default:
-        throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported LNA HPF corner frequency: {}", frequency));
-    }
-    ius4oem->AfeEnableLnaHPF();
-    ius4oem->AfeSetLnaHPFCornerFrequency(coefficient);
+    ius4oem->AfeSetLnaHpfCornerFrequency(frequency);
 }
 
-void Us4OEMImpl::disableLnaHpf() { ius4oem->AfeDisableLnaHPF(); }
+void Us4OEMImpl::disableLnaHpf() { ius4oem->AfeDisableLnaHpf(); }
 
 void Us4OEMImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
-    uint8_t coefficient = 0;
-    switch (frequency) {
-    case 150'000: coefficient = 4; break;
-    case 300'000: coefficient = 3; break;
-    case 600'000: coefficient = 2; break;
-    case 1'200'000: coefficient = 1; break;
-    case 2'400'000: coefficient = 0; break;
-    default:
-        throw ::arrus::IllegalArgumentException(::arrus::format("Unsupported ADC HPF corner frequency: {}", frequency));
-    }
-    ius4oem->AfeEnableAdcHPF();
-    ius4oem->AfeSetAdcHPFParamsPreset(coefficient);
+    ius4oem->AfeSetAdcHpfCornerFrequency(frequency);
 }
 
-void Us4OEMImpl::disableAdcHpf() { ius4oem->AfeDisableAdcHPF(); }
+void Us4OEMImpl::disableAdcHpf() { ius4oem->AfeDisableAdcHpf(); }
 
 Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltage>{0, 90}; }
 

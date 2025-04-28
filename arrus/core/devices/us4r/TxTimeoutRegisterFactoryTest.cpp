@@ -63,8 +63,6 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyOnlyTxNop) {
     BitMask rxAperture(nChannels, true);
     ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
 
-    size_t nTimeouts = 0;
-
     std::vector<TxRx> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -89,7 +87,7 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyTxNopsWithTxOps) {
     constexpr ChannelIdx nChannels = 32;
     std::vector<float> delays0(nChannels, 0.0f);
     BitMask rxAperture(nChannels, true);
-    ops::us4r::Pulse pulse0{10.0e6f, 3000.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse0{1.0e6f, 300.0f, false}; // 500 us pulse
 
     std::vector<std::vector<float>> rxDelays = {{10e-6f, 20e-6f}};
     size_t nTimeouts = 3;

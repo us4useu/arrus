@@ -148,6 +148,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
+    // NOTE the below calls are specific for the legacy us4OEM
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -162,6 +164,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
+    // NOTE the below calls are specific for the legacy us4OEM
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -174,6 +178,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
+    // NOTE the below calls are specific for the legacy us4OEM
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -182,30 +188,6 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
         .get()
     };
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(61, 0));
-    upload(seq);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectAmplitudeLevel1) {
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pulse = Pulse(10e6, 30.5, false, 1))
-                )
-            .get()
-    };
-    EXPECT_CALL(*ius4oemPtr, SetTxVoltageLevel(1, 0));
-    upload(seq);
-}
-
-TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectAmplitudeLevel2) {
-    std::vector<TxRxParameters> seq = {
-        ARRUS_STRUCT_INIT_LIST(
-            TestTxRxParams,
-            (x.pulse = Pulse(10e6, 30.5, false, 2))
-                )
-            .get()
-    };
-    EXPECT_CALL(*ius4oemPtr, SetTxVoltageLevel(0, 0));
     upload(seq);
 }
 

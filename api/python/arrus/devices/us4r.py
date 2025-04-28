@@ -120,6 +120,35 @@ class Us4R(Device, Ultrasound):
             # points.
             self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
+    def set_vcat(self, samples):
+        """
+        Sets VCAT attenuation curve.
+
+        This method is complementary to the set_tgc method: here you can
+        set specify the TGC by providing attenuator values (e.g. in range 0, 40 dB
+        for us4OEM modules).
+
+        :param samples: a given curve to set, attenuation [dB]
+        """
+        if samples is None:
+            self._handle.setVcat([])
+            return
+
+        if not isinstance(samples, Iterable):
+            raise ValueError(f"Unrecognized vcat curve type: {type(samples)}")
+
+        # Here, TGC curve is iterable.
+        # Check if we have a pair of iterables, or a single iterable
+        if len(samples) == 2 and (
+                isinstance(samples[0], Iterable)
+                and isinstance(samples[1], Iterable)):
+            t, y = samples
+            self._handle.setVcat(list(t), list(y), True)
+        else:
+            # Otherwise, assume list of floats, use by default TGC sampling
+            # points.
+            self._handle.setVcat([float(v) for v in samples])
+
     def set_hv_voltage(self, *args):
         """
         Enables HV and sets a given voltage(s).

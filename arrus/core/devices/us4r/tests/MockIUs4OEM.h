@@ -171,13 +171,13 @@ public:
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalCycles, (uint8_t), (override));
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalDelay, (uint8_t), (override));
     MOCK_METHOD(float, GetFPGAWallclock, (), (override));
-    MOCK_METHOD(void, AfeEnableLnaHPF, (), (override));
-    MOCK_METHOD(void, AfeDisableLnaHPF, (), (override));
-    MOCK_METHOD(void, AfeSetLnaHPFCornerFrequency, (uint8_t), (override));
-    MOCK_METHOD(void, AfeEnableAdcHPF, (), (override));
-    MOCK_METHOD(void, AfeDisableAdcHPF, (), (override));
-    MOCK_METHOD(void, AfeSetAdcHPFParams, (uint16_t, uint16_t, uint16_t, uint16_t), (override));
-    MOCK_METHOD(void, AfeSetAdcHPFParamsPreset, (uint8_t), (override));
+    MOCK_METHOD(void, AfeEnableLnaHpf, (), (override));
+    MOCK_METHOD(void, AfeDisableLnaHpf, (), (override));
+    MOCK_METHOD(void, AfeSetLnaHpfCornerFrequency, (uint32_t), (override));
+    MOCK_METHOD(void, AfeEnableAdcHpf, (), (override));
+    MOCK_METHOD(void, AfeDisableAdcHpf, (), (override));
+    MOCK_METHOD(void, AfeSetAdcHpfCornerFrequency, (uint32_t), (override));
+    MOCK_METHOD(void, AfeSetAdcHpfParams, (uint16_t, uint16_t, uint16_t, uint16_t), (override));
     MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, const float*, uint16_t, float), (override));
     MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, uint8_t, const float*, uint16_t, float), (override));
     MOCK_METHOD(void, DisableWaitOnReceiveOverflow, (), (override));
@@ -227,7 +227,7 @@ public:
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
     MOCK_METHOD((std::pair<float, float>), GetTGCValueRange, (), (const, override));
     MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
-    MOCK_METHOD(::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
+    MOCK_METHOD(::us4us::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
     MOCK_METHOD(void, DisableWatchdog, (), (override));
     MOCK_METHOD(void, SetOEMWatchdogThresholds, (uint16_t threshold0, uint16_t threshold1), (override));
     MOCK_METHOD(void, SetHostWatchdogThresholds, (uint16_t threshold), (override));
@@ -236,7 +236,6 @@ public:
     MOCK_METHOD(void, ResetDMACallbacks, (), (override));
     MOCK_METHOD(void, SetPulserInterruptCallback, (const std::function<void()> &), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
-    MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
