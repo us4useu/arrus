@@ -16,9 +16,9 @@ using namespace arrus::ops::us4r;
 TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
     ::arrus::ops::us4r::TxRxSequence seq{
         {
-            TxRx(Tx({true, true, true, true}, {0.0f, 0.0f, 0.0f}, Pulse{1.0e6, 1, false}),
+            TxRx(Tx({true, true, true, true}, {0.0f, 0.0f, 0.0f}, Pulse{1.0e6, 1, false}.toWaveform()),
                  Rx({true, true, true, true}, {0, 4096}), 100e-6),
-            TxRx(Tx({true, true, true, true}, {0.0f, 0.0f, 0.0f}, Pulse{1.0e6, 1, false}),
+            TxRx(Tx({true, true, true, true}, {0.0f, 0.0f, 0.0f}, Pulse{1.0e6, 1, false}.toWaveform()),
                  Rx({true, true, true, true}, {0, 4096}), 100e-6),
         },
         {}};
@@ -30,7 +30,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {true, false, false, false},
                                     {0, 4096},
                                     1,
@@ -39,7 +39,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {false, false, true, false},
                                     {0, 4096},
                                     1,
@@ -49,7 +49,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {true, false, false, false},
                                     {0, 4096},
                                     1,
@@ -58,7 +58,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {false, false, true, false},
                                     {0, 4096},
                                     1,
@@ -74,7 +74,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {false, true, false, false},
                                     {0, 4096},
                                     1,
@@ -83,7 +83,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {false, false, false, true},
                                     {0, 4096},
                                     1,
@@ -93,7 +93,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {false, true, false, false},
                                     {0, 4096},
                                     1,
@@ -102,7 +102,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                 TxRxParameters{
                                     {true, true, true, true},
                                     {0.0f, 0.0f, 0.0f, 0.0f},
-                                    Pulse{1.0e6, 1, false},
+                                    Pulse{1.0e6, 1, false}.toWaveform(),
                                     {false, false, false, true},
                                     {0, 4096},
                                     1,
@@ -255,8 +255,8 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     std::vector<::arrus::ops::us4r::TxRxSequence> seqs{
         {// Sequence 0
          {
-             TxRx(Tx({true, true}, {0.0f, 0.0f}, Pulse{1.0e6, 1, false}), Rx({true, true}, {0, 4096}), 100e-6),
-             TxRx(Tx({true, true}, {1.0e-6f, 2.0e-6f}, Pulse{1.0e6, 1, false}), Rx({true, true}, {0, 4096}), 100e-6),
+             TxRx(Tx({true, true}, {0.0f, 0.0f}, Pulse{1.0e6, 1, false}.toWaveform()), Rx({true, true}, {0, 4096}), 100e-6),
+             TxRx(Tx({true, true}, {1.0e-6f, 2.0e-6f}, Pulse{1.0e6, 1, false}.toWaveform()), Rx({true, true}, {0, 4096}), 100e-6),
          },
          {}},
         {// Sequence 1
@@ -276,7 +276,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
                                        TxRxParameters{
                                            {true},
                                            {0.0f, 0.0f},
-                                           Pulse{1.0e6, 1, false},
+                                           Pulse{1.0e6, 1, false}.toWaveform(),
                                            {true},
                                            {0, 4096},
                                            1,
@@ -286,7 +286,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
                                        TxRxParameters{
                                            {true},
                                            {1.0e-6f},
-                                           Pulse{1.0e6, 1, false},
+                                           Pulse{1.0e6, 1, false}.toWaveform(),
                                            {true},
                                            {0, 4096},
                                            1,
@@ -303,7 +303,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
                                     TxRxParameters{
                                         {true},
                                         {0.0f},
-                                        Pulse{1.0e6, 1, false},
+                                        Pulse{1.0e6, 1, false}.toWaveform(),
                                         {true},
                                         {0, 4096},
                                         1,
@@ -313,7 +313,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
                                     TxRxParameters{
                                         {true},
                                         {2.0e-6f},
-                                        Pulse{1.0e6, 1, false},
+                                        Pulse{1.0e6, 1, false}.toWaveform(),
                                         {true},
                                         {0, 4096},
                                         1,
@@ -333,7 +333,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
                                        TxRxParameters{
                                            {false},
                                            {0.0f},
-                                           Pulse{3.0e6, 1, false},
+                                           Pulse{3.0e6, 1, false}.toWaveform(),
                                            {true},
                                            {0, 4096},
                                            1,
@@ -351,7 +351,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
                                        TxRxParameters{
                                            {true},
                                            {0.0f},
-                                           Pulse{3.0e6, 1, false},
+                                           Pulse{3.0e6, 1, false}.toWaveform(),
                                            {false},
                                            {0, 4096},
                                            1,

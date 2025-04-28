@@ -19,7 +19,7 @@ public:
         const std::string &manufacturer = settings.getModelId().getManufacturer();
         const std::string &name = settings.getModelId().getName();
         Logger::SharedHandle arrusLogger = getLoggerFactory()->getLogger();
-        ::us4r::Logger::SharedHandle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
+        ::us4us::us4r::Logger::SharedHandle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
         if(manufacturer != "us4us") {
             throw IllegalArgumentException("Only 'us4us' digital backplane is supported.");
         }
@@ -44,7 +44,7 @@ public:
         const std::string &manufacturer = settings.getModelId().getManufacturer();
         const std::string &name = settings.getModelId().getName();
         Logger::SharedHandle arrusLogger = getLoggerFactory()->getLogger();
-        ::us4r::Logger::SharedHandle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
+        ::us4us::us4r::Logger::SharedHandle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
         if(name == "hv256")  {
             return getDBARLite(us4oems, logger, 32);
         }
@@ -61,7 +61,7 @@ public:
         }
     }
 
-    std::optional<DigitalBackplane::Handle> getDBARLite(const std::vector<IUs4OEM *> &us4oems, const ::us4r::Logger::SharedHandle &logger, uint8_t addrMode) const {
+    std::optional<DigitalBackplane::Handle> getDBARLite(const std::vector<IUs4OEM *> &us4oems, const ::us4us::us4r::Logger::SharedHandle &logger, uint8_t addrMode) const {
         auto ver = us4oems[0]->GetOemVersion();
         if(ver == 1) {
             std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0]), logger, addrMode));

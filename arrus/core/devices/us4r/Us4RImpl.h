@@ -37,6 +37,8 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
+    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
+
     ~Us4RImpl() override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
@@ -156,8 +158,6 @@ public:
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
     std::string getDescription() const override;
-    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
-
     float getMinimumTGCValue() const override;
 
     /**
@@ -178,6 +178,8 @@ private:
         float voltage;
         Polarity polarity;
     };
+
+
     std::vector<VoltageLogbook> logVoltages(bool isHV256);
 
     void stopDevice();
@@ -225,7 +227,6 @@ private:
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     std::vector<float> interpolateToSystemTGC(const std::vector<float> &t, const std::vector<float> &y) const;
-    float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
     void handlePulserInterrupt();
     void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
 

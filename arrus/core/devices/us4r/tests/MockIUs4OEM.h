@@ -227,7 +227,7 @@ public:
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
     MOCK_METHOD((std::pair<float, float>), GetTGCValueRange, (), (const, override));
     MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
-    MOCK_METHOD(::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
+    MOCK_METHOD(::us4us::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
     MOCK_METHOD(void, DisableWatchdog, (), (override));
     MOCK_METHOD(void, SetOEMWatchdogThresholds, (uint16_t threshold0, uint16_t threshold1), (override));
     MOCK_METHOD(void, SetHostWatchdogThresholds, (uint16_t threshold), (override));
@@ -236,7 +236,6 @@ public:
     MOCK_METHOD(void, ResetDMACallbacks, (), (override));
     MOCK_METHOD(void, SetPulserInterruptCallback, (const std::function<void()> &), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
-    MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
