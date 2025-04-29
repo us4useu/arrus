@@ -13,12 +13,12 @@ classdef CustomTxRxSequence
     % :param txVoltage: tx voltage level [V]. Can be: \
     %   scalar (pulse voltage range is [-txVoltage +txVoltage] for the \
     %   whole sequence), or 2x2 array (defines two sets of negative and \
-    %   positive tx voltage amplitudes: [v0neg, v0pos; v1neg, v1pos]; the \
+    %   positive tx voltage amplitudes: [v1neg, v1pos; v2neg, v2pos]; the \
     %   voltage range can be selected individually for each tx using txVoltageId). \
-    %   txVoltage must always be nonnegative and v0 must be higher than v1. \
+    %   txVoltage must always be nonnegative and v1 must be higher than v2. \
     %   "Legacy" systems only support scalar txVoltage
-    % :param txVoltageId: vector of tx voltage level identifiers (can be 0 \
-    %   for [-v0neg +v0pos] range or 1 for [-v1neg +v1pos] range)
+    % :param txVoltageId: vector of tx voltage level identifiers (can be 1 \
+    %   for [-v1neg +v1pos] range or 2 for [-v2neg +v2pos] range)
     % :param txFrequency: vector of tx frequencies [Hz]
     % :param txNPeriods: vector of numbers of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
     % :param rxDepthRange: defines the end (if scalar) or \
@@ -58,7 +58,7 @@ classdef CustomTxRxSequence
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
         txVoltage  (1,1) {mustBeNonnegative} = 0;
-        txVoltageId (1,:) = 0
+        txVoltageId (1,:) = 1
         txFrequency (1,:) = []
         txNPeriods (1,:) = []
         rxDepthRange (1,:) {mustBeProperNumber}
@@ -133,12 +133,6 @@ classdef CustomTxRxSequence
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             obj.txVoltageId         = mustBeProperLength(obj.txVoltageId,nTx);
-
-            if ~isstring(obj.txApertureSize)
-                obj.txApertureSize	= mustBeProperLength(obj.txApertureSize,nTx);
-            end
-
-            obj.txInvert = double(obj.txInvert);
 
             %% txVoltage & txVoltageId validation
             mustBeProperNumber(obj.txVoltage);
