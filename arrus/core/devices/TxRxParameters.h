@@ -5,6 +5,7 @@
 #include <ostream>
 #include <utility>
 
+#include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/api/common/Tuple.h"
@@ -399,6 +400,10 @@ public:
     TxRxParametersSequenceBuilder &resize(size_t n, const TxRxParameters &params) {
         sequence.parameters.resize(n, params);
         return *this;
+    }
+
+    size_t size() const {
+        return sequence.parameters.size();
     }
 
     TxRxParametersSequence build() {

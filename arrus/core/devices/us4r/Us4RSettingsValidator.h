@@ -3,6 +3,7 @@
 
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 #include "arrus/core/devices/SettingsValidator.h"
+#include "arrus/core/devices/us4r/validators/WatchdogSettingsValidator.h"
 
 namespace arrus::devices {
 class Us4RSettingsValidator : public SettingsValidator<Us4RSettings> {
@@ -54,7 +55,6 @@ public:
                            "The declared number of us4OEMs should be equal to the number of provided Us4OEM settings");
             }
         }
-        // The exact TGC settings should be verified by the underlying Us4OEMs.
     }
 };
 }// namespace arrus::devices

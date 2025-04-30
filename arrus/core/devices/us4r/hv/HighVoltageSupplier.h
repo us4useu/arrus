@@ -7,6 +7,7 @@
 #include <ihv.h>
 #include <us4rExceptions.h>
 
+#include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/us4r/HVModelId.h"
@@ -26,7 +27,7 @@ public:
 
     void setVoltage(const std::vector<IHVVoltage> &voltages) {
         ARRUS_REQUIRES_TRUE(voltages.size() == 2 || voltages.size() == 1,
-                            "The vector of voltages should contain exactly two values!");
+                            "The vector of voltages should have one or two values!");
         try {
             getIHV()->EnableHV();
             getIHV()->SetHVVoltage(voltages);
@@ -39,7 +40,7 @@ public:
             }
             throw;
         } catch (const ::us4us::AssertionException &) {
-            // Disable HV and Propage validation errors.
+            // Disable HV and propagate validation errors.
             try {
                 getIHV()->DisableHV();
             } catch( const std::exception &ee) {

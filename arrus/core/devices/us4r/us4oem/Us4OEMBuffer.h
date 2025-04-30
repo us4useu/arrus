@@ -21,8 +21,8 @@ namespace arrus::devices {
  */
 class Us4OEMBufferArrayPart {
 public:
-    Us4OEMBufferArrayPart(size_t address, size_t size, uint16 arrayId, uint16 entryId)
-        : address(address), size(size), arrayId(arrayId), entryId(entryId) {}
+    Us4OEMBufferArrayPart(size_t address, size_t size, uint16 arrayId, uint16 entryId, unsigned int nSamples)
+        : address(address), size(size), arrayId(arrayId), entryId(entryId), nSamples(nSamples) {}
 
     /** Returns address of this part, relative to the beginning of the array */
     size_t getAddress() const { return address; }
@@ -31,15 +31,19 @@ public:
 
     uint16 getArrayId() const { return arrayId; }
 
-    /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries) */
+    /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries for a given element)
+     * Global per sequence and number of repetitions. Local per element (i.e., calculated as for the first buffer
+     * element). */
     uint16 getEntryId() const { return entryId; }
 
+    unsigned int getNSamples() const { return nSamples; }
 
 private:
     size_t address;
     size_t size;
     uint16 arrayId;
     uint16 entryId;
+    unsigned nSamples;
 };
 
 // A single array consits of multiple parts (frames).
@@ -52,9 +56,12 @@ public:
     Us4OEMBufferArrayDef(size_t address, framework::NdArrayDef definition, Us4OEMBufferArrayParts parts)
         : address(address), definition(std::move(definition)), parts(std::move(parts)) {}
 
+    /** Array address, relative to the buffer element address */
     size_t getAddress() const { return address; }
+
     const framework::NdArrayDef &getDefinition() const { return definition; }
     const Us4OEMBufferArrayParts &getParts() const { return parts; }
+
     /** The number of bytes this OEM produces. */
     [[nodiscard]] size_t getSize() const {
         size_t result = 0;
@@ -65,7 +72,6 @@ public:
     }
 
 private:
-    /** Array address, relative to the buffer element address. */
     size_t address;
     framework::NdArrayDef definition;
     Us4OEMBufferArrayParts parts;
@@ -77,7 +83,7 @@ private:
  * An element is described by:
  * - src address
  * - size - size of the element (in bytes)
- * - firing - a firing which ends the acquiring Tx/Rx sequence
+ * - global firing - a global firing number, that is, the number of the last sequencer entry that writes to this element
  */
 class Us4OEMBufferElement {
 public:
@@ -87,7 +93,12 @@ public:
 
     [[nodiscard]] size_t getSize() const { return size; }
 
-    [[nodiscard]] uint16 getFiring() const { return firing; }
+    /**
+     * Returns the number of the last (sequencer) entry, that writes the data to this element.
+     * NOTE: this is a globa firing number! That is, in particular, it ignores the fact that this element
+     * can be only a view to the target element.
+     */
+    [[nodiscard]] uint16 getGlobalFiring() const { return firing; }
 
 private:
     size_t address;
@@ -123,6 +134,15 @@ public:
 
     [[nodiscard]] const std::vector<Us4OEMBufferArrayDef> &getArrayDefs() const { return arrayDefs; }
 
+    [[nodiscard]] const Us4OEMBufferArrayDef &getArrayDef(size_t i) const {
+        if(i >= arrayDefs.size()) {
+            throw IllegalArgumentException(format(
+                "Us4OEMBufferView: array id exceeds the number of arrays defined for "
+                "the given OEM buffer, got: {}, number of arrays: {}.", i, getArrayDefs().size()));
+        }
+        return arrayDefs[i];
+    }
+
     [[nodiscard]] const Us4OEMBufferArrayParts &getParts(ArrayId arrayId) const {
         ARRUS_REQUIRES_TRUE_IAE(arrayId < arrayDefs.size(), "Array number out of the bounds.");
         return arrayDefs.at(arrayId).getParts();
@@ -130,13 +150,6 @@ public:
 
     /** array id -> array address, relative to the beginning of an element */
     [[nodiscard]] size_t getArrayAddressRelative(uint16 arrayId) const { return arrayDefs.at(arrayId).getAddress(); }
-
-    /**
-     * Returns the view of this buffer for slice [start, end] (note: end is inclusive).
-     */
-    Us4OEMBuffer getView(uint16, uint16) const {
-        throw std::runtime_error("NYI");
-    }
 
 private:
     std::vector<Us4OEMBufferElement> elements;

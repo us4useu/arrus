@@ -72,8 +72,34 @@ classdef Us4R < handle
             obj.buffer.iFrame = 0;
         end
 
+        function setMaximumPulseLength(obj,maxPulseLength)
+            obj.us4r.setMaximumPulseLength(maxPulseLength);
+        end
+
         function nProbeElem = getNProbeElem(obj)
             nProbeElem = obj.sys.nElem;
+        end
+
+        function fs = getSamplingFrequency(obj)
+            fs = obj.us4r.getSamplingFrequency();
+        end
+
+        function setTgcCurve(varargin)
+            obj = varargin{1};
+            obj.us4r.setTgcCurve(varargin{2:end});
+        end
+
+        function setVcatCurve(obj,time,attenuation,applyCharacteristic)
+            obj.us4r.setVcat(time, attenuation, applyCharacteristic);
+            
+        end
+
+        function setDtgcAttenuation(obj,attenuation)
+            obj.us4r.setDtgcAttenuation(attenuation);
+        end
+
+        function setActiveTermination(obj,impedance)
+            obj.us4r.setActiveTermination(impedance);
         end
 
         function setLnaGain(obj,gain)
@@ -84,9 +110,24 @@ classdef Us4R < handle
             obj.us4r.setPgaGain(gain);
         end
 
-        function setTgcCurve(varargin)
-            obj = varargin{1};
-            obj.us4r.setTgcCurve(varargin{2:end});
+        function setLpfCutoff(obj,frequency)
+            obj.us4r.setLpfCutoff(frequency);
+        end
+
+        function disableLnaHpf(obj)
+            obj.us4r.disableLnaHpf();
+        end
+
+        function setLnaHpfCornerFrequency(obj,frequency)
+            obj.us4r.setLnaHpfCornerFrequency(frequency);
+        end
+
+        function disableAdcHpf(obj)
+            obj.us4r.disableAdcHpf();
+        end
+
+        function setAdcHpfCornerFrequency(obj,frequency)
+            obj.us4r.setAdcHpfCornerFrequency(frequency);
         end
 
         function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
@@ -127,6 +168,7 @@ classdef Us4R < handle
                 'txAngle', sequenceOperation.txAngle, ...
                 'speedOfSound', sequenceOperation.speedOfSound, ...
                 'txVoltage', sequenceOperation.txVoltage, ...
+                'txVoltageId', sequenceOperation.txVoltageId, ...
                 'txFrequency', sequenceOperation.txFrequency, ...
                 'txNPeriods', sequenceOperation.txNPeriods, ...
                 'rxDepthRange', sequenceOperation.rxDepthRange, ...
@@ -200,8 +242,6 @@ classdef Us4R < handle
             % :param enableHardwareProgramming: determines if the hardware
             % is programmed or not (optional, default = true)
             % :returns: updated Us4R object
-            
-            error('Sub-sequence fuctionality is temporarily suspended.');
 
             if ~isa(sequenceOperation,'CustomTxRxSequence')
                 error("ARRUS:IllegalArgument", ...
@@ -221,6 +261,7 @@ classdef Us4R < handle
                 'txAngle', sequenceOperation.txAngle, ...
                 'speedOfSound', sequenceOperation.speedOfSound, ...
                 'txVoltage', sequenceOperation.txVoltage, ...
+                'txVoltageId', sequenceOperation.txVoltageId, ...
                 'txFrequency', sequenceOperation.txFrequency, ...
                 'txNPeriods', sequenceOperation.txNPeriods, ...
                 'rxDepthRange', sequenceOperation.rxDepthRange, ...
@@ -249,8 +290,6 @@ classdef Us4R < handle
         end
 
         function selectSequence(obj, seqId, sri)
-            
-            error('Sub-sequence fuctionality is temporarily suspended.');
 
             if ~obj.sys.isHardwareProgrammed
                 error('Sequences must be uploaded prior to selecting one of them.');
@@ -487,7 +526,7 @@ classdef Us4R < handle
                 % Second loop (acquisition of raw data for "subs" bufferMode)
                 for i=1:bufferSize
                     raw0Buffer(:,:,i) = obj.execSequence;
-                    
+
                     sriBuffer(i) = obj.buffer.sri;
                 end
                 obj.stopScheme;
@@ -761,6 +800,13 @@ classdef Us4R < handle
             obj.sys.pitch = probe.pitch;
             obj.sys.freqRange = double(probe.txFrequencyRange);
             obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
+            if ~isempty(probe.lens)
+                obj.sys.lensSize = probe.lens.thickness;
+                obj.sys.lensSos = probe.lens.speedOfSound;
+            else
+                obj.sys.lensSize = 0;
+                obj.sys.lensSos = nan;
+            end
 
             % Position (pos,x,z) and orientation (ang) of each probe element
             obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
@@ -811,7 +857,7 @@ classdef Us4R < handle
             end
 
             %% Validate sequences
-            % Some parameters must be equal (those that have to be scalars or 2-elem vectors)
+            % Some parameters must be equal (those that have to be scalars or 2-elem vectors or 2x2 arrays)
             selFieldNames = {'rxApertureSize','speedOfSound','txVoltage', ...
                              'rxDepthRange','rxNSamples', 'hwDdcEnable', ...
                              'decimation','nRepetitions','txPri', ...
@@ -819,12 +865,12 @@ classdef Us4R < handle
                              'sri','bufferSize'};
             for iFld=1:numel(selFieldNames)
                 for iSeq=2:nSeq
-                    if  xor(isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
-                            isempty(seqIn(   1).(selFieldNames{iFld}))) || ...
-                       ~any([isempty(seqIn(iSeq).(selFieldNames{iFld})), ...
-                             isempty(seqIn(   1).(selFieldNames{iFld}))]) && ...
-                        any(seqIn(iSeq).(selFieldNames{iFld}) ~= ...
-                            seqIn(   1).(selFieldNames{iFld}))
+                    field1 = seqIn(   1).(selFieldNames{iFld});
+                    fieldI = seqIn(iSeq).(selFieldNames{iFld});
+                    if  xor(isempty(field1), isempty(fieldI)) || ...
+                        ( (~isempty(field1) && ~isempty(fieldI)) && ...
+                          (any(size(field1) ~= size(fieldI)) || ...
+                           any(field1(:) ~= fieldI(:))) )
                         error("mergeSequences: " + selFieldNames{iFld} + ...
                               " must be the same for all merged sequences");
                     end
@@ -861,6 +907,7 @@ classdef Us4R < handle
                 seqOut.rxApertureCenter  = [seqOut.rxApertureCenter, seqIn(iSeq).rxApertureCenter];
                 seqOut.txFocus           = [seqOut.txFocus,          seqIn(iSeq).txFocus];
                 seqOut.txAngle           = [seqOut.txAngle,          seqIn(iSeq).txAngle];
+                seqOut.txVoltageId       = [seqOut.txVoltageId,      seqIn(iSeq).txVoltageId];
                 seqOut.txFrequency       = [seqOut.txFrequency,      seqIn(iSeq).txFrequency];
                 seqOut.txNPeriods        = [seqOut.txNPeriods,       seqIn(iSeq).txNPeriods];
                 seqOut.txInvert          = [seqOut.txInvert,         seqIn(iSeq).txInvert];
@@ -891,6 +938,7 @@ classdef Us4R < handle
                                 'txAngle',          'txAng'; ...
                                 'speedOfSound',     'c'; ...
                                 'txVoltage',        'txVoltage'; ...
+                                'txVoltageId',      'txVoltageId'; ...
                                 'txFrequency',      'txFreq'; ...
                                 'txNPeriods',       'txNPer'; ...
                                 'rxDepthRange',     'dRange'; ...
@@ -914,7 +962,7 @@ classdef Us4R < handle
             nPar = length(varargin)/2;
             for iPar=1:nPar
                 idPar = strcmpi(varargin{iPar*2-1},seqParamMapping(:,1));
-                obj.seq.(seqParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
+                obj.seq.(seqParamMapping{idPar,2}) = varargin{iPar*2};
             end
             
             %% Default decimation & DDC filter coefficients
@@ -1048,7 +1096,9 @@ classdef Us4R < handle
             end
             obj.seq.nSampOmit = (max(obj.seq.txDel) + txDuration) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + txDuration / 2;
-
+            if obj.sys.lensSize ~= 0
+                obj.seq.initDel = obj.seq.initDel + 2*obj.sys.lensSize/obj.sys.lensSos;
+            end
         end
 
         function setRecParams(obj,varargin)
@@ -1146,7 +1196,7 @@ classdef Us4R < handle
             if obj.rec.colorEnable && obj.rec.vectorEnable
                 error("setRecParams: simultaneous color & vector operation is not supported");
             end
-            
+
             %% Validate frames selection
             if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.subSeq.nTx)
                 error("setRecParams: bmodeFrames refers to nonexistent transmission id");
@@ -1188,7 +1238,7 @@ classdef Us4R < handle
                 % validation needed
                 obj.rec.vectorBatchesConsistent = true;
             end
-            
+
             %% Validate/adjust size of the RxTangLims
             obj.rec.bmodeRxTangLim = reshape(obj.rec.bmodeRxTangLim,[],2);
             if obj.rec.bmodeEnable
@@ -1233,11 +1283,11 @@ classdef Us4R < handle
             if obj.rec.colorEnable
                 obj.rec.wcf = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
             end
-            
+
             if obj.rec.vectorEnable
                 obj.rec.wcf0 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
                 obj.rec.wcf1 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
-                
+
                 obj.rec.color2vector = Color2VectorConverter(obj.subSeq.txAng(obj.rec.vect0Frames(1)), ...
                                                              obj.subSeq.txAng(obj.rec.vect1Frames(1)), ...
                                                              atan(mean(obj.rec.vect0RxTangLim(1,:))), ...
@@ -1367,7 +1417,7 @@ classdef Us4R < handle
             
             import arrus.ops.us4r.*;
             
-            if obj.seq.txVoltage == 0
+            if isscalar(obj.seq.txVoltage) && obj.seq.txVoltage == 0
                 obj.us4r.disableHV();
             else
                 obj.us4r.setVoltage(obj.seq.txVoltage);
@@ -1379,7 +1429,7 @@ classdef Us4R < handle
                 if ~isempty(obj.seq.txWaveform)
                     pulse = obj.seq.txWaveform;
                 else
-                    pulse = arrus.ops.us4r.Pulse('centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                    pulse = arrus.ops.us4r.Pulse('amplitudeLevel', obj.seq.txVoltageId(iTx), 'centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
                 end
                 txObj = Tx("aperture", obj.seq.txApMask(:,iTx).', 'delays', obj.seq.txDel(:,iTx).', "pulse", pulse);
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
@@ -1415,7 +1465,7 @@ classdef Us4R < handle
             % NOTE: the above outputs were used for calculation of data
             % reorganization addresses. Since subSequences are supported,
             % the corresponding data is obtained during setSubsequence call.
-            
+
             % time, value, applyCharacteristic
             obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 0);
         end
@@ -1423,40 +1473,37 @@ classdef Us4R < handle
         % txWaveform must be handled properly here!!!
         function selSubSeq(obj, seqId, sri)
             
-            % Sub-sequence fuctionality is temporarily suspended
-            obj.subSeq = obj.seq;
+            % Copy selected part of sequence to subsequence
+            seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
+                                'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
+                                'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
+                                'rxSampFreq', 'tgcLim', 'tgcPoints', 'tgcCurve', 'txDelCent'};
+            for iFld=1:numel(seqFieldsToCopy)
+                obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
+            end
 
-%             % Copy selected part of sequence to subsequence
-%             seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
-%                                 'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
-%                                 'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
-%                                 'rxSampFreq', 'tgcLim', 'tgcPoints', 'tgcCurve', 'txDelCent'};
-%             for iFld=1:numel(seqFieldsToCopy)
-%                 obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
-%             end
-% 
-%             seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
-%                                 'txFoc', 'txAng', 'txFreq', 'txNPer', 'txInvert', ...
-%                                 'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
-%                                 'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
-%                                 'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
-%                                 'nSampOmit', 'initDel'};
-%             for iFld=1:numel(seqFieldsToExtr)
-%                 obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
-%                                                                                      : obj.seq.seqLim(seqId,2));
-%             end
-% 
-%             obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
-% 
-%             % Set the subsequence limits
-%             [obj.buffer.data, ...
-%              obj.buffer.framesOffset, ...
-%              obj.buffer.framesNumber, ...
-%              obj.buffer.oemId, ...
-%              obj.buffer.frameId, ...
-%              obj.buffer.channelId, ...
-%              obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
-%                                                                    obj.seq.seqLim(seqId,2)-1, sri);
+            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
+                                'txFoc', 'txAng', 'txVoltageId', 'txFreq', 'txNPer', 'txInvert', ...
+                                'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
+                                'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
+                                'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
+                                'nSampOmit', 'initDel'};
+            for iFld=1:numel(seqFieldsToExtr)
+                obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
+                                                                                     : obj.seq.seqLim(seqId,2));
+            end
+
+            obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
+
+            % Set the subsequence limits
+            [obj.buffer.data, ...
+             obj.buffer.framesOffset, ...
+             obj.buffer.framesNumber, ...
+             obj.buffer.oemId, ...
+             obj.buffer.frameId, ...
+             obj.buffer.channelId, ...
+             obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
+                                                                   obj.seq.seqLim(seqId,2)-1, sri, 0);
 
             obj.buffer.framesOffset = obj.buffer.framesOffset.';
             obj.buffer.framesNumber = obj.buffer.framesNumber.';
@@ -1523,15 +1570,15 @@ classdef Us4R < handle
 
             metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
             metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
-            
+
             tFrameNew = bin2dec(reshape(dec2bin(metadata([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
             obj.buffer.sri = tFrameNew - obj.buffer.tFrame;
             obj.buffer.tFrame = tFrameNew;
-            
-            % The below condition on sri is valid for simple Tx/Rx sequences, 
+
+            % The below condition on sri is valid for simple Tx/Rx sequences,
             % it may not work properly for a messed up sequence.
             obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 1e-9;
-            
+
             if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
                 warning('SYNC mode: sequence lag detected');
             end
@@ -1588,12 +1635,12 @@ classdef Us4R < handle
                     
                     if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
                        ~obj.buffer.seqLagDetected && obj.rec.colorBatchesConsistent
-                        
+
                         rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
                     else
                         rfBfrColor = obj.rec.wcf.filter(rfBfrColor,true,obj.rec.wcFiltInitSize);
                     end
-                    
+
                     [color,power,turbu] = dopplerColor(rfBfrColor);
                 end
                 
@@ -1604,21 +1651,21 @@ classdef Us4R < handle
                     
                     if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
                        ~obj.buffer.seqLagDetected && obj.rec.vectorBatchesConsistent
-                        
+
                         rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,false);
                         rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,false);
                     else
                         rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,true,obj.rec.wcFiltInitSize);
                         rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,true,obj.rec.wcFiltInitSize);
                     end
-                    
+
                     [color0,power0,turbu0] = dopplerColor(rfBfrVect0);
                     [color1,power1,turbu1] = dopplerColor(rfBfrVect1);
-                    
+
                     [color,power,turbu] = obj.rec.color2vector.convert(color0,color1,power0,power1,turbu0,turbu1);
                 end
             end
-            
+
             %% Postprocessing
             % Obtain complex signal (if it isn't complex already)
             if ~obj.subSeq.hwDdcEnable && ~obj.rec.swDdcEnable

@@ -5,18 +5,26 @@ classdef CustomTxRxSequence
     % :param txApertureCenter: vector of tx aperture center positions [m]
     % :param txApertureSize: vector of tx aperture sizes [element]
     % :param rxCenterElement: vector of rx aperture center elements [element]
-    % :param rxApertureCenter: vector of rx aperture center positions [m].
+    % :param rxApertureCenter: vector of rx aperture center positions [m]
     % :param rxApertureSize: size of the rx aperture [element]
     % :param txFocus: vector of tx focal lengths [m]
     % :param txAngle: vector of tx angles [rad]
     % :param speedOfSound: speed of sound for [m/s]
-    % :param txVoltage: tx voltage amplitude (Vpp/2) [V]
+    % :param txVoltage: tx voltage level [V]. Can be: \
+    %   scalar (pulse voltage range is [-txVoltage +txVoltage] for the \
+    %   whole sequence), or 2x2 array (defines two sets of negative and \
+    %   positive tx voltage amplitudes: [v1neg, v1pos; v2neg, v2pos]; the \
+    %   voltage range can be selected individually for each tx using txVoltageId). \
+    %   txVoltage must always be nonnegative and v1 must be higher than v2. \
+    %   "Legacy" systems only support scalar txVoltage
+    % :param txVoltageId: vector of tx voltage level identifiers (can be 1 \
+    %   for [-v1neg +v1pos] range or 2 for [-v2neg +v2pos] range)
     % :param txFrequency: vector of tx frequencies [Hz]
     % :param txNPeriods: vector of numbers of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
-    % :param rxDepthRange: defines the end (if scalar) or
+    % :param rxDepthRange: defines the end (if scalar) or \
     %   the begining and the end (if two-element vector) \ 
     %   of the acquisition expressed by depth range [m]
-    % :param rxNSamples: number of samples (if scalar) or 
+    % :param rxNSamples: number of samples (if scalar) or \
     %   starting and ending sample numbers (if 2-element vector) \ 
     %   of recorded signal [sample]
     % :param hwDdcEnable: enables complex iq output
@@ -29,12 +37,12 @@ classdef CustomTxRxSequence
     % :param tgcSlope: TGC gain slope [dB/m]
     % :param txInvert: tx pulse polarity marker
     % :param workMode: system mode of operation, can be "MANUAL","HOST","SYNC", \
-    %   or "ASYNC".
+    %   or "ASYNC"
     % :param sri: sequence repeting interval [s]
-    % :param bufferSize: number of buffer elements (each element contains 
+    % :param bufferSize: number of buffer elements (each element contains \
     %   data for a single sequence execution)
     % :param txWaveform: TX waveform to use, an instance of arrus.ops.us4r.Waveform
-    % 
+    %
     % TGC gain = tgcStart + tgcSlope * propagation distance
     % TGC gain is limited to 14-54 dB, any values out of that range
     % will be set to 54 dB (if > 54 dB) or 14 dB (if <14 dB)
@@ -49,18 +57,19 @@ classdef CustomTxRxSequence
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txVoltage (1,1) {mustBeNonnegative} = 0;
+        txVoltage  (1,1) {mustBeNonnegative} = 0;
+        txVoltageId (1,:) = 1
         txFrequency (1,:) = []
         txNPeriods (1,:) = []
         rxDepthRange (1,:) {mustBeProperNumber}
         rxNSamples (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
         hwDdcEnable (1,1) {mustBeLogical} = true
         decimation (1,:) {mustBeFinite, mustBeInteger, mustBePositive}
-        nRepetitions (1,:) = 1
+        nRepetitions (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 1
         txPri (1,:) double {mustBePositive}
         tgcStart (1,:)
-        tgcSlope (1,:) = 0
-        txInvert (1,:) {mustBeLogical} = []
+        tgcSlope (1,1) = 0
+        txInvert (1,:) {mustBeLogical} = false
         workMode {mustBeTextScalar} = "MANUAL"
         sri (1,1) {mustBeNonnegative, mustBeFinite, mustBeReal} = 0
         bufferSize (1,1) {mustBeFinite, mustBeInteger, mustBePositive} = 2
@@ -76,7 +85,7 @@ classdef CustomTxRxSequence
             for i = 1:2:nargin
                 obj.(varargin{i}) = varargin{i+1};
             end
-            
+
             % Validate.
             mustBeXor(obj,{'txCenterElement','txApertureCenter'});
             if ~isempty(obj.rxCenterElement) || ~isempty(obj.rxApertureCenter)
@@ -102,7 +111,7 @@ classdef CustomTxRxSequence
                 error("ARRUS:IllegalArgument", ...
                 "hwDdcEnable must be set to false if txWaveform is provided");
             end
-            
+
             %% Check size compatibility of aperture/focus/angle parameters
             nTx = max([	length(obj.txCenterElement) ...
                         length(obj.txApertureCenter) ...
@@ -123,17 +132,26 @@ classdef CustomTxRxSequence
             obj.rxApertureCenter    = mustBeProperLength(obj.rxApertureCenter,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
+            obj.txVoltageId         = mustBeProperLength(obj.txVoltageId,nTx);
+
+            %% txVoltage & txVoltageId validation
+            mustBeProperNumber(obj.txVoltage);
+            if ~ismatrix(obj.txVoltage) || (~isscalar(obj.txVoltage) && ~all(size(obj.txVoltage)==[2 2]))
+                error("ARRUS:IllegalArgument", 'txVoltage must be scalar or 2x2 array');
+            end
+            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) <= obj.txVoltage(2,:))
+                error("ARRUS:IllegalArgument", 'txVoltage(1,:) must be higher than txVoltage(2,:)');
+            end
             if isempty(obj.txWaveform)
                 if isempty(obj.txInvert)
                     obj.txInvert = false;
                 end
-                
+
                 obj.txFrequency         = mustBeProperLength(obj.txFrequency,nTx);
                 obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
                 obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
                 obj.txInvert            = double(obj.txInvert);
             end
-
         end
     end
 end

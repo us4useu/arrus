@@ -40,6 +40,7 @@ protected:
         // Default values returned by us4oem.
         ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+ variant 0
     }
 
     Us4OEMUploadResult upload(const TxParametersSequenceColl &sequences) {
@@ -147,6 +148,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
+    // NOTE the below calls are specific for the legacy us4OEM
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -161,6 +164,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
+    // NOTE the below calls are specific for the legacy us4OEM
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -173,6 +178,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
+    // NOTE the below calls are specific for the legacy us4OEM
+    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,

@@ -51,7 +51,7 @@ std::optional<Us4RTxRxLimits> DEFAULT_US4R_LIMITS = std::nullopt;
 //    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetPGAGain(us4rParameters.pgaGain));
 //    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetLNAGain(us4rParameters.lnaGain));
 //    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetDTGC(us4rParameters.dtgcAttEnabled, us4rParameters.dtgcAttValue));
-//    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetLPFCutoff(us4rParameters.lpfCutoff));
+//    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetLpfCutoff(us4rParameters.lpfCutoff));
 //    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetActiveTermination(us4rParameters.activeTerminationEnabled,
 //                                       us4rParameters.activeTerminationValue));
 //    Us4OEMFactoryImpl factory;

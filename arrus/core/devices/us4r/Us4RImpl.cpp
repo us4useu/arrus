@@ -6,6 +6,7 @@
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
+#include "us4r_api_version.h"
 #include <chrono>
 #include <future>
 #include <memory>
@@ -70,8 +71,15 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                               format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
         }
     }
-    this->eventHandlers.insert({"pulserIrq", [this]() {this->handlePulserInterrupt(); }});
-    this->eventHandlerThread = std::thread([this](){this->handleEvents(); });
+
+    for(auto &oem: this->us4oems) {
+        // Register pulser IRQ handling procedure.
+        if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
+            oem->getIUs4OEM()->SetPulserInterruptCallback(
+                [this]() {this->handlePulserInterrupt(); }
+            );
+        }
+    }
 }
 
 std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
@@ -211,6 +219,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
             }
         }
     }
+    // Get probe voltage limits.
     for(const auto &probe: probeSettings) {
         const auto &voltageLimits = probe.getModel().getVoltageRange();
         for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
@@ -286,10 +295,13 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
             futures.push_back(std::async(
-            std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), us4RVoltages));
+                std::launch::async, &HighVoltageSupplier::setVoltage, hv[n].get(), us4RVoltages));
         }
         for (auto &future : futures) {
             future.wait();
+            // throw exception if necessary. NOTE: this will throw for the first
+            // exception occurrence, consider aggregating exceptions.
+            future.get();
         }
     }
     else {
@@ -302,7 +314,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     float tolerance = 4.0f;// 4V tolerance
     int retries = 5;
 
-    if(isHV256) {
+     if(isHV256) {
         Voltage actualVoltage = this->getVoltage();
         // For HV256 we expect only a single voltage level, and +V == -V.
         auto expectedVoltage = voltages.at(1)->getVoltagePlus();
@@ -312,11 +324,12 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
                 ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",
                     actualVoltage, expectedVoltage));
         }
-    } else {
+    } else if(!isHVPS) {
         this->logger->log(LogSeverity::INFO,
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
+
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, isHV256);
 }
@@ -357,12 +370,12 @@ void Us4RImpl::disableHV() {
     }
 }
 
-void Us4RImpl::cleanupBuffers() {
+void Us4RImpl::cleanupBuffers(bool cleanupSequencerTransfers) {
     // The buffer should be already unregistered (after stopping the device).
     this->buffer->shutdown();
     // We must be sure here, that there is no thread working on the us4rBuffer here.
     if (!this->oemBuffers.empty()) {
-        unregisterOutputBuffer(false);
+        unregisterOutputBuffer(cleanupSequencerTransfers);
         this->oemBuffers.clear();
     }
     this->buffer.reset();
@@ -384,29 +397,30 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
-    auto [buffers, fcms, rxTimeOffset] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
-                                                          scheme.getDigitalDownConversion(), scheme.getConstants());
-
-    // Cleanup.
-    // If the output buffer already exists - remove it.
-    if (this->buffer) {
-        cleanupBuffers();
-    }
-    // Reset previously set properties for buffer handling.
-    for(auto &us4oem: this->us4oems) {
-        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
-        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
-    }
-    // Create output buffer.
-    Us4ROutputBufferBuilder builder;
-    this->buffer = builder.setStopOnOverflow(stopOnOverflow)
-                          .setNumberOfElements(scheme.getOutputBuffer().getNumberOfElements())
-                          .setLayoutTo(buffers)
-                          .build();
-    registerOutputBuffer(this->buffer.get(), buffers, workMode);
-    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
-    this->oemBuffers = std::move(buffers);
+    auto [buffers,
+          fcms,
+          rxTimeOffset,
+          l2pMapping,
+          oemSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
+                                           scheme.getDigitalDownConversion(), scheme.getConstants());
+    currentScheme = scheme;
+    currentRxTimeOffset = rxTimeOffset;
+    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(), buffers);
+    // Reset sub-sequence factory and params.
+    currentSubsequenceParams.reset();
+    subsequenceFactory = Us4RSubsequenceFactory{
+        scheme.getTxRxSequences(),
+        l2pMapping,
+        oemSequences,
+        buffers,
+        fcms
+    };
     // Metadata
+    std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
+    return {this->buffer, metadatas};
+}
+
+vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const {
     std::vector<Metadata::SharedHandle> metadatas;
     for (auto &fcm : fcms) {
         MetadataBuilder metadataBuilder;
@@ -414,7 +428,30 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
         metadataBuilder.add<float>("rxOffset", std::make_shared<float>(rxTimeOffset));
         metadatas.emplace_back(metadataBuilder.buildPtr());
     }
-    return std::make_pair(this->buffer, metadatas);
+    return metadatas;
+}
+
+void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode workMode, vector<Us4OEMBuffer> buffers,
+                                 bool cleanupSequencerTransfers) {
+    // Cleanup.
+    // If the output buffer already exists - remove it.
+    if (buffer) {
+        cleanupBuffers(cleanupSequencerTransfers);
+    }
+    // Reset previously set properties for buffer handling.
+    for(auto &us4oem: us4oems) {
+        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
+        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
+    }
+    // Create output buffer.
+    Us4ROutputBufferBuilder builder;
+    buffer = builder.setStopOnOverflow(stopOnOverflow)
+                          .setNumberOfElements(hostBufNElements)
+                          .setLayoutTo(buffers)
+                          .build();
+    registerOutputBuffer(buffer.get(), buffers, workMode);
+    // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
+    oemBuffers = std::move(buffers);
 }
 
 void Us4RImpl::start() {
@@ -432,14 +469,18 @@ void Us4RImpl::start() {
     }
     this->state = State::START_IN_PROGRESS;
     for (auto &us4oem : us4oems) {
-        us4oem->getIUs4OEM()->EnableInterrupts();
+        us4oem->getIUs4OEM()->EnableRuntimeInterrupts();
     }
     //  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
         // Reset tx subsystem pointers.
         us4oem->getIUs4OEM()->EnableTransmit();
         // Reset sequencer pointers.
-        us4oem->enableSequencer(0);
+        // The sequencer pointer (the entry from which sequencer starts) should not be reset when
+        // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
+        // the sequencer pointers will appropriately set to the start param value.
+        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
+        us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t));
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
         this->digitalBackplane.value()->enableExternalTrigger();
@@ -461,21 +502,16 @@ void Us4RImpl::stopDevice() {
             this->digitalBackplane.value()->enableInternalTrigger();
         }
         this->getMasterOEM()->stop();
-        try {
-            for (auto &us4oem : us4oems) {
-                us4oem->getIUs4OEM()->WaitForPendingTransfers();
-                us4oem->getIUs4OEM()->WaitForPendingInterrupts();
-            }
-        }
-        catch(const std::exception &e) {
-            logger->log(
-                LogSeverity::WARNING,
-                arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
-        }
-        // Here all us4R IRQ threads should not work anymore.
-        // Cleanup.
         for (auto &us4oem : us4oems) {
-            us4oem->getIUs4OEM()->DisableInterrupts();
+            try {
+                us4oem->getIUs4OEM()->WaitForPendingTransfers();
+                us4oem->getIUs4OEM()->DisableRuntimeInterrupts();
+            }
+            catch (const std::exception &e) {
+                logger->log(
+                        LogSeverity::WARNING,
+                        arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
+            }
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
     }
@@ -490,16 +526,19 @@ Us4RImpl::~Us4RImpl() {
         if (this->buffer) {
             cleanupBuffers();
         }
-        this->eventQueue.shutdown();
-        getDefaultLogger()->log(LogSeverity::DEBUG, "Waiting for the Us4R event handler thread to stop.");
-        this->eventHandlerThread.join();
         getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
     }
 }
 
-std::tuple<std::vector<Us4OEMBuffer>, std::vector<FrameChannelMapping::Handle>, float>
+std::tuple<
+    std::vector<Us4OEMBuffer>,
+    std::vector<FrameChannelMappingImpl::Handle>,
+    float,
+    std::vector<LogicalToPhysicalOp>,
+    std::vector<std::vector<TxRxParametersSequence>>
+>
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
                           const std::vector<NdArray> &txDelayProfiles) {
@@ -512,16 +551,20 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<ProbeToAdapterMappingConverter> probe2Adapter;
     // Sequence id -> converter
     std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
+    // Calculate RX delays
+    std::vector<std::vector<float>> rxDelays = getRxDelays(sequences);
     // Calculate TX timeouts
     TxTimeoutRegisterFactory txTimeoutRegisterFactory{
         oemDescriptor.getNTimeouts(),
         [this](const float frequency) {
             return this->getActualTxFrequency(frequency);
-        }};
+        },
+        rxDelays
+    };
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
 
     // Convert API sequences to internal representation.
-    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts);
+    std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts, rxDelays);
     // Initialize converters.
     auto oemMappings = getOEMMappings();
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
@@ -545,18 +588,29 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
     // OEM -> list of sequences to upload on the OEM
     auto sequencesByOEM = std::vector{noems, OEMSequences{}};
+    // sequence -> op -> a range of physical TX/RXs [start, end]
+    // NOTE: start and end are local per sequence, i.e. logicalToPhysicalMapping.at(i).at(0) is counted
+    // from te beginning of the i-th sequence.
+    std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
+    // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
+    std::vector<std::vector<TxRxParametersSequence>> oemSequences;
     // Convert probe sequence -> OEM Sequences
+
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
         auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
+
+        logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
+        oemSequences.push_back(oemSeqs);
+
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
         }
     }
     std::vector<Us4OEMBuffer> buffers;
     // Sequence id -> the probe-level FCM.
-    std::vector<FrameChannelMapping::Handle> fcms;
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
     float rxTimeOffset;
@@ -572,17 +626,14 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
             oemsFCMs.at(sId).emplace_back(std::move(oemFCM.at(sId)));
         }
     }
-    // Register pulser IRQ handling procedure.
-    if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
-        registerPulserIRQCallback();
-    }
+
     // Convert FCMs to probe-level apertures.
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         auto adapterFCM = adapter2OEM.at(sId).convert(oemsFCMs.at(sId));
         auto probeFCM = probe2Adapter.at(sId).convert(adapterFCM);
         fcms.emplace_back(std::move(probeFCM));
     }
-    return std::make_tuple(std::move(buffers), std::move(fcms), rxTimeOffset);
+    return std::make_tuple(buffers, std::move(fcms), rxTimeOffset, logicalToPhysicalMapping, oemSequences);
 }
 
 TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequence &sequence) {
@@ -609,7 +660,8 @@ TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequenc
 
 std::vector<us4r::TxRxParametersSequence>
 Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
-                                     const TxTimeoutRegister &txTimeoutRegister) {
+                                     const TxTimeoutRegister &txTimeoutRegister,
+                                     const std::vector<std::vector<float>> &rxDelays) {
     std::vector<TxRxParametersSequence> result;
     std::optional<BitstreamId> currentBitstreamId = std::nullopt;
     SequenceId sequenceId = 0;
@@ -629,7 +681,7 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
         OpId opId = 0;
         for (const auto &txrx : sequence.getOps()) {
             TxRxParametersBuilder builder(txrx);
-            auto rxDelay = getRxDelay(txrx);
+            auto rxDelay = rxDelays.at(sequenceId).at(opId);
             builder.setRxDelay(rxDelay);
             if (hasIOBitstreamAdressing) {
                 builder.setBitstreamId(BitstreamId(0));
@@ -661,7 +713,7 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, false); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
@@ -678,18 +730,45 @@ void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float>
         // Turn off TGC
         setTgcCurve(y, applyCharacteristic);
     } else {
-        auto timeStartIt = std::min_element(std::begin(t), std::end(t));
-        auto timeEndIt = std::max_element(std::begin(t), std::end(t));
-
-        auto timeEnd = *timeEndIt;
-
-        auto valueStart = y[std::distance(std::begin(t), timeStartIt)];
-        auto valueEnd = y[std::distance(std::begin(t), timeEndIt)];
-
-        std::vector<float> hardwareTgcSamplingPoints = getTgcCurvePoints(timeEnd);
-        auto tgcValues = ::arrus::interpolate1d<float>(t, y, hardwareTgcSamplingPoints, valueStart, valueEnd);
+        vector<float> tgcValues = interpolateToSystemTGC(t, y);
         setTgcCurve(tgcValues, applyCharacteristic);
     }
+}
+
+std::vector<float> Us4RImpl::interpolateToSystemTGC(const vector<float> &t, const vector<float> &y) const {
+    auto timeStartIt = min_element(std::begin(t), std::end(t));
+    auto timeEndIt = max_element(std::begin(t), std::end(t));
+
+    auto timeEnd = *timeEndIt;
+
+    auto valueStart = y[distance(std::begin(t), timeStartIt)];
+    auto valueEnd = y[distance(std::begin(t), timeEndIt)];
+
+    vector<float> hardwareTgcSamplingPoints = getTgcCurvePoints(timeEnd);
+    auto tgcValues = interpolate1d<float>(t, y, hardwareTgcSamplingPoints, valueStart, valueEnd);
+    return tgcValues;
+}
+
+void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic) {
+    ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
+    if (y.empty()) {
+        // Turn off TGC
+        setVcat(y, applyCharacteristic);
+    } else {
+        vector<float> tgcValues = interpolateToSystemTGC(t, y);
+        setVcat(tgcValues, applyCharacteristic);
+    }
+}
+
+void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true); }
+
+void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic) {
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
+                             .setVcat(attenuation)
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .build();
+    setRxSettings(newRxSettings);
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
@@ -909,7 +988,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     uint16 startFiring = 0;
     for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
-        uint16 endFiring = srcElement.getFiring();
+        uint16 endFiring = srcElement.getGlobalFiring();
         for (size_t j = 0; j < nRepeats; ++j) {
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);
@@ -1191,8 +1270,29 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
 }
 
 std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-Us4RImpl::setSubsequence(uint16_t, uint16_t, const std::optional<float> &) {
-    throw std::runtime_error("setSubsequence not yet implemented.");
+Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float> &sri) {
+    if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
+        throw ::arrus::IllegalStateException("Call upload method before setting a new sub-sequence.");
+    }
+    // Clear callback (the new one will be registered later, in the prepareHostBuffer)
+    for(auto &us4oem: us4oems) {
+        us4oem->clearDMACallbacks();
+    }
+    auto params = subsequenceFactory->get(sequenceId, start, end, sri);
+    bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    for (auto &oem : us4oems) {
+        oem->setSubsequence(params.getStart(), params.getEnd(), isSyncMode, params.getTimeToNextTrigger());
+    }
+    currentSubsequenceParams = params;
+
+    prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
+                      currentScheme->getWorkMode(), params.getOemBuffers(), true);
+    // Create metadata
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
+    fcms.emplace_back(params.buildFCM());
+    auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
+    // A single metadata is assumed here.
+    return {this->buffer, metadatas.at(0)};
 }
 
 void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
@@ -1206,62 +1306,47 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
     return getMasterOEM()->getActualTxFrequency(frequency);
 }
 
-void Us4RImpl::registerPulserIRQCallback() {
-    using namespace std::chrono_literals;
-    for(auto &oem: us4oems) {
-        const auto ordinal = oem->getDeviceId().getOrdinal();
-        oem->getIUs4OEM()->RegisterCallback(IUs4OEM::MSINumber::PULSERINTERRUPT, [this, ordinal]() {
-            logger->log(LogSeverity::ERROR, format("Detected pulser interrupt on OEM: '{}'.", ordinal));
-            try {
-                this->eventQueue.enqueue(Us4REvent("pulserIrq"));
-            }
-            catch(const std::exception &e) {
-                logger->log(LogSeverity::ERROR, "Exception on handling pulser IRQ: " + std::string(e.what()));
-            }
-            catch(...) {
-                logger->log(LogSeverity::ERROR, "Unknown exception on handling pulser IRQ.");
-            }
-        });
-    }
-}
-
-void Us4RImpl::handleEvents() {
-    while(true) {
-        try {
-            auto event = eventQueue.dequeue();
-            if(!event.has_value()) {
-                // queue shutdown
-                return;
-            }
-            auto eventId = event.value().getId();
-            auto handler = eventHandlers.find(eventId);
-            if(handler == std::end(eventHandlers)) {
-                logger->log(LogSeverity::WARNING, format("Unknown event: {}", eventId));
-            }
-            else {
-                (handler->second)();
-            }
-        }
-        catch(const std::exception &e) {
-            logger->log(LogSeverity::ERROR, "Exception on event handling: " + std::string(e.what()));
-        }
-        catch(...) {
-            logger->log(LogSeverity::ERROR, "Unknown exception on event handling.");
-        }
-    }
-}
-
-
 void Us4RImpl::handlePulserInterrupt() {
     if (this->state == State::STOPPED) {
         logger->log(LogSeverity::INFO, format("System already stopped."));
-        return;
+        this->disableHV();
+    }
+    else {
+        this->stop();
+        this->disableHV();
     }
     for(auto &oem: this->us4oems) {
         oem->getIUs4OEM()->LogPulsersInterruptRegister();
     }
-    this->stop();
-    this->disableHV();
+}
+
+/**
+ * Returns RX delays calculated for each TX/RX.
+ */
+std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequence> &seqs) {
+    std::vector<std::vector<float>> result(seqs.size());
+    for(size_t i = 0; i < seqs.size(); ++i) {
+        const auto &seq = seqs.at(i);
+        const auto &ops = seq.getOps();
+        auto &outputDelays = result.at(i);
+        outputDelays.resize(ops.size());
+        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=](const auto &op) {
+            return this->getRxDelay(op);
+        });
+    }
+    return result;
+}
+
+string Us4RImpl::getDescription() const {
+    std::stringstream stream;
+    stream << "us4r-api version: " << ::us4r::version();
+    stream << ", Number of us4OEMs: " << us4oems.size();
+    stream << ", probe adapter: " << probeAdapterSettings.getModelId().toString();
+    stream << ", probes: ";
+    for(const auto &probe: probeSettings) {
+        stream << probe.getModel().getModelId().toString() << "; ";
+    }
+    return stream.str();
 }
 
 float Us4RImpl::getMinimumTGCValue() const {

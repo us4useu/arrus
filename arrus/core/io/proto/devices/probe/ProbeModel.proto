@@ -4,6 +4,8 @@ package arrus.proto;
 
 import "io/proto/common/IntervalDouble.proto";
 import "io/proto/common/IntervalInteger.proto";
+import "io/proto/devices/probe/Lens.proto";
+import "io/proto/devices/probe/MatchingLayer.proto";
 
 
 message ProbeModel {
@@ -19,4 +21,10 @@ message ProbeModel {
   IntervalInteger voltage_range = 5;
   // Curvature radius; 0 means no curvature.
   double curvature_radius = 6;
+  oneof lens_ {
+    Lens lens = 7;
+  }
+  oneof matching_layer_ {
+    MatchingLayer matching_layer = 8;
+  }
 }

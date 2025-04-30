@@ -40,12 +40,12 @@ namespace arrus::devices {
                 auto estimatedPulse = arrus::ops::us4r::Pulse::fromWaveform(op.getTxWaveform());
                 if(estimatedPulse.has_value()) {
                     auto pulse = estimatedPulse.value();
-                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(pulse.getAmplitude(),
-                                                      static_cast<ops::us4r::Pulse::State>(1),
-                                                      static_cast<ops::us4r::Pulse::State>(2),
+                    ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(pulse.getAmplitudeLevel(),
+                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
+                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(2),
                                                       firingStr);
-
-                    switch(pulse.getAmplitude()) {
+                    // Tx - pulse
+                    switch(pulse.getAmplitudeLevel()) {
                     case 1:
                         validateTx(pulse, txLimits1, firingStr);
                         break;
@@ -53,7 +53,7 @@ namespace arrus::devices {
                         validateTx(pulse, txLimits2, firingStr);
                         break;
                     default:
-                        throw IllegalArgumentException(format("Unsupported amplitude value: {}", pulse.getAmplitude()));
+                        throw IllegalArgumentException(format("Unsupported amplitude level: {}", pulse.getAmplitudeLevel()));
                     }
                 } else {
                     // custom waveform
