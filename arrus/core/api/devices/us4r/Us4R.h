@@ -387,7 +387,11 @@ public:
     Probe* getProbe(Ordinal ordinal) override = 0;
 
     /**
-     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming FOR THE AMPLITUDE 2 / RAIL HV 0.
+     *
+     * **NOTE this method is intended to be used only for the probe health check! DO NOT USE THIS METHOD TO SET
+     * THE MAXIMUM TX PULSE LENGTH e.g. FOR THE IMAGING PURPOSES.**
+     *
      * std::nullopt means to use up to 32 TX cycles.
      *
      * @param maxLength maximum pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)

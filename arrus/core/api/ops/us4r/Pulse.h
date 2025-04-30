@@ -12,7 +12,6 @@ namespace arrus::ops::us4r {
  * A single pulse (sine wave) produced by us4r device.
  *
  * DEPRECATED: please use the arrus::ops::us4r::Waveform
- * NOTE:
  */
 class Pulse {
 public:

@@ -114,7 +114,7 @@ public:
             os << ", center frequency: " << pulse.value().getCenterFrequency()
                << ", n. periods: " << pulse.value().getNPeriods()
                << ", inverse: " << pulse.value().isInverse()
-               << ", tx voltage level: " << pulse.value().getAmplitudeLevel();
+               << ", amplitude: " << pulse.value().getAmplitudeLevel();
         }
         else {
             os <<"; tx waveform: ";
