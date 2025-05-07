@@ -1597,7 +1597,7 @@ class RxBeamforming(Operation):
 
         if isinstance(seq, SimpleTxRxSequence):
             rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
-                op=seq, fs=fs, speed_of_sound=seq.speed_of_sound)
+                op=seq, fs=const_metadata.context.device.sampling_frequency, speed_of_sound=seq.speed_of_sound)
             fc = seq.pulse.center_frequency
             n_periods = seq.pulse.n_periods
             c = seq.speed_of_sound
@@ -2840,7 +2840,7 @@ class ReconstructLri(Operation):
             rx_op = seq
             tx_op = seq
             rx_sample_range = arrus.kernels.simple_tx_rx_sequence.get_sample_range(
-                op=seq, fs=self.fs, speed_of_sound=seq.speed_of_sound)
+                 op=seq, fs=const_metadata.context.device.sampling_frequency, speed_of_sound=seq.speed_of_sound)
             angles = np.atleast_1d(np.asarray(seq.angles))
             focus = np.atleast_1d(np.asarray(seq.tx_focus))
             #
