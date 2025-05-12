@@ -1,4 +1,5 @@
 #define M_PI 3.14159265358979
+#define INF (1.f/0.f)
 #include "mex.h"
 #include "gpu/mxGPUArray.h"
 #include <string>
@@ -44,7 +45,7 @@ __global__ void iqRaw2Lin(  float2 * iqLin,
     }
     
     int iElem;
-    float rxDist, rxTang, rxApod, time, iSamp;
+    float rxDist, rxTangZX, rxTang, rxApod, time, iSamp;
     float modSin, modCos, sampRe, sampIm, pixRe, pixIm, pixWgh;
     float const sosInv = 1 / sos;
     
@@ -52,13 +53,15 @@ __global__ void iqRaw2Lin(  float2 * iqLin,
     float xPix = txApCentX[iTx] + rPix[r] * sinf(txAngZX[iTx]);
     
     iElem = (rxApOrigElem[iTx] + nRx <= nElem) ? rxApOrigElem[iTx] + nRx - 1 : nElem - 1;
-    rxTang = __fdividef(xPix - xElemConst[iElem], zPix - zElemConst[iElem]);
-    rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
+    rxTangZX = __fdividef(xPix - xElemConst[iElem], zPix - zElemConst[iElem]);
+    rxTang = __fdividef(rxTangZX - tangElemConst[iElem], 1.f + rxTangZX*tangElemConst[iElem]);
+    rxTang = (rxTangZX<0.f && -tangElemConst[iElem]<0.f && rxTang>0.f) ? -INF : rxTang;
     float minRxTangPix = fmax(minRxTang[iTx], rxTang);
     
     iElem = (rxApOrigElem[iTx] >= 0) ? rxApOrigElem[iTx] : 0;
-    rxTang = __fdividef(xPix - xElemConst[iElem], zPix - zElemConst[iElem]);
-    rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
+    rxTangZX = __fdividef(xPix - xElemConst[iElem], zPix - zElemConst[iElem]);
+    rxTang = __fdividef(rxTangZX - tangElemConst[iElem], 1.f + rxTangZX*tangElemConst[iElem]);
+    rxTang = (rxTangZX>0.f && -tangElemConst[iElem]>0.f && rxTang<0.f) ? INF : rxTang;
     float maxRxTangPix = fmin(maxRxTang[iTx], rxTang);
     
     float const rngRxTangInv = 1 / (maxRxTangPix - minRxTangPix); // inverted tangent range
@@ -71,10 +74,13 @@ __global__ void iqRaw2Lin(  float2 * iqLin,
     for (int iRx=0; iRx<nRx; iRx++) {
         iElem = iRx + rxApOrigElem[iTx];
         if (iElem<0 || iElem>=nElem) continue;
+
+        // check if pixel is in front of the element
+        if ((xPix - xElemConst[iElem])*tangElemConst[iElem] + (zPix - zElemConst[iElem])*1.f < 0.f) continue;
         
         rxDist = ownHypotf(xPix - xElemConst[iElem], zPix - zElemConst[iElem]);
-        rxTang = __fdividef(xPix - xElemConst[iElem], zPix - zElemConst[iElem]);
-        rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
+        rxTangZX = __fdividef(xPix - xElemConst[iElem], zPix - zElemConst[iElem]);
+        rxTang = __fdividef(rxTangZX-tangElemConst[iElem], 1.f+rxTangZX*tangElemConst[iElem]);
         if (rxTang < minRxTangPix || rxTang > maxRxTangPix) continue;
         rxApod = (rxTang-minRxTangPix)*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
         rxApod = tex1D(rxApodTex, rxApod);
