@@ -112,6 +112,9 @@ template<> bool isArrayTypeOkFor<::arrus::float64>(ArrayType arrayType) { return
 template<> bool isArrayTypeOkFor<::arrus::float32>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::int64>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::uint64>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
+#ifndef _MSC_VER
+template<> bool isArrayTypeOkFor<size_t>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
+#endif
 template<> bool isArrayTypeOkFor<::arrus::int32>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::uint32>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
 template<> bool isArrayTypeOkFor<::arrus::int16>(ArrayType arrayType) { return isMatlabRealNumeric(arrayType); }
@@ -342,8 +345,19 @@ T getCppObject(const MexContext::SharedHandle &ctx, const MatlabElementRef &obje
     getCppObjectVector<Type, Converter>(ctx, array, #field)
 
 // C++ scalar -> MATLAB ARRAY
-template<typename T>::matlab::data::TypedArray<T> getMatlabScalar(const MexContext::SharedHandle &ctx, T value) {
+template<typename T>
+::matlab::data::Array getMatlabScalar(const MexContext::SharedHandle &ctx, T value) {
     return ctx->createScalar<T>(value);
+}
+
+template<typename T>
+::matlab::data::Array getMatlabScalar(const MexContext::SharedHandle &ctx, const std::optional<T> &t) {
+    if(!t.has_value()) {
+        return ctx->getArrayFactory().createEmptyArray();
+    }
+    else {
+        return getMatlabScalar<T>(ctx, t.value());
+    }
 }
 
 ::matlab::data::TypedArray<::matlab::data::MATLABString> getMatlabString(const MexContext::SharedHandle &ctx,

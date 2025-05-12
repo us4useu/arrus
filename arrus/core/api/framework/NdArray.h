@@ -1,8 +1,6 @@
 #ifndef ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 #define ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
 
-#include "arrus/common/asserts.h"
-
 #include <cstring>
 #include <sstream>
 #include <utility>
@@ -294,10 +292,14 @@ public:
      * For example, to get the jth row: array.row(j).
      */
     NdArray row(size_t value) const {
-        ARRUS_REQUIRES_TRUE_IAE(shape.size() == 2, "Only 2D arrays are supported.");
+        if(shape.size() != 2) {
+            throw IllegalArgumentException("Only 2D arrays are supported");
+        }
         const size_t nRows = shape[0];
         const size_t nColumns = shape[1];
-        ARRUS_REQUIRES_TRUE_IAE(value < nRows, "Accessing array out of bounds.");
+        if(value >= nRows) {
+            throw IllegalArgumentException("Accessing array out of bounds.");
+        }
         const Shape newShape = {nColumns};
         const size_t offsetBytes = value * nColumns * getDataTypeSize(dataType);
         return NdArray{(char *) ptr + offsetBytes, newShape, dataType, placement};

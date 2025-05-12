@@ -41,6 +41,10 @@ public:
         validator.validate(settings);
         validator.throwOnErrors();
 
+        WatchdogSettingsValidator watchdogValidator;
+        watchdogValidator.validate(settings.getWatchdogSettings());
+        watchdogValidator.throwOnErrors();
+
         if (settings.getProbeAdapterSettings().has_value()) {
             // Probe, Adapter -> Us4OEM settings.
             // Adapter
@@ -74,7 +78,7 @@ public:
 
             auto [us4oems, masterIUs4OEM] =
                 getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings(),
-                           ius4oemHandles, settings.getTxRxLimits());
+                           ius4oemHandles, settings.getTxRxLimits(), settings.getWatchdogSettings());
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
                            [](const Us4OEMImplBase::Handle &ptr) { return ptr.get(); });
@@ -99,7 +103,7 @@ public:
             return std::make_unique<Us4RImpl>(
                 id, std::move(us4oems), std::move(probeSettings), std::move(adapterSettings), std::move(hv), rxSettings,
                 settings.getChannelsMaskForAllProbes(), std::move(backplane), settings.getBitstreams(),
-                isBitstreamAddr, adapterSettings.getIOSettings(), isExternalTrigger) ;
+                isBitstreamAddr, adapterSettings.getIOSettings(), isExternalTrigger);
         } else {
             throw IllegalArgumentException("Custom OEM configuration is not available since 0.11.0.");
         }
@@ -118,12 +122,30 @@ private:
      * @return a pair: us4oems, master ius4oem
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings& io,
-               std::vector<IUs4OEMHandle> &ius4oems, const std::optional<Us4RTxRxLimits> &limits
-    ) {
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings &io,
+               std::vector<IUs4OEMHandle> &ius4oems, const std::optional<Us4RTxRxLimits> &limits,
+               const WatchdogSettings watchdogSettings) {
         // Pre-configure us4oems.
         for(size_t i = 0; i < us4oemCfgs.size(); ++i) {
-            ius4oems[i]->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
+            const auto &ius4oem = ius4oems.at(i);
+            ius4oem->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
+            if(Us4OEMImpl::isOEMPlus(ius4oem->GetOemVersion())) {
+                if(watchdogSettings.isEnabled()) {
+
+                    ius4oem->SetOEMWatchdogThresholds(
+                        // Convert to ms
+                        ARRUS_SAFE_CAST(std::roundf(watchdogSettings.getOEMThreshold0()*1000), int16),
+                        ARRUS_SAFE_CAST(std::roundf(watchdogSettings.getOEMThreshold1()*1000), int16)
+                    );
+                    ius4oem->SetHostWatchdogThresholds(
+                        // Convert to ms
+                        ARRUS_SAFE_CAST(std::roundf(watchdogSettings.getHostThreshold()*1000), int16)
+                    );
+                }
+                else {
+                    ius4oem->DisableWatchdog();
+                }
+            }
         }
         // Initialize Us4OEMs.
         // We need to initialize Us4OEMs on a Us4R system level.

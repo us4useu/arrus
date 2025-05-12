@@ -6,6 +6,7 @@
 #include <numeric>
 #include <tuple>
 
+#include "arrus/core/devices/us4r/types.h"
 #include "arrus/core/common/aperture.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/common/utils.h"
@@ -30,6 +31,7 @@ public:
         // a mapping (module, input op index, rx channel) -> output frame rx channel
         Eigen::Tensor<int8, 3> physicalChannel;
         std::unordered_map<Ordinal, std::vector<framework::NdArray>> delayProfiles;
+        LogicalToPhysicalOp logicalToPhysicalMap;
     };
 
     Us4OEMApertureSplitter(std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM,
@@ -94,11 +96,15 @@ public:
             us4oemP2LMappings[i++] = revertMapping<uint8_t>(mapping);
         }
 
+        LogicalToPhysicalOp logical2PhysicalMap(sequences.at(0).size());
+
         // us4oem ordinal number -> current frame idx
         std::vector<FrameNumber> currentFrameIdx(sequences.size(), 0);
         size_t frameIdx = 0;
         // For each operation
         for (size_t opIdx = 0; opIdx < seqLength; ++opIdx) {// For each TX/RX
+            // NOTE: assuming each OEM will have the same numer of TX/RXs
+            auto opPhysicalStart = ARRUS_SAFE_CAST(sequenceBuilders.at(0).size(), uint16_t);
             // Determine if the op is Rx NOP.
             bool isRxNOP = true;
             for(size_t oem = 0; oem < noems; ++oem) {
@@ -219,6 +225,9 @@ public:
             if(!isRxNOP) {
                 frameIdx++;
             }
+
+            auto opPhysicalEnd = ARRUS_SAFE_CAST(sequenceBuilders.at(0).size()-1, uint16_t);
+            logical2PhysicalMap.at(opIdx) = {opPhysicalStart, opPhysicalEnd};
         }
 
         // Map to target TX delays (after splitting to sub-apertures).
@@ -228,7 +237,7 @@ public:
             result.emplace_back(b.build());
         }
         if (areConsecutive(srcOpIdx) || delayProfiles.empty()) {
-            return Result{result, opDestOp, opDestChannel, delayProfiles};
+            return Result{result, opDestOp, opDestChannel, delayProfiles,logical2PhysicalMap};
         } else {
             for (size_t seqIdx = 0; seqIdx < result.size(); ++seqIdx) {
                 size_t nOps = result[seqIdx].size();
@@ -248,7 +257,8 @@ public:
                 }
                 outputTxDelayProfiles.emplace(static_cast<uint16_t>(seqIdx), outputProfiles);
             }
-            return Result{result, opDestOp, opDestChannel, delayProfiles};
+            return Result{result, opDestOp, opDestChannel, delayProfiles,
+                          logical2PhysicalMap};
         }
     }
 

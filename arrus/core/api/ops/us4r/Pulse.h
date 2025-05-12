@@ -12,7 +12,6 @@ namespace arrus::ops::us4r {
  * A single pulse (sine wave) produced by us4r device.
  *
  * DEPRECATED: please use the arrus::ops::us4r::Waveform
- * NOTE:
  */
 class Pulse {
 public:
@@ -24,9 +23,9 @@ public:
 	 * @param centerFrequency center frequency of the transmitted pulse
 	 * @param nPeriods pulse number of periods, should be a multiple of 0.5
 	 * @param inverse if set to true - inverse the pulse polarity
-	 * @param amplitudeLevel amplitude level to use, default: 1
+	 * @param amplitudeLevel amplitude level to use, default: 2 (HVM/P 0)
 	 */
-    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 1)
+    Pulse(float centerFrequency, float nPeriods, bool inverse, AmplitudeLevel amplitudeLevel = 2)
         : centerFrequency(centerFrequency), nPeriods(nPeriods), inverse(inverse), amplitudeLevel(amplitudeLevel) {
         if(! (amplitudeLevel == 1 || amplitudeLevel == 2)) {
             throw IllegalArgumentException("Pulse amplitude level should be 1 or 2");
@@ -241,7 +240,7 @@ private:
     float centerFrequency;
     float nPeriods;
     bool inverse;
-    AmplitudeLevel amplitudeLevel = 0;
+    AmplitudeLevel amplitudeLevel = 2;
 };
 
 }

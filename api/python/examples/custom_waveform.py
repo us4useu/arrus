@@ -34,7 +34,7 @@ from arrus.utils.gui import (
     Display2D
 )
 
-arrus.set_clog_level(arrus.logging.TRACE)
+arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 
@@ -43,11 +43,14 @@ def main():
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
     with arrus.Session("/home/pjarosik/us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(5)
+        us4r.set_hv_voltage((5, 6), (10, 11))
 
         wfBuilder = WaveformBuilder()
-        wfBuilder.add(duration=[0.2e-6, 0.5e-6, 1e-6], state=[-1, 1, -1], n=2)
-        wfBuilder.add(duration=[1.5e-6, 2e-6, 3e-6], state=[1, -1, 1])
+        wfBuilder.add(duration=[0.2e-6, 0.5e-6, 1e-6], 
+                      state   =[-1,     1,      -1], 
+                      n=2)
+        wfBuilder.add(duration=[1.5e-6, 2e-6, 3e-6], 
+                      state   =[2,      0,   2])
         wf = wfBuilder.build()
 
 

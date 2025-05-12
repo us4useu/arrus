@@ -338,8 +338,8 @@ public:
         return result;
     }
     /**
-     * Returns relatative address of the element area dedicated for the given array, given OEM.
-     * The addres is relative to the beginning of the whole element (i.e. array 0, oem 0, where
+     * Returns relative address of the element area dedicated for the given array, given OEM.
+     * The address is relative to the beginning of the whole element (i.e. array 0, oem 0, where
      * 0 is the first non-empty array).
      */
     [[nodiscard]] size_t getArrayAddressRelative(uint16 arrayId, Ordinal oem) const {

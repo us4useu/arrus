@@ -49,6 +49,13 @@ us4r: {
             end: 1
         }
     }
+
+    watchdog: {
+        enabled: true
+        oem_threshold0: 1.0
+        oem_threshold1: 2.0
+        host_threshold: 3.0
+    }
 }
 
 

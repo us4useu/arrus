@@ -7,6 +7,7 @@
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/common/validation.h"
 #include "Us4OEMDescriptor.h"
+#include "arrus/core/devices/us4r/TxWaveformConverter.h"
 
 namespace arrus::devices {
 
@@ -23,8 +24,8 @@ namespace arrus::devices {
         const auto startSample = txRxs.at(0).getRxSampleRange().start();
         const auto& sequenceLimits = descriptor.getTxRxSequenceLimits();
         const auto& txRxLimits = sequenceLimits.getTxRx();
-        const auto& txLimits0 = txRxLimits.getTx0();
         const auto& txLimits1 = txRxLimits.getTx1();
+        const auto& txLimits2 = txRxLimits.getTx2();
         const auto& rxLimits = txRxLimits.getRx();
 
         for (size_t firing = 0; firing < txRxs.size(); ++firing) {
@@ -34,22 +35,36 @@ namespace arrus::devices {
                 // Tx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(descriptor.getNTxChannels()), firingStr);
-                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits0.getDelay(), firingStr);
                 ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits1.getDelay(), firingStr);
+                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits2.getDelay(), firingStr);
                 auto estimatedPulse = arrus::ops::us4r::Pulse::fromWaveform(op.getTxWaveform());
                 if(estimatedPulse.has_value()) {
                     auto pulse = estimatedPulse.value();
                     ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(pulse.getAmplitudeLevel(),
-                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(0),
                                                       static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
+                                                      static_cast<ops::us4r::Pulse::AmplitudeLevel>(2),
                                                       firingStr);
                     // Tx - pulse
-                    if(pulse.getAmplitudeLevel() == 0) { validateTx(pulse, txLimits0, firingStr); }
-                    else if(pulse.getAmplitudeLevel() == 1) { validateTx(pulse, txLimits1, firingStr); }
-                    else { throw(IllegalArgumentException("Invalid amplitude level")); }
+                    switch(pulse.getAmplitudeLevel()) {
+                    case 1:
+                        validateTx(pulse, txLimits1, firingStr);
+                        break;
+                    case 2:
+                        validateTx(pulse, txLimits2, firingStr);
+                        break;
+                    default:
+                        throw IllegalArgumentException(format("Unsupported amplitude level: {}", pulse.getAmplitudeLevel()));
+                    }
                 } else {
                     // custom waveform
-                    // TODO: what conditions should be satisifed?
+                    for(const auto &segment : op.getTxWaveform().getSegments()) {
+                        for(const auto &state: segment.getState()) {
+                            ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(state,
+                                                              static_cast<ops::us4r::WaveformSegment::State>(-2),
+                                                              static_cast<ops::us4r::WaveformSegment::State>(2),
+                                                              firingStr);
+                        }
+                    }
                 }
                 // Rx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(descriptor.getNAddressableRxChannels()), firingStr);

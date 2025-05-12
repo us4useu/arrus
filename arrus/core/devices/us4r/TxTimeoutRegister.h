@@ -52,43 +52,51 @@ private:
     std::unordered_map<FiringAddress, TxTimeoutId, PairHash<SequenceId, OpId>> timeoutIds;
 };
 
+/**
+ * TX time value factory.
+ *
+ * This class determines the TX interrupt values based on the TX pulse length (TX op) or RX delay (TX NOP).
+ * By TX NOP we mean the tx with no active elements in the TX aperture.
+ *
+ * The output timeouts are in the ascending order.
+ */
 class TxTimeoutRegisterFactory {
 public:
     static constexpr uint16_t EPSILON = 10; // an additional margin for TX timeout [us]
 
-    explicit TxTimeoutRegisterFactory(size_t nTimeouts, std::function<float(float)> actualTxFunc)
-        : nTimeouts(nTimeouts), actualTxFunc(std::move(actualTxFunc)) {}
+    explicit TxTimeoutRegisterFactory(
+        size_t nTimeouts,
+        std::function<float(float)> actualTxFunc,
+        const std::vector<std::vector<float>> &rxDelays
+        ): nTimeouts(nTimeouts), actualTxFunc(std::move(actualTxFunc)), rxDelays(rxDelays) {}
 
     TxTimeoutRegister createFor(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences)  {
+        SequenceId sId = 0;
+        OpId opId = 0;
+
         if(nTimeouts == 0) {
             // empty register
             return TxTimeoutRegister{};
         }
         // Determine buckets
         std::vector<TxTimeout> timeouts; // [us]
-        std::vector<TxTimeout> txTimes; // [us]
+        std::vector<TxTimeout> waveformTimes; // [us]
 
+        sId = 0;
         for(const auto &s: sequences) {
+            opId = 0;
             for(const auto &op: s.getOps()) {
-                if(! op.getTx().isNOP()) {
-                    TxTimeout txTime = getTxTimeUs(op);
-                    if(txTime > MAX_TIMEOUT) {
-                        throw IllegalArgumentException(
-                            format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
-                    }
-                    txTimes.push_back(txTime);
-                }
+                const auto waveformTime = getWaveformTime(op, rxDelays.at(sId).at(opId));
+                waveformTimes.push_back(waveformTime);
+                ++opId;
             }
+            ++sId;
         }
 
-        if(txTimes.empty()) {
-            // no TX ops, no TX timeouts
-            return TxTimeoutRegister{};
-        }
-        std::sort(std::begin(txTimes), std::end(txTimes), std::greater{}); // descending order
-        TxTimeout timeout = txTimes.at(0);
+        std::sort(std::begin(waveformTimes), std::end(waveformTimes), std::greater{}); // descending order
+        TxTimeout timeout = waveformTimes.at(0);
         timeouts.push_back(timeout + EPSILON);
-        for(auto t: txTimes) {
+        for(auto t: waveformTimes) {
             auto prevTimeout = timeout;
             auto it = timeout;
             while(it > t) {
@@ -111,11 +119,11 @@ public:
         result.timeoutUs = timeouts;
 
         // Assign to buckets.
-        SequenceId sId = 0;
+        sId = 0;
         for(const auto &s: sequences) {
-            OpId opId = 0;
+            opId = 0;
             for(const auto &op: s.getOps()) {
-                TxTimeout txTime = getTxTimeUs(op) + EPSILON;
+                TxTimeout txTime = getWaveformTime(op, rxDelays.at(sId).at(opId)) + EPSILON;
                 // Find the first timeout, that is greater or equal than the given tx time.
                 auto it = std::find_if(std::begin(timeouts), std::end(timeouts),
                              [txTime](auto t) {return t >= txTime; });
@@ -137,6 +145,23 @@ public:
 private:
     static constexpr TxTimeout MAX_TIMEOUT = (1 << 11) - 1; // TODO move that to the Us4OEMDescriptor?
 
+    /**
+     * Returns TX time when the given op has non-empty TX aperture, or RX delay in case we have TX NOP.
+     */
+    TxTimeout getWaveformTime(const ops::us4r::TxRx &op, float rxDelay) const {
+        if(op.getTx().isNOP()) {
+            return TxTimeout (std::ceil(rxDelay*1e6f));
+        }
+        else {
+            TxTimeout txTime = getTxTimeUs(op);
+            if(txTime > MAX_TIMEOUT) {
+                throw IllegalArgumentException(
+                    format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
+            }
+            return txTime;
+        }
+    }
+
     [[nodiscard]] TxTimeout getTxTimeUs(const ops::us4r::TxRx &op) const {
         const auto &delays = op.getTx().getDelaysApertureOnly();
         float maxDelay = *std::max_element(std::begin(delays), std::end(delays));
@@ -149,6 +174,7 @@ private:
 
     size_t nTimeouts{0};
     std::function<float(float)> actualTxFunc;
+    std::vector<std::vector<float>> rxDelays;
 };
 
 }

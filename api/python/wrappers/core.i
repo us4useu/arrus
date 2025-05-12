@@ -159,7 +159,10 @@ namespace std {
     }
 %}
 
+
+
 %module(directors="1") core
+
 
 %{
 #include <memory>
@@ -189,6 +192,12 @@ using namespace ::arrus;
 #define __attribute__(x)
 
 %include "arrus/core/api/common/macros.h"
+
+%feature("valuewrapper", "1");
+%include "arrus/core/api/devices/probe/Lens.h"
+%include "arrus/core/api/devices/probe/MatchingLayer.h"
+%feature("valuewrapper", "0");
+
 
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)
@@ -265,6 +274,7 @@ namespace arrus {
     %template(TupleUint32) Tuple<unsigned int>;
     %template(TupleSizeT) Tuple<size_t>;
     %template(IntervalFloat) Interval<float>;
+    %template(IntervalVoltage) Interval<Voltage>;
 };
 
 %ignore arrus::framework::NdArray::NdArray;
@@ -355,6 +365,10 @@ using namespace ::arrus::session;
 std::shared_ptr<arrus::session::Session> createSessionSharedHandle(const std::string& filepath) {
     std::shared_ptr<Session> res = createSession(filepath);
     return res;
+}
+
+float getRxOffset(size_t arrayId, arrus::session::UploadResult* uploadResult) {
+    return *uploadResult->getConstMetadata(arrayId)->get<float>("rxOffset");
 }
 
 std::shared_ptr<arrus::devices::FrameChannelMapping> getFrameChannelMapping(size_t arrayId, arrus::session::UploadResult* uploadResult) {
@@ -549,6 +563,7 @@ void Arrus2dArrayVectorPushBack(
 // Turn on globally value wrappers
 %feature("valuewrapper");
 %{
+#include "arrus/core/api/devices/us4r/WatchdogSettings.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "Us4OEM/api/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
@@ -566,15 +581,18 @@ using namespace ::arrus::devices;
 using namespace ::us4us::us4r;
 %};
 
-%include "arrus/core/api/devices/us4r/RxSettings.h"
+%include "arrus/core/api/devices/us4r/WatchdogSettings.h";
+%include "arrus/core/api/devices/us4r/RxSettings.h";
 %include "Us4OEM/api/RxSettings.h"
-%include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
+%include "arrus/core/api/devices/us4r/Us4OEMSettings.h";
 %ignore operator<<(std::ostream &os, const ProbeAdapterModelId &id);
-%include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h"
-%include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
+%include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h";
+%include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h";
 %ignore operator<<(std::ostream &os, const ProbeModelId &id);
-%include "arrus/core/api/devices/probe/ProbeModelId.h"
-%include "arrus/core/api/devices/probe/ProbeModel.h"
+%include "arrus/core/api/devices/probe/ProbeModelId.h";
+%include "arrus/core/api/devices/probe/Lens.h";
+%include "arrus/core/api/devices/probe/MatchingLayer.h";
+%include "arrus/core/api/devices/probe/ProbeModel.h";
 %include "arrus/core/api/devices/probe/ProbeSettings.h"
 %ignore operator<<(std::ostream &os, const HVModelId &id);
 %include "arrus/core/api/devices/us4r/HVModelId.h"

@@ -152,6 +152,25 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     }
 }
 
+Lens readProbeLens(const proto::Lens &lens) {
+    std::optional<float> focus = std::nullopt;
+    if(lens.focus__case() != proto::Lens::FOCUS__NOT_SET) {
+        focus = ARRUS_SAFE_CAST(lens.focus(), float);
+    }
+    return Lens {
+        ARRUS_SAFE_CAST(lens.thickness(), float),
+        ARRUS_SAFE_CAST(lens.speed_of_sound(), float),
+        focus
+    };
+}
+
+MatchingLayer readMatchingLayer(const proto::MatchingLayer &layer) {
+    return MatchingLayer {
+        ARRUS_SAFE_CAST(layer.thickness(), float),
+        ARRUS_SAFE_CAST(layer.speed_of_sound(), float)
+    };
+}
+
 ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     ProbeModelId id{proto.id().manufacturer(), proto.id().name()};
     using ElementIdxType = ProbeModel::ElementIdxType;
@@ -170,7 +189,9 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
                                          static_cast<float>(proto.tx_frequency_range().end())};
     ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
                                           static_cast<uint8>(proto.voltage_range().end())};
-    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius);
+    std::optional<Lens> lens = proto.has_lens() ? std::make_optional(readProbeLens(proto.lens())): std::nullopt;
+    std::optional<MatchingLayer> matchingLayer = proto.has_matching_layer()? std::make_optional(readMatchingLayer(proto.matching_layer())): std::nullopt;
+    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius, lens, matchingLayer);
 }
 
 std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapterConnection &connection) {
@@ -295,7 +316,7 @@ getUniqueConnection(const proto::ProbeModel_Id &probeId,
     auto it = connections.find(key);
     if (it == std::end(connections)) {
         throw IllegalArgumentException(
-            format("No definition found for probe {}, but the probe is used in the probe to adapter connections list. ",
+            format("No definition found for probe {} in the probe to adapter connections list.",
                    id.toString()));
     }
     return it->second;
@@ -306,6 +327,38 @@ std::vector<ProbeSettings> readOrGetProbeSettings(const proto::Us4RSettings &us4
     // Read and index by probe to adapter connections
     std::unordered_multimap<std::string, ap::ProbeToAdapterConnection> connections =
         indexProbeToAdapterConnections(us4r.probe_to_adapter_connection());
+
+    // validate connections
+    std::unordered_set<std::string> indexedConnectionProbeModelIds;
+
+    for(const auto &pair: connections) {
+        indexedConnectionProbeModelIds.insert(pair.first);
+    }
+
+    bool hasNoProbeModelId = indexedConnectionProbeModelIds.find("") != std::end(indexedConnectionProbeModelIds);
+
+    if(hasNoProbeModelId) {
+        // We accept that situations (backward compatibility), but only in case there is only a single probe provided.
+        if(indexedConnectionProbeModelIds.size() > 1) {
+            throw IllegalArgumentException("Only one probe to adapter connection should be used when no PROBE ID is "
+                                           "provided.");
+        }
+        size_t nProbes = us4r.probe_id_size() + us4r.probe_size();
+        if(nProbes > 1) {
+            throw IllegalArgumentException("Only one probe should be used when no PROBE ID is "
+                                           "provided in the probe to adapter connection.");
+        }
+        std::string key;
+        if(us4r.probe_id_size() > 0) {
+            key = SettingsDictionary::convertProtoIdToString(us4r.probe_id(0));
+        }
+        else {
+            key = SettingsDictionary::convertProtoIdToString(us4r.probe(0).id());
+        }
+        // assign the only connection to the given probe model id
+        connections.emplace(key, connections.find("")->second);
+        connections.erase("");
+    }
 
     std::vector<ProbeSettings> result;
 
@@ -473,6 +526,29 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
+    WatchdogSettings watchdog = WatchdogSettings::defaultSettings();
+    if(us4r.has_watchdog()) {
+        auto enabled = us4r.watchdog().enabled();
+        if(enabled) {
+            if(us4r.watchdog().oem_threshold0() == 0.0 
+                    || us4r.watchdog().oem_threshold1() == 0.0 
+                    || us4r.watchdog().host_threshold() == 0.0) {
+                throw IllegalArgumentException(
+                        "When the watchdog is explicitly enabled, "
+                        "the parameters oem_threshold0, oem_threshold1, and host_threshold should also be explicitly specified and should be greater than 0. "
+                        "NOTE: to use the default watchdog settings, just skip the watchdog field in the configuration file.");
+            }
+            watchdog = WatchdogSettings{
+                ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold0(), float),
+                ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold1(), float),
+                ARRUS_SAFE_CAST(us4r.watchdog().host_threshold(), float)
+            };
+        }
+        else {
+            watchdog = WatchdogSettings::disabled();
+        }
+    }
+
     ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
     std::vector<ProbeSettings> probeSettings =
         readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
@@ -496,7 +572,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             txFrequencyRange,
             digitalBackplaneSettings,
             bitstreams,
-            limits
+            limits,
+            watchdog
     };
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

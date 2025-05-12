@@ -12,16 +12,18 @@ namespace arrus::ops::us4r {
  *
  * The duration[i] is the duration of the i-th state, i.e. state[i].
  *
- * @param state: the sequence of of states, one of the following values: -2, -1, 0, 1, 2
+ * @param state: the sequence of of states, one of the following values: -2 (HVM0), -1 (HVM1), 0 (CLAMP), 1 (HVP1), 2 (HVP0)
  * @param duration: the duration of the i-th state
  */
 class WaveformSegment {
 public:
-    WaveformSegment(const std::vector<float> &duration, const std::vector<int8_t> &state)
+    using State = int8_t;
+
+    WaveformSegment(const std::vector<float> &duration, const std::vector<State> &state)
         : duration(duration), state(state) {}
 
     const std::vector<float> &getDuration() const { return duration; }
-    const std::vector<int8_t> &getState() const { return state; }
+    const std::vector<State> &getState() const { return state; }
 
     float getTotalDuration() const {
         float value = 0.0f;
@@ -35,7 +37,7 @@ public:
 
 private:
     std::vector<float> duration;
-    std::vector<int8_t> state;
+    std::vector<State> state;
 };
 
 class Waveform {

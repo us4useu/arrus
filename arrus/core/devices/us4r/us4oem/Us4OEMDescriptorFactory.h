@@ -31,14 +31,17 @@ public:
                 0.5f,  // number of TX periods resolution
                 isMaster,
                 arrus::ops::us4r::TxRxSequenceLimits {
-                    arrus::ops::us4r::TxRxLimits { // rail 0
+                    arrus::ops::us4r::TxRxLimits {
+                        // amplitude 1 / rail 1
+                        // UNAVAILABLE (voltages set to 0)
                         arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
-                            Interval<Voltage>{5, 90}
+                            Interval<Voltage>{0, 0} // UNAVAILABLE
                         },
-                        arrus::ops::us4r::TxLimits { // rail 1
+                        // amplitude 2 / rail 0
+                        arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
@@ -62,7 +65,7 @@ public:
                 32, // RX channels
                 20e-6f,  // min. RX time,
                 0e-6f, // RX time epsilon,
-                6e-6f, // TX parameters reprogramming time,
+                7e-6f, // TX parameters reprogramming time,
                 65e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
                 1ull << (14+12), // Max transfer size [B]
@@ -70,16 +73,18 @@ public:
                 isMaster,
                 arrus::ops::us4r::TxRxSequenceLimits {
                     arrus::ops::us4r::TxRxLimits {
-                        arrus::ops::us4r::TxLimits { // rail 0
+                        // amplitude 1 / rail 1
+                        arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, (float)(32.0f)}, // pulse length in cycles,
+                            Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
-                        arrus::ops::us4r::TxLimits { // rail 1
+                        // amplitude 2 / rail 0
+                        arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, (float)(32.0f)}, // pulse length in cycles,
+                            Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::RxLimits {
@@ -108,16 +113,18 @@ public:
                 isMaster,
                 arrus::ops::us4r::TxRxSequenceLimits {
                     arrus::ops::us4r::TxRxLimits {
-                        arrus::ops::us4r::TxLimits { // rail 0
+                        // amplitude 1 / rail 1
+                        arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, (float)(32.0f)}, // pulse length in cycles,
+                            Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
-                        arrus::ops::us4r::TxLimits { // rail 1
+                        // amplitude 2 / rail 0
+                        arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
-                            Interval<float>{0.0f, (float)(32.0f)}, // pulse length in cycles,
+                            Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::RxLimits {

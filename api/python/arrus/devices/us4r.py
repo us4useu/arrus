@@ -120,6 +120,35 @@ class Us4R(Device, Ultrasound):
             # points.
             self._handle.setTgcCurve([float(v) for v in tgc_curve])
 
+    def set_vcat(self, samples):
+        """
+        Sets VCAT attenuation curve.
+
+        This method is complementary to the set_tgc method: here you can
+        set specify the TGC by providing attenuator values (e.g. in range 0, 40 dB
+        for us4OEM modules).
+
+        :param samples: a given curve to set, attenuation [dB]
+        """
+        if samples is None:
+            self._handle.setVcat([])
+            return
+
+        if not isinstance(samples, Iterable):
+            raise ValueError(f"Unrecognized vcat curve type: {type(samples)}")
+
+        # Here, TGC curve is iterable.
+        # Check if we have a pair of iterables, or a single iterable
+        if len(samples) == 2 and (
+                isinstance(samples[0], Iterable)
+                and isinstance(samples[1], Iterable)):
+            t, y = samples
+            self._handle.setVcat(list(t), list(y), True)
+        else:
+            # Otherwise, assume list of floats, use by default TGC sampling
+            # points.
+            self._handle.setVcat([float(v) for v in samples])
+
     def set_hv_voltage(self, *args):
         """
         Enables HV and sets a given voltage(s).
@@ -127,18 +156,23 @@ class Us4R(Device, Ultrasound):
         This method expects a list of integers or a list of pairs of integers
         as input.
         A single integer v means that the voltage should be set t +v and -v.
-        A pair (vm, vp) means that the -voltage should be set to vm,
-        -voltage to vp.
 
-        Voltage is always expected to be positive number (even for -v).
+        Voltage is always expected to be positive number (even for V-).
 
         Examples:
-            set_hv_voltage(10) -- sets +10 -10 on amplitude level 0.
-            set_hv_voltage((10, 10), (5, 5)) -- sets +10, -10 on level 0,
-            +5, -5 on level 1.
+            set_hv_voltage(10) -- sets -10 +10 on TX amplitude 2.
+            set_hv_voltage((5, 6), (10, 11)) -- sets -5 V for TX state -1, +6 V for TX state +1, -10 V for TX state -2, +11 V for TX state +2
+
+        :param voltage: a single value (for amplitude level 0)
+            or a list of tuples, where voltage[0] are (minus, plus) V level 1,
+            voltage[1] are (minus, plus) V level 2.
         """
-        voltages = arrus.utils.core.convert_to_hv_voltages(args)
-        self._handle.setVoltage(voltages)
+        if len(args) == 1:
+            arrus.utils.core.assert_hv_voltage_correct(args[0])
+            self._handle.setVoltage(args[0])
+        else:
+            voltages = arrus.utils.core.convert_to_hv_voltages(args)
+            self._handle.setVoltage(voltages)
 
     def disable_hv(self):
         """
@@ -241,6 +275,14 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.setHpfCornerFrequency(frequency)
 
+    def get_lna_gain(self):
+        """
+        Returns current LNA gain value.
+
+        :return: LNA gain value [dB]
+        """
+        return self._handle.getLnaGain()
+
     def set_lna_gain(self, gain: int):
         """
         Sets LNA gain.
@@ -251,6 +293,14 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.setLnaGain(gain)
 
+    def get_pga_gain(self):
+        """
+        Returns current PGA gain value.
+
+        :return: PGA gain value [dB]
+        """
+        return self._handle.getPgaGain()
+
     def set_pga_gain(self, gain: int):
         """
         Sets PGA gain.
@@ -260,6 +310,28 @@ class Us4R(Device, Ultrasound):
         :param gain: gain value to set
         """
         self._handle.setPgaGain(gain)
+
+    def set_lpf_cutoff(self, frequency: int):
+        """
+        Sets low pass filter cutoff frequency.
+
+        Available: 10e6, 15e6, 20e6, 30e6, 35e6, 50e6 [Hz].
+
+        :param frequency: frequency value to set
+        """
+        self._handle.setLpfCutoff(frequency)
+
+    def set_active_termination(self, impedance: Optional[int]):
+        """
+        Sets the impedance value for active termination
+
+        Available: 50, 100, 200, 400 [Ohm] or None;
+        None turns off active termination.
+
+        Args:
+            impedance (int): the impedance value to set
+        """
+        self._handle.setActiveTermination(impedance)
 
     def set_dtgc_attenuation(self, attenuation: Optional[int]):
         """
@@ -357,16 +429,24 @@ class Us4R(Device, Ultrasound):
     def get_data_description(self, upload_result, sequence, array_id):
         # Prepare data buffer and constant context metadata
         fcm = self._get_fcm(array_id, upload_result, sequence)
+        rx_offset = arrus.core.getRxOffset(array_id, upload_result)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
-            custom={"frame_channel_mapping": fcm}
+            custom={
+                "frame_channel_mapping": fcm,
+                "rx_offset": rx_offset
+            }
         )
 
     def get_data_description_updated_for_subsequence(self, array_id, upload_result, sequence):
         fcm = self._get_fcm(array_id, upload_result, sequence)
+        rx_offset = arrus.core.getRxOffset(array_id, upload_result)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
-            custom={"frame_channel_mapping": fcm}
+            custom={
+                "frame_channel_mapping": fcm,
+                "rx_offset": rx_offset
+            }
         )
 
     def set_stop_on_overflow(self, is_stop):

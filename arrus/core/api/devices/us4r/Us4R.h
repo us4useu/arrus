@@ -47,14 +47,20 @@ public:
     /**
      * Sets HV voltage.
      *
+     * The voltage is set for the TX amplitude 2 (rail 0).
+     *
      * @param voltage voltage to set [V]
      */
-    virtual void setVoltage(Voltage voltage) = 0;
+    virtual void setVoltage(unsigned char voltage) = 0;
 
     /**
      * Sets HV voltage.
-    *  The input vector describes what voltages should be set for each tx voltage level (rail).
-    *  voltages[0] is for the tx voltage level 0, voltage[1] is for tx voltage level 1 and so on.
+     * The input vector describes what voltages should be set for each tx voltage level (rail).
+     *
+     * voltages[0] are for the TX amplitude/state 1 (-/+), voltage[1] are for TX amplitude/state level 2 and so on.
+     *
+     * For the legacy systems (using e.g. the legacy HV256 or us4rPSC) this method expects a list of voltages
+     * {0, -/+ voltage}.
      *
      * @param voltages voltages to set [V]
      */
@@ -115,7 +121,7 @@ public:
      *
      * TGC curve can have up to 1022 samples.
      *
-     * @param tgcCurvePoints tgc curve points to set.
+     * @param tgcCurvePoints tgc curve points to set (gain [dB])
      * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
@@ -136,7 +142,7 @@ public:
      * NOTE: TGC curve can have up to 1022 samples.
      *
      * @param t sampling time, relative to the "sample 0"
-     * @param y values to apply at given sampling time
+     * @param y gain values to apply at given sampling time [dB]
      * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
@@ -150,6 +156,47 @@ public:
      * @return TGC time points at which TGC curve sample takes place
      */
     virtual std::vector<float> getTgcCurvePoints(float maxT) const  = 0;
+
+    /**
+     * Sets VCAT time points asynchronously.
+     *
+     * Setting empty vectors t and y turns off analog TGC. Setting non-empty vector turns off DTGC
+     * and turns on analog TGC.
+     *
+     * Vectors t and y should have exactly the same size. The input t and y values will be interpolated
+     * into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
+     * Linear interpolation will be performed, the TGC curve will be extrapolated with the first (left-side of the cure)
+     * and the last sample (right side of the curve).
+     *
+     * NOTE: the curve can have up to 1022 samples.
+     *
+     * @param t sampling time, relative to the "sample 0"
+     * @param y attenuation values to apply at given sampling time [dB]
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     */
+    virtual void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic)  = 0;
+
+    /**
+     * Equivalent to setVcat(curve, true).
+     */
+    virtual void setVcat(const std::vector<float> &tgcCurvePoints)  = 0;
+
+    /**
+     * Sets VCAT points asynchronously.
+     *
+     * Setting empty vector turns off analog TGC.
+     * Setting non-empty vector turns off DTGC and turns on analog TGC.
+     *
+     * The curve can have up to 1022 samples.
+     *
+     * @param tgcCurvePoints tgc curve points to set (gain [dB])
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     */
+    virtual void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic)  = 0;
 
     /**
      * Sets PGA gain.
@@ -280,8 +327,6 @@ public:
     /**
      * Enables LNA analog high-pass filter and sets a given corner frequency.
      *
-     * Available corner frequency values (Hz): 20'000, 50'000, 100'000.
-     *
      * @param frequency LNA high-pass filter corner frequency to set
      */
     virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
@@ -293,8 +338,6 @@ public:
 
     /**
      * Enables ADC digital high-pass filter and sets a given corner frequency.
-     *
-     * Available corner frequency values (Hz): 150'000, 300'000, 600'000, 1'200'000, 2'400'000.
      *
      * @param frequency ADC high-pass filter corner frequency to set
      */
@@ -331,7 +374,7 @@ public:
     virtual const char *getBackplaneRevision() = 0;
 
     std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
 
     virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
 
@@ -344,10 +387,14 @@ public:
     Probe* getProbe(Ordinal ordinal) override = 0;
 
     /**
-     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming FOR THE AMPLITUDE 2 / RAIL HV 0.
+     *
+     * **NOTE this method is intended to be used only for the probe health check! DO NOT USE THIS METHOD TO SET
+     * THE MAXIMUM TX PULSE LENGTH e.g. FOR THE IMAGING PURPOSES.**
+     *
      * std::nullopt means to use up to 32 TX cycles.
      *
-     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     * @param maxLength maximum pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
      */
     virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
 

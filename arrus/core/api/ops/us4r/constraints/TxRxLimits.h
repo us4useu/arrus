@@ -12,16 +12,22 @@ namespace arrus::ops::us4r {
  */
 class TxRxLimits {
 public:
-    TxRxLimits(TxLimits tx0, TxLimits tx1, RxLimits rx, const Interval<float> &pri) : tx0(std::move(tx0)), tx1(std::move(tx1)), rx(std::move(rx)), pri(pri) {}
+    TxRxLimits(TxLimits tx1, TxLimits tx2, RxLimits rx, const Interval<float> &pri) : tx1(std::move(tx1)), tx2(std::move(tx2)), rx(std::move(rx)), pri(pri) {}
 
-    const TxLimits &getTx0() const { return tx0; }
+    /**
+     * TX limits for HV rail amplitude 1, i.e. HVM/P 1.
+     */
     const TxLimits &getTx1() const { return tx1; }
+    /**
+     * TX limits for HV rail amplitude 2, i.e. HVM/P 0.
+     */
+    const TxLimits &getTx2() const { return tx2; }
     const RxLimits &getRx() const { return rx; }
     const Interval<float> &getPri() const { return pri; }
 
 private:
-    TxLimits tx0;
     TxLimits tx1;
+    TxLimits tx2;
     RxLimits rx;
     Interval<float> pri;
 };
