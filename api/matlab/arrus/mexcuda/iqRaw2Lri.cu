@@ -1,5 +1,5 @@
 #define M_PI 3.14159265358979
-#define INF 1.f/0.f
+#define INF (1.f/0.f)
 #include "mex.h"
 #include "gpu/mxGPUArray.h"
 #include <string>
