@@ -13,6 +13,12 @@ Release notes
 0.11.x
 -----
 
+0.11.1
+
+- Python API:
+
+  - Fixed image reconstruction operators for the SimpleTxRxSequences (PwiSequence, StaSequence, etc.) with the start sample > 0 #ARRUS-451.
+
 0.11.0
 
 - core (C++):
