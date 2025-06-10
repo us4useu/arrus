@@ -373,6 +373,11 @@ public:
      */
     virtual const char *getBackplaneRevision() = 0;
 
+    /**
+     * Returns firmware version number of the backplane (if available).
+     */
+    virtual const char *getBackplaneFirmwareVersion() = 0;
+
     std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
     setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
 
