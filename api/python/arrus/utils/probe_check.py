@@ -350,15 +350,14 @@ class MaxHVPSCurrentExtractor(ProbeElementFeatureExtractor):
         current = measurement[:, :, self.polarity, self.level, 1, n_skipped_samples:]
         current = np.max(current, axis=-1)  # (n repeats, ntx)
 
-        total_median = np.median(current, axis=-1).reshape(-1, 1)  # (n repeats, 1)
-
         # Subtract hardware specific bias.
         for oem in range(max_oem_nr + 1):
             bias = np.median(current[:, us4oems == oem])
             current[:, us4oems == oem] -= bias
-
-        current = current + total_median
+    
         current = np.median(current, axis=0)  # (n tx)
+        # Make all the values non-zero.
+        current = current - np.min(current)
         return current
 
 
