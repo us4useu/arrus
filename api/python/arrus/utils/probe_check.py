@@ -354,6 +354,7 @@ class MaxHVPSCurrentExtractor(ProbeElementFeatureExtractor):
         for oem in range(max_oem_nr + 1):
             bias = np.median(current[:, us4oems == oem])
             current[:, us4oems == oem] -= bias
+    
         current = np.median(current, axis=0)  # (n tx)
         # Make all the values non-zero.
         current = current - np.min(current)
@@ -1031,6 +1032,7 @@ class ProbeHealthVerifier:
                 work_mode="MANUAL_OP",
             )
             buffer, metadata = sess.upload(scheme)
+            metadata = metadata[0]
             fcm = metadata.data_description.custom["frame_channel_mapping"]
             oem_mapping = fcm.us4oems  # TX/RX -> OEM mapping
             buffer.append_on_new_data_callback(lambda element: element.release())
@@ -1066,9 +1068,5 @@ class ProbeHealthVerifier:
             measurements = np.stack(measurements)
             measurements_shape = (n, n_elements) + measurements.shape[1:]
             measurements = measurements.reshape(measurements_shape)
-            # polarity == 0 => minus
-            # unit == 1 => current
-            hvm0_current = measurements[:, :, 0, 0, 1, :]
-            hvm0_current = hvm0_current[:, :, :, np.newaxis]  # (n repeats, ntx, nsamples, nrx)
         return measurements, metadata, masked_elements, {"oem_nrs": np.stack(oem_nrs)}
 
