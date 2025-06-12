@@ -96,7 +96,7 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(HVModelId hvModel, b
     }
     // Log voltages measured by us4oemplus only if hvps is used
     // Log voltages measured by us4oem for any hv supply
-    else if((hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps") || (!isOEMPlus)) {
+   if((hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps") || (!isOEMPlus)) {
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
             voltage = this->getMeasuredHVPVoltage(i);
             voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage,
