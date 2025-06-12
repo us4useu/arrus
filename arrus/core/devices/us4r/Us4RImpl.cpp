@@ -82,19 +82,21 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     }
 }
 
-std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256, bool isHVPS) {
+std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(HVModelId hvModel, bool isOEMPlus) {
     std::vector<VoltageLogbook> voltages;
     float voltage;
     // Do not log the voltage measured by US4RPSC, as it may not be correct
     // for this hardware.
-    if (isHV256) {
+    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256") {
         //Measure voltages on HV
         voltage = this->getMeasuredPVoltage();
         voltages.push_back(VoltageLogbook{std::string("HVP on HV supply"), voltage, VoltageLogbook::Polarity::PLUS});
         voltage = this->getMeasuredMVoltage();
         voltages.push_back(VoltageLogbook{std::string("HVM on HV supply"), voltage, VoltageLogbook::Polarity::MINUS});
     }
-    else if(isHVPS) {
+    // Log voltages measured by us4oemplus only if hvps is used
+    // Log voltages measured by us4oem for any hv supply
+    else if((hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps") || (!isOEMPlus)) {
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
             voltage = this->getMeasuredHVPVoltage(i);
             voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage,
@@ -107,9 +109,9 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256, bool i
     return voltages;
 }
 
-void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isHV256, bool isHVPS) {
+void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isOEMPlus) {
     
-    if(!isHV256 && !isHVPS) {
+    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc") {
         this->logger->log(LogSeverity::INFO, format("US4RPSC does not support voltage verification"));
         return;
     }
@@ -118,7 +120,7 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
     bool fail = true;
     while (retries-- && fail) {
         fail = false;
-        voltages = logVoltages(isHV256, isHVPS);
+        voltages = logVoltages(hvModel, isOEMPlus);
         for (const auto &logbook: voltages) {
             const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
             if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
@@ -332,9 +334,12 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
+
+    bool isOEMPlus = false;
+    if(us4oems[0]->getOemVersion() >= 2) { isOEMPlus = true; }
     
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
-    checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, isHV256, isHVPS);
+    checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
 }
 
 unsigned char Us4RImpl::getVoltage() {
