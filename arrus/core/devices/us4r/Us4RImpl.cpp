@@ -233,28 +233,35 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
         }
     }
 
-    std::vector<Voltage> minVoltages(N_RAILS);
-    std::vector<Voltage> maxVoltages(N_RAILS);
+    // Verify consistency of the probe and us4OEM voltage limits, and determine the minimum min, max voltage ranges.
+    std::vector<Voltage> minVoltages(N_RAILS, 0);
+    std::vector<Voltage> maxVoltages(N_RAILS, 0);
     for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
+        // Determine min, max only if the given amplitude is available (otherwise min, max is 0, 0).
+        if(setContains(availableAmplitudes, amplitude)) {
+            const auto &min = voltageMin.at(amplitude-1);
+            const auto &max = voltageMax.at(amplitude-1);
 
-        const auto &min = voltageMin.at(amplitude-1);
-        const auto &max = voltageMax.at(amplitude-1);
-
-        auto minVoltage = *std::max_element(std::begin(min), std::end(min));
-        auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
-        if(minVoltage > maxVoltage) {
-            throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
-                                               "the actual minimum voltage {} is greater than the maximum: {}.",
-                                               minVoltage, maxVoltage));
+            auto minVoltage = *std::max_element(std::begin(min), std::end(min));
+            auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
+            if(minVoltage > maxVoltage) {
+                throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
+                                                   "the actual minimum voltage {} is greater than the maximum: {}.",
+                                                   minVoltage, maxVoltage));
+            }
+            minVoltages.at(amplitude-1) = minVoltage;
+            maxVoltages.at(amplitude-1) = maxVoltage;
         }
-        minVoltages.at(amplitude-1) = minVoltage;
-        maxVoltages.at(amplitude-1) = maxVoltage;
     }
 
     // Validate HV voltages.
     for(size_t i = 0; i < voltages.size(); ++i) {
         const auto& voltage = voltages[i];
         if(voltage.has_value()) {
+            // Make sure we are not verifying amplitude for an unavailable rail/level.
+            ARRUS_REQUIRES_TRUE(setContains(availableAmplitudes, int(i+1)),
+                                format("Verifying unavailable voltage amplitude level: {}!", i+1));
+
             auto voltageMinus = voltage->getVoltageMinus();
             auto voltagePlus = voltage->getVoltagePlus();
 
