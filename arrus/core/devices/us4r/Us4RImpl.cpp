@@ -111,8 +111,8 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(HVModelId hvModel, b
 
 void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isOEMPlus) {
     
-    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc") {
-        this->logger->log(LogSeverity::INFO, format("US4RPSC does not support voltage verification"));
+    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc" && isOEMPlus) {
+        this->logger->log(LogSeverity::INFO, format("OVoltage verification with US4RPSC is not supported with OEM+"));
         return;
     }
 
