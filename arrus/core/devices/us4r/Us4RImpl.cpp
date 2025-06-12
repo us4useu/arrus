@@ -82,22 +82,21 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     }
 }
 
-std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
+std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(HVModelId hvModel, bool isOEMPlus) {
     std::vector<VoltageLogbook> voltages;
     float voltage;
     // Do not log the voltage measured by US4RPSC, as it may not be correct
     // for this hardware.
-    if (isHV256) {
+    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256") {
         //Measure voltages on HV
         voltage = this->getMeasuredPVoltage();
         voltages.push_back(VoltageLogbook{std::string("HVP on HV supply"), voltage, VoltageLogbook::Polarity::PLUS});
         voltage = this->getMeasuredMVoltage();
         voltages.push_back(VoltageLogbook{std::string("HVM on HV supply"), voltage, VoltageLogbook::Polarity::MINUS});
     }
-
-    //Verify measured voltages on OEMs
-    auto isUs4OEMPlus = this->isUs4OEMPlus();
-    if(!isUs4OEMPlus || (isUs4OEMPlus && !isHV256)) {
+    // Log voltages measured by us4oemplus only if hvps is used
+    // Log voltages measured by us4oem for any hv supply
+   if((hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps") || (!isOEMPlus)) {
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
             voltage = this->getMeasuredHVPVoltage(i);
             voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage,
@@ -110,12 +109,18 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
     return voltages;
 }
 
-void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isHV256) {
+void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isOEMPlus) {
+
+    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc" && isOEMPlus) {
+        this->logger->log(LogSeverity::INFO, format("Voltage verification with US4RPSC is not supported with OEM+"));
+        return;
+    }
+
     std::vector<VoltageLogbook> voltages;
     bool fail = true;
     while (retries-- && fail) {
         fail = false;
-        voltages = logVoltages(isHV256);
+        voltages = logVoltages(hvModel, isOEMPlus);
         for (const auto &logbook: voltages) {
             const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
             if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
@@ -228,28 +233,35 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
         }
     }
 
-    std::vector<Voltage> minVoltages(N_RAILS);
-    std::vector<Voltage> maxVoltages(N_RAILS);
+    // Verify consistency of the probe and us4OEM voltage limits, and determine the minimum min, max voltage ranges.
+    std::vector<Voltage> minVoltages(N_RAILS, 0);
+    std::vector<Voltage> maxVoltages(N_RAILS, 0);
     for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
+        // Determine min, max only if the given amplitude is available (otherwise min, max is 0, 0).
+        if(setContains(availableAmplitudes, amplitude)) {
+            const auto &min = voltageMin.at(amplitude-1);
+            const auto &max = voltageMax.at(amplitude-1);
 
-        const auto &min = voltageMin.at(amplitude-1);
-        const auto &max = voltageMax.at(amplitude-1);
-
-        auto minVoltage = *std::max_element(std::begin(min), std::end(min));
-        auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
-        if(minVoltage > maxVoltage) {
-            throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
-                                               "the actual minimum voltage {} is greater than the maximum: {}.",
-                                               minVoltage, maxVoltage));
+            auto minVoltage = *std::max_element(std::begin(min), std::end(min));
+            auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
+            if(minVoltage > maxVoltage) {
+                throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
+                                                   "the actual minimum voltage {} is greater than the maximum: {}.",
+                                                   minVoltage, maxVoltage));
+            }
+            minVoltages.at(amplitude-1) = minVoltage;
+            maxVoltages.at(amplitude-1) = maxVoltage;
         }
-        minVoltages.at(amplitude-1) = minVoltage;
-        maxVoltages.at(amplitude-1) = maxVoltage;
     }
 
     // Validate HV voltages.
     for(size_t i = 0; i < voltages.size(); ++i) {
         const auto& voltage = voltages[i];
         if(voltage.has_value()) {
+            // Make sure we are not verifying amplitude for an unavailable rail/level.
+            ARRUS_REQUIRES_TRUE(setContains(availableAmplitudes, int(i+1)),
+                                format("Verifying unavailable voltage amplitude level: {}!", i+1));
+
             auto voltageMinus = voltage->getVoltageMinus();
             auto voltagePlus = voltage->getVoltagePlus();
 
@@ -330,8 +342,11 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
 
+    bool isOEMPlus = false;
+    if(us4oems[0]->getOemVersion() >= 2) { isOEMPlus = true; }
+
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
-    checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, isHV256);
+    checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
 }
 
 unsigned char Us4RImpl::getVoltage() {
@@ -613,7 +628,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<FrameChannelMappingImpl::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
-    float rxTimeOffset;
+    float rxTimeOffset = 0.0f;
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
         // TODO Consider implementing dynamic change of delay profiles

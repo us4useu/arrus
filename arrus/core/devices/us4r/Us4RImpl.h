@@ -118,7 +118,7 @@ public:
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
-    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isUS4PSC);
+    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isHVPS);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
@@ -178,9 +178,7 @@ private:
         float voltage;
         Polarity polarity;
     };
-
-
-    std::vector<VoltageLogbook> logVoltages(bool isHV256);
+    std::vector<VoltageLogbook> logVoltages(HVModelId hvModel, bool isOEMPlus);
 
     void stopDevice();
 
