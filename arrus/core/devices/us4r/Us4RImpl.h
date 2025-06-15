@@ -139,6 +139,8 @@ public:
     void unregisterOutputBuffer(bool cleanSequencer);
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
+    const char *getBackplaneFirmwareVersion() override;
+
     void setParameters(const Parameters &parameters) override;
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &periods) override;

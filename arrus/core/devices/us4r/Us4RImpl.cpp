@@ -1188,6 +1188,13 @@ const char *Us4RImpl::getBackplaneRevision() {
     return this->digitalBackplane->get()->getRevisionNumber();
 }
 
+const char *Us4RImpl::getBackplaneFirmwareVersion() {
+    if (!this->digitalBackplane.has_value()) {
+        throw arrus::IllegalArgumentException("No backplane defined.");
+    }
+    return this->digitalBackplane->get()->getFirmwareVersion();
+}
+
 void Us4RImpl::setParameters(const Parameters &params) {
     for (auto &item : params.items()) {
         auto &key = item.first;

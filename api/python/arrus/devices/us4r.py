@@ -62,6 +62,12 @@ class Backplane:
         """
         return self._us4r._handle.getBackplaneRevision()
 
+    def get_firmware_version(self) -> str:
+        """
+        Returns firmware version of the digital backplane.
+        """
+        return self._us4r._handle.getBackplaneFirmwareVersion()
+
 
 class Us4R(Device, Ultrasound):
     """

@@ -10,15 +10,22 @@ public:
     using Handle = std::unique_ptr<DigitalBackplane>;
 
     explicit DigitalBackplane(std::unique_ptr<IDBAR> dbar)
-        : dbar(std::move(dbar)), serialNumber([this](){return this->dbar->GetSerialNumber();}),
-          revision([this](){return this->dbar->GetRevisionNumber();})
+        : dbar(std::move(dbar)),
+          serialNumber([this](){return this->dbar->GetSerialNumber();}),
+          revision([this](){return this->dbar->GetRevisionNumber();}),
+          firmwareVersion([this]() {return this->dbar->GetFirmwareVersionString();})
     {}
 
     const char* getSerialNumber() {
         return serialNumber.get().c_str();
     }
+
     const char* getRevisionNumber() {
         return revision.get().c_str();
+    }
+
+    const char* getFirmwareVersion() {
+        return firmwareVersion.get().c_str();
     }
 
     void enableExternalTrigger() {
@@ -40,6 +47,7 @@ private:
     std::unique_ptr<IDBAR> dbar;
     arrus::Cached<std::string> serialNumber;
     arrus::Cached<std::string> revision;
+    arrus::Cached<std::string> firmwareVersion;
 };
 }
 
