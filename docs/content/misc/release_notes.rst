@@ -8,6 +8,7 @@ Release notes
 
 - core (C++):
 
+    - **Fixed 1.5 cycle TX waveform setting bug**, #M_OEM-176.
     - Fixed US4RPSC voltage check skip with us4OEM+, #M_US4R-12.
     - Fixed voltage limits verification for the legacy us4OEM, #M_US4R-25.
     - Set timeout on OEM watchdog disable, #M_OEM-157.
