@@ -13,6 +13,22 @@ Release notes
 0.11.x
 -----
 
+0.11.1
+
+- core (C++):
+
+    - Fixed US4RPSC voltage check skip with us4OEM+, #M_US4R-12.
+    - Fixed voltage limits verification for the legacy us4OEM, #M_US4R-25.
+    - Set timeout on OEM watchdog disable, #M_OEM-157.
+    - Added support for DBARLite-PCIe firmware 1.2.0.0, #US4R-587.
+
+- Python API:
+
+    - Fixed image reconstruction operators for the SimpleTxRxSequences (PwiSequence, StaSequence, etc.) with the start sample > 0, #ARRUS-451.
+    - Exposed title property of the 2D ARRUS GUI, #ARRUS-452.
+    - Fixed us4OEM HVPS measurements and HVPS-based probe check, #ARRUS-454.
+
+
 0.11.0
 
 - core (C++):

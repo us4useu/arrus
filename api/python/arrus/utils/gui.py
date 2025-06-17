@@ -111,6 +111,9 @@ class Display2D:
         if self.window_size is not None:
             self._fig.set_size_inches(self.window_size)
 
+        if self.title is not None:
+            self._fig.suptitle(self.title)
+
         self.all_canvases = []
         self.all_layers = []
 
