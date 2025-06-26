@@ -13,6 +13,7 @@
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
 #include "arrus/common/cache.h"
+#include "arrus/core/common/collections.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
@@ -97,7 +98,7 @@ public:
     void setAfe(uint8_t address, uint16_t value) override;
     void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc);
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                     size_t nCoefficients) override;
+                     size_t nCoefficients, float gain) override;
     void disableAfeDemod() override { ius4oem->AfeDemodDisable(); }
     float getCurrentSamplingFrequency() const override;
     float getFPGAWallclock() override;
@@ -151,7 +152,8 @@ private:
 
     // IUs4OEM AFE setters.
     void enableAfeDemod();
-    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq);
+    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq,
+                           float gain);
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);
     void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
@@ -223,6 +225,11 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
+    /** DDC extra gain to apply, Currently, simply translates to the boolean value 'gain is off/on'.*/
+    const ValueMap<float, bool> DDC_GAIN_MAP{{
+        {0, false},
+        {12, true}
+    }};
 };
 
 }// namespace arrus::devices

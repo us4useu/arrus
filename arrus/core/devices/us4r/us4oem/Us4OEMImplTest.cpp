@@ -655,6 +655,85 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
 
     EXPECT_THROW(upload(seq), IllegalArgumentException);
 }
+
+// DDC UNIT TESTS
+
+class Us4OEMDigitalDownConversionTest : public Us4OEMImplTest {
+protected:
+
+    void SetUp() override {
+        Us4OEMImplTest::SetUp();
+
+        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
+        us4oem = std::make_unique<Us4OEMImpl>(
+            DeviceId(DeviceType::Us4OEM, 0),
+            std::move(ius4oem),
+            channelMapping, defaultRxSettings,
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            defaultDescriptor,
+            false,
+            false
+        );
+    }
+};
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsIncorrectDDCGain) {
+    DigitalDownConversion ddc(
+        // 13 dB gain is not accepted by us4OEM
+        1e6f, getNTimes(1.0f, 32), 4.0f, 13.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsTooLargeDecimationFactor) {
+    DigitalDownConversion ddc(
+        1e6f, getNTimes(1.0f, 32), 64.0f, 12.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsNegativeDecimationFactor) {
+    DigitalDownConversion ddc(
+        1e6f, getNTimes(1.0f, 32), -1.0f, 12.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsIncorrectNumberOfCoeffs) {
+    DigitalDownConversion ddc(
+        1e6f, getNTimes(1.0f, 33), 4.0f, 12.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParameters) {
+    const auto coeffs = getNTimes(1.0f, 32);
+    DigitalDownConversion ddc(
+        1e6f, coeffs, 4.0f, 12.0f
+    );
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable());
+    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, coeffs.data(), coeffs.size(), 1e6, true));
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, TurnsOffsDDCCorrectly) {
+    const auto coeffs = getNTimes(1.0f, 32);
+    DigitalDownConversion ddc(
+        1e6f, coeffs, 4.0f, 12.0f
+    );
+    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable());
+    us4oem->setAfeDemod(std::nullopt);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParametersTurnsOffGainFor0dB) {
+    const auto coeffs = getNTimes(1.0f, 32);
+    DigitalDownConversion ddc(
+        1e6f, coeffs, 4.0f, 0.0f
+    );
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable());
+    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, coeffs.data(), coeffs.size(), 1e6, false);
+    us4oem->setAfeDemod(std::nullopt);
+}
+
 }
 
 int main(int argc, char **argv) {

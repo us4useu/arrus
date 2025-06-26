@@ -14,6 +14,8 @@
 #include <boost/range/combine.hpp>
 
 #include "arrus/core/api/arrus.h"
+#include "arrus/core/api/common/exceptions.h"
+#include "arrus/common/format.h"
 
 namespace arrus {
 
@@ -255,6 +257,46 @@ bool areConsecutive(const std::vector<T> values) {
     }
     return true;
 }
+
+
+/**
+ * Maps a given value (e.g. float or 32) to some key value like the AFE register value.
+ * Currently, it's simply an unordered_map wrapper with a couple of utility functions like the one for getting
+ * the set of available values.
+ */
+template<typename V, typename K>
+class ValueMap {
+public:
+    using ValueType = V;
+
+    ValueMap(const std::initializer_list<std::pair<V, K>> &values) {
+        for(const auto &[v, k]: values) {
+            valueMap.emplace(ValueType(v), k);
+        }
+    }
+
+    K get(const ValueType value) const {
+        try {
+            return valueMap.at(value);
+        } catch(const std::out_of_range& e) {
+            throw IllegalArgumentException(format("Invalid value: '{}' should be one of: '{}'",
+                                                  value, toString(getAvailableValues())));
+        }
+    }
+
+    /**
+     * Returns a sorted set of available values.
+     */
+    std::unordered_set<V> getAvailableValues() const {
+        std::unordered_set<ValueType> values;
+        std::transform(std::begin(valueMap), std::end(valueMap), std::inserter(values, std::end(values)),
+                       [](auto &val) { return val.first; });
+        return values;
+    }
+
+private:
+    std::unordered_map<ValueType, K> valueMap;
+};
 
 }
 
