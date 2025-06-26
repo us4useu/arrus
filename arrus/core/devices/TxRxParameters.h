@@ -5,6 +5,7 @@
 #include <ostream>
 #include <utility>
 
+#include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/api/common/Tuple.h"

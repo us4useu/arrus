@@ -97,7 +97,9 @@ public:
         std::unordered_set<devices::Ordinal> p;
         auto toRxProbe = [](const TxRx &op) { return op.getRx().getPlacement().getOrdinal(); };
         std::transform(std::begin(txrxs), std::end(txrxs), std::inserter(p, std::begin(p)), toRxProbe);
-        ARRUS_REQUIRES_TRUE_E(p.size() == 1, IllegalStateException("There should be exactly one RX probe in the sequence."));
+        if(p.size() != 1) {
+            throw IllegalStateException("There should be exactly one RX probe in the sequence.");
+        }
         devices::Ordinal ordinal = *std::begin(p);
         return devices::DeviceId{devices::DeviceType::Probe, ordinal};
     }
@@ -109,7 +111,9 @@ public:
         std::unordered_set<devices::Ordinal> p;
         auto toTxProbe = [](const TxRx &op) { return op.getTx().getPlacement().getOrdinal(); };
         std::transform(std::begin(txrxs), std::end(txrxs), std::inserter(p, std::begin(p)), toTxProbe);
-        ARRUS_REQUIRES_TRUE_E(p.size() == 1, "There should be exactly one TX probe in the sequence.");
+        if(p.size() != 1) {
+            throw IllegalStateException("There should be exactly one TX probe in the sequence.");
+        }
         devices::Ordinal ordinal = *std::begin(p);
         return devices::DeviceId{devices::DeviceType::Probe, ordinal};
     }

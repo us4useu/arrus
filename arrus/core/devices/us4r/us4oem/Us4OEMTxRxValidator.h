@@ -23,8 +23,8 @@ namespace arrus::devices {
         const auto startSample = txRxs.at(0).getRxSampleRange().start();
         const auto& sequenceLimits = descriptor.getTxRxSequenceLimits();
         const auto& txRxLimits = sequenceLimits.getTxRx();
-        const auto& txLimits0 = txRxLimits.getTx0();
         const auto& txLimits1 = txRxLimits.getTx1();
+        const auto& txLimits2 = txRxLimits.getTx2();
         const auto& rxLimits = txRxLimits.getRx();
 
         for (size_t firing = 0; firing < txRxs.size(); ++firing) {
@@ -34,19 +34,24 @@ namespace arrus::devices {
                 // Tx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(descriptor.getNTxChannels()), firingStr);
-                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits0.getDelay(), firingStr);
                 ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits1.getDelay(), firingStr);
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getTxPulse().getAmplitudeLevel(),
-                                                  static_cast<ops::us4r::Pulse::AmplitudeLevel>(0),
+                ARRUS_VALIDATOR_EXPECT_ALL_IN_INTERVAL_VM(op.getTxDelays(), txLimits2.getDelay(), firingStr);
+                const auto &pulse = op.getTxPulse();
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(pulse.getAmplitudeLevel(),
                                                   static_cast<ops::us4r::Pulse::AmplitudeLevel>(1),
+                                                  static_cast<ops::us4r::Pulse::AmplitudeLevel>(2),
                                                   firingStr);
 
-                // Tx - pulse
-                const auto &pulse = op.getTxPulse();
-                if(pulse.getAmplitudeLevel() == 0) { validateTx(pulse, txLimits0, firingStr); }
-                else if(pulse.getAmplitudeLevel() == 1) { validateTx(pulse, txLimits1, firingStr); }
-                else { throw(IllegalArgumentException("Invalid amplitude level")); }
-            
+                switch(pulse.getAmplitudeLevel()) {
+                case 1:
+                    validateTx(pulse, txLimits1, firingStr);
+                    break;
+                case 2:
+                    validateTx(pulse, txLimits2, firingStr);
+                    break;
+                default:
+                    throw IllegalArgumentException(format("Unsupported amplitude level: {}", pulse.getAmplitudeLevel()));
+                }
                 // Rx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(descriptor.getNAddressableRxChannels()), firingStr);
                 size_t numberOfActiveRxChannels =

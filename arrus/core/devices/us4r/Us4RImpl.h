@@ -117,7 +117,7 @@ public:
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
-    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isUS4PSC);
+    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isHVPS);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
@@ -154,6 +154,7 @@ public:
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
+    std::string getDescription() const override;
 
 private:
     struct VoltageLogbook {
@@ -163,7 +164,7 @@ private:
         float voltage;
         Polarity polarity;
     };
-    std::vector<VoltageLogbook> logVoltages(bool isHV256);
+    std::vector<VoltageLogbook> logVoltages(HVModelId hvModel, bool isOEMPlus);
 
     void stopDevice();
 
@@ -179,8 +180,11 @@ private:
                     const std::vector<framework::NdArray> &txDelayProfiles);
     us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
     std::vector<us4r::TxRxParametersSequence>
-    convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> &sequences,
-                               const TxTimeoutRegister &timeoutRegister);
+    convertToInternalSequences(
+        const std::vector<ops::us4r::TxRxSequence> &sequences,
+        const TxTimeoutRegister &timeoutRegister,
+        const std::vector<std::vector<float>> &rxDelays
+    );
 
     /**
      * Applies a given function on all functions.
@@ -207,9 +211,8 @@ private:
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
-    void registerPulserIRQCallback();
-    void handleEvents();
     void handlePulserInterrupt();
+    void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
 
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
                            bool cleanupSequencerTransfers = false);
@@ -246,6 +249,7 @@ private:
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
     std::optional<float> currentRxTimeOffset;
+    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
 };
 
 }// namespace arrus::devices

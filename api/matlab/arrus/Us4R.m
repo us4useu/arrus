@@ -73,6 +73,13 @@ classdef Us4R < handle
             obj.sys.pitch = probe.pitch;
             obj.sys.freqRange = double(probe.txFrequencyRange);
             obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
+            if ~isempty(probe.lens)
+                obj.sys.lensSize = probe.lens.thickness;
+                obj.sys.lensSos = probe.lens.speedOfSound;
+            else
+                obj.sys.lensSize = 0;
+                obj.sys.lensSos = nan;
+            end
 
             % Position (pos,x,z) and orientation (ang) of each probe element
             obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
@@ -998,7 +1005,10 @@ classdef Us4R < handle
             
             obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
             obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
-
+            if obj.sys.lensSize ~= 0
+                obj.seq.initDel = obj.seq.initDel + 2*obj.sys.lensSize/obj.sys.lensSos;
+            end
+            
         end
 
         function setRecParams(obj,varargin)

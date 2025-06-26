@@ -84,7 +84,7 @@ public:
                                                            const std::optional<Us4RTxRxLimits> &limits) {
         auto descriptor = Us4OEMDescriptorFactory::getDescriptor(ius4oem, ordinal == 0);
         if(limits.has_value()) {
-            // Update the defualt limits with the limits defined by the user.
+            // Update the default limits with the limits defined by the user.
             ops::us4r::TxRxSequenceLimitsBuilder sequenceLimitsBuilder{descriptor.getTxRxSequenceLimits()};
             ops::us4r::TxLimitsBuilder txLimitsBuilder{descriptor.getTxRxSequenceLimits().getTxRx().getTx1()};
             if(limits->getPulseLength().has_value()) {
@@ -102,7 +102,14 @@ public:
             }
             auto newTxLimits = txLimitsBuilder.build();
             auto currentRxLimits = descriptor.getTxRxSequenceLimits().getTxRx().getRx();
-            sequenceLimitsBuilder.setTxRxLimits(descriptor.getTxRxSequenceLimits().getTxRx().getTx0(), newTxLimits, currentRxLimits, newPri);
+            sequenceLimitsBuilder.setTxRxLimits(
+                // TX amplitude 1 / HV rail 1
+                newTxLimits,
+                // TX amplitude 2 / HV rail 0
+                descriptor.getTxRxSequenceLimits().getTxRx().getTx2(),
+                currentRxLimits,
+                newPri
+            );
             auto txRxSequenceLimits = sequenceLimitsBuilder.build();
             auto newDescriptor = Us4OEMDescriptorBuilder{descriptor}
                                      .setTxRxSequenceLimits(txRxSequenceLimits)

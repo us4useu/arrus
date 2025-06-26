@@ -35,9 +35,9 @@ class TxRxSequenceLimitsBuilder {
 public:
     explicit TxRxSequenceLimitsBuilder(TxRxSequenceLimits limits): limits(std::move(limits)) {}
 
-    TxRxSequenceLimitsBuilder& setTxRxLimits(const TxLimits &txLimits0, const TxLimits &txLimits1, const RxLimits &rxLimits,
+    TxRxSequenceLimitsBuilder& setTxRxLimits(const TxLimits &txLimits1, const TxLimits &txLimits2, const RxLimits &rxLimits,
                                           const Interval<float> &pri) {
-        limits->txrx = TxRxLimits{txLimits0, txLimits1, rxLimits, pri};
+        limits->txrx = TxRxLimits{txLimits1, txLimits2, rxLimits, pri};
         return *this;
     }
 

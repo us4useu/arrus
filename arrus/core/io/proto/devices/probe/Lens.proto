@@ -1,0 +1,11 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+message Lens {
+  double thickness = 1;
+  double speed_of_sound = 2;
+  oneof focus_ {
+    double focus = 3;
+  }
+}

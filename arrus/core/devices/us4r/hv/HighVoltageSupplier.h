@@ -7,6 +7,7 @@
 #include <ihv.h>
 #include <us4rExceptions.h>
 
+#include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/us4r/HVModelId.h"
@@ -24,13 +25,12 @@ public:
 
     HighVoltageSupplier(const DeviceId &id, HVModelId modelId);
 
-    void setVoltage(const std::vector<HVVoltage> &voltages) {
-        std::vector<IHVVoltage> us4RVoltages;
-        std::transform(std::begin(voltages), std::end(voltages), std::back_insert_iterator(us4RVoltages),
-                       [](const HVVoltage &v) { return IHVVoltage(v.getVoltageMinus(), v.getVoltagePlus()); });
+    void setVoltage(const std::vector<IHVVoltage> &voltages) {
+        ARRUS_REQUIRES_TRUE(voltages.size() == 2 || voltages.size() == 1,
+                            "The vector of voltages should have one or two values!");
         try {
             getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(us4RVoltages);
+            getIHV()->SetHVVoltage(voltages);
         } catch (const ::arius::ValidationException &) {
             // Disable HV and Propage validation errors.
             try {
@@ -40,7 +40,7 @@ public:
             }
             throw;
         } catch (const ::arius::AssertionException &) {
-            // Disable HV and Propage validation errors.
+            // Disable HV and propagate validation errors.
             try {
                 getIHV()->DisableHV();
             } catch( const std::exception &ee) {
@@ -53,14 +53,26 @@ public:
                                         "message: '{}', trying once more.",
                                         e.what()));
             getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(us4RVoltages);
+            getIHV()->SetHVVoltage(voltages);
         }
     }
 
+    /**
+     * Returns the default measured voltage.
+     * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
+     */
     unsigned char getVoltage() { return getIHV()->GetHVVoltage(); }
 
+    /**
+     * Returns the default measured voltage.
+     * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
+     */
     float getMeasuredPVoltage() { return getIHV()->GetMeasuredHVPVoltage(); }
 
+    /**
+     * Returns the default measured voltage.
+     * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
+     */
     float getMeasuredMVoltage() { return getIHV()->GetMeasuredHVMVoltage(); }
 
     void disable() {

@@ -87,7 +87,7 @@ TEST_F (Us4OEMTxRxValidatorTest, PreventsInvalidNumberOfTxDelays) {
 }
 
 TEST_F (Us4OEMTxRxValidatorTest, PreventsTooLongTxDelay) {
-    float invalidTxDelay = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx0().getDelay().end();
+    float invalidTxDelay = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx2().getDelay().end();
     invalidTxDelay += 1e-6f;
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
@@ -101,7 +101,7 @@ TEST_F (Us4OEMTxRxValidatorTest, PreventsTooLongTxDelay) {
 }
 
 TEST_F (Us4OEMTxRxValidatorTest, PreventsTooShortOrNegativeTxDelay) {
-    float invalidTxDelay = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx0().getDelay().start();
+    float invalidTxDelay = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx2().getDelay().start();
     invalidTxDelay -= 1e-6f;
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
@@ -132,7 +132,7 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsInvalidAmplitudeLevel) {
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
-            (x.pulse = Pulse(2e6, 2.0f, false, 2))
+            (x.pulse = Pulse(2e6, 2.0f, false, 0))
                 )
             .get()
     };
@@ -176,7 +176,7 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsToLongPulse) {
 }
 
 TEST_F(Us4OEMTxRxValidatorTest, PreventsTooHighFrequency) {
-    const auto maxFreq = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx0().getFrequency().end();
+    const auto maxFreq = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx2().getFrequency().end();
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -189,7 +189,7 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsTooHighFrequency) {
 
 }
 TEST_F(Us4OEMTxRxValidatorTest, PreventsTooLowFrequency) {
-    const auto minFreq = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx0().getFrequency().start();
+    const auto minFreq = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx2().getFrequency().start();
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -202,7 +202,7 @@ TEST_F(Us4OEMTxRxValidatorTest, PreventsTooLowFrequency) {
 }
 
 TEST_F(Us4OEMTxRxValidatorTest, PreventsTooLongPulse) {
-    const auto maxCycles = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx0().getPulseCycles().end();
+    const auto maxCycles = DEFAULT_DESCRIPTOR.getTxRxSequenceLimits().getTxRx().getTx2().getPulseCycles().end();
     const float maxNCycles = maxCycles;
     std::vector<TxRxParameters> txrxs = {
         ARRUS_STRUCT_INIT_LIST(

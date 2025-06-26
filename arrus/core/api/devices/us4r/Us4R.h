@@ -47,14 +47,20 @@ public:
     /**
      * Sets HV voltage.
      *
+     * The voltage is set for the TX amplitude 2 (rail 0).
+     *
      * @param voltage voltage to set [V]
      */
-    virtual void setVoltage(Voltage voltage) = 0;
+    virtual void setVoltage(unsigned char voltage) = 0;
 
     /**
      * Sets HV voltage.
-    *  The input vector describes what voltages should be set for each tx voltage level (rail).
-    *  voltages[0] is for the tx voltage level 0, voltage[1] is for tx voltage level 1 and so on.
+     * The input vector describes what voltages should be set for each tx voltage level (rail).
+     *
+     * voltages[0] are for the TX amplitude/state 1 (-/+), voltage[1] are for TX amplitude/state level 2 and so on.
+     *
+     * For the legacy systems (using e.g. the legacy HV256 or us4rPSC) this method expects a list of voltages
+     * {0, -/+ voltage}.
      *
      * @param voltages voltages to set [V]
      */
@@ -335,7 +341,7 @@ public:
      * Sets maximum pulse length that can be set during the TX/RX sequence programming.
      * std::nullopt means to use up to 32 TX cycles.
      *
-     * @param maxLength maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
+     * @param maxLength maximum pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
      */
     virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
 

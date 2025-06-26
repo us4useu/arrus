@@ -9,6 +9,8 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
+#include "arrus/core/api/devices/probe/Lens.h"
+#include "arrus/core/api/devices/probe/MatchingLayer.h"
 
 namespace arrus::devices {
 
@@ -26,10 +28,15 @@ public:
                // Float, because carrier frequency can be set only to specific values
                const Interval<float> &txFrequencyRange,
                const Interval<Voltage> &voltageRange,
-               const double curvatureRadius)
+               const double curvatureRadius,
+               std::optional<Lens> lens = std::nullopt,
+               std::optional<MatchingLayer> matchingLayer = std::nullopt
+               )
         : modelId(std::move(modelId)), numberOfElements(numberOfElements),
           pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange),
-          curvatureRadius(curvatureRadius) {
+          curvatureRadius(curvatureRadius),
+          lens(std::move(lens)),
+          matchingLayer(std::move(matchingLayer)) {
 
         if(numberOfElements.size() != pitch.size()) {
             throw IllegalArgumentException(
@@ -65,6 +72,19 @@ public:
         return curvatureRadius;
     }
 
+    const std::optional<Lens> &getLens() const { return lens; }
+    /** Returns true when the lens is defined for this probe model, otherwise false. */
+    bool isLensDefined() const {return lens.has_value(); }
+    /** Returns lens definition. If the lens is not defined for this probe, exception will be raised. */
+    const Lens &getLensOrRaiseException() {return lens.value(); }
+
+    const std::optional<MatchingLayer> &getMatchingLayer() const { return matchingLayer; }
+    /** Returns true when the matching layer is defined for this probe model, otherwise false. */
+    bool isMatchingLayerDefined() const {return matchingLayer.has_value(); }
+    /** Returns matching layer definition. If the matching layer is not defined for this probe, exception will be raised. */
+    const MatchingLayer &getMatchingLayerOrRaiseException() {return matchingLayer.value(); }
+
+
 private:
     ProbeModelId modelId;
     Tuple<ElementIdxType> numberOfElements;
@@ -72,6 +92,8 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
+    std::optional<Lens> lens;
+    std::optional<MatchingLayer> matchingLayer;
 };
 
 }

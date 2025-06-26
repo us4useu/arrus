@@ -152,6 +152,25 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
     }
 }
 
+Lens readProbeLens(const proto::Lens &lens) {
+    std::optional<float> focus = std::nullopt;
+    if(lens.focus__case() != proto::Lens::FOCUS__NOT_SET) {
+        focus = ARRUS_SAFE_CAST(lens.focus(), float);
+    }
+    return Lens {
+        ARRUS_SAFE_CAST(lens.thickness(), float),
+        ARRUS_SAFE_CAST(lens.speed_of_sound(), float),
+        focus
+    };
+}
+
+MatchingLayer readMatchingLayer(const proto::MatchingLayer &layer) {
+    return MatchingLayer {
+        ARRUS_SAFE_CAST(layer.thickness(), float),
+        ARRUS_SAFE_CAST(layer.speed_of_sound(), float)
+    };
+}
+
 ProbeModel readProbeModel(const proto::ProbeModel &proto) {
     ProbeModelId id{proto.id().manufacturer(), proto.id().name()};
     using ElementIdxType = ProbeModel::ElementIdxType;
@@ -170,7 +189,9 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
                                          static_cast<float>(proto.tx_frequency_range().end())};
     ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
                                           static_cast<uint8>(proto.voltage_range().end())};
-    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius);
+    std::optional<Lens> lens = proto.has_lens() ? std::make_optional(readProbeLens(proto.lens())): std::nullopt;
+    std::optional<MatchingLayer> matchingLayer = proto.has_matching_layer()? std::make_optional(readMatchingLayer(proto.matching_layer())): std::nullopt;
+    return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius, lens, matchingLayer);
 }
 
 std::vector<ChannelIdx> readProbeConnectionChannelMapping(const ap::ProbeToAdapterConnection &connection) {
@@ -502,6 +523,14 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     if(us4r.has_watchdog()) {
         auto enabled = us4r.watchdog().enabled();
         if(enabled) {
+            if(us4r.watchdog().oem_threshold0() == 0.0 
+                    || us4r.watchdog().oem_threshold1() == 0.0 
+                    || us4r.watchdog().host_threshold() == 0.0) {
+                throw IllegalArgumentException(
+                        "When the watchdog is explicitly enabled, "
+                        "the parameters oem_threshold0, oem_threshold1, and host_threshold should also be explicitly specified and should be greater than 0. "
+                        "NOTE: to use the default watchdog settings, just skip the watchdog field in the configuration file.");
+            }
             watchdog = WatchdogSettings{
                 ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold0(), float),
                 ARRUS_SAFE_CAST(us4r.watchdog().oem_threshold1(), float),

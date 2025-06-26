@@ -1,12 +1,16 @@
 import unittest
 import dataclasses
 import math
+from typing import Tuple, Optional
+
 import numpy as np
 
 import arrus.metadata
 import arrus.kernels
 import arrus.ops.imaging
 import arrus.ops.us4r
+
+from arrus.devices.probe import Lens, MatchingLayer
 
 
 # ---- Mock classes
@@ -16,7 +20,11 @@ class ProbeModelMock:
     n_elements: int
     pitch: float
     curvature_radius: float
-        
+    tx_frequency_range: Tuple[float, float] = None
+    lens: Optional[Lens] = None
+    matching_layer: Optional[MatchingLayer] = None
+    voltage_range: Tuple[int, int] = None
+
     def __post_init__(self):
         element_pos_x, element_pos_z, element_angle = self._compute_element_position()
         super().__setattr__("element_pos_x", element_pos_x)

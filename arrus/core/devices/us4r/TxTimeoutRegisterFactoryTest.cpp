@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <vector>
 
 #include "arrus/core/common/logging.h"
 #include "TxTimeoutRegister.h"
@@ -13,6 +14,15 @@ using namespace arrus;
 using namespace arrus::devices;
 using namespace arrus::devices::us4r;
 using namespace arrus::ops::us4r;
+
+std::vector<std::vector<float>> getDefaultRxDelays(size_t nSeqs, size_t nOps) {
+    std::vector<std::vector<float>> result(nSeqs);
+    for(auto &s: result){
+        s.resize(nOps);
+    }
+    return result;
+}
+
 
 TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyNoTxTimeouts) {
     constexpr ChannelIdx nChannels = 32;
@@ -38,9 +48,82 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyNoTxTimeouts) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{0, [](float frequency) {return frequency;}};
+    TxTimeoutRegisterFactory factory{0, [](float frequency) {return frequency;}, {}};
     auto reg = factory.createFor({sequence});
     EXPECT_TRUE(reg.empty());
+}
+
+/**
+ * Sequence with TX ops and TX nops.
+ */
+TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyOnlyTxNop) {
+    constexpr ChannelIdx nChannels = 32;
+    std::vector<float> delays0(nChannels, 0.0f);
+    BitMask txAperture(nChannels, false);
+    BitMask rxAperture(nChannels, true);
+    ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
+
+    size_t nTimeouts = 0;
+
+    std::vector<TxRx> txrxs = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays0,
+                x.pulse = pulse0
+                // TOTAL TX TIME: 500 us + 10 us
+                )
+                ).getTxRx(),
+    };
+
+    TxRxSequence sequence{txrxs, {}};
+
+    TxTimeoutRegisterFactory factory{0, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1)};
+    auto reg = factory.createFor({sequence});
+    EXPECT_TRUE(reg.empty());
+}
+
+TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyTxNopsWithTxOps) {
+    constexpr ChannelIdx nChannels = 32;
+    std::vector<float> delays0(nChannels, 0.0f);
+    BitMask rxAperture(nChannels, true);
+    ops::us4r::Pulse pulse0{10.0e6f, 3000.0f, false}; // 500 us pulse
+
+    std::vector<std::vector<float>> rxDelays = {{10e-6f, 20e-6f}};
+    size_t nTimeouts = 3;
+
+    std::vector<TxRx> txrxs = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = BitMask(nChannels, true),
+                x.rxAperture = rxAperture,
+                x.txDelays = delays0,
+                x.pulse = pulse0
+                )
+            ).getTxRx(),
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = BitMask(nChannels, false),
+                x.rxAperture = rxAperture,
+                x.txDelays = delays0,
+                x.pulse = pulse0
+                )
+            ).getTxRx(),
+    };
+
+    TxRxSequence sequence{txrxs, {}};
+
+    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, rxDelays};
+    auto reg = factory.createFor({sequence});
+    EXPECT_EQ(2, reg.getTimeouts().size());
+    EXPECT_EQ(300 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(1));
+    EXPECT_EQ(37 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(0));
+    EXPECT_EQ(0, reg.getTimeoutId({SequenceId{0}, OpId{1}}));
+    EXPECT_EQ(1, reg.getTimeoutId({SequenceId{0}, OpId{0}}));
 }
 
 TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOp) {
@@ -59,14 +142,13 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOp) {
                 x.rxAperture = rxAperture,
                 x.txDelays = delays0,
                 x.pulse = pulse0
-                // TOTAL TX TIME: 500 us + 10 us
                 )
                 ).getTxRx(),
     };
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}};
+    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1)};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(1, reg.getTimeouts().size());
     EXPECT_EQ(300 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(0));
@@ -96,7 +178,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOpLessThan1
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}};
+    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1)};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(1, reg.getTimeouts().size());
     // Should be exactly EPSILON.
@@ -154,7 +236,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly3Ops) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}};
+    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 3)};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(3, reg.getTimeouts().size());
     EXPECT_EQ(510 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(2));
@@ -245,7 +327,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly5Ops) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}};
+    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 5)};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(4, reg.getTimeouts().size());
     EXPECT_EQ(510 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(3));

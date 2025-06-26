@@ -27,6 +27,10 @@ public:
 
     ~Ultrasound() override = default;
 
+    std::string getDescription() const override {
+        return "Ultrasound device";
+    }
+
     virtual std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
     upload(const ::arrus::ops::us4r::Scheme &scheme) = 0;
 

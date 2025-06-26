@@ -17,6 +17,7 @@ import importlib.util
 arrus_core_module_exists = importlib.util.find_spec("arrus.core") is not None
 # Logging
 
+
 if arrus_core_module_exists:
 
     from arrus.logging import (
