@@ -77,7 +77,7 @@ classdef Us4R < handle
             % Vectors t and y should have exactly the same size. The input t and y values will be interpolated
             % into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
             % Linear interpolation will be performed, the TGC curve will be extrapolated with the first
-            % (left-side of the cure) and the last sample (right side of the curve).
+            % (left-side of the curve) and the last sample (right side of the curve).
             %
             % :param time: sampling time, relative to the "sample 0" (optional, hardware sampling time will be used
             % if not provided)

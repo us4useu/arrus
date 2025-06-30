@@ -36,8 +36,8 @@ classdef DuplexDisplay < handle
             % Syntax:
             % obj = DuplexDisplay(reconstructionObject, name, value, ..., name, value)
             % 
-            % First input is obligatory, further inputs (name-value pairs) \
-            % are optional.
+            % First input is obligatory, further inputs are optional \
+            % and are organized in name-value pairs.
             % 
             % :param reconstructionObject: Object of class "Reconstruction". \
             %   Obligatory input.
