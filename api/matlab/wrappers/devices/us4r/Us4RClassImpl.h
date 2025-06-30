@@ -136,8 +136,13 @@ public:
     }
 
     void setActiveTermination(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        uint16 impedance = inputs[0][0];
-        get(obj)->setActiveTermination(impedance);
+        if(inputs[0].isEmpty()) {
+            get(obj)->setActiveTermination(std::nullopt);
+        }
+        else {
+            uint16 impedance = inputs[0][0];
+            get(obj)->setActiveTermination(impedance);
+        }
     }
 
     void setLnaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
