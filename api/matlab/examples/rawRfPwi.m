@@ -46,8 +46,8 @@ seq = CustomTxRxSequence(... % Obligatory parameters
 us.upload(seq);
 
 %% Preview (continuous in-loop operation)
-% Warning: the raw rf display methods (imageRawRf and plotRawRf) require
-% the rf to be real, and thus the hwDdcEnable must be set to false.
+% NOTE: the raw rf display methods (imageRawRf and plotRawRf) require
+% the raw data to be real, and thus the hwDdcEnable must be set to false.
 
 % Show image of all rf echoes in the sequence
 us.imageRawRf('amplitudeLim',1e3);
