@@ -550,6 +550,9 @@ def __get_sample_range(rx, tx, tx_delay_center, fs, c):
     if rx.depth_range is not None:
         sample_range = convert_depth_to_sample_range(rx.depth_range, fs=fs,
                                                      speed_of_sound=c)
+    elif rx.time_range is not None:
+        sample_range = convert_time_to_sample_range(rx.time_range, fs=fs)
+    # Otherwise, it should be time range
     init_delay = rx.init_delay
     pulse = tx.excitation
     if init_delay == "tx_start":
@@ -608,6 +611,18 @@ def convert_depth_to_sample_range(depth_range, fs, speed_of_sound):
     sample_range = sample_range[0], sample_range[0]+n_samples
     return sample_range
 
+def convert_time_to_sample_range(time_range, fs):
+    """
+    Converts time range (in [s]) to the sample range
+    (in the number of samples).
+    """
+    sample_range = np.round(fs*np.asarray(time_range)).astype(int)
+    # Round the number of samples to a value divisible by 64.
+    # Number of acquired must be divisible by 64 (required by us4R driver).
+    n_samples = sample_range[1]-sample_range[0]
+    n_samples = 64*int(math.ceil(n_samples/64))
+    sample_range = sample_range[0], sample_range[0]+n_samples
+    return sample_range
 
 def get_tx_rx_sequence_sample_range(seq: TxRxSequence, fs, speed_of_sound):
     """
@@ -618,9 +633,17 @@ def get_tx_rx_sequence_sample_range(seq: TxRxSequence, fs, speed_of_sound):
     op = seq.ops[0].rx
     if op.sample_range is not None:
         return op.sample_range
-    else:
+    elif op.depth_range is not None:
         return convert_depth_to_sample_range(
             depth_range=op.depth_range,
             fs=fs,
             speed_of_sound=speed_of_sound
         )
+    elif op.time_range is not None:
+        return convert_time_to_sample_range(
+            time_range=op.time_range,
+            fs=fs
+        )
+    else:
+        raise ValueError("Not yet implemented")
+
