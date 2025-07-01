@@ -12,7 +12,7 @@ classdef CustomTxRxSequence
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txVoltage  (1,1) {mustBeNonnegative} = 0;
+        txVoltage  (:,:) {mustBeNonnegative} = 0;
         txVoltageId (1,:) = 1
         txFrequency (1,:) = []
         txNPeriods (1,:) = []
@@ -163,8 +163,8 @@ classdef CustomTxRxSequence
             if ~ismatrix(obj.txVoltage) || (~isscalar(obj.txVoltage) && ~all(size(obj.txVoltage)==[2 2]))
                 error("ARRUS:IllegalArgument", 'txVoltage must be scalar or 2x2 array');
             end
-            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) <= obj.txVoltage(2,:))
-                error("ARRUS:IllegalArgument", 'txVoltage(1,:) must be higher than txVoltage(2,:)');
+            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) >= obj.txVoltage(2,:))
+                error("ARRUS:IllegalArgument", 'txVoltage(2,:) must be higher than txVoltage(1,:)');
             end
             if isempty(obj.txWaveform)
                 if isempty(obj.txInvert)
