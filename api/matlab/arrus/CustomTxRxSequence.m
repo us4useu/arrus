@@ -13,7 +13,7 @@ classdef CustomTxRxSequence
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
         txVoltage  (:,:) {mustBeNonnegative} = 0;
-        txVoltageId (1,:) = 1
+        txVoltageId (1,:) = 2
         txFrequency (1,:) = []
         txNPeriods (1,:) = []
         rxDepthRange (1,:) {mustBeProperNumber}
