@@ -4,6 +4,15 @@ Release notes
 0.11.x
 -----
 
+
+0.11.2
+
+- core (driver):
+
+    - Fixed start/stop/start scheme call sequence for the legacy OEM devices, #US4R-726.
+    - Fixed an issue where a firmware-software mismatch could cause the computer to restart on some setups with PCIe connections, #M_OEM-178.
+
+
 0.11.1
 
 - core (C++):
