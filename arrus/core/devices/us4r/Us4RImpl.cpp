@@ -186,8 +186,8 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
             if(currentVoltageM.has_value() && currentVoltageP.has_value()) {
                 if (currentVoltageM >= voltage->getVoltageMinus() || currentVoltageP >= voltage->getVoltagePlus()) {
                     throw IllegalArgumentException("TX voltage amplitudes (for the TX level 1 and 2) should be in strictly "
-                                                   "increasing order, i.e. voltage[1].plus > voltage[0].plus and "
-                                                   "voltage[1].minus > voltage[1].minus.");
+                                                   "increasing order, i.e. 2nd Voltage+ > 1st Voltage+ and "
+                                                   "2nd Voltage- > 1st Voltage-.");
                 }
             }
             // otherwise, this is the first voltage in the vector -- just store the value.
