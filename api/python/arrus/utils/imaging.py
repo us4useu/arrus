@@ -1591,6 +1591,7 @@ class RxBeamforming(Operation):
 
         fs = const_metadata.data_description.sampling_frequency
         seq: Union[TxRxSequence, SimpleTxRxSequence] = const_metadata.context.sequence
+        raw_seq: Union[TxRxSequence] = const_metadata.context.raw_sequence
 
         # The RX offset caused by IQ hardware demodulator (if used, otherwise use 0.0).
         rx_time_offset = const_metadata.data_description.custom.get("rx_offset", 0.0)
@@ -1627,11 +1628,13 @@ class RxBeamforming(Operation):
             _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.speed_of_sound, "speed_of_sound")
 
             ref_op = [op for op in seq.ops if op.tx.aperture.size > 0 and op.rx.aperture.size > 0]
+            ref_raw_op = [op for op in raw_seq.ops if op.tx.aperture.size > 0 and op.rx.aperture.size > 0]
             if len(ref_op) == 0:
                 raise ValueError("There should be at least one op with non-empty TX aperture and RX aperture!")
 
             ref_tx = ref_op[0].tx
             ref_rx = ref_op[0].rx
+            ref_raw_rx = ref_raw_op[0].rx
 
             # Tx
             fc = ref_tx.excitation.center_frequency
@@ -1643,7 +1646,7 @@ class RxBeamforming(Operation):
                                  "explicitly. ")
             # Rx
             downsampling_factor = ref_rx.downsampling_factor
-            rx_sample_range = ref_rx.sample_range
+            rx_sample_range = ref_raw_rx.sample_range
             rx_aperture_center_elements = [op.rx.aperture.center_element for op in seq.ops]
             rx_aperture_size = ref_rx.aperture.size
             init_delay = 0
@@ -2350,6 +2353,7 @@ class ScanConversionV2(Operation):
         self.interp_function = cupyx.scipy.ndimage.map_coordinates
         self.n_frames, n_samples, n_scanlines = const_metadata.input_shape
         seq = const_metadata.context.sequence
+        raw_seq = const_metadata.context.raw_sequence
         c = self._get_speed_of_sound(const_metadata.context)
         probe = get_unique_probe_model(const_metadata)
         if not isinstance(seq, arrus.ops.us4r.TxRxSequence):
@@ -2374,7 +2378,7 @@ class ScanConversionV2(Operation):
         acq_fs = acq_fs/seq.ops[0].rx.downsampling_factor
         fs = const_metadata.data_description.sampling_frequency
 
-        start_sample, end_sample = seq.ops[0].rx.sample_range
+        start_sample, end_sample = raw_seq.ops[0].rx.sample_range
         start_time = start_sample / acq_fs
         r = (start_time + np.arange(0, n_samples)/fs)*c/2
         r_min, r_max = np.min(r), np.max(r)
@@ -2833,6 +2837,7 @@ class ReconstructLri(Operation):
         # Input data shape.
         self.n_seq, self.n_tx, self.n_rx, self.n_samples = const_metadata.input_shape
         seq = const_metadata.context.sequence
+        raw_seq = const_metadata.context.raw_sequence
         self.fs = self.num_pkg.float32(const_metadata.data_description.sampling_frequency)
         probe_model = get_unique_probe_model(const_metadata)
         device_sampling_frequency = const_metadata.context.device.sampling_frequency
@@ -2860,6 +2865,8 @@ class ReconstructLri(Operation):
             # Reference TX/RX ops
             ops = [op for op in seq.ops
                    if op.rx.aperture.size is None or op.rx.aperture.size > 0]
+            raw_ops = [op for op in raw_seq.ops
+                   if op.rx.aperture.size is None or op.rx.aperture.size > 0]
             seq = dataclasses.replace(seq, ops=ops)
             _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.center_frequency, "center_frequency")
             _assert_unique_property_for_rx_active_ops(seq, lambda op: op.tx.excitation.n_periods, "n_periods")
@@ -2869,7 +2876,9 @@ class ReconstructLri(Operation):
 
             rx_op = ops[0].rx
             tx_op = ops[0].tx
-            rx_sample_range = rx_op.sample_range
+            raw_rx_op = raw_ops[0].rx
+
+            rx_sample_range = raw_rx_op.sample_range
             angles = np.asarray([op.tx.angle for op in ops])
             focus = np.asarray([op.tx.focus for op in ops])
             if tx_op.angle is None and tx_op.focus is None:
