@@ -188,6 +188,7 @@ def convert_to_us4r_sequence_with_constants(
         new_rx = dataclasses.replace(old_rx,
                                      sample_range=sample_range,
                                      depth_range=None,
+                                     time_range=None,
                                      init_delay="tx_start")
         new_op = dataclasses.replace(op, tx=new_tx, rx=new_rx)
         new_ops.append(new_op)

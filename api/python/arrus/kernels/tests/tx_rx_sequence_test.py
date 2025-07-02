@@ -121,6 +121,78 @@ class PwiSequenceTest(SimpleTxRxSequenceTest):
         ]
         self.default_sequence = TxRxSequence(ops=ops, tgc_curve=[])
 
+    def test_correctly_converts_depth_range_to_sample_range(self):
+        # Given
+        medium = arrus.medium.Medium("test_medium", speed_of_sound=1e3)
+        ops = [
+            TxRx(
+                tx=Tx(
+                    aperture=Aperture(center_element=3.5, size=8),
+                    excitation=self.default_excitation,
+                    focus=np.inf,
+                    angle=angle,
+                    speed_of_sound=1,
+                ),
+                rx=Rx(
+                    aperture=Aperture(center_element=3.5, size=8),
+                    downsampling_factor=1,
+                    depth_range=(5e-3, 47e-3)
+                ),
+                pri=1,
+            )
+            for angle in [-np.pi/4, 0.0, np.pi/4]
+        ]
+        sequence = TxRxSequence(ops=ops, tgc_curve=[])
+        context = ContextMock(device=self.default_device,
+                              medium=medium,
+                              op=sequence)
+        result = arrus.kernels.tx_rx_sequence.process_tx_rx_sequence(context)
+        sequence = result.sequence
+
+        # Expect:
+        expected_sample_range = (
+            650, # 2*5e-6*device.sampling_frequency,
+            6154 #  2*47e-6*device.sampling_frequency, number of samples round to 64
+        )
+        for tx_rx in sequence.ops:
+            self.assertEqual(tx_rx.rx.sample_range, expected_sample_range)
+
+    def test_correctly_converts_time_range_to_sample_range(self):
+        # Given
+        medium = arrus.medium.Medium("test_medium", speed_of_sound=1e3)
+        ops = [
+            TxRx(
+                tx=Tx(
+                    aperture=Aperture(center_element=3.5, size=8),
+                    excitation=self.default_excitation,
+                    focus=np.inf,
+                    angle=angle,
+                    speed_of_sound=1,
+                ),
+                rx=Rx(
+                    aperture=Aperture(center_element=3.5, size=8),
+                    downsampling_factor=1,
+                    time_range=(1e-6, 17e-6)
+                ),
+                pri=1,
+            )
+            for angle in [-np.pi/4, 0.0, np.pi/4]
+        ]
+        sequence = TxRxSequence(ops=ops, tgc_curve=[])
+        context = ContextMock(device=self.default_device,
+                              medium=medium,
+                              op=sequence)
+        result = arrus.kernels.tx_rx_sequence.process_tx_rx_sequence(context)
+        sequence = result.sequence
+
+        # Expect:
+        expected_sample_range = (
+            65, # 2*5e-6*device.sampling_frequency,
+            1153 #  2*47e-6*device.sampling_frequency, number of samples round to 64
+        )
+        for tx_rx in sequence.ops:
+            self.assertEqual(tx_rx.rx.sample_range, expected_sample_range)
+
     def test_linear_array_three_tx_rxs(self):
         # Given
         device = self.default_device
@@ -300,168 +372,6 @@ class PwiSequenceTest(SimpleTxRxSequenceTest):
             np.testing.assert_almost_equal(expected_delays[i], tx_delays, decimal=12)
 
 
-# TODO already tested in simple_tx_rx_sequence_test.py module, consider enabling below
-# When the functionality of the simple_tx_rx_sequence.py will be minimized
-# class LinSequenceTest(SimpleTxRxSequenceTest):
-#
-#     def setUp(self) -> None:
-#         super().setUp()
-#         self.default_sequence = arrus.ops.imaging.LinSequence(
-#             pulse=arrus.ops.us4r.Pulse(
-#                 center_frequency=1,
-#                 n_periods=1,
-#                 inverse=False),
-#             tx_focus=20e-3,
-#             rx_sample_range=(0, 8),
-#             downsampling_factor=1,
-#             speed_of_sound=1,
-#             pri=1,
-#             sri=1,
-#             tgc_start=1,
-#             tgc_slope=1,
-#             tx_aperture_center_element=3.5,
-#             tx_aperture_size=8,
-#             rx_aperture_center_element=3.5,
-#             rx_aperture_size=8,
-#         )
-#
-#     def test_simple_sequence_with_paddings(self):
-#         # three tx/rxs with aperture centers: 0, 16, 31
-#         seq = arrus.ops.imaging.LinSequence(
-#             tx_aperture_center_element=np.array([0, 15, 16, 31]),
-#             tx_aperture_size=32,
-#             tx_focus=30e-3,
-#             pulse=arrus.ops.us4r.Pulse(center_frequency=5e6, n_periods=3,
-#                                        inverse=False),
-#             rx_aperture_center_element=np.array([0, 15, 16, 31]),
-#             rx_aperture_size=32,
-#             pri=1000e-6,
-#             downsampling_factor=1,
-#             rx_sample_range=(0, 4096),
-#             tgc_start=14,
-#             tgc_slope=0)
-#
-#         medium = arrus.medium.MediumDTO(name="test", speed_of_sound=1540)
-#         probe_model = ProbeModel(
-#             model_id="id",
-#             pitch=0.2e-3, n_elements=32, curvature_radius=0.0)
-#         device = DeviceMock(probe=ProbeMock(model=probe_model))
-#         context = ContextMock(device=device, medium=medium, op=seq)
-#         tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(
-#             context)
-#         # A TX/RX sequence without
-#         seq2 = arrus.kernels.simple_tx_rx_sequence.convert_to_tx_rx_sequence(
-#             c=medium.speed_of_sound, op=seq, probe_model=probe_model
-#         )
-#         seq2_with_mask: TxRxSequence = arrus.kernels.tx_rx_sequence.set_aperture_masks(
-#             sequence=seq2, probe=probe_model
-#         )
-#         delays, _ = arrus.kernels.tx_rx_sequence.get_tx_delays(probe_model, seq2, seq2_with_mask)
-#
-#         # expected delays
-#         tx_rx_params = arrus.kernels.simple_tx_rx_sequence.compute_tx_rx_params(
-#             probe_model, seq)
-#
-#         # Expected aperture tx/rx 1
-#         expected_aperture = np.zeros((32,), dtype=bool)
-#         expected_aperture[0:16+1] = True
-#         expected_delays = np.squeeze(delays[0])
-#         tx_rx = tx_rx_sequence.ops[0]
-#         np.testing.assert_array_equal(tx_rx.tx.aperture, expected_aperture)
-#         np.testing.assert_array_equal(tx_rx.rx.aperture, expected_aperture)
-#         np.testing.assert_almost_equal(tx_rx.tx.delays, expected_delays)
-#
-#         # Expected aperture tx/rx 2
-#         expected_aperture = np.ones((32,), dtype=bool)
-#         tx_rx = tx_rx_sequence.ops[1]
-#         np.testing.assert_array_equal(tx_rx.tx.aperture, expected_aperture)
-#         np.testing.assert_array_equal(tx_rx.rx.aperture, expected_aperture)
-#
-#         # Expected aperture tx/rx 3
-#         expected_aperture = np.zeros((32,), dtype=bool)
-#         expected_aperture[1:] = True
-#         tx_rx = tx_rx_sequence.ops[2]
-#         np.testing.assert_array_equal(tx_rx.tx.aperture, expected_aperture)
-#         np.testing.assert_array_equal(tx_rx.rx.aperture, expected_aperture)
-#
-#         # Expected aperture tx/rx 4
-#         expected_aperture = np.zeros((32,), dtype=bool)
-#         expected_aperture[16:] = True
-#         tx_rx = tx_rx_sequence.ops[3]
-#         np.testing.assert_array_equal(tx_rx.tx.aperture, expected_aperture)
-#         np.testing.assert_array_equal(tx_rx.rx.aperture, expected_aperture)
-#
-#     # TODO check the basic properties of the delays profile, e.g.
-#     # that is symmetrical.
-#
-#     def test_compliance_linear_array_ultrasonix_l14_5_38_parameters(self):
-#         """Tests linear array + LIN delays."""
-#         n_elements = 128
-#         device = DeviceMock(ProbeMock(
-#             ProbeModel(model_id=ProbeModelId("ultrasonix", "l14-5/38"),
-#                        pitch=0.3048e-3,
-#                        n_elements=n_elements,
-#                        curvature_radius=0.0)))
-#
-#         n_elements = device.probe.model.n_elements
-#         input_sequence = self.default_sequence
-#         aperture_size = 64
-#         input_sequence = dataclasses.replace(
-#             input_sequence,
-#             tx_aperture_center_element=np.arange(0, n_elements),
-#             tx_aperture_size=aperture_size,
-#             rx_aperture_center_element=np.arange(0, n_elements),
-#             rx_aperture_size=aperture_size,
-#             speed_of_sound=1540
-#         )
-#         context = ContextMock(device=device,
-#                               medium=self.default_medium,
-#                               op=input_sequence)
-#         tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
-#         ops = tx_rx_sequence.ops
-#         self.assertEqual(len(ops), 128)
-#         # TX/RX expected delays.
-#         # In this sequence, all TX delays will have the same profile.
-#         # Only the delays for the aperture located at the probe border will
-#         # differ, i.e. the list will be appropriately clipped.
-#         expected_delays_profile = np.array([8.565409e-08, 1.690786e-07, 2.502341e-07, 3.290816e-07, 4.055822e-07, 4.796973e-07, 5.513887e-07, 6.206189e-07, 6.873505e-07, 7.515471e-07, 8.131729e-07, 8.721930e-07, 9.285730e-07, 9.822800e-07, 1.033282e-06, 1.081547e-06, 1.127047e-06, 1.169753e-06, 1.209637e-06, 1.246674e-06, 1.280840e-06, 1.312113e-06, 1.340471e-06, 1.365897e-06, 1.388372e-06, 1.407883e-06, 1.424414e-06, 1.437955e-06, 1.448497e-06, 1.456032e-06, 1.460555e-06, 1.462063e-06, 1.460555e-06, 1.456032e-06, 1.448497e-06, 1.437955e-06, 1.424414e-06, 1.407883e-06, 1.388372e-06, 1.365897e-06, 1.340471e-06, 1.312113e-06, 1.280840e-06, 1.246674e-06, 1.209637e-06, 1.169753e-06, 1.127047e-06, 1.081547e-06, 1.033282e-06, 9.822800e-07, 9.285730e-07, 8.721930e-07, 8.131729e-07, 7.515471e-07, 6.873505e-07, 6.206189e-07, 5.513887e-07, 4.796973e-07, 4.055822e-07, 3.290816e-07, 2.502341e-07, 1.690786e-07, 8.565409e-08, 0.000000e+00])
-#         self.assert_ok_for_moving_aperture(aperture_size,
-#                                            expected_delays_profile,
-#                                            n_elements, ops)
-#
-#     def test_compliance_convex_array_esaote_ac2541(self):
-#         """Tests convex array + LIN delays."""
-#         n_elements = 192
-#         device = DeviceMock(ProbeMock(
-#             ProbeModel(model_id=ProbeModelId("esaote", "2541"),
-#                        pitch=0.3e-3,
-#                        n_elements=n_elements,
-#                        curvature_radius=50e-3)))
-#
-#         n_elements = device.probe.model.n_elements
-#         input_sequence = self.default_sequence
-#         aperture_size = 32
-#         input_sequence = dataclasses.replace(
-#             input_sequence,
-#             tx_focus=10e-3,
-#             tx_aperture_center_element=np.arange(0, n_elements),
-#             tx_aperture_size=aperture_size,
-#             rx_aperture_center_element=np.arange(0, n_elements),
-#             rx_aperture_size=aperture_size,
-#             speed_of_sound=1540
-#         )
-#         context = ContextMock(device=device,
-#                               medium=self.default_medium,
-#                               op=input_sequence)
-#         tx_rx_sequence = arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
-#         ops = tx_rx_sequence.ops
-#         self.assertEqual(len(ops), n_elements)
-#         expected_delays_profile = np.array([9.671847e-08, 1.883984e-07, 2.748402e-07, 3.55846e-07, 4.312216e-07, 5.007779e-07, 5.643331e-07, 6.217144e-07, 6.727603e-07, 7.173223e-07, 7.55267e-07, 7.86478e-07, 8.108577e-07, 8.283283e-07, 8.388334e-07, 8.42339e-07, 8.388334e-07, 8.283283e-07, 8.108577e-07, 7.86478e-07, 7.55267e-07, 7.173223e-07, 6.727603e-07, 6.217144e-07, 5.643331e-07, 5.007779e-07, 4.312216e-07, 3.55846e-07, 2.748402e-07, 1.883984e-07, 9.671847e-08, 5.082198e-21])
-#         self.assert_ok_for_moving_aperture(aperture_size,
-#                                            expected_delays_profile,
-#                                            n_elements, ops)
-#
-#
 class StaSequenceTest(SimpleTxRxSequenceTest):
 
     def setUp(self) -> None:
