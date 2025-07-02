@@ -553,7 +553,7 @@ def __get_sample_range(rx, tx, tx_delay_center, fs, c):
                                                      speed_of_sound=c)
     elif rx.time_range is not None:
         sample_range = convert_time_to_sample_range(rx.time_range, fs=fs)
-    # Otherwise, it should be time range
+    # Otherwise, it should be a sample range
     init_delay = rx.init_delay
     pulse = tx.excitation
     if init_delay == "tx_start":
