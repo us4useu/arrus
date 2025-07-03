@@ -221,11 +221,18 @@ class Rx(Operation):
     init_delay: str = "tx_start"
     placement: str = "Probe:0"
     depth_range: tuple = None
+    time_range: tuple = None
 
     def __post_init__(self):
-        if not ((self.depth_range is None) ^ (self.sample_range is None)):
+        is_range_available = [
+            self.depth_range is not None,
+            self.sample_range is not None,
+            self.time_range is not None
+        ]
+        if not np.sum(is_range_available) == 1:
             raise ValueError("Exactly one of the following parameters "
-                             "should be provided: sample_range, depth_range")
+                             "should be provided: sample_range, depth_range "
+                             "or time_range.")
         if not isinstance(self.aperture, Aperture):
             object.__setattr__(self, "aperture", np.asarray(self.aperture))
 
