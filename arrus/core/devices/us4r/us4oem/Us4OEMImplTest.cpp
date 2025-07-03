@@ -26,6 +26,24 @@ MATCHER_P(FloatNearPointwise, tol, "") {
     return std::abs(std::get<0>(arg) - std::get<1>(arg)) < tol;
 }
 
+/**
+ * NOTE: this matcher is unsafe in the terms of the arg array size -- we don't know
+ * the exact size of it. This must be verified as a separate condition in the EXPECT_CALL
+ * (e.g. as a size parameter of the verified function call).
+ *
+ * @param arrayToCompare the expected array, expected to be std::vector or some other collection with .size() parameter
+ *  and the index accessor
+ */
+MATCHER_P(CArrayEqual, arrayToCompare, "") {
+    for(int i = 0; i < arrayToCompare.size(); ++i) {
+        // NOTE: unsafe: we don't know the size of arg array.
+        if(arg[i] != arrayToCompare[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 constexpr uint16 DEFAULT_PGA_GAIN = 30;
 constexpr uint16 DEFAULT_LNA_GAIN = 24;
 constexpr float MAX_TX_FREQUENCY = 65e6f;
@@ -711,8 +729,10 @@ TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParameters) {
     DigitalDownConversion ddc(
         1e6f, coeffs, 4.0f, 12.0f
     );
-    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable());
-    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, coeffs.data(), coeffs.size(), 1e6, true));
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable()).Times(0);
+    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, true));
+    us4oem->setAfeDemod(ddc);
 }
 
 TEST_F(Us4OEMDigitalDownConversionTest, TurnsOffsDDCCorrectly) {
@@ -720,18 +740,27 @@ TEST_F(Us4OEMDigitalDownConversionTest, TurnsOffsDDCCorrectly) {
     DigitalDownConversion ddc(
         1e6f, coeffs, 4.0f, 12.0f
     );
-    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable());
+    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(0);
     us4oem->setAfeDemod(std::nullopt);
 }
 
 TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParametersTurnsOffGainFor0dB) {
     const auto coeffs = getNTimes(1.0f, 32);
     DigitalDownConversion ddc(
-        1e6f, coeffs, 4.0f, 0.0f
+        // demodulation frequency
+        1e6f,
+        // FIR coefficients
+        coeffs,
+        // decimation factor
+        4.0f,
+        // gain
+        0.0f
     );
-    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable());
-    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, coeffs.data(), coeffs.size(), 1e6, false);
-    us4oem->setAfeDemod(std::nullopt);
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(1);
+    //                                      dec int, dec frac. coeffs, demodulation frequency, turn off gain
+    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, false));
+    us4oem->setAfeDemod(ddc);
 }
 
 }
