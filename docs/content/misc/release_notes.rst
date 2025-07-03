@@ -13,10 +13,20 @@ Release notes
 0.11.x
 -----
 
+
+0.11.2
+
+- core (driver):
+
+    - Fixed start/stop/start scheme call sequence for the legacy OEM devices, #US4R-726.
+    - Fixed an issue where a firmware-software mismatch could cause the computer to restart on some setups with PCIe connections, #M_OEM-178.
+
+
 0.11.1
 
 - core (C++):
 
+    - **Fixed 1.5 cycle TX waveform setting bug**, #M_OEM-176.
     - Fixed US4RPSC voltage check skip with us4OEM+, #M_US4R-12.
     - Fixed voltage limits verification for the legacy us4OEM, #M_US4R-25.
     - Set timeout on OEM watchdog disable, #M_OEM-157.
