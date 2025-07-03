@@ -6,9 +6,9 @@ Release notes
 
 0.12.0
 
-- core (C++):
+- core (driver):
 
-    - Changed us4R TX voltage amplitudes order: the Pulser(amplitude = 0) NOW BECOMES CLAMP, NOT THE HVP0/HVM0. HVP0/HVM0 becomes amplitude == 2, HVP1/HVM1 becomes amplitude == 1.
+    - Exposed DDC digital gain (after the decimation filter) #M_OEM-153.
 
 0.11.x
 -----
