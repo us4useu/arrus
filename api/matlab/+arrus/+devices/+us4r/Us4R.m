@@ -82,18 +82,23 @@ classdef Us4R < handle
             % :param time: sampling time, relative to the "sample 0" (optional, hardware sampling time will be used
             % if not provided)
             % :param value: values to apply at given sampling time
-            % :param applyCharacteristic: set it to true if you want to compensate response characteristic
+            % :param applyCharacteristic: set it to 1 if you want to compensate response characteristic
             % (pre-computed by us4us).
+            % :param clip: set it 1 if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+            %  an ARRUS:IllegalArgument error will be raised with message that the maximum possible gain value
+            %  (resulting from amplifier settings such as LNA and PGA) is exceeded.
             obj = varargin{1};
-            if nargin == 4
+            if nargin == 5
                 time = varargin{2};
                 value = varargin{3};
                 applyCharacteristic = varargin{4};
-                obj.ptr.callMethod("setTgcCurveTimeValue", 0, time, value, logical(applyCharacteristic));
-            elseif nargin == 3
+                clip = varargin{5};
+                obj.ptr.callMethod("setTgcCurveTimeValue", 0, time, value, logical(applyCharacteristic), logical(clip));
+            elseif nargin == 4
                 value = varargin{2};
                 applyCharacteristic = varargin{3};
-                obj.ptr.callMethod("setTgcCurveValue", 0, value, logical(applyCharacteristic));
+                clip = varargin{4};
+                obj.ptr.callMethod("setTgcCurveValue", 0, value, logical(applyCharacteristic), logical(clip));
             else
                 error("Unsupported number of parameters.");
             end

@@ -728,25 +728,26 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true, false); }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setTgcSamples(tgcCurvePoints)
                              .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
                              .build();
     setRxSettings(newRxSettings);
 }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if (y.empty()) {
         // Turn off TGC
-        setTgcCurve(y, applyCharacteristic);
+        setTgcCurve(y, applyCharacteristic, clip);
     } else {
         vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setTgcCurve(tgcValues, applyCharacteristic);
+        setTgcCurve(tgcValues, applyCharacteristic, clip);
     }
 }
 

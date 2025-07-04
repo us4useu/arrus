@@ -99,8 +99,8 @@ public:
     void disableHV() override;
     void cleanupBuffers(bool cleanupSequencerTransfers = false);
 
-    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
-    void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
+    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
+    void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
     std::vector<float> getTgcCurvePoints(float endSample) const override;
