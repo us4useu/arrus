@@ -112,12 +112,12 @@ class Us4R(Device, Ultrasound):
                 raise ValueError("TGC context is currently not set. "
                                  "Make sure a TX/RX sequence is uploaded and "
                                  "a medium was specified. ")
+            clip = tgc_curve.clip
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
                 self._tgc_context,
                 self.current_sampling_frequency,
                 tgc_curve,
             )
-            clip = tgc_curve.clip
         elif not isinstance(tgc_curve, Iterable):
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
         # Here, TGC curve is iterable.
