@@ -78,6 +78,12 @@ public:
         return *this;
     }
 
+    WaveformBuilder& add(const Waveform &wf) {
+        for(int i = 0; i < wf.getSegments().size(); ++i) {
+            add(wf.getSegments().at(i), wf.getNRepetitions().at(i));
+        }
+    }
+
     Waveform build() {
         return Waveform{segments, nReps};
     }
