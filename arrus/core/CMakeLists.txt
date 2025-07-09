@@ -328,6 +328,7 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
     create_core_test(devices/us4r/Us4RSubsequenceTest.cpp "devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp")
     create_core_test(devices/us4r/TxWaveformConverterTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/TxWaveformSoftStartConverterTest.cpp)
 endif ()
 
 ################################################################################

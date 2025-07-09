@@ -1,8 +1,9 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_PULSE_H
 #define ARRUS_CORE_API_OPS_US4R_PULSE_H
 
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <ostream>
 
 #include "Waveform.h"
 
@@ -55,6 +56,9 @@ public:
         return !(rhs == *this);
     }
 
+    /**
+     * Returns pulse duration [s].
+     */
     float getPulseLength() const {
         return nPeriods/centerFrequency;
     }
@@ -205,6 +209,12 @@ public:
             isInverse,
             level
         };
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const Pulse &pulse) {
+        os << "centerFrequency: " << pulse.centerFrequency << " nPeriods: " << pulse.nPeriods
+           << " inverse: " << pulse.inverse << " amplitudeLevel: " << pulse.amplitudeLevel;
+        return os;
     }
 
 private:

@@ -2,8 +2,12 @@
 #define ARRUS_CORE_DEVICES_US4R_TXWAVEFORMSOFTSTARTCONVERTER_H
 
 #include <vector>
+#include <optional>
 
 #include "arrus/core/api/ops/us4r/Waveform.h"
+#include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/common/asserts.h"
+#include "arrus/common/utils.h"
 
 
 namespace arrus::devices {
@@ -43,7 +47,7 @@ public:
      */
     Waveform convert(const Waveform& waveform) {
         WaveformBuilder builder;
-        for(int i = 0; i < waveform.getSegments().size(); ++i) {
+        for(size_t i = 0; i < waveform.getSegments().size(); ++i) {
             const auto &segment = waveform.getSegments().at(i);
             const auto nRepetitions = waveform.getNRepetitions().at(i);
             if(nRepetitions >= nCycles) {
@@ -77,10 +81,10 @@ private:
 
         // Calculate
         WaveformBuilder builder;
-        auto nRepsLeft = ARRUS_SAFE_CAST(nReps, long);
+        auto nRepsLeft = ARRUS_SAFE_CAST((intmax_t)nReps, long);
         const auto period = segment.getDuration().at(0)*2;
 
-        for(int i = 0; i < dutyCycles.size() && nRepsLeft > 0; ++i) {
+        for(size_t i = 0; i < dutyCycles.size() && nRepsLeft > 0; ++i) {
             const auto dutyCycle = dutyCycles.at(i);
             const auto durationFraction = dutyCycleDurationFractions.at(i);
             auto newNRepeats = getNewNRepeats(ts, durationFraction, period).value_or(nRepsLeft);
