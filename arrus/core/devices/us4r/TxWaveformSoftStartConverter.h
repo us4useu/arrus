@@ -64,7 +64,7 @@ public:
 
     bool apply(const Waveform& waveform) {
         const auto pulse = Pulse::fromWaveform(waveform);
-        return pulse.has_value() && std::floor(pulse.value().getNPeriods()) >= nCycles;
+        return pulse.has_value() && std::floor(pulse.value().getNPeriods()) >= nCycles && pulse.value().getCenterFrequency() >= 1e6;
     }
 
 private:
@@ -81,16 +81,28 @@ private:
 
         // Calculate
         WaveformBuilder builder;
-        auto nRepsLeft = ARRUS_SAFE_CAST((intmax_t)nReps, long);
         const auto period = segment.getDuration().at(0)*2;
+        auto nRepsLeft = ARRUS_SAFE_CAST((intmax_t)nReps, long);
+        // We apply no more than ts of soft-start segment.
+        auto nRepsSoftStartLeft = ARRUS_SAFE_CAST(std::floor(ts/period), long);
 
         for(size_t i = 0; i < dutyCycles.size() && nRepsLeft > 0; ++i) {
             const auto dutyCycle = dutyCycles.at(i);
             const auto durationFraction = dutyCycleDurationFractions.at(i);
-            auto newNRepeats = getNewNRepeats(ts, durationFraction, period).value_or(nRepsLeft);
+            uint32_t newNRepeats = 0;
+            if(!durationFraction.has_value()) {
+                // Use all the rest of the number of repeats for the 100% duty cycle.
+                newNRepeats = nRepsLeft;
+            }
+            else {
+                auto expectedNRepeatsForSegment = ARRUS_SAFE_CAST(std::roundf(ts*durationFraction.value()/period), uint32_t);
+                newNRepeats = std::min(ARRUS_SAFE_CAST(expectedNRepeatsForSegment, long), nRepsSoftStartLeft);
+                nRepsSoftStartLeft -= newNRepeats;
+            }
             newNRepeats = std::min<long>(ARRUS_SAFE_CAST(newNRepeats, long), nRepsLeft);
             const auto newSegment = getSegmentForDutyCycle(segment, dutyCycle);
             builder.add(newSegment, std::min<long>(ARRUS_SAFE_CAST(newNRepeats, long), nRepsLeft));
+
             nRepsLeft -= newNRepeats;
         }
         return builder.build();
@@ -120,14 +132,6 @@ private:
             },
         };
     }
-
-    std::optional<uint32_t> getNewNRepeats(const float t, const std::optional<float> fraction, const float period) {
-        if(!fraction.has_value()) {
-            return std::nullopt;
-        }
-        return ARRUS_SAFE_CAST(std::roundf(t*fraction.value()/period), uint32_t);
-    }
-
 
     /** Minimum number of cycles the given TX pulse should have in order to make it applicable for conversion. */
     uint32_t nCycles;

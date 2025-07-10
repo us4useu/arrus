@@ -533,11 +533,373 @@ INSTANTIATE_TEST_SUITE_P(
                 // repeats
                 {1, 2, 3, 1}
             }
+        },
+        // Typical use cases:
+        // Edge case 1 -- TX pulse long enough to cover all segments
+        WaveformSplitTestParams{
+            Pulse(1e6f, 128.0f, false, 1),
+            128,
+            5e-6f, // [us]
+            {1.f/3.f, 1.f/3.f, 1.f/3.f},
+            {0.25f, 0.5f, 0.75f},
+            Waveform {
+                // segments
+                {
+                    WaveformSegment {
+                        // duration
+                        {0.125f/1e6f, 0.375f/1e6f, 0.125f/1e6f, 0.375f/1e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.25f/1e6f, 0.25f/1e6f, 0.25f/1e6f, 0.25f/1e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.375f/1e6f, 0.125f/1e6f, 0.375f/1e6f, 0.125f/1e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.5f/1e6f, 0.5f/1e6f},
+                        // states
+                        {1, -1}
+                    }
+                },
+                // repeats
+                {2, 2, 1, 123}
+            }
+        },
+        // Edge case 2 -- TX pulse short enough to have no 100% duty cycle
+        WaveformSplitTestParams{
+            Pulse(32e6f, 128.0f, false, 1), // 4e-6 second
+            128,
+            5e-6f, // [us]
+            {1.f/3.f, 1.f/3.f, 1.f/3.f},
+            {0.25f, 0.5f, 0.75f},
+            Waveform {
+                // segments
+                {
+                    WaveformSegment {
+                        // duration
+                        {0.125f/32e6f, 0.375f/32e6f, 0.125f/32e6f, 0.375f/32e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.25f/32e6f, 0.25f/32e6f, 0.25f/32e6f, 0.25f/32e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.375f/32e6f, 0.125f/32e6f, 0.375f/32e6f, 0.125f/32e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    }
+                },
+                // repeats
+                {53, 53, 22} // 128 cycles
+            }
+        },
+        // Typical case #1
+        WaveformSplitTestParams{
+            Pulse(5e6f, 5000.0f, false, 1), // 1ms pulse
+            128,
+            5e-6f, // [us]
+            {1.f/3.f, 1.f/3.f, 1.f/3.f},
+            {0.25f, 0.5f, 0.75f},
+            Waveform {
+                // segments
+                {
+                    WaveformSegment {
+                        // duration
+                        {0.125f/5e6f, 0.375f/5e6f, 0.125f/5e6f, 0.375f/5e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.25f/5e6f, 0.25f/5e6f, 0.25f/5e6f, 0.25f/5e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.375f/5e6f, 0.125f/5e6f, 0.375f/5e6f, 0.125f/5e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.5f/5e6f, 0.5f/5e6f},
+                        // states
+                        {1, -1}
+                    }
+                },
+                // repeats
+                // NOTE: we set the total number of cycles a bit less than the actual number of cycles for 5e-6
+                // (arbitrary decision)
+                {8, 8, 8, 4976}
+            }
+        },
+        // Typical case #2
+        WaveformSplitTestParams{
+            Pulse(8e6f, 4000.0f, false, 1), // 500us pulse
+            128,
+            5e-6f, // [us]
+            {1.f/3.f, 1.f/3.f, 1.f/3.f},
+            {0.25f, 0.5f, 0.75f},
+            Waveform {
+                // segments
+                {
+                    WaveformSegment {
+                        // duration
+                        {0.125f/8e6f, 0.375f/8e6f, 0.125f/8e6f, 0.375f/8e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.25f/8e6f, 0.25f/8e6f, 0.25f/8e6f, 0.25f/8e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.375f/8e6f, 0.125f/8e6f, 0.375f/8e6f, 0.125f/8e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.5f/8e6f, 0.5f/8e6f},
+                        // states
+                        {1, -1}
+                    }
+                },
+                // repeats
+                // NOTE: we set the total number of cycles a bit less than the actual number of cycles for 5e-6
+                // (arbitrary decision)
+                {13, 13, 13, 3961}
+            }
+        },
+        // Typical case #3
+        WaveformSplitTestParams{
+            Pulse(3e6f, 300.5f, false, 1), // 100 us + 0.5 period
+            128,
+            5e-6f, // [us]
+            {1.f/3.f, 1.f/3.f, 1.f/3.f},
+            {0.25f, 0.5f, 0.75f},
+            Waveform {
+                // segments
+                {
+                    WaveformSegment {
+                        // duration
+                        {0.125f/3e6f, 0.375f/3e6f, 0.125f/3e6f, 0.375f/3e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.25f/3e6f, 0.25f/3e6f, 0.25f/3e6f, 0.25f/3e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.375f/3e6f, 0.125f/3e6f, 0.375f/3e6f, 0.125f/3e6f},
+                        // states
+                        {1, 0, -1, 0}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.5f/3e6f, 0.5f/3e6f},
+                        // states
+                        {1, -1}
+                    },
+                    WaveformSegment {
+                        // duration
+                        {0.5f/3e6f},
+                        // states
+                        {1}
+                    }
+                },
+                // repeats
+                // NOTE: we set the total number of cycles a bit less than the actual number of cycles for 5e-6
+                // (arbitrary decision)
+                {5, 5, 5, 285, 1}
+            }
         }
     )
 );
 
-// TODO check the typical cases
-// TODO Check converter accept
+// Check if the waveform is correctly divided into segments with varying duty cycles.
+struct AcceptanceTestParams {
+    Waveform input;
+    bool accepted;
+
+    friend std::ostream &operator<<(std::ostream &os, const AcceptanceTestParams &params) {
+        os << "input pulse: " << params.input;
+        os << " expected acceptance: " << params.accepted;
+        return os;
+    }
+};
+
+class AcceptanceTest : public ::testing::TestWithParam<AcceptanceTestParams> {};
+
+TEST_P(AcceptanceTest, AcceptsAndRejectsWaveformsAppropriately) {
+    const auto &input = GetParam().input;
+
+    TxWaveformSoftStartConverter converter{128, 5e-6, {0.25f, 0.5f, 0.75f}, {1.f/3.f, 1.f/3.f, 1.f/3.f}};
+    EXPECT_EQ(GetParam().accepted, converter.apply(input));
+}
+
+
+INSTANTIATE_TEST_SUITE_P(
+    AcceptsCorrectWaveforms, AcceptanceTest,
+    testing::Values(
+        AcceptanceTestParams{
+            Pulse(1e6, 128.0f, false, 1).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(1e6, 129.0f, false, 1).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(1e6, 5000.0f, false, 1).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(1e6, 500000.0f, false, 1).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(1.01e6, 128.0f, false, 1).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(1e6, 128.0f, true, 1).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(1e6, 128.0f, false, 2).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(10e6, 128.0f, false, 1).toWaveform(),
+            true
+        },
+        AcceptanceTestParams{
+            Pulse(100e6, 128.0f, false, 1).toWaveform(),
+            true
+        },
+        // Accepts also custom waveforms that looks like periodic cycles
+        AcceptanceTestParams{
+            Waveform{
+                {
+                    WaveformSegment{
+                        {0.5e-6, 0.5e-6},
+                        {-2, 2}
+                    }
+                },
+                {128}
+            },
+            true
+        }
+    )
+);
+
+
+INSTANTIATE_TEST_SUITE_P(
+    RejectsNonallowableWaveforms, AcceptanceTest,
+    testing::Values(
+        // lower than the allowable frequency
+        AcceptanceTestParams{
+            Pulse(0.999e6, 5000.0f, false, 1).toWaveform(),
+            false
+        },
+        AcceptanceTestParams{
+            Pulse(0.0001e6, 5000.0f, false, 1).toWaveform(),
+            false
+        },
+        // less than the required number of cycles
+        AcceptanceTestParams{
+            Pulse(10e6, 127.0f, false, 1).toWaveform(),
+            false
+        },
+        AcceptanceTestParams{
+            Pulse(1e6, 127.0f, false, 1).toWaveform(),
+            false
+        },
+        // Typical cases
+        AcceptanceTestParams{
+            Pulse(1e6, 2.0f, false, 1).toWaveform(),
+            false
+        },
+        AcceptanceTestParams{
+            Pulse(5e6, 2.0f, false, 1).toWaveform(),
+            false
+        },
+        AcceptanceTestParams{
+            Pulse(8e6, 2.0f, false, 1).toWaveform(),
+            false
+        },
+        AcceptanceTestParams{
+            Pulse(8e6, 1.0f, false, 1).toWaveform(),
+            false
+        },
+        AcceptanceTestParams{
+            Pulse(8e6, 0.5f, false, 1).toWaveform(),
+            false
+        },
+        // Custom waveforms
+        AcceptanceTestParams{
+            Waveform{
+                {
+                    WaveformSegment{
+                        {0.5e-6, 0.5e-6},
+                        {-2, 2}
+                    },
+                    // different frequencies
+                    WaveformSegment{
+                        {0.3e-6, 0.3e-6},
+                        {-2, 2}
+                    }
+                },
+                {200, 200}
+            },
+            false
+        },
+        // Even if we have a waveform that looks like, the definition does not follow the rules from
+        // the Pulse::toWaveform and Pulse::fromWaveform methods, thus, we decline the conversion.
+        AcceptanceTestParams{
+            Waveform{
+                {
+                    WaveformSegment{
+                        {0.5e-6, 0.5e-6},
+                        {-2, 2}
+                    },
+                    // different freuqencies
+                    WaveformSegment{
+                        {0.5e-6, 0.5e-6},
+                        {-2, 2}
+                    }
+                },
+                {200, 200}
+            },
+            false
+        }
+
+
+    )
+);
+
 
 }
