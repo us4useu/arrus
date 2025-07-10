@@ -49,7 +49,7 @@ public:
         WaveformBuilder builder;
         for(size_t i = 0; i < waveform.getSegments().size(); ++i) {
             const auto &segment = waveform.getSegments().at(i);
-            const auto nRepetitions = waveform.getNRepetitions().at(i);
+            const auto nRepetitions = ARRUS_SAFE_CAST(waveform.getNRepetitions().at(i), uint32_t);
             if(nRepetitions >= nCycles) {
                 Waveform wf = convertToSoftStart(segment, nRepetitions);
                 builder.add(wf);
@@ -96,12 +96,12 @@ private:
             }
             else {
                 auto expectedNRepeatsForSegment = ARRUS_SAFE_CAST(std::roundf(ts*durationFraction.value()/period), uint32_t);
-                newNRepeats = std::min(ARRUS_SAFE_CAST(expectedNRepeatsForSegment, long), nRepsSoftStartLeft);
+                newNRepeats = std::min(ARRUS_SAFE_CAST((intmax_t)expectedNRepeatsForSegment, long), nRepsSoftStartLeft);
                 nRepsSoftStartLeft -= newNRepeats;
             }
-            newNRepeats = std::min<long>(ARRUS_SAFE_CAST(newNRepeats, long), nRepsLeft);
+            newNRepeats = std::min<long>(ARRUS_SAFE_CAST((intmax_t)newNRepeats, long), nRepsLeft);
             const auto newSegment = getSegmentForDutyCycle(segment, dutyCycle);
-            builder.add(newSegment, std::min<long>(ARRUS_SAFE_CAST(newNRepeats, long), nRepsLeft));
+            builder.add(newSegment, std::min<long>(ARRUS_SAFE_CAST((intmax_t)newNRepeats, long), nRepsLeft));
 
             nRepsLeft -= newNRepeats;
         }

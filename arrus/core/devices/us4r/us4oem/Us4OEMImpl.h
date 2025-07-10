@@ -225,7 +225,7 @@ private:
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
     /** Converts TX waveform to a waveform with soft-start applied */
-    TxWaveformSoftStartConverter softStartConverter{128, 5e-6, {0.25f, 0.5f, 0.75f}, {1.0f/3.0f, 1.0f/3.0f, 1.0f/3.0f}};
+    TxWaveformSoftStartConverter softStartConverter{128, 5e-6f, {0.25f, 0.5f, 0.75f}, {1.0f/3.0f, 1.0f/3.0f, 1.0f/3.0f}};
 };
 
 }// namespace arrus::devices
