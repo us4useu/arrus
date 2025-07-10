@@ -241,6 +241,8 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 // Waveform pre-processing.
                 if(softStartConverter.apply(op.getTxWaveform())) {
                     waveform = softStartConverter.convert(waveform);
+                    this->logger->log(LogSeverity::INFO, "The given TX pulse has at least 128 cycles, applying reduced "
+                                                         "duty cycle for the first 5 us of the TX pulse (25%, 50%, 75%).");
                 }
                 ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
             }
