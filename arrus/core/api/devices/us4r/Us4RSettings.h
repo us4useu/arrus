@@ -36,7 +36,8 @@ public:
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
-        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings()
+        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
+        bool allowDuplicateOEMIds = true
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -50,7 +51,8 @@ public:
           digitalBackplaneSettings(std::move(digitalBackplaneSettings)),
           bitstreams(std::move(bitstreams)),
           limits(std::move(limits)),
-          watchdogSettings(std::move(watchdogSettings))
+          watchdogSettings(std::move(watchdogSettings)),
+          allowDuplicateOEMIds(allowDuplicateOEMIds)
     {}
 
     Us4RSettings(
@@ -67,7 +69,8 @@ public:
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
-        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings()
+        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
+        bool allowDuplicateOEMIds = true
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -82,7 +85,8 @@ public:
                 std::move(digitalBackplaneSettings),
                 std::move(bitstreams),
                 std::move(limits),
-                std::move(watchdogSettings)
+                std::move(watchdogSettings),
+                allowDuplicateOEMIds
         )
     {}
 
@@ -177,6 +181,8 @@ public:
 
     const WatchdogSettings &getWatchdogSettings() const { return watchdogSettings; }
 
+    bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -229,6 +235,13 @@ private:
      std::optional<Us4RTxRxLimits> limits{std::nullopt};
      /** OEM watchdog settings */
      WatchdogSettings watchdogSettings{1.0f, 1.1f, 1.0f};
+     /**
+      * False value means that an error will raised in case the OEM id is non-unique. True value means that only
+      * a warning message will be logged.
+      * This parameter should be set to false in case your system has non-unique ID, but still you would like to run
+      * the software.
+      */
+     bool allowDuplicateOEMIds{true};
 };
 
 }

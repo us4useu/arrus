@@ -48,4 +48,7 @@ message Us4RSettings {
   repeated Bitstream bitstreams = 16;
   Us4RTxRxLimits tx_rx_limits = 17;
   WatchdogSettings watchdog = 18;
+  oneof optional_allow_duplicate_oem_ids {
+    bool allow_duplicate_oem_ids = 19;
+  }
 }
