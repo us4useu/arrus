@@ -354,7 +354,8 @@ public:
                 uint32 durationClk = toClk(duration);
                 if (durationClk < 2) {
                     throw IllegalArgumentException(format(
-                        "The minimum number of cycles that can be set on the pulser is 2, got: {}", durationClk));
+                        "The minimum waveform state duration that can be set on the pulser is {}, got: {}",
+                        toTime(2), duration));
                 }
                 // The actual number of cycles is durationClk + 2 cycles
                 durationClk -= 2;

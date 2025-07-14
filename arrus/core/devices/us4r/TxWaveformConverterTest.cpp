@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
+#include <cmath>
 #include "TxWaveformConverter.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
 
@@ -7,9 +8,84 @@ namespace {
 using namespace ::arrus::devices;
 using namespace ::arrus::ops::us4r;
 
+using Pulse = ::arrus::ops::us4r::Pulse;
+using State = TxWaveformConverter::DeviceState;
+
 constexpr auto ENDSTATE = TxWaveformConverter::END_STATE;
 constexpr auto SAMPLING_FREQUENCY = 130.0e6f;
 
+// TEST ALL THE RANGE OF NUMBER OF REPEATS FOR [0.1, 32], with resolution 0.1.
+TEST(TxWaveformConverter032Test, ConvertsCorrectlyWaveforms) {
+    const float DX = 0.1f;
+    const float MIN_N_REPEATS = 0.1f;
+    const float MAX_N_REPEATS = 32.0f;
+    const float CENTER_FREQUENCY = 5e6f;
+
+    auto nPoints = int(std::round((MAX_N_REPEATS-MIN_N_REPEATS)/DX));
+    for(int i = 0; i <= nPoints; ++i) {
+        for(const auto frequency: {1e6f, 5e6f, 10e6f, 20e6f}) {
+            for(const auto inverse: {true, false}) {
+                for(const auto level: {1, 2}) {
+                    const float nRepeats = MIN_N_REPEATS + i*DX;
+                    ::arrus::ops::us4r::Pulse pulse(CENTER_FREQUENCY, nRepeats, inverse, level);
+
+                    const auto wf = TxWaveformConverter::toPulser(pulse.toWaveform());
+                    // number of cycles to be written in the register. -2 -- according to the pulser datasheet
+                    const auto halfPulseDurationCycles = int(std::roundf(SAMPLING_FREQUENCY/CENTER_FREQUENCY/2.0f)) - 2;
+
+                    State firstState, secondState;
+                    if(level == 1) {
+                        firstState = State::HVP1;
+                        secondState = State::HVM1;
+                    }
+                    else if (level == 2) {
+                        firstState = State::HVP0;
+                        secondState = State::HVM0;
+                    }
+                    if(inverse) {
+                        std::swap(firstState, secondState);
+                    }
+
+                    // Expected
+                    std::vector<uint32_t> expectedRegisters;
+                    if(nRepeats <= 0.5) {
+                        const auto stateDuration = nRepeats/CENTER_FREQUENCY;
+                        // -2 according to the pulser datasheet
+                        const auto stateDurationCycles = uint32_t(std::roundf(stateDuration*SAMPLING_FREQUENCY)) - 2;
+                        // Only a single state is expected, no repetitions.
+                        const uint32_t reg = 0b00000'0000000'0000 | (stateDurationCycles << 4) | firstState;
+
+                        expectedRegisters = std::vector<uint32_t>{reg, ENDSTATE};
+                    } else if(nRepeats < 1.0f) {
+                        const auto secondStateDuration = nRepeats - 0.5f;
+                        const auto secondStateDurationCycles = uint32_t(std::roundf(secondStateDuration*SAMPLING_FREQUENCY)) - 2;
+
+                        const uint32_t reg1 = 0b00000'0000000'0000 | (halfPulseDurationCycles << 4) | firstState;
+                        const uint32_t reg2 = 0b00000'0000000'0000 | (secondStateDurationCycles << 4) | secondState;
+
+                        expectedRegisters = std::vector<uint32_t>{reg1, reg2, ENDSTATE};
+                    }
+                    else {
+                        // Two state repetition is expected, with possible reminder (non-int n repeats).
+                        double nRepeatsFractional = 0.0;
+                        const uint32_t nRepeatsInteger = float(std::modf(nRepeats, &nRepeatsFractional));
+
+                        const auto wfNRepeatsPulser = uint32_t(std::roundf(wfNRepetitions)) - 2;
+
+
+
+                        const uint32_t firstReg = 0b00000'0000000'0000 | (halfPulseDurationCycles << 4) | firstState;
+                        const uint32_t secondReg = 0b00000'0000000'0000 | (secondStateDurationCycles << 4) | secondState;
+                        expectedRegisters = std::vector<uint32_t>{firstReg, secondReg, ENDSTATE};
+                    }
+                }
+            }
+        }
+
+    }
+}
+
+// PARAMETRIC TESTS -- CORRECT WAVEFORMS (no exception should be thrown)
 struct TxWaveformConverterTestParams {
     Waveform input;
     std::vector<uint32_t> expectedOutput;
@@ -25,7 +101,6 @@ TEST_P(TxWaveformConverterTest, ConvertsCorrectWaveform) {
     EXPECT_EQ(actual, expected);
 }
 
-using State = TxWaveformConverter::DeviceState;
 
 INSTANTIATE_TEST_SUITE_P(
     ConvertsCorrectWaveform, TxWaveformConverterTest,
