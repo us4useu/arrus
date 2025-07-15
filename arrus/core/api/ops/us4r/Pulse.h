@@ -1,8 +1,9 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_PULSE_H
 #define ARRUS_CORE_API_OPS_US4R_PULSE_H
 
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <ostream>
 
 #include "Waveform.h"
 
@@ -59,6 +60,12 @@ public:
         return nPeriods/centerFrequency;
     }
 
+    friend std::ostream &operator<<(std::ostream &os, const Pulse &pulse) {
+        os << "centerFrequency: " << pulse.centerFrequency << " nPeriods: " << pulse.nPeriods
+           << " inverse: " << pulse.inverse << " amplitudeLevel: " << (uint32_t)pulse.amplitudeLevel;
+        return os;
+    }
+
     Waveform toWaveform() const {
         WaveformBuilder wb;
         float t = 1.0f/getCenterFrequency();
@@ -80,14 +87,14 @@ public:
         if(currentNPeriods > 0.0f) {
             auto rest = std::clamp(currentNPeriods, 0.0f, 0.5f);
             WaveformSegment rem1{
-                {rest *t},
+                {rest*t},
                 {(int8)(polarity*amplitudeLevel)}
             };
             wb.add(rem1);
-            rest = currentNPeriods- rest;
+            rest = currentNPeriods - rest;
             if(rest > 0.0f) {
                 WaveformSegment rem2{
-                    {rest *t},
+                    {rest*t},
                     {(int8)(-1*polarity*amplitudeLevel)}
                 };
                 wb.add(rem2);
