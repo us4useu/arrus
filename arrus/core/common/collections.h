@@ -278,7 +278,7 @@ public:
     K get(const ValueType value) const {
         try {
             return valueMap.at(value);
-        } catch(const std::out_of_range& e) {
+        } catch(const std::out_of_range& ) {
             throw IllegalArgumentException(format("Invalid value: '{}' should be one of: '{}'",
                                                   value, toString(getAvailableValues())));
         }

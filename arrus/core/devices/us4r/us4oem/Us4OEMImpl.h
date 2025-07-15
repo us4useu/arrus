@@ -227,8 +227,8 @@ private:
     std::optional<float> maxPulseLength = std::nullopt;
     /** DDC extra gain to apply, Currently, simply translates to the boolean value 'gain is off/on'.*/
     const ValueMap<float, bool> DDC_GAIN_MAP{{
-        {0, false},
-        {12, true}
+        {0.0f, false},
+        {12.0f, true}
     }};
 };
 
