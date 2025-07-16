@@ -1543,7 +1543,7 @@ classdef Us4R < handle
             end
 
             obj.buffer.iFrame = 0;
-            obj.buffer.tFrame = nan;
+            obj.buffer.tFrame = uint64(0);
             obj.rec.enable = false;
 
         end
@@ -1570,14 +1570,18 @@ classdef Us4R < handle
 
             metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
             metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
-
-            tFrameNew = bin2dec(reshape(dec2bin(metadata([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-            obj.buffer.sri = tFrameNew - obj.buffer.tFrame;
+            
+            tFrameNew = typecast(metadata(5:8), 'uint64'); % [clock cycles]
+            if obj.buffer.iFrame > 1
+                obj.buffer.sri = double(tFrameNew - obj.buffer.tFrame) / obj.sys.rxSampFreq; % [s]
+            else
+                obj.buffer.sri = nan;
+            end
             obj.buffer.tFrame = tFrameNew;
 
             % The below condition on sri is valid for simple Tx/Rx sequences,
             % it may not work properly for a messed up sequence.
-            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 1e-9;
+            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 10e-9;
 
             if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
                 warning('SYNC mode: sequence lag detected');
