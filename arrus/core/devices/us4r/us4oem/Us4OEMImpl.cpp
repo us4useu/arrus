@@ -79,8 +79,13 @@ void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
 void Us4OEMImpl::enableAfeDemod() { ius4oem->AfeDemodEnable(); }
 
 void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength,
-                                   float freq) {
-    ius4oem->AfeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq);
+                                   float freq, float gain) {
+    const auto availableGains = DDC_GAIN_MAP.getAvailableValues();
+    ARRUS_REQUIRES_TRUE_IAE(setContains(availableGains, gain),
+                            format("Digital Down Conversion gain should be one of: {}",
+                               ::arrus::toString(availableGains)));
+    auto actualValue = DDC_GAIN_MAP.get(gain);
+    ius4oem->AfeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq, actualValue);
 }
 
 void Us4OEMImpl::setAfeDemodDefault() { ius4oem->AfeDemodSetDefault(); }
@@ -665,14 +670,14 @@ void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {
     if (ddc.has_value()) {
         auto &value = ddc.value();
         setAfeDemod(value.getDemodulationFrequency(), value.getDecimationFactor(), value.getFirCoefficients().data(),
-                    value.getFirCoefficients().size());
+                    value.getFirCoefficients().size(), value.getGain());
     } else {
         disableAfeDemod();
     }
 }
 
 void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                             size_t nCoefficients) {
+                             size_t nCoefficients, float gain) {
     //check decimation factor
     if (!(decimationFactor >= 2.0f && decimationFactor <= 63.75f)) {
         throw IllegalArgumentException("Decimation factor should be in range 2.0 - 63.75");
@@ -704,7 +709,7 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
     }
     enableAfeDemod();
     setAfeDemodConfig(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters), firCoefficients,
-                      static_cast<uint16_t>(nCoefficients), demodulationFrequency);
+                      static_cast<uint16_t>(nCoefficients), demodulationFrequency, gain);
 }
 
 const char *Us4OEMImpl::getSerialNumber() { return this->serialNumber.get().c_str(); }

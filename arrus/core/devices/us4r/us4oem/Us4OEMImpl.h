@@ -13,6 +13,7 @@
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
 #include "arrus/common/cache.h"
+#include "arrus/core/common/collections.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
@@ -98,7 +99,7 @@ public:
     void setAfe(uint8_t address, uint16_t value) override;
     void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc);
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                     size_t nCoefficients) override;
+                     size_t nCoefficients, float gain) override;
     void disableAfeDemod() override { ius4oem->AfeDemodDisable(); }
     float getCurrentSamplingFrequency() const override;
     float getFPGAWallclock() override;
@@ -152,7 +153,8 @@ private:
 
     // IUs4OEM AFE setters.
     void enableAfeDemod();
-    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq);
+    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq,
+                           float gain);
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);
     void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
@@ -226,6 +228,11 @@ private:
     std::optional<float> maxPulseLength = std::nullopt;
     /** Converts TX waveform to a waveform with soft-start applied */
     TxWaveformSoftStartConverter softStartConverter{128, 5e-6f, {0.25f, 0.5f, 0.75f}, {1.0f/3.0f, 1.0f/3.0f, 1.0f/3.0f}};
+    /** DDC extra gain to apply, Currently, simply translates to the boolean value 'gain is off/on'.*/
+    const ValueMap<float, bool> DDC_GAIN_MAP{{
+        {0.0f, false},
+        {12.0f, true}
+    }};
 };
 
 }// namespace arrus::devices
