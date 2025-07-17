@@ -97,10 +97,12 @@ public:
     * @param decimationFactor: Decimation factor
     * @param firCoefficients: Pointer to Low pass filter coefficients buffer
     * @param nCoefficients: Number of FIR coefficients
+    * @param gain: an extra digital gain to apply (after decimation filter), by default set to 12 dB.
+    *   Currently only 0 and 12 dB are supported [dB]
     * @throws arrus::IllegalStateException when invalid input parameters detected
     */
     virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                             size_t nCoefficients) = 0;
+                             size_t nCoefficients, float gain = 12) = 0;
 
     /**
     * Disables AFE built-in demodulator
