@@ -765,24 +765,25 @@ std::vector<float> Us4RImpl::interpolateToSystemTGC(const vector<float> &t, cons
     return tgcValues;
 }
 
-void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic) {
+void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if (y.empty()) {
         // Turn off TGC
-        setVcat(y, applyCharacteristic);
+        setVcat(y, applyCharacteristic, clip);
     } else {
         vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setVcat(tgcValues, applyCharacteristic);
+        setVcat(tgcValues, applyCharacteristic, clip);
     }
 }
 
-void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true); }
+void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true, false); }
 
-void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic) {
+void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setVcat(attenuation)
                              .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
                              .build();
     setRxSettings(newRxSettings);
 }

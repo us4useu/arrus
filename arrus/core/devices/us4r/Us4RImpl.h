@@ -168,9 +168,9 @@ public:
     float getMaximumTGCValue() const override;
 
     std::pair<float, float> getTGCValueRange() const;
-    void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) override;
+    void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
     void setVcat(const std::vector<float> &attenuation) override;
-    void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
+    void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
 
 private:
     struct VoltageLogbook {
