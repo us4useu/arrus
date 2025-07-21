@@ -1,12 +1,10 @@
 % Example script for long acquisition.
 % 
-% Some measurements may require collecting data at a high 
-% and undisturbed rate over a long period of time. 
-% There is a limit to the number of Tx/Rx events in a sequence.
-% If the acquisition is short enough to be covered by a single Tx/Rx
-% sequence, and proper workMode is used (i.e. 'SYNC' or 'ASYNC') the time 
-% regime is maintained by design. Longer acquisitions may require a 
-% repeated executions of the sequence. 
+% Some measurements may require collecting data at a high and undisturbed
+% rate over a long period of time. There is a limit to the number of Tx/Rx
+% events in a sequence. If the acquisition is short enough to be covered
+% by a single Tx/Rx sequence, the time regime is maintained by design.
+% Longer acquisitions may require a repeated executions of the sequence.
 % Data acquired for a single sequence execution are stored in a data buffer,
 % occupying a single buffer element. Transfering the data from the buffer 
 % element to the host PC frees the buffer element. If the data are
