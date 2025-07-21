@@ -79,6 +79,8 @@ class Session(AbstractSession):
         super().__init__()
         import arrus.logging
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
+
+        self._gpu_settings = self._parse_gpu_settings(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing = None
@@ -361,8 +363,15 @@ class Session(AbstractSession):
                     graph=processing,
                     callback=None,
                 )
+            # Get GPU settings from stored settings
+            gpu_memory_limit_percentage = None
+            use_memory_pool = True  # Default to True
+            if self._gpu_settings is not None:
+                gpu_memory_limit_percentage = self._gpu_settings.get('memory_limit_percentage')
+                use_memory_pool = self._gpu_settings.get('use_memory_pool', True)            
             processing_runner = _imaging.ProcessingRunner(
                 input_buffer=buffer, metadata=metadatas, processing=processing,
+                use_memory_pool=use_memory_pool, gpu_memory_limit_percentage=gpu_memory_limit_percentage
             )
             outputs = processing_runner.outputs
             self._current_processing = processing_runner
@@ -411,6 +420,32 @@ class Session(AbstractSession):
             hardware_ddc=hardware_ddc,
             constants=constants
         )
+
+    def _parse_gpu_settings(self, cfg_path: str):
+        """
+        Parse GPU settings from the configuration file.
+
+        :param cfg_path: Path to the configuration file
+        :return: Dictionary with GPU settings or None if not found
+        """
+        try:
+            import arrus.core
+            settings = arrus.core.readSessionSettings(cfg_path)
+            us4r_settings = settings.getUs4RSettings(0)
+            gpu_settings = us4r_settings.getGpuSettings()
+
+            memory_limit_percentage = gpu_settings.getMemoryLimitPercentage()
+            use_memory_pool = gpu_settings.getUseMemoryPool()
+
+            return {
+                'memory_limit_percentage': memory_limit_percentage,
+                'use_memory_pool': use_memory_pool
+            }
+        except Exception as e:
+            import arrus.logging
+            arrus.logging.log(arrus.logging.DEBUG, 
+                              f"Could not parse GPU settings from {cfg_path}: {e}")
+            return None
 
     def _create_frame_acquisition_context(self, seq, raw_seq, device, medium,
                                           constants):

@@ -480,6 +480,25 @@ You can also turn off the watchdog mechanism by setting the ``enabled`` field to
 
     watchdog: {enabled: false}
 
+GPU Settings
+............
+
+The GPU settings are used to configure the GPU memory limit and the use of the memory pool, as used by the ProcessingRunner class within
+the imaging pipeline. Typical values are:
+
+::  gpu: {
+        memory_limit_percentage: 0.5
+        use_memory_pool: true
+    }
+
+The ``memory_limit_percentage`` is the percentage of the GPU memory that should be used by the memory pool. Values between 0.01 and 0.95 are allowed.
+The ``use_memory_pool`` is a boolean flag that indicates whether to use the memory pool if set to ``false`` then the memory pool is not used.
+
+When changing schemes, GPU RAM usage can rise as although memory has been allocated for the previous scheme, it is not released but is cached as part of the session.
+If other GPU processes are on the device this can lead to an out-of-memory issue even though there is enough memory for all processes on the hardware.
+The ``use_memory_pool`` flag can be used to disable the memory pool and force the memory to be released after each scheme.
+
+More information on cupy memory management can be found `here <https://docs.cupy.dev/en/stable/user_guide/memory.html>`_.
 
 Trigger source (TRIG IN/OUT)
 ............................

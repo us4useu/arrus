@@ -15,6 +15,7 @@
 #include "arrus/core/api/devices/us4r/DigitalBackplaneSettings.h"
 #include "arrus/core/api/devices/us4r/Bitstream.h"
 #include "arrus/core/api/devices/us4r/WatchdogSettings.h"
+#include "arrus/core/api/devices/us4r/GpuSettings.h"
 
 namespace arrus::devices {
 
@@ -36,7 +37,8 @@ public:
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
-        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings()
+        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
+        GpuSettings gpuSettings = GpuSettings::defaultSettings()
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -50,7 +52,8 @@ public:
           digitalBackplaneSettings(std::move(digitalBackplaneSettings)),
           bitstreams(std::move(bitstreams)),
           limits(std::move(limits)),
-          watchdogSettings(std::move(watchdogSettings))
+          watchdogSettings(std::move(watchdogSettings)),
+          gpuSettings(std::move(gpuSettings))
     {}
 
     Us4RSettings(
@@ -67,7 +70,8 @@ public:
         std::optional<DigitalBackplaneSettings> digitalBackplaneSettings = std::nullopt,
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
-        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings()
+        WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
+        GpuSettings gpuSettings = GpuSettings::defaultSettings()
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -82,7 +86,8 @@ public:
                 std::move(digitalBackplaneSettings),
                 std::move(bitstreams),
                 std::move(limits),
-                std::move(watchdogSettings)
+                std::move(watchdogSettings),
+                std::move(gpuSettings)
         )
     {}
 
@@ -177,6 +182,8 @@ public:
 
     const WatchdogSettings &getWatchdogSettings() const { return watchdogSettings; }
 
+    const GpuSettings &getGpuSettings() const { return gpuSettings; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -229,6 +236,8 @@ private:
      std::optional<Us4RTxRxLimits> limits{std::nullopt};
      /** OEM watchdog settings */
      WatchdogSettings watchdogSettings{1.0f, 1.1f, 1.0f};
+     /** GPU settings */
+     GpuSettings gpuSettings;
 };
 
 }

@@ -1,0 +1,10 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+message GpuSettings {
+  // Memory limit as a percentage of total VRAM (e.g., 0.5 = 50% of VRAM)
+  float memory_limit_percentage = 1;
+  // Whether to use GPU memory pool for memory management
+  bool use_memory_pool = 2;
+} 

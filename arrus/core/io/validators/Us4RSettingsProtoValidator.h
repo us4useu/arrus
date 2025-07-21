@@ -8,6 +8,8 @@
 #include "arrus/core/io/validators/ProbeAdapterModelProtoValidator.h"
 #include "arrus/core/io/validators/ProbeToAdapterConnectionProtoValidator.h"
 #include "arrus/core/io/validators/RxSettingsProtoValidator.h"
+#include "arrus/core/io/validators/GpuSettingsProtoValidator.h"
+
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
 COMPILER_DISABLE_MSVC_WARNINGS(4127)
@@ -72,6 +74,11 @@ class Us4RSettingsProtoValidator : public Validator<arrus::proto::Us4RSettings> 
         RxSettingsProtoValidator rxSettingsValidator("rx_settings");
         rxSettingsValidator.validate(us4r.rx_settings());
         copyErrorsFrom(rxSettingsValidator);
+
+        // Validate GPU settings if present
+        GpuSettingsProtoValidator gpuSettingsValidator("gpu");
+        gpuSettingsValidator.validate(us4r.gpu());
+        copyErrorsFrom(gpuSettingsValidator);        
     }
 
     bool hasProbe(const arrus::proto::Us4RSettings &us4r) const {
