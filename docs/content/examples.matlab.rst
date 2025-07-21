@@ -5,17 +5,22 @@ Examples
 In the following parts of this chapter we will show you how to use 
 the ARRUS software to communicate with the system in order to:
 
-* program the transmission/reception (TX/RX) sequence and reconstruction,
+* program the sequence of transmission/reception events (TX/RX) and reconstruction,
 * acquire raw RF data,
 * acquire reconstructed B-mode data,
-* obtain a real-time B-mode imaging.
+* obtain a real-time RF/B-mode/Color Doppler display,
+* deal with typical issues (time regime, quick switching between sequences, varying tx voltage, etc.).
 
 The source code of the ready-to-run examples can be found in examples directory:
 
-* Us4R_control_bmodePwi - for B-Mode imaging using Plane Waves,
-* Us4R_control_bmodeDwi - for B-Mode imaging using Diverging Waves,
-* Us4R_control_bmodeLin - for B-Mode imaging using classical Line-by-line imaging,
-* Us4R_control_colorPwi - for B-Mode & Color Doppler imaging using Plane Waves.
+* rawRfPwi - for raw RF data acquisition,
+* bmodePwi - for B-Mode imaging using synthetic aperture & Plane Waves,
+* bmodeDwi - for B-Mode imaging using synthetic aperture & Diverging Waves,
+* bmodeLin - for B-Mode imaging using conventional focused line-by-line imaging,
+* colorPwi - for B-Mode & Color Doppler imaging using synthetic aperture & Plane Waves,
+* subSequence - for uploading multiple sequences and quick switching between them,
+* longAcquisition - for long acquisitions and maintaining time regime,
+* txVoltageLevels - for using different voltage levels for individual tx pulses.
 
 For more information on the parameters of individual functions please refer
 to section :ref:`arrus-api`.
@@ -124,8 +129,8 @@ class. The name-value input argument pairs allow you to control various aspects 
     rec = Reconstruction('xGrid',            (-20:0.10:20)*1e-3, ...
                          'zGrid',            (  0:0.10:50)*1e-3, ...
                          ... % Optional parameters
-                         'bmodeRxTangLim',   [-0.5 0.5], ...
-                         'rxApod',           hamming(10) ...
+                         'bmodeRxTangLim',   [-1.0 1.0], ...
+                         'rxApod',           hamming(21) ...
                          );
 
 The xGrid and zGrid inputs define the reconstruction grid and thus they are obligatory. Other inputs are optional 
@@ -177,7 +182,7 @@ sequence, you need to pass the reconstruction object to the system:
 
     us.setReconstruction(rec);
 
-Assigning the reconstruction to a selected sequence works until the next ``selectSequence`` call.
+The assignment of the reconstruction to a selected sequence works until the next ``selectSequence`` call.
 
 Running the operations
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -278,7 +283,7 @@ When changing the 'txAngle' the TX beam axis is angled clockwise (negative value
 
     'txAngle' set to -15*pi/180 (left), 0*pi/180 (middle), and 15*pi/180 (right).
 
-Changing the 'txApertureCenter' and 'txCenterElement' move the aperture center along the probe surface.
+Changing the 'txApertureCenter' and 'txCenterElement' moves the aperture center along the probe surface.
 
 .. figure:: img/txCent.png
 
@@ -441,6 +446,9 @@ The Reconstruction parameters, apart from the reconstruction grid, must contain:
 
     Color Doppler image of the carotid artery
 
+The source code of the ready-to-run example (colorPwi.m) 
+can be found in the examples directory.
+
 Tips
 ~~~~
 
@@ -474,6 +482,104 @@ seq2 is selected using ``selectSequence`` and the raw data is collected using ``
     us.selectSequence(2);
     rf = us.run;
 
+The source code of the ready-to-run example (subSequence.m) 
+can be found in the examples directory.
 
+Variable TX voltage level
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
+It was mentioned that some parameters of the :ref:`arrus.CustomTxRxSequence` 
+class can be defined as vectors providing values for each TX/RX event individually. 
+Others must be defined as scalars as they are constant for all TX/RX events in a sequence. 
+Well, the txVoltage parameter should be described individually, as it is somewhere between. 
+You can define txVoltage in two ways: 
+* as a scalar v: the voltage range of all TX pulses will be from -v to +v.
+* as a 2x2 matrix [vn1, vp1; vn2, vp2]: it defines two voltage ranges: 
+first one from -vn1 to +vp1, and the second one from -vn2 to +vp2. Then, 
+for each TX/RX event individually, we can select one of these voltage ranges 
+using the 'txVoltageId' parameter. In the below example there is a sequence 
+of plane waves transmissions. The odd ones are angled (-15,-5,+5,+15 deg) 
+and their txVoltageId equals 1, so their voltage ranges from -10 to 10 V. 
+The even ones are at 0 deg, their txVoltageId equals 2, so their amplitude 
+is from -20 to +20 V.
+
+.. code-block:: matlab
+
+    seq = CustomTxRxSequence(   'txFocus',      inf, ...
+                                'txAngle',      [-15 0 -5 0 5 0 15 0]*pi/180, ...
+                                'txVoltage',    [10 10; 20 20], ...
+                                'txVoltageId',  [1 2 1 2 1 2 1 2];
+                                % some other parameters
+                                );
+
+Note that all elements of the txVoltage matrix must be positive, and the 
+values for the second voltage range must be higher than for the first one.
+
+The source code of the ready-to-run example (txVoltageLevels.m) 
+can be found in the examples directory.
+
+Long acquisitions & time regime 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In some applications it may be necessary to collect data at a high and 
+undisturbed rate over a long period of time. There is a limit to the number 
+of TX/RX events in a sequence. If the acquisition is short enough to be 
+covered by a single TX/RX sequence, the time regime is maintained by design. 
+Longer acquisitions may require a repeated executions of the sequence. 
+
+Data acquired for a sequence execution are stored in a data buffer, 
+occupying a single buffer element. Transfering the data from the buffer 
+element to the host PC frees the buffer element. If the data are collected 
+faster than they are transferred to the host PC, at some point there will 
+be no free buffer elements for the new data to be stored into (buffer overflow). 
+This, in turn, will result in breaking the time regime. The system can either 
+wait for the buffer to be emptied, or can overwrite the data that were not 
+transferred to the host PC yet (in Matlab this will cause an error).
+
+The example below highlights the parameters of the :ref:`arrus.CustomTxRxSequence` class, 
+that are critical for maintaining the time regime when the sequence is executed multiple times:
+
+* workMode: must be set to "SYNC" (optionally "ASYNC" but buffer overflow will throw exceptions).
+* bufferSize: larger buffer size can help absorb temporary problems with the data transfer to host PC. NOTE: increasing the bufferSize reduces the max. sequence length and increases the upload time.
+* txPri: it must be adjusted so that it is >= data transfer time.
+
+.. code-block:: matlab
+
+    seq = CustomTxRxSequence(   'workMode',     "SYNC", ...
+                                'bufferSize',   8, ...
+                                'txPri',        500e-6, ...
+                                % some other parameters
+                                );
+
+The runLoop method of the :ref:`arrus.Us4R` class offers a cineloop buffer 
+functionality. This buffer is located on the host PC and is limited by its 
+RAM capacity. This buffer should not be confused with the one defined in 
+the :ref:`arrus.CustomTxRxSequence` class, which is located in the Us4R 
+system internal memory.
+To store the data in the host PC memory, the runLoop method should be called 
+with the following additional arguments:
+
+* bufferType: defines the data type to be collected: 'none','raw','img', or 'all';
+* bufferMode: defines acquisition mode: 'conc' or 'subs', for the data acquisition being concurrent or subsequent to the preview, respectively;
+* bufferSize: defines the number of acquisition executions to be stored in the buffer;
+
+.. code-block:: matlab
+
+    display = BModeDisplay(rec, 'dynamicRange', [0 80]);
+    
+    [raw,img,sri] = us.runLoop( @display.isOpen, ...
+                                @display.updateImg, ...
+                                'bufferType', 'all', ...
+                                'bufferMode', 'subs', ...
+                                'bufferSize', 1000 ...
+                                );
+
+The output of the runLoop method can contain:
+
+* raw: raw data (if bufferType was set to 'raw' or 'all');
+* img: image data (if bufferType was set to 'img' or 'all');
+* sri: sequence repeting intervals for the acquired data;
+
+The source code of the ready-to-run example (longAcquisition.m) 
+can be found in the examples directory.
 
