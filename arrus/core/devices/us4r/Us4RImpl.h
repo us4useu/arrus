@@ -118,7 +118,7 @@ public:
     float getSamplingFrequency() const override;
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
-    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isUS4PSC);
+    void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isHVPS);
     unsigned char getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
@@ -139,6 +139,8 @@ public:
     void unregisterOutputBuffer(bool cleanSequencer);
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
+    const char *getBackplaneFirmwareVersion() override;
+
     void setParameters(const Parameters &parameters) override;
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &periods) override;
@@ -178,9 +180,7 @@ private:
         float voltage;
         Polarity polarity;
     };
-
-
-    std::vector<VoltageLogbook> logVoltages(bool isHV256);
+    std::vector<VoltageLogbook> logVoltages(HVModelId hvModel, bool isOEMPlus);
 
     void stopDevice();
 

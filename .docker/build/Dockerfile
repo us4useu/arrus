@@ -38,7 +38,7 @@ RUN apt-get update \
     curl
 
 # Python PIP
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}
+RUN if [ "$PYTHON_VERSION" = "3.8" ] ; then curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python${PYTHON_VERSION} ; else  curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION} ; fi
 
 
 RUN echo "alias python=python3" >> /root/.bashrc

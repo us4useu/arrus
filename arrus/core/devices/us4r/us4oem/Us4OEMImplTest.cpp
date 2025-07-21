@@ -26,6 +26,24 @@ MATCHER_P(FloatNearPointwise, tol, "") {
     return std::abs(std::get<0>(arg) - std::get<1>(arg)) < tol;
 }
 
+/**
+ * NOTE: this matcher is unsafe in the terms of the arg array size -- we don't know
+ * the exact size of it. This must be verified as a separate condition in the EXPECT_CALL
+ * (e.g. as a size parameter of the verified function call).
+ *
+ * @param arrayToCompare the expected array, expected to be std::vector or some other collection with .size() parameter
+ *  and the index accessor
+ */
+MATCHER_P(CArrayEqual, arrayToCompare, "") {
+    for(int i = 0; i < arrayToCompare.size(); ++i) {
+        // NOTE: unsafe: we don't know the size of arg array.
+        if(arg[i] != arrayToCompare[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 constexpr uint16 DEFAULT_PGA_GAIN = 30;
 constexpr uint16 DEFAULT_LNA_GAIN = 24;
 constexpr float MAX_TX_FREQUENCY = 65e6f;
@@ -190,70 +208,6 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
     EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(61, 0));
     upload(seq);
 }
-
-// TODO(ARRUS-179) move to us4r-api
-//TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffTGCWhenEmpty) {
-//    std::vector<TxRxParameters> seq = {
-//        TestTxRxParams().get()
-//    };
-//    EXPECT_CALL(*ius4oemPtr, TGCDisable);
-//    EXPECT_CALL(*ius4oemPtr, TGCEnable).Times(0);
-//    upload(seq, {});
-//}
-
-// TODO(ARRUS-179)
-//TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly) {
-//    std::vector<TxRxParameters> seq = {
-//        TestTxRxParams().get()
-//    };
-//    TGCCurve tgc = {14.000f, 14.001f, 14.002f};
-//
-//    EXPECT_CALL(*ius4oemPtr, TGCEnable);
-//
-//    TGCCurve expectedTgc = {14.0f, 15.0f, 16.0f};
-//    // normalized
-//    for(float &i : expectedTgc) {
-//        i = (i - 14.0f) / 40.f;
-//    }
-//    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-//    upload(seq, tgc);
-//}
-
-// TODO(ARRUS-179)
-//TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly2) {
-//    std::vector<TxRxParameters> seq = {
-//        TestTxRxParams().get()
-//    };
-//    TGCCurve tgc = {14.000f, 14.0005f, 14.001f};
-//
-//    EXPECT_CALL(*ius4oemPtr, TGCEnable);
-//
-//    TGCCurve expectedTgc = {14.0f, 14.5f, 15.0f};
-//    // normalized
-//    for(float &i : expectedTgc) {
-//        i = (i - 14.0f) / 40.f;
-//    }
-//    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-//    upload(seq, tgc);
-//}
-
-// TODO(ARRUS-179)
-//TEST_F(Us4OEMImplEsaote3LikeTest, InterpolatesToTGCCharacteristicCorrectly3) {
-//    std::vector<TxRxParameters> seq = {
-//        TestTxRxParams().get()
-//    };
-//    TGCCurve tgc = {14.000f, 14.0002f, 14.0007f, 14.001f, 14.0015f};
-//
-//    EXPECT_CALL(*ius4oemPtr, TGCEnable);
-//
-//    TGCCurve expectedTgc = {14.0f, 14.2f, 14.7f, 15.0f, 15.5f};
-//    // normalized
-//    for(float &i : expectedTgc) {
-//        i = (i - 14.0f) / 40.f;
-//    }
-//    EXPECT_CALL(*ius4oemPtr, TGCSetSamples(Pointwise(FloatNearPointwise(1e-4), expectedTgc), _));
-//    upload(seq, tgc);
-//}
 
 TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
     std::vector<TxRxParameters> seq = {
@@ -655,6 +609,96 @@ TEST_F(Us4OEMImplEsaote3ReprogrammingTest, RejectsToSmallPriParallel) {
 
     EXPECT_THROW(upload(seq), IllegalArgumentException);
 }
+
+// DDC UNIT TESTS
+
+class Us4OEMDigitalDownConversionTest : public Us4OEMImplTest {
+protected:
+
+    void SetUp() override {
+        Us4OEMImplTest::SetUp();
+
+        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
+        us4oem = std::make_unique<Us4OEMImpl>(
+            DeviceId(DeviceType::Us4OEM, 0),
+            std::move(ius4oem),
+            channelMapping, defaultRxSettings,
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            defaultDescriptor,
+            false,
+            false
+        );
+    }
+};
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsIncorrectDDCGain) {
+    DigitalDownConversion ddc(
+        // 13 dB gain is not accepted by us4OEM
+        1e6f, getNTimes(1.0f, 32), 4.0f, 13.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsTooLargeDecimationFactor) {
+    DigitalDownConversion ddc(
+        1e6f, getNTimes(1.0f, 32), 64.0f, 12.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsNegativeDecimationFactor) {
+    DigitalDownConversion ddc(
+        1e6f, getNTimes(1.0f, 32), -1.0f, 12.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, RejectsIncorrectNumberOfCoeffs) {
+    DigitalDownConversion ddc(
+        1e6f, getNTimes(1.0f, 33), 4.0f, 12.0f
+    );
+    EXPECT_THROW(us4oem->setAfeDemod(ddc), IllegalArgumentException);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParameters) {
+    const auto coeffs = getNTimes(1.0f, 32);
+    DigitalDownConversion ddc(
+        1e6f, coeffs, 4.0f, 12.0f
+    );
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable()).Times(0);
+    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, true));
+    us4oem->setAfeDemod(ddc);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, TurnsOffsDDCCorrectly) {
+    const auto coeffs = getNTimes(1.0f, 32);
+    DigitalDownConversion ddc(
+        1e6f, coeffs, 4.0f, 12.0f
+    );
+    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(0);
+    us4oem->setAfeDemod(std::nullopt);
+}
+
+TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParametersTurnsOffGainFor0dB) {
+    const auto coeffs = getNTimes(1.0f, 32);
+    DigitalDownConversion ddc(
+        // demodulation frequency
+        1e6f,
+        // FIR coefficients
+        coeffs,
+        // decimation factor
+        4.0f,
+        // gain
+        0.0f
+    );
+    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(1);
+    //                                      dec int, dec frac. coeffs, demodulation frequency, turn off gain
+    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, false));
+    us4oem->setAfeDemod(ddc);
+}
+
 }
 
 int main(int argc, char **argv) {
