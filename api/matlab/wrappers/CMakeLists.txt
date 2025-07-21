@@ -2,7 +2,9 @@ set(TARGET_NAME arrus_mex_object_wrapper)
 ################################################################################
 # Target and dependencies
 ################################################################################
-find_package(Matlab REQUIRED) # TODO require exact 9.5 version
+set(MATLAB_USE_VERSION_INFO_FILE 1)  # Don not run MATLAB on compile-time.
+find_package(Matlab REQUIRED)  # NOTE: custom FindMatlab.cmake is used here
+                               # (see arrus/cmake/FindMatlab.cmake).
 
 if (NOT Matlab_FOUND)
     message(WARNING "Matlab not found, Us4MEX target not available.")
