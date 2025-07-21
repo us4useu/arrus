@@ -1655,8 +1655,12 @@ classdef Us4R < handle
                                 'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
                                 'nSampOmit', 'initDel'};
             for iFld=1:numel(seqFieldsToExtr)
-                obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
-                                                                                     : obj.seq.seqLim(seqId,2));
+                if isempty(obj.seq.(seqFieldsToExtr{iFld})) || isscalar(obj.seq.(seqFieldsToExtr{iFld}))
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld});
+                else
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
+                                                                                         : obj.seq.seqLim(seqId,2));
+                end
             end
 
             obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
