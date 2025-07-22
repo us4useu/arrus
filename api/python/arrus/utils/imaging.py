@@ -382,10 +382,17 @@ class ProcessingRunner:
         READY = 1
         CLOSED = 2
 
-    def __init__(self, input_buffer, metadata, processing):
+    def __init__(self, input_buffer, metadata, processing, use_memory_pool: bool = True, gpu_memory_limit_percentage: float = 0.95):
         import cupy as cp
         self.cp = cp
         self._log_gpu_info()
+        if not use_memory_pool:
+            cp.cuda.set_allocator(None)
+
+        # Set GPU memory limit if provided
+        if use_memory_pool and gpu_memory_limit_percentage:
+            self._set_gpu_memory_limit_percentage(gpu_memory_limit_percentage)
+
         # Input buffer, stored in the host PC memory.
         self.host_input_buffer = input_buffer
         self.processing = processing
@@ -697,11 +704,10 @@ class ProcessingRunner:
             cp.cuda.runtime.hostUnregister(data_getter(element).ctypes.data)
 
     def _log_gpu_info(self):
-        import arrus.logging
         ngpus = self.cp.cuda.runtime.getDeviceCount()
-        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
-        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
-        arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {ngpus}")
+        arrus.logging.log(arrus.logging.DEBUG, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
+        arrus.logging.log(arrus.logging.DEBUG, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
+        arrus.logging.log(arrus.logging.DEBUG, f"Detected NVIDIA GPU(s): {ngpus}")
         for i in range(ngpus):
             props = self.cp.cuda.runtime.getDeviceProperties(i)
             free_mem, total_mem = self.cp.cuda.runtime.memGetInfo()
@@ -717,6 +723,28 @@ Compute capability:   {props['major']}.{props['minor']}
 Clock:                {props['clockRate'] / 1000} MHz
                 """
             )
+
+    def _set_gpu_memory_limit_percentage(self, gpu_memory_limit_percentage: float):
+        """
+        Set the GPU memory limit for the memory pool as a percentage of total GPU memory.
+
+        :param gpu_memory_limit_percentage: Percentage of total GPU memory to use (0.0 to 1.0)
+        """
+        import cupy as cp
+
+        # Get total GPU memory
+        free_mem, total_mem = cp.cuda.runtime.memGetInfo()
+        # Calculate memory limit in bytes
+        memory_limit = int(total_mem * gpu_memory_limit_percentage)
+        # Set the memory pool limit
+        mempool = cp.get_default_memory_pool()
+        mempool.set_limit(size=memory_limit)
+
+        arrus.logging.log(
+            arrus.logging.DEBUG,
+            f"GPU memory pool limit set to {gpu_memory_limit_percentage*100:.1f}% "
+            f"({memory_limit // (1024**2)} MiB out of {total_mem // (1024**2)} MiB total)"
+        )
 
 
 class Operation:

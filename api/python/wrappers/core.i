@@ -130,6 +130,26 @@ namespace std {
     }
 %}
 
+%typemap(out) std::optional<float>* %{
+    if($1 && $1->has_value()) {
+        $result = PyFloat_FromDouble($1->value());
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
+
+%typemap(out) const std::optional<float>& %{
+    if($1 && $1->has_value()) {
+        $result = PyFloat_FromDouble($1->value());
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+%}
+
 %typemap(in) std::optional<long long> %{
     if($input == Py_None) {
         $1 = std::optional<long long>();
@@ -156,8 +176,6 @@ namespace std {
         Py_INCREF(Py_None);
     }
 %}
-
-
 
 %module(directors="1") core
 
@@ -558,6 +576,7 @@ void Arrus2dArrayVectorPushBack(
 // Turn on globally value wrappers
 %feature("valuewrapper");
 %{
+#include "arrus/core/api/devices/us4r/GpuSettings.h"
 #include "arrus/core/api/devices/us4r/WatchdogSettings.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
@@ -575,6 +594,7 @@ using namespace ::arrus::devices;
 %};
 
 %include "arrus/core/api/devices/us4r/WatchdogSettings.h";
+%include "arrus/core/api/devices/us4r/GpuSettings.h";
 %include "arrus/core/api/devices/us4r/RxSettings.h";
 %include "arrus/core/api/devices/us4r/Us4OEMSettings.h";
 %ignore operator<<(std::ostream &os, const ProbeAdapterModelId &id);

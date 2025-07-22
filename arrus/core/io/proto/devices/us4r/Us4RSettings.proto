@@ -12,6 +12,7 @@ import "io/proto/devices/us4r/DigitalBackplaneSettings.proto";
 import "io/proto/devices/us4r/Bitstream.proto";
 import "io/proto/devices/us4r/Us4RTxRxLimits.proto";
 import "io/proto/devices/us4r/WatchdogSettings.proto";
+import "io/proto/devices/us4r/GpuSettings.proto";
 
 message Us4RSettings {
   // Only one of the following is available: (probe, adapter, rxsettings)
@@ -48,4 +49,5 @@ message Us4RSettings {
   repeated Bitstream bitstreams = 16;
   Us4RTxRxLimits tx_rx_limits = 17;
   WatchdogSettings watchdog = 18;
+  GpuSettings gpu = 19;
 }

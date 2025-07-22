@@ -56,6 +56,11 @@ us4r: {
         oem_threshold1: 2.0
         host_threshold: 3.0
     }
+
+    gpu: {
+        memory_limit_percentage: 0.5
+        use_memory_pool: true
+    }
 }
 
 
