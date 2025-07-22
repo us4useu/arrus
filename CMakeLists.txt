@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.12.0)
+set(PROJECT_VERSION 0.13.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
@@ -82,7 +82,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.13.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
+find_package(Us4 0.14.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
