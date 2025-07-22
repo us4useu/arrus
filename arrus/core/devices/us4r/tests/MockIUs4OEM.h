@@ -235,6 +235,9 @@ public:
     MOCK_METHOD(void, EnableSystemInterrupts, (const IUs4OEM::CallbacksMap&), (override));
     MOCK_METHOD(void, ResetDMACallbacks, (), (override));
     MOCK_METHOD(void, SetPulserInterruptCallback, (const std::function<void()> &), (override));
+    MOCK_METHOD(void, EraseHVPSCalibration, (), (override));
+    MOCK_METHOD(void, CalibrateHVPS, (), (override));
+    MOCK_METHOD(bool, CheckHVPSCalibration, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
 };
 
