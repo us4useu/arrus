@@ -5,6 +5,13 @@ Release notes
 -----
 
 
+0.11.3
+
+- core (driver):
+
+    - Added support for long (12 characters) OEM+ serial numbers #M_OEM-190.
+
+
 0.11.2
 
 - core (driver):
