@@ -12,7 +12,6 @@ def compute_linear_tgc(
         tgc_context: TgcCalculationContext,
         fs: float,
         linear_tgc,
-        min_tgc_value, max_tgc_value
 ):
     tgc_start = linear_tgc.start
     tgc_slope = linear_tgc.slope
@@ -26,7 +25,4 @@ def compute_linear_tgc(
     sampling_time = sampling_time/fs
     distance = sampling_time*c
     tgc_values = tgc_start + distance*tgc_slope
-    # TODO: the below should be moved to ARRUS CORE
-    if linear_tgc.clip:
-        tgc_values = np.clip(tgc_values, min_tgc_value, max_tgc_value)
     return sampling_time, tgc_values
