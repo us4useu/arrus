@@ -605,7 +605,7 @@ TEST(TxWaveformConverter032Test, ConvertsCorrectlyWaveforms) {
     auto nPoints = int(std::round((MAX_N_REPEATS-MIN_N_REPEATS)/DX));
     for(int i = 0; i <= nPoints; ++i) {
         for(const auto frequency: {1e6f, 5e6f, 8.125e6f, 15e6f}) {
-            for(const auto inverse: {false,}) { //  true}) {
+            for(const auto inverse: {false,true}) {
                 for(const auto level: {1, 2}) {
                     float nRepeats = MIN_N_REPEATS + i*DX;
                     nRepeats = ::arrus::roundTo(nRepeats, 1);
