@@ -178,8 +178,8 @@ public:
     MOCK_METHOD(void, AfeDisableAdcHpf, (), (override));
     MOCK_METHOD(void, AfeSetAdcHpfCornerFrequency, (uint32_t), (override));
     MOCK_METHOD(void, AfeSetAdcHpfParams, (uint16_t, uint16_t, uint16_t, uint16_t), (override));
-    MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, const float*, uint16_t, float), (override));
-    MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, uint8_t, const float*, uint16_t, float), (override));
+    MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, const float*, uint16_t, float, bool), (override));
+    MOCK_METHOD(void, AfeDemodConfig, (uint8_t, uint8_t, uint8_t, const float*, uint16_t, float, bool), (override));
     MOCK_METHOD(void, DisableWaitOnReceiveOverflow, (), (override));
     MOCK_METHOD(void, DisableWaitOnTransferOverflow, (), (override));
     MOCK_METHOD(void, VerifyFirmware, (const char*), (override));

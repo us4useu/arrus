@@ -22,6 +22,7 @@ endfunction()
 
 function(create_python_venv TARGET_NAME VENV_WORKING_DIR)
     search_python_module(virtualenv)
+    file(MAKE_DIRECTORY ${VENV_WORKING_DIR})
     set(VENV_EXECUTABLE ${PYTHON_EXECUTABLE} -m virtualenv)
     set(VENV_DIR "${VENV_WORKING_DIR}/venv")
     set(VENV_TIMESTAMP "${VENV_DIR}/timestamp")

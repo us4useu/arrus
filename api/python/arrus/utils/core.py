@@ -204,7 +204,8 @@ def convert_to_core_scheme(scheme):
         ddc = arrus.core.DigitalDownConversion(
             ddc.demodulation_frequency,
             convert_array_to_vector_float(ddc.fir_coefficients),
-            ddc.decimation_factor
+            ddc.decimation_factor,
+            ddc.gain
         )
         builder.withDigitalDownConversion(ddc)
     return builder.build()

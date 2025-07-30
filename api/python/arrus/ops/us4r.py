@@ -336,11 +336,31 @@ class TxRxSequence:
             self,
             ops=self.ops[start:(end+1)])
 
+
 @dataclass(frozen=True)
 class DigitalDownConversion:
+    """
+    Us4R Digital Down Conversion block.
+
+    Note: the decimation factor can also have a fractional part: 0.25, 0.5 or 0.75.
+
+    Note: the FIR filter order (i.e. total number of taps)depends on the decimation factor
+    and should be equal: decimationFactor*16 for integer decimation factor; decimationFactor*32 for
+    decimation factor with fractional part 0.5; decimationFactor*64 for decimation factor with
+    fractional part 0.25 or 0.75.
+
+    Note: only an upper half of the FIR filter coefficients should be provided.
+
+    :param demodulation_frequency: demodulation frequency to apply [Hz]
+    :param firCoefficients: FIR filter coefficients to apply
+    :param decimationFactor: decimation factor to apply, should be in range [2, 63]
+    :param gain: an extra digital gain to apply (after decimation filter), by default set to 12 dB.
+      Currently only 0 and 12 dB are supported [dB]
+    """
     demodulation_frequency: float
     fir_coefficients: Iterable[float]
     decimation_factor: float
+    gain: float = 12
 
 
 @dataclass(frozen=True)

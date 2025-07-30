@@ -30,9 +30,7 @@ using State = TxWaveformConverter::DeviceState;
 INSTANTIATE_TEST_SUITE_P(
     ConvertsCorrectWaveform, TxWaveformConverterTest,
     testing::Values(
-
         // 0
-
         // NOTE: below test cases implicitly tests also Pulse -> Waveform conversion
         TxWaveformConverterTestParams{
             ::arrus::ops::us4r::Pulse(1e6f, 1, false, 2).toWaveform(),
