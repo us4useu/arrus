@@ -883,7 +883,14 @@ classdef Us4R < handle
                     end
                 end
             end
-
+            
+            % txWaveform is not supported here yet
+            for iSeq=1:nSeq
+                if ~isempty(obj.seq.txWaveform)
+                    error("mergeSequences: txWaveform cannot be used in multi-sequence approach");
+                end
+            end
+            
             % Some of the parameters not included in the above validation
             % must be defined in a "one or the other" mode. Checking if the
             % same fields are empty is enough.
@@ -1331,7 +1338,7 @@ classdef Us4R < handle
             end
 
         end
-        
+
         function calcTxRxApMask(obj)
             % calcTxRxApMask appends the following fields to the in/out obj:
             % obj.seq.txApOrig      - [element] (1 x nTx) number of probe element being the origin of the tx aperture
@@ -1416,7 +1423,7 @@ classdef Us4R < handle
             obj.seq.txDelCent	= txDelCent;
 
         end
-        
+
         function programHW(obj)
             
             import arrus.ops.us4r.*;
@@ -1474,14 +1481,13 @@ classdef Us4R < handle
             obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 0, 1);
         end
 
-        % txWaveform must be handled properly here!!!
         function selSubSeq(obj, seqId, sri)
             
             % Copy selected part of sequence to subsequence
             seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
                                 'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
                                 'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
-                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent'};
+                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent', 'txWaveform'};
             for iFld=1:numel(seqFieldsToCopy)
                 obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
             end
