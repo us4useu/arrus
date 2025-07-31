@@ -493,15 +493,9 @@ class can be defined as vectors providing values for each TX/RX event individual
 Others must be defined as scalars as they are constant for all TX/RX events in a sequence. 
 Well, the txVoltage parameter should be described individually, as it is somewhere between. 
 You can define txVoltage in two ways: 
+
 * as a scalar v: the voltage range of all TX pulses will be from -v to +v.
-* as a 2x2 matrix [vn1, vp1; vn2, vp2]: it defines two voltage ranges: 
-first one from -vn1 to +vp1, and the second one from -vn2 to +vp2. Then, 
-for each TX/RX event individually, we can select one of these voltage ranges 
-using the 'txVoltageId' parameter. In the below example there is a sequence 
-of plane waves transmissions. The odd ones are angled (-15,-5,+5,+15 deg) 
-and their txVoltageId equals 1, so their voltage ranges from -10 to 10 V. 
-The even ones are at 0 deg, their txVoltageId equals 2, so their amplitude 
-is from -20 to +20 V.
+* as a 2x2 matrix [vn1, vp1; vn2, vp2]: it defines two voltage ranges: first one from -vn1 to +vp1, and the second one from -vn2 to +vp2. Then, for each TX/RX event individually, we can select one of these voltage ranges using the 'txVoltageId' parameter. In the below example there is a sequence of plane waves transmissions. The odd ones (with TX angles of: -15,-5,+5,+15 deg) have txVoltageId equal 1, so their TX voltage ranges from -10 to 10 V. For the even ones (TX angle = 0 deg) txVoltageId equals 2, so their amplitude is from -20 to +20 V.
 
 .. code-block:: matlab
 
