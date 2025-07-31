@@ -118,7 +118,7 @@ classdef CustomTxRxSequence
                       "workMode must be one of the following: MANUAL, HOST, SYNC, or ASYNC.");
             end
 
-            if ~xor(isempty(obj.txWaveform), isempty(obj.txFrequency) && isempty(obj.txNPeriods) && ~obj.txInvert)
+            if ~xor(isempty(obj.txWaveform), isempty(obj.txFrequency) && isempty(obj.txNPeriods) && isempty(obj.txInvert))
                 error("ARRUS:IllegalArgument", ...
                 "Exactly one of the following should be provided: txWaveform or (txFrequency, txNPeriods, and txInvert)");
             end
@@ -158,8 +158,6 @@ classdef CustomTxRxSequence
             if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) >= obj.txVoltage(2,:))
                 error("ARRUS:IllegalArgument", 'txVoltage(2,:) must be higher than txVoltage(1,:)');
             end
-
-            %% Pulse validation
             if isempty(obj.txWaveform)
                 if isempty(obj.txInvert)
                     obj.txInvert = false;
@@ -169,8 +167,6 @@ classdef CustomTxRxSequence
                 obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
                 obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
                 obj.txInvert            = double(obj.txInvert);
-            else
-                obj.txInvert            = [];
             end
         end
     end
