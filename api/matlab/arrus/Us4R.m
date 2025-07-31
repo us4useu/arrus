@@ -1636,6 +1636,7 @@ classdef Us4R < handle
             obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 0);
         end
 
+        % txWaveform must be handled properly here!!!
         function selSubSeq(obj, seqId, sri)
             
             % Copy selected part of sequence to subsequence
