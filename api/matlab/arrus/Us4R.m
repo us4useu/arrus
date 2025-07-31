@@ -218,6 +218,8 @@ classdef Us4R < handle
             % :param gain: LNA gain [dB]. Numerical scalar.
             
             obj.us4r.setLnaGain(gain);
+
+            obj.sys.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
         end
 
         function setPgaGain(obj,gain)
@@ -226,6 +228,8 @@ classdef Us4R < handle
             % :param gain: PGA gain [dB]. Numerical scalar.
 
             obj.us4r.setPgaGain(gain);
+            
+            obj.sys.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
         end
 
         function setLpfCutoff(obj,frequency)
@@ -772,6 +776,8 @@ classdef Us4R < handle
                         error('Unsupported LNA gain value.');
                 end
                 
+                % WARNING: tgcCurve is no longer clipped in MATLAB API,
+                % this may lead to wrong amplitude limit correction here.
                 tgcCurveResamp = interp1(obj.subSeq.tgcPoints, obj.subSeq.tgcCurve, ...
                                          (obj.subSeq.startSample + (1:nSamp) - 1)*obj.subSeq.dec, "linear", nan);
                 ampUndistortLim = voltLim * 10.^(tgcCurveResamp/20) * obj.sys.adcVolt2Lsb;
@@ -943,6 +949,7 @@ classdef Us4R < handle
             else
                 error('Arrus does not recognize AFE model');
             end
+            obj.sys.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
 
             % Check if valid GPU is available
             isGpuAvailable = ~isempty(ver('parallel')) ...
@@ -1197,21 +1204,18 @@ classdef Us4R < handle
             end
             
             %% TGC
-            obj.seq.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
-            
             % Default TGC start level
             if isempty(obj.seq.tgcStart)
-                obj.seq.tgcStart = obj.seq.tgcLim(1);
+                obj.seq.tgcStart = obj.sys.tgcLim(1);
             end
             
             dt = 0.5e-6; % [s] arbitrary time step for the tgc curve
             obj.seq.tgcPoints = 0 : dt : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec/obj.sys.rxSampFreq; % [s]
             obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope*obj.seq.tgcPoints*obj.seq.c; % [dB]
-            if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
+            if any(obj.seq.tgcCurve < obj.sys.tgcLim(1) | obj.seq.tgcCurve > obj.sys.tgcLim(2))
                 warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
                       'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
-                      'dB, TGC values are limited to ' num2str(obj.seq.tgcLim(1)) '-'  num2str(obj.seq.tgcLim(2)) 'dB range.']);
-                obj.seq.tgcCurve = max(obj.seq.tgcLim(1),min(obj.seq.tgcLim(2),obj.seq.tgcCurve));
+                      'dB, TGC values must be limited to ' num2str(obj.sys.tgcLim(1)) '-'  num2str(obj.sys.tgcLim(2)) 'dB range.']);
             end
             
             %% Tx/Rx aperture missing parameters
@@ -1626,7 +1630,7 @@ classdef Us4R < handle
             % the corresponding data is obtained during setSubsequence call.
 
             % time, value, applyCharacteristic
-            obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 0);
+            obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 0, 1);
         end
 
         % txWaveform must be handled properly here!!!
@@ -1636,7 +1640,7 @@ classdef Us4R < handle
             seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
                                 'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
                                 'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
-                                'rxSampFreq', 'tgcLim', 'tgcPoints', 'tgcCurve', 'txDelCent'};
+                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent'};
             for iFld=1:numel(seqFieldsToCopy)
                 obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
             end
@@ -1702,7 +1706,7 @@ classdef Us4R < handle
             end
 
             obj.buffer.iFrame = 0;
-            obj.buffer.tFrame = nan;
+            obj.buffer.tFrame = uint64(0);
             obj.rec.enable = false;
 
         end
@@ -1729,14 +1733,18 @@ classdef Us4R < handle
 
             metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
             metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
-
-            tFrameNew = bin2dec(reshape(dec2bin(metadata([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-            obj.buffer.sri = tFrameNew - obj.buffer.tFrame;
+            
+            tFrameNew = typecast(metadata(5:8), 'uint64'); % [clock cycles]
+            if obj.buffer.iFrame > 1
+                obj.buffer.sri = double(tFrameNew - obj.buffer.tFrame) / obj.sys.rxSampFreq; % [s]
+            else
+                obj.buffer.sri = nan;
+            end
             obj.buffer.tFrame = tFrameNew;
 
             % The below condition on sri is valid for simple Tx/Rx sequences,
             % it may not work properly for a messed up sequence.
-            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 1e-9;
+            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 10e-9;
 
             if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
                 warning('SYNC mode: sequence lag detected');

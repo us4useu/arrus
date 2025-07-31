@@ -125,7 +125,11 @@ endfunction()
 # Targets and installs.
 ################################################################################
 include(python)
-create_python_venv(docs_venv ${CMAKE_CURRENT_BINARY_DIR})
+set(ARRUS_DOCS_VENV_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs")
+if(ARRUS_PY_VENV_TARGET)
+    set(ARRUS_DOCS_VENV_TARGET_DIR "${ARRUS_PY_VENV_TARGET}/docs")
+endif()
+create_python_venv(docs_venv ${ARRUS_DOCS_VENV_TARGET_DIR})
 install_sphinx_package(sphinx_package docs_venv)
 
 # C++

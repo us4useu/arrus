@@ -186,8 +186,8 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
             if(currentVoltageM.has_value() && currentVoltageP.has_value()) {
                 if (currentVoltageM >= voltage->getVoltageMinus() || currentVoltageP >= voltage->getVoltagePlus()) {
                     throw IllegalArgumentException("TX voltage amplitudes (for the TX level 1 and 2) should be in strictly "
-                                                   "increasing order, i.e. voltage[1].plus > voltage[0].plus and "
-                                                   "voltage[1].minus > voltage[1].minus.");
+                                                   "increasing order, i.e. 2nd Voltage+ > 1st Voltage+ and "
+                                                   "2nd Voltage- > 1st Voltage-.");
                 }
             }
             // otherwise, this is the first voltage in the vector -- just store the value.
@@ -728,25 +728,26 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true, false); }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setTgcSamples(tgcCurvePoints)
                              .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
                              .build();
     setRxSettings(newRxSettings);
 }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if (y.empty()) {
         // Turn off TGC
-        setTgcCurve(y, applyCharacteristic);
+        setTgcCurve(y, applyCharacteristic, clip);
     } else {
         vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setTgcCurve(tgcValues, applyCharacteristic);
+        setTgcCurve(tgcValues, applyCharacteristic, clip);
     }
 }
 
@@ -764,24 +765,25 @@ std::vector<float> Us4RImpl::interpolateToSystemTGC(const vector<float> &t, cons
     return tgcValues;
 }
 
-void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic) {
+void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if (y.empty()) {
         // Turn off TGC
-        setVcat(y, applyCharacteristic);
+        setVcat(y, applyCharacteristic, clip);
     } else {
         vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setVcat(tgcValues, applyCharacteristic);
+        setVcat(tgcValues, applyCharacteristic, clip);
     }
 }
 
-void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true); }
+void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true, false); }
 
-void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic) {
+void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setVcat(attenuation)
                              .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
                              .build();
     setRxSettings(newRxSettings);
 }

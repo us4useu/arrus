@@ -21,7 +21,8 @@ public:
             ctx,
             ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, demodulationFrequency, object),
             ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, decimationFactor, object),
-            ARRUS_MATLAB_GET_CPP_VECTOR(ctx, float, firCoefficients, object)
+            ARRUS_MATLAB_GET_CPP_VECTOR(ctx, float, firCoefficients, object),
+            ARRUS_MATLAB_GET_CPP_SCALAR(ctx, float, gain, object)
         };
     }
 
@@ -31,17 +32,23 @@ public:
         for(int i = 0; i < coeffs.size(); ++i) {
             coeffsCopy[i] = coeffs[i];
         }
-        return DigitalDownConversionConverter{ctx, object.getDemodulationFrequency(), object.getDecimationFactor(),
-            coeffsCopy};
+        return DigitalDownConversionConverter{
+            ctx,
+            object.getDemodulationFrequency(),
+            object.getDecimationFactor(),
+            coeffsCopy,
+            object.getGain()
+        };
     }
 
     DigitalDownConversionConverter(const MexContext::SharedHandle &ctx, float demodulationFrequency,
-                                   float decimationFactor, std::vector<float> firCoefficients)
+                                   float decimationFactor, std::vector<float> firCoefficients,
+                                   float gain)
         : ctx(ctx), demodulationFrequency(demodulationFrequency), decimationFactor(decimationFactor),
-          firCoefficients(std::move(firCoefficients)) {}
+          firCoefficients(std::move(firCoefficients)), gain(gain) {}
 
     [[nodiscard]] ::arrus::ops::us4r::DigitalDownConversion toCore() const {
-        return DigitalDownConversion{demodulationFrequency, firCoefficients, decimationFactor};
+        return DigitalDownConversion{demodulationFrequency, firCoefficients, decimationFactor, gain};
     }
 
     [[nodiscard]] ::matlab::data::Array toMatlab() const {
@@ -50,7 +57,8 @@ public:
             {
              ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, demodulationFrequency),
              ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, decimationFactor),
-             ARRUS_MATLAB_GET_MATLAB_VECTOR_KV(ctx, float, firCoefficients)
+             ARRUS_MATLAB_GET_MATLAB_VECTOR_KV(ctx, float, firCoefficients),
+             ARRUS_MATLAB_GET_MATLAB_SCALAR_KV(ctx, float, gain)
             });
     }
 
@@ -59,6 +67,7 @@ private:
     float demodulationFrequency;
     float decimationFactor;
     std::vector<float> firCoefficients;
+    float gain;
 };
 }// namespace arrus::matlab::ops::us4r
 
