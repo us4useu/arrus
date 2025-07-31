@@ -43,75 +43,60 @@ classdef Reconstruction
             % 
             % :param gridModeEnable: If set to true, enables grid-based \
             %   reconstruction. If set to false, reconstruction is done \
-            %   classically, in a line-by-line manner. Logical scalar. \
-            %   Optional name-value argument, default = true.
+            %   classically, in a line-by-line manner. Logical scalar, \
+            %   default = true.
             % :param filterEnable: Enables filtration of the raw data. \
-            %   Logical scalar. Optional name-value argument, default = false.
+            %   Logical scalar, default = false.
             % :param filterACoeff: Denominator coefficients of the raw data \
-            %   filter. Numerical vector. Optional name-value argument, default = [].
+            %   filter. Numerical vector, default = [].
             % :param filterBCoeff: Numerator coefficients of the raw data \
-            %   filter. Numerical vector. Optional name-value argument, default = [].
+            %   filter. Numerical vector, default = [].
             % :param filterDelay: Delay introduced by the filter [samples].\
-            %   Numerical scalar. Optional name-value argument, default = 0. Not yet implemented.
+            %   Numerical scalar, default = 0. Not yet implemented.
             % :param swDdcEnable: Enables software DDC (Digital Down
-            %   Convertion). Logical scalar. Optional name-value argument.
-            % :param decimation: Software decimation factor. Numerical scalar. \
-            %   Optional name-value argument.
-            % :param xGrid: Coordinate grid x [m]. Numerical vector. \
-            %   Optional name-value argument, default = [].
-            % :param zGrid: Coordinate grid z [m]. Numerical vector. \
-            %   Optional name-value argument, default = [].
+            %   Convertion). Logical scalar.
+            % :param decimation: Software decimation factor. Numerical scalar.
+            % :param xGrid: Coordinate grid x [m]. Numerical vector, default = [].
+            % :param zGrid: Coordinate grid z [m]. Numerical vector, default = [].
             % :param sos: Speed of sound value used for reconstruction [m/s]. \
-            %   Numerical scalar. Optional name-value argument.
-            % :param rxApod: Rx apodization window. Numerical vector. \
-            %   Optional name-value argument, default = [1 1].
+            %   Numerical scalar.
+            % :param rxApod: Rx apodization window. Numerical vector, default = [1 1].
             % :param bmodeEnable: Enables B-Mode reconstruction. Logical \
-            %   scalar. Optional name-value argument, default = true.
+            %   scalar, default = true.
             % :param colorEnable: Enables Color Doppler reconstruction and \
-            %   Duplex imaging. Logical scalar. Optional name-value argument, \
-            %   default = false.
+            %   Duplex imaging. Logical scalar, default = false.
             % :param vectorEnable: Enables Vector Doppler reconstruction and \
-            %   Duplex imaging. Logical scalar. Optional name-value argument, \
-            %   default = false.
+            %   Duplex imaging. Logical scalar, default = false.
             % :param bmodeFrames: Frame numbers to be used in B-Mode \
-            %   reconstruction. Numerical vector. Optional name-value \
-            %   argument.
+            %   reconstruction. Numerical vector.
             % :param colorFrames: Frame numbers to be used in Color Doppler \
-            %   reconstruction. Numerical vector. Optional name-value \
-            %   argument.
+            %   reconstruction. Numerical vector.
             % :param vector0Frames: Frame numbers to be used in Vector Doppler \
-            %   reconstruction as 1st projection. Numerical vector. Optional \
-            %   name-value argument.
+            %   reconstruction as 1st projection. Numerical vector.
             % :param vector1Frames: Frame numbers to be used in Vector Doppler \
-            %   reconstruction as 2nd projection.  Numerical vector. Optional \
-            %   name-value argument.
+            %   reconstruction as 2nd projection.  Numerical vector.
             % :param bmodeRxTangLim: Rx tangent limits for B-Mode. \
-            %   Numerical array (K*, 2). Optional name-value argument, \
-            %   default = [-0.5 0.5].
+            %   Numerical array (K*, 2), default = [-0.5 0.5].
             % :param colorRxTangLim: Rx tangent limits for Color Doppler. \
-            %   Numerical array (M*, 2). Optional name-value argument, \
-            %   default = [-0.5 0.5].
+            %   Numerical array (M*, 2), default = [-0.5 0.5].
             % :param vector0RxTangLim: Rx tangent limits for Vector Doppler \
-            %   (1st projection). Numerical array (N*, 2). Optional name-value \
-            %   argument, default = [-0.5 0.5].
+            %   (1st projection). Numerical array (N*, 2), default = [-0.5 0.5].
             % :param vector1RxTangLim: Rx tangent limits for Vector Doppler \
-            %   (2nd projection). Numerical array (N*, 2). Optional name-value \
-            %   argument, default = [-0.5 0.5].
+            %   (2nd projection). Numerical array (N*, 2), default = [-0.5 0.5].
             % :param wcFilterACoeff: Denominator coefficients of the \
             %   Wall Clutter Filter (WCF) for Color/Vector Doppler. \
-            %   Numerical vector. Optional name-value argument.
+            %   Numerical vector.
             % :param wcFilterBCoeff: Numerator coefficients of the \
             %   Wall Clutter Filter (WCF) for Color/Vector Doppler. \
-            %   Numerical vector. Optional name-value argument.
+            %   Numerical vector.
             % :param wcFiltInitSize: Number of initial WCF output samples \
             %   to be rejected due to the filter initialization. \
-            %   Numerical scalar. Optional name-value argument.
+            %   Numerical scalar.
             % :param cohFiltEnable: Enables coherence-weighted filtration. \
-            %   Logical scalar. Optional name-value argument, default = false.
+            %   Logical scalar, default = false.
             % :param cohCompEnable: Enables coherent compounding.  If set \
             %   to false, the compounding is performed on envelope images \
-            %   (incoherently). Logical scalar. Optional name-value argument, \
-            %   default = false.
+            %   (incoherently). Logical scalar, default = false.
             % 
             % * K, M, N - length of bmodeFrames, colorFrames, and vector0Frames or vector1Frames, respectively.
             % 
