@@ -1035,14 +1035,7 @@ classdef Us4R < handle
                     end
                 end
             end
-            
-            % txWaveform is not supported here yet
-            for iSeq=1:nSeq
-                if ~isempty(obj.seq.txWaveform)
-                    error("mergeSequences: txWaveform cannot be used in multi-sequence approach");
-                end
-            end
-            
+
             % Some of the parameters not included in the above validation
             % must be defined in a "one or the other" mode. Checking if the
             % same fields are empty is enough.
@@ -1643,8 +1636,7 @@ classdef Us4R < handle
             seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
                                 'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
                                 'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
-                                'rxSampFreq', 'tgcLim', 'tgcPoints', 'tgcCurve', 'txDelCent', ...
-                                'txWaveform'};
+                                'rxSampFreq', 'tgcLim', 'tgcPoints', 'tgcCurve', 'txDelCent'};
             for iFld=1:numel(seqFieldsToCopy)
                 obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
             end
@@ -1744,7 +1736,7 @@ classdef Us4R < handle
 
             % The below condition on sri is valid for simple Tx/Rx sequences,
             % it may not work properly for a messed up sequence.
-            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 512e-6;   % increased threshold value due to timestamp precision in metadata
+            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 1e-9;
 
             if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
                 warning('SYNC mode: sequence lag detected');
