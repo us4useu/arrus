@@ -494,7 +494,8 @@ void Us4RImpl::start() {
         // The sequencer pointer (the entry from which sequencer starts) should not be reset when
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
         // the sequencer pointers will appropriately set to the start param value.
-        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
+        // Set it to the current beginning of the array 0.
+        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().at(0).getStart() : 0;
         us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t));
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
@@ -1291,30 +1292,62 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
     return rxDelay;
 }
 
-std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float> &sri) {
+std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
+    // Validation
+    // TODO verify slices and sris arrays
+    // - slices size should be equal to the number of TX/RX sequences
+    // - sris ...
+    // - all slices should have exactly step = 1
+    // TODO make sure that [start, end) is properly handled in most of the following functions (or just translate it properly here, i.e. end := end-1 and make sure that start != end
+
     if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
-        throw ::arrus::IllegalStateException("Call upload method before setting a new sub-sequence.");
+        throw ::arrus::IllegalStateException("Call upload method before setting a new subsequences.");
     }
+    // vars/consts
+    const SequenceId nSequences = currentScheme->getTxRxSequences().size();
+    const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    // Physical start/end, etc.
+    std::vector<Us4RSubsequence> params;
+    std::vector<uint16_t> starts, ends;
+    std::vector<uint32_t> timeToNextTriggers;
+    std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays;
+    // Handle empty sris array.
+    std::vector<std::optional<float>> actualSris = sris.empty() ? getNTimes<std::optional<float>>(std::nullopt, nSequences): sris;
+
     // Clear callback (the new one will be registered later, in the prepareHostBuffer)
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
-    auto params = subsequenceFactory->get(sequenceId, start, end, sri);
-    bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+
+    for(SequenceId id = 0; id < nSequences; ++id) {
+        // TODO [start, end]?
+        auto p = subsequenceFactory->get(id, slices.at(id).getStart(), slices.at(id).getEnd(), sris.at(id));
+        params.push_back(p);
+        oemArrays.push_back(p.getArrayDefs());
+        if(!p.empty()) {
+            // Filter out empty sub-sequences
+            starts.push_back(p.getStart());
+            ends.push_back(p.getEnd());
+            timeToNextTriggers.push_back(p.getTimeToNextTrigger());
+        }
+    }
+
     for (auto &oem : us4oems) {
-        oem->setSubsequence(params.getStart(), params.getEnd(), isSyncMode, params.getTimeToNextTrigger());
+        oem->setSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
     }
     currentSubsequenceParams = params;
-
+    std::vector<Us4OEMBuffer> oemBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
-                      currentScheme->getWorkMode(), params.getOemBuffers(), true);
+                      currentScheme->getWorkMode(), oemBuffers, true);
     // Create metadata
     std::vector<FrameChannelMappingImpl::Handle> fcms;
-    fcms.emplace_back(params.buildFCM());
+    for(const auto &p: params) {
+        fcms.emplace_back(p.buildFCM());
+    }
     auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     // A single metadata is assumed here.
-    return {this->buffer, metadatas.at(0)};
+    return {this->buffer, metadatas};
 }
 
 void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {

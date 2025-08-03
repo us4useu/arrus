@@ -238,6 +238,7 @@ using namespace ::arrus;
 %ignore arrus::Tuple::operator[];
 
 %include "arrus/core/api/common/Tuple.h"
+%include "arrus/core/api/common/Slice.h"
 %include "arrus/core/api/common/Interval.h"
 %include "arrus/core/api/common/Span.h"
 %include "arrus/core/api/ops/us4r/DigitalDownConversion.h"

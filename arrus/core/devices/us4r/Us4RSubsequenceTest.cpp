@@ -221,7 +221,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
     EXPECT_EQ(res.getEnd(), 3);
 
     // OEM buffers:
-    const auto &resultOEMBuffers = res.getOemBuffers();
+    const auto &resultOEMBuffers = res.getArrayDefs();
     const auto &oem0Buffer = resultOEMBuffers.at(0);
     EXPECT_EQ(oem0Buffer.getElement(0).getSize(), 2 * 4096);
     EXPECT_EQ(oem0Buffer.getElement(0).getAddress(), 0);
@@ -481,7 +481,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     EXPECT_EQ(res.getEnd(), 0);
 
     // OEM buffers:
-    const auto &resultOEMBuffers = res.getOemBuffers();
+    const auto &resultOEMBuffers = res.getArrayDefs();
     const auto &oem0Buffer = resultOEMBuffers.at(0);
     EXPECT_EQ(oem0Buffer.getElement(0).getSize(), 4096);
     EXPECT_EQ(oem0Buffer.getElement(0).getAddress(), 0);
@@ -506,7 +506,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     EXPECT_EQ(res1.getEnd(), 2);
 
     // OEM buffers:
-    const auto &resultOEMBuffers1 = res1.getOemBuffers();
+    const auto &resultOEMBuffers1 = res1.getArrayDefs();
     const auto &oem0Buffer1 = resultOEMBuffers1.at(0);
     EXPECT_EQ(oem0Buffer1.getElement(0).getSize(), 4096);
     EXPECT_EQ(oem0Buffer1.getElement(0).getAddress(), 0);

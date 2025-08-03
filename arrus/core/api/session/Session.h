@@ -120,20 +120,21 @@ public:
     virtual State getCurrentState() = 0;
 
     /**
-     * Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
+     * Selects [start, end) slices for each sub-sequence.
      *
-     * This method requires that:
+     * The `slices` array should have exactly n elements, where n is the number of currently uploaded sequences.
+     * The element slice[i] sets the [start, end) range for the i-th sequence.
      *
-     * - start <= end (when start= == end, the system will run a single TX/RX sequence),
-     * - the scheme was uploaded,
-     * - the TX/RX sequence length is greater than the `end` value,
-     * - the scheme is stopped.
+     * The `sris` should have eactly n elements, or should be empty (which means that no additional sri should be
+     * applied).
      *
-     * @param start the TX/RX number which should now be the first TX/RX
-     * @param end the TX/RX number which should now be the last TX/RX
-     * @param sri the new SRI to apply
-     * @param arrayId id array to select, default: array with id 0
-     * @return the new data buffer and metadata
+     * To turn off the given sequence, just set start equal to end (e.g. Slice(0, 0)). For such sequences, the metadata
+     * will
+     *
+     * @param slices slices to set to each Scheme sub-sequence
+     * @param sris sris to apply to each Scheme sub-sequence
+     * @return returns the buffer and metadata for the modified Scheme. The metadata array size is always equal to
+     *   the number of sequences in the original Scheme
      */
     virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) = 0;
 

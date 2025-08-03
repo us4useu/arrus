@@ -26,23 +26,24 @@ class Us4RSubsequence {
 
 public:
     Us4RSubsequence(uint16_t start, uint16_t anEnd, uint32_t timeToNextTrigger,
-                    const std::vector<Us4OEMBuffer> &oemBuffers, FrameChannelMappingBuilder fcm)
-        : start(start), end(anEnd), timeToNextTrigger(timeToNextTrigger), oemBuffers(oemBuffers),
+                    const std::vector<Us4OEMBufferArrayDef> &arrays, FrameChannelMappingBuilder fcm)
+        : start(start), end(anEnd), timeToNextTrigger(timeToNextTrigger), arrays(arrays),
           fcm(std::move(fcm)) {}
 
     uint16_t getStart() const { return start; }
     uint16_t getEnd() const { return end; }
     uint32_t getTimeToNextTrigger() const { return timeToNextTrigger; }
-    const std::vector<Us4OEMBuffer> &getOemBuffers() const { return oemBuffers; }
+    const std::vector<Us4OEMBufferArrayDef> &getArrayDefs() const { return arrays; }
     /** NOTE: this method builds a new FCM everytime is called */
     FrameChannelMappingImpl::Handle buildFCM() const { return fcm.build(); }
+    bool empty() const {return start == end; }
 
 private:
     /** Physical firing [start, end] NOTE: both inclusive */
     uint16_t start, end;
     uint32_t timeToNextTrigger;
     /** OEM buffers for the selected sub-sequence. */
-    std::vector<Us4OEMBuffer> oemBuffers;
+    std::vector<Us4OEMBufferArrayDef> arrays;
     /** FCM for the selected sub-sequence */
     FrameChannelMappingBuilder fcm;
 };
@@ -95,6 +96,13 @@ public:
     }
 
     Us4RSubsequence get(SequenceId sequenceId, uint16_t start, uint16_t end, std::optional<float> sri) {
+        if(start == end) {
+            // Return empty sub-sequence (i.e. the sequence should be turned off).
+            return Us4RSubsequence{
+                start, start, 0, {}, FrameChannelMappingBuilder{0, 0}
+            };
+        }
+
         validate(sequenceId, start, end);
         // physical [start, end]
         uint16_t oemStart = logicalToPhysicalOp.at(sequenceId).at(start).first;
@@ -103,13 +111,13 @@ public:
         uint16_t oemStartLocal = logicalToPhysicalOpLocal.at(sequenceId).at(start).first;
         uint16_t oemEndLocal = logicalToPhysicalOpLocal.at(sequenceId).at(end).second;
 
-        std::vector<Us4OEMBuffer> views;
+        std::vector<std::optional<Us4OEMBufferArrayDef>> views;
         // Update us4OEM buffers.
         // We only limit the range of the parts list and change the size and shape of the elements buffer (required
         // for creating new host buffer).
         // We do not recalculate firing numbers! This way transfer registrar will use the proper firing numbers.
         for (const auto &oemBuffer : oemBuffers) {
-            views.push_back(getOEMBufferView(oemBuffer, sequenceId, oemStartLocal, oemEndLocal));
+            views.push_back(getOEMBufferArrayDefs(oemBuffer, sequenceId, oemStartLocal, oemEndLocal));
         }
         // Update FCM.
         FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*(fcm.at(sequenceId)));
@@ -254,11 +262,19 @@ private:
     /**
      * Returns the view of this buffer for slice [start, end] (note: end is inclusive) of the given array.
      */
-    Us4OEMBuffer getOEMBufferView(const Us4OEMBuffer &buffer, ArrayId arrayId, uint16 start, uint16 end) const {
+    Us4OEMBufferArrayDef getOEMBufferArrayDefs(const Us4OEMBuffer &buffer, ArrayId arrayId, uint16 start, uint16 end) const {
         if (start > end) {
             throw IllegalArgumentException("Us4OEMBufferView: start cannot exceed end");
         }
         const auto& arrayDef = buffer.getArrayDef(arrayId);
+        if(start == end) {
+            // Empty array.
+            return Us4OEMBufferArrayDef {
+                arrayDef.getAddress(),
+                framework::NdArrayDef{{0, }, arrayDef.getDefinition().getDataType()},
+                {}
+            };
+        }
         const auto& parts = arrayDef.getParts();
 
         if (end >= parts.size()) {
@@ -280,24 +296,17 @@ private:
         // Calculate new address of the array.
         // The new address is the current address + offset caused by the start part.
         auto newAddress = arrayDef.getAddress() + std::begin(newParts)->getAddress();
-        Us4OEMBufferArrayDef newArrayDef{
+        return Us4OEMBufferArrayDef {
             newAddress,
             newDefinition,
             newParts
         };
-        // NEW ELEMENTS -- RECALCULATE ELEMENT SIZE.
-        std::vector<Us4OEMBufferElement> newElements;
-        for(const auto &oldElement: buffer.getElements()) {
-            newElements.emplace_back(
-                oldElement.getAddress(),
-                newArrayDef.getSize(),
-                oldElement.getGlobalFiring()
-            );
-        }
-        return Us4OEMBuffer(newElements, {newArrayDef});
     }
 
     static framework::NdArray::Shape updateShape(const framework::NdArray::Shape &currentShape, unsigned int totalNSamples) {
+        if(totalNSamples == 0) { // Return empty array shape in case there are no samples acquired
+            return {0,};
+        }
         if(currentShape.size() != 2 && currentShape.size() != 3) {
             throw std::runtime_error("Illegal us4OEM output buffer element shape order: " + std::to_string(currentShape.size()));
         }

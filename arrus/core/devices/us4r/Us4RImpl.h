@@ -154,8 +154,8 @@ public:
         return probes.at(ordinal).get();
     }
 
-    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override;
+    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
@@ -261,7 +261,7 @@ private:
     bool isExternalTrigger;
 
     std::optional<Us4RSubsequenceFactory> subsequenceFactory;
-    std::optional<Us4RSubsequence> currentSubsequenceParams;
+    std::optional<std::vector<Us4RSubsequence>> currentSubsequenceParams;
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
     std::optional<float> currentRxTimeOffset;

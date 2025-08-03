@@ -281,3 +281,7 @@ def assert_hv_voltage_correct(value):
     if not (min_v <= value <= max_v):
         raise ValueError("Voltages are expected to be values in range "
                          f"[{min_v}, {max_v}]")
+
+
+def convert_to_arrus_slice(s: slice):
+    return arrus.core.Slice(s.start, s.stop, s.step)
