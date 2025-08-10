@@ -226,7 +226,7 @@ public:
                 frameIdx++;
             }
 
-            auto opPhysicalEnd = ARRUS_SAFE_CAST(sequenceBuilders.at(0).size()-1, uint16_t);
+            auto opPhysicalEnd = ARRUS_SAFE_CAST(sequenceBuilders.at(0).size(), uint16_t);
             logical2PhysicalMap.at(opIdx) = {opPhysicalStart, opPhysicalEnd};
         }
 

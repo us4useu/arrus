@@ -39,7 +39,7 @@ public:
     bool empty() const {return start == end; }
 
 private:
-    /** Physical firing [start, end] NOTE: both inclusive */
+    /** Physical firing [start, end) NOTE: left-side inclusive, right-side exclusive. */
     uint16_t start, end;
     uint32_t timeToNextTrigger;
     /** OEM buffers for the selected sub-sequence. */
@@ -55,7 +55,7 @@ public:
      * NOTE: regarding the mapping parameter start and end are assumed to be local per sequence,
      * i.e. logicalToPhysicalMapping.at(i).at(0) is counted from te beginning of the i-th sequence.
      *
-     * @param mapping
+     * @param mapping logical to physical TX/RX mapping
      * @param oemSequences actual TX/RX sequences on each OEM; sequence id -> OEM -> op. NOTE: these are sequences after
      *   splitting RXs into subapertures (i.e. max 32 active elements)!
      * @param oemBuffers OEM buffers; OEM -> buffer
@@ -96,22 +96,21 @@ public:
     }
 
     Us4RSubsequence get(SequenceId sequenceId, uint16_t start, uint16_t end, std::optional<float> sri) {
+        ARRUS_REQUIRES_TRUE_IAE(start <= end, "Sub-sequence start should be not greater than the end");
         if(start == end) {
             // Return empty sub-sequence (i.e. the sequence should be turned off).
             return Us4RSubsequence{
                 start, start, 0, {}, FrameChannelMappingBuilder{0, 0}
             };
         }
-
         validate(sequenceId, start, end);
-        // physical [start, end]
         uint16_t oemStart = logicalToPhysicalOp.at(sequenceId).at(start).first;
         uint16_t oemEnd = logicalToPhysicalOp.at(sequenceId).at(end).second;
 
         uint16_t oemStartLocal = logicalToPhysicalOpLocal.at(sequenceId).at(start).first;
         uint16_t oemEndLocal = logicalToPhysicalOpLocal.at(sequenceId).at(end).second;
 
-        std::vector<std::optional<Us4OEMBufferArrayDef>> views;
+        std::vector<Us4OEMBufferArrayDef> views;
         // Update us4OEM buffers.
         // We only limit the range of the parts list and change the size and shape of the elements buffer (required
         // for creating new host buffer).
@@ -121,7 +120,7 @@ public:
         }
         // Update FCM.
         FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*(fcm.at(sequenceId)));
-        outFCMBuilder.slice(start, end);// slice to logical frames to [start, end]
+        outFCMBuilder.slice(start, end);// slice to logical frames to [start, end)
         // OEM nr -> number of frames
         std::vector<uint32> nFrames;
         for (size_t oem = 0; oem < oemBuffers.size(); ++oem) {
@@ -137,10 +136,51 @@ public:
         outFCMBuilder.setNumberOfFrames(nFrames);
         outFCMBuilder.recalculateOffsets();
         return Us4RSubsequence{
-            oemStart, oemEnd,
+            oemStart, oemEnd, // right-side exclusive
             getTimeToNextTrigger(sequenceId, oemStartLocal, oemEndLocal, sri),
             views, outFCMBuilder
         };
+    }
+
+    /**
+     * Re-creates OEM buffers based on the array definitions for each sequence.
+     *
+     * @param oemArrays TX/RX sequence -> OEM -> OEM Buffer array definition
+     */
+    std::vector<Us4OEMBuffer> recreateOEMBuffers(const std::vector<std::vector<Us4OEMBufferArrayDef>> &arrayDefs) {
+        const auto nSequences = arrayDefs.size();
+        // OEM -> TX/RX sequence -> OEM buffer array definition (transposed oemArrays)
+        std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays(nSequences);
+
+        for(size_t sequence = 0; sequence < nSequences; ++sequence) {
+            for(size_t oem = 0; oem < arrayDefs.at(sequence).size(); ++oem) {
+                oemArrays.at(oem).push_back(arrayDefs.at(sequence).at(oem));
+            }
+        }
+        std::vector<Us4OEMBuffer> result;
+        for(size_t oem = 0; oem < oemBuffers.size(); ++oem) {
+            const auto &buffer = oemBuffers.at(oem);
+            // TX/RX sequence -> array def
+            const auto &arrays = oemArrays.at(oem);
+            std::vector<Us4OEMBufferElement> newElements;
+            // Calculate the new element size.
+            size_t newElementSize = std::accumulate(
+                std::begin(arrays), std::end(arrays), 0,
+                [](const auto acc, const auto &array){
+                    return acc + array.getSize();
+                }
+            );
+
+            for(const auto &oldElement: buffer.getElements()) {
+                newElements.emplace_back(
+                    oldElement.getAddress(),
+                    newElementSize,
+                    oldElement.getGlobalFiring()
+                );
+            }
+            result.emplace_back(newElements, arrays);
+        }
+        return result;
     }
 
 private:
@@ -179,20 +219,23 @@ private:
 
         std::optional<uint16> getNextFrame(uint16 op) {
             if(op >= opToNextFrame.size()) {
-                throw IllegalArgumentException("Accessing mapping outside the avialable range.");
+                throw IllegalArgumentException("Accessing mapping outside the available range.");
             }
             return opToNextFrame.at(op);
         }
 
         /**
-         * Returns the number of frames acquired by ops with numbers between [start, end] (both inclusive).
+         * Returns the number of frames acquired by ops with numbers between [start, end) (right-side exclusive).
          */
         long getNumberOfFrames(uint16 start, uint16 end) {
-            if(start > end || end >= isRxOp.size()) {
+            if(start == end) {
+                return 0;
+            }
+            if(start > end || end > isRxOp.size()) {
                 throw std::runtime_error("Accessing isRxOp outside the available range.");
             }
             long result = 0;
-            for(uint16 i = start; i <= end; ++i) {
+            for(uint16 i = start; i < end; ++i) {
                 if(isRxOp.at(i)) {
                     ++result;
                 }
@@ -207,7 +250,7 @@ private:
 
 
     /**
-     * Converts input mapping (with the per-sequence local [start, end] to the global TX/RX numbers.
+     * Converts input mapping (with the per-sequence local [start, end)) to the global TX/RX numbers.
      */
     std::vector<LogicalToPhysicalOp> createGlobalMapping(const std::vector<LogicalToPhysicalOp> &localMap) {
         // NOTE: ASSUMING that subsequence OEMs are programmed sequentially, and there are no gaps, etc.
@@ -224,26 +267,26 @@ private:
             );
             result.push_back(newMap);
             if(!map.empty()) {
-                // The physical end of the last TX/RX
+                // The physical end of the last TX/RX in the given sequence
                 const auto &lastTxRx = (std::end(map)-1)->second;
-                const auto sequenceSize = lastTxRx+1; // NOTE: end is the end of the range, inclusive
+                const auto sequenceSize = lastTxRx; // NOTE: end is the end of the range, exclusive
                 offset += sequenceSize;
             }
         }
         return result;
     }
 
-    void validate(SequenceId sequenceId, uint16 start, uint16 end) {
+    void validate(SequenceId sequenceId, uint16 start, uint16 stop) {
         if(sequenceId >= sequences.size()) {
             throw IllegalStateException(
                 format("Sequence {} is outside of of the uploaded sequences (size: {})", sequenceId, sequences.size()));
         }
         const auto &seq = sequences.at(sequenceId);
         const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
-        if(end >= currentSequenceSize) {
+        if(stop >= currentSequenceSize) {
             throw IllegalArgumentException(
                 format("The new sub-sequence [{}, {}] is outside of the scope of the sequence with id: {} "
-                             " [0, {})", start, end, sequenceId, currentSequenceSize));
+                             " [0, {})", start, stop, sequenceId, currentSequenceSize));
         }
     }
 
@@ -260,15 +303,15 @@ private:
     }
 
     /**
-     * Returns the view of this buffer for slice [start, end] (note: end is inclusive) of the given array.
+     * Returns the view of this buffer for slice [start, end) (note: end is exclusive) of the given array.
      */
     Us4OEMBufferArrayDef getOEMBufferArrayDefs(const Us4OEMBuffer &buffer, ArrayId arrayId, uint16 start, uint16 end) const {
         if (start > end) {
             throw IllegalArgumentException("Us4OEMBufferView: start cannot exceed end");
         }
         const auto& arrayDef = buffer.getArrayDef(arrayId);
-        if(start == end) {
-            // Empty array.
+        if(start == end || arrayDef.getSize() == 0) {
+            // Empty the current (arrayDef) or te new (start, end) array.
             return Us4OEMBufferArrayDef {
                 arrayDef.getAddress(),
                 framework::NdArrayDef{{0, }, arrayDef.getDefinition().getDataType()},
@@ -279,12 +322,19 @@ private:
 
         if (end >= parts.size()) {
             throw IllegalArgumentException(
-                format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})",
-                       end, parts.size()));
+                format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})", end, parts.size()));
         }
         auto b = std::begin(parts);
         // NEW ARRAY DEF (A SINGLE ARRAY SHOULD BE DEFINED)
-        Us4OEMBufferArrayParts newParts(b+start, b+end+1); // NOTE: +1 because end is inclusive
+        Us4OEMBufferArrayParts newParts(b+start, b+end); // NOTE: end is exclusive
+        if(newParts.empty()) {
+            // empty array
+            return Us4OEMBufferArrayDef {
+                arrayDef.getAddress(),
+                framework::NdArrayDef{{0, }, arrayDef.getDefinition().getDataType()},
+                {}
+            };
+        }
         // Calculate new shape of the array.
         auto oldShape = arrayDef.getDefinition().getShape();
         // Compute total number of samples acquired by this OEM
@@ -304,13 +354,13 @@ private:
     }
 
     static framework::NdArray::Shape updateShape(const framework::NdArray::Shape &currentShape, unsigned int totalNSamples) {
-        if(totalNSamples == 0) { // Return empty array shape in case there are no samples acquired
+        if(totalNSamples == 0 || currentShape.empty()) { // Return empty array shape in case there are no samples acquired
             return {0,};
         }
         if(currentShape.size() != 2 && currentShape.size() != 3) {
-            throw std::runtime_error("Illegal us4OEM output buffer element shape order: " + std::to_string(currentShape.size()));
+            throw std::runtime_error("Illegal us4OEM output buffer element number of dimensions: " + std::to_string(currentShape.size()));
         }
-        auto channelsAx = currentShape.size() == 0 ? uint32_t(0) : static_cast<uint32_t>(currentShape.size()-1);
+        auto channelsAx = static_cast<uint32_t>(currentShape.size()-1);
         bool isDDCOn = currentShape.size() == 3;
         auto nChannels = static_cast<uint32_t>(currentShape.get(channelsAx));
         if(isDDCOn) {
@@ -330,7 +380,7 @@ private:
     std::vector<FrameChannelMappingImpl::Handle> fcm;
     /** sequence id -> op id -> GLOBAL firing start, end */
     std::vector<LogicalToPhysicalOp> logicalToPhysicalOp;
-    /** sequence id -> op id -> Local (for the given sequence) firing start, end */
+    /** sequence id -> op id -> Local (for the given sequence) firing start, stop */
     std::vector<LogicalToPhysicalOp> logicalToPhysicalOpLocal;
     /** sequence id -> OEM id -> op to next RF frame */
     std::vector<std::vector<OpToNextFrameMapping>> opToNextFrame;

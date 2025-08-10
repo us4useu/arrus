@@ -604,9 +604,9 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
     // OEM -> list of sequences to upload on the OEM
     auto sequencesByOEM = std::vector{noems, OEMSequences{}};
-    // sequence -> op -> a range of physical TX/RXs [start, end]
+    // sequence -> op -> a range of physical TX/RXs [start, end)
     // NOTE: start and end are local per sequence, i.e. logicalToPhysicalMapping.at(i).at(0) is counted
-    // from te beginning of the i-th sequence.
+    // from the beginning of the i-th sequence.
     std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
     // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
     std::vector<std::vector<TxRxParametersSequence>> oemSequences;
@@ -1295,15 +1295,14 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
 std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
 Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
     // Validation
-    // TODO verify slices and sris arrays
-    // - slices size should be equal to the number of TX/RX sequences
-    // - sris ...
     // - all slices should have exactly step = 1
-    // TODO make sure that [start, end) is properly handled in most of the following functions (or just translate it properly here, i.e. end := end-1 and make sure that start != end
-
-    if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
-        throw ::arrus::IllegalStateException("Call upload method before setting a new subsequences.");
-    }
+    ARRUS_REQUIRES_TRUE_E(subsequenceFactory.has_value() && currentScheme.has_value(),
+                          ::arrus::IllegalStateException("Call upload method before setting a new subsequences."));
+    ARRUS_REQUIRES_TRUE_IAE(!slices.empty(), "At least one sub-sequence should be selected");
+    ARRUS_REQUIRES_TRUE_IAE(slices.size() == currentScheme->getTxRxSequences().size(),
+                            "You should provide the same number of slices as the number of currently uploaded TX/RX sequences.");
+    ARRUS_REQUIRES_TRUE_IAE(sris.empty() || slices.size() == sris.size(),
+                            "The list of SRIs should be empty or have the same length as the list of slices.");
     // vars/consts
     const SequenceId nSequences = currentScheme->getTxRxSequences().size();
     const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
@@ -1311,17 +1310,17 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
     std::vector<Us4RSubsequence> params;
     std::vector<uint16_t> starts, ends;
     std::vector<uint32_t> timeToNextTriggers;
+    // TX/RX sequence -> OEM buffer -> array definition
     std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays;
     // Handle empty sris array.
-    std::vector<std::optional<float>> actualSris = sris.empty() ? getNTimes<std::optional<float>>(std::nullopt, nSequences): sris;
-
+    std::vector<std::optional<float>> actualSris = sris.empty() ?
+                                                                getNTimes<std::optional<float>>(std::nullopt, nSequences):
+                                                                sris;
     // Clear callback (the new one will be registered later, in the prepareHostBuffer)
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
-
     for(SequenceId id = 0; id < nSequences; ++id) {
-        // TODO [start, end]?
         auto p = subsequenceFactory->get(id, slices.at(id).getStart(), slices.at(id).getEnd(), sris.at(id));
         params.push_back(p);
         oemArrays.push_back(p.getArrayDefs());
@@ -1337,9 +1336,9 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
         oem->setSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
     }
     currentSubsequenceParams = params;
-    std::vector<Us4OEMBuffer> oemBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
+    const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
-                      currentScheme->getWorkMode(), oemBuffers, true);
+                      currentScheme->getWorkMode(), subsequenceBuffers, true);
     // Create metadata
     std::vector<FrameChannelMappingImpl::Handle> fcms;
     for(const auto &p: params) {
