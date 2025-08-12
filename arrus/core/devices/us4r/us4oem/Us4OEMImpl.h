@@ -198,7 +198,6 @@ private:
         std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
         const std::unordered_set<ChannelIdx> &channelsMask);
     void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
-    void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) override;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;

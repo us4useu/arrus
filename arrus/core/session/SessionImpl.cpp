@@ -254,12 +254,12 @@ void SessionImpl::verifyScheme(const ops::us4r::Scheme &scheme) {
 
 Session::State SessionImpl::getCurrentState() { return state; }
 
-UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional<float> sri, ArrayId arrayId) {
+UploadResult SessionImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
     std::lock_guard guard(stateMutex);
     ASSERT_STATE(State::STOPPED);
 
     auto ultrasound = (Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-    auto[buffer, metadata] = ultrasound->setSubsequence(arrayId, start, end, sri);
+    auto[buffer, metadata] = ultrasound->setSubsequences(slices, sris);
     return UploadResult(buffer, {metadata});
 }
 

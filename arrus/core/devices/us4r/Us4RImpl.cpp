@@ -1333,7 +1333,7 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
     }
 
     for (auto &oem : us4oems) {
-        oem->setSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
+        oem->getIUs4OEM()->SetSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
     }
     currentSubsequenceParams = params;
     const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);

@@ -216,12 +216,12 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
 
     Us4RSubsequenceFactory factory{{seq}, mapping, oemSequences, oemBuffers, fcms};
 
-    const auto res = factory.get(0, 1, 1, std::nullopt);
+    const auto res = factory.get(0, 1, 2, std::nullopt);
+    const auto resultOEMBuffers = factory.recreateOEMBuffers({res.getArrayDefs()});
     EXPECT_EQ(res.getStart(), 2);
     EXPECT_EQ(res.getEnd(), 3);
 
     // OEM buffers:
-    const auto &resultOEMBuffers = res.getArrayDefs();
     const auto &oem0Buffer = resultOEMBuffers.at(0);
     EXPECT_EQ(oem0Buffer.getElement(0).getSize(), 2 * 4096);
     EXPECT_EQ(oem0Buffer.getElement(0).getAddress(), 0);
@@ -477,11 +477,11 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
 
     // Select sequence 0, only the first TX/RX
     const auto res = factory.get(0, 0, 0, std::nullopt);
+    const auto resultOEMBuffers = factory.recreateOEMBuffers({res.getArrayDefs()});
     EXPECT_EQ(res.getStart(), 0);
     EXPECT_EQ(res.getEnd(), 0);
 
     // OEM buffers:
-    const auto &resultOEMBuffers = res.getArrayDefs();
     const auto &oem0Buffer = resultOEMBuffers.at(0);
     EXPECT_EQ(oem0Buffer.getElement(0).getSize(), 4096);
     EXPECT_EQ(oem0Buffer.getElement(0).getAddress(), 0);
@@ -502,11 +502,11 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     // Select sequence 1.
 
     const auto res1 = factory.get(1, 0, 0, std::nullopt);
+    const auto resultOEMBuffers1 = factory.recreateOEMBuffers({res.getArrayDefs()});
     EXPECT_EQ(res1.getStart(), 2);
     EXPECT_EQ(res1.getEnd(), 2);
 
     // OEM buffers:
-    const auto &resultOEMBuffers1 = res1.getArrayDefs();
     const auto &oem0Buffer1 = resultOEMBuffers1.at(0);
     EXPECT_EQ(oem0Buffer1.getElement(0).getSize(), 4096);
     EXPECT_EQ(oem0Buffer1.getElement(0).getAddress(), 0);
@@ -530,5 +530,6 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG(arrus::Logging);
     ::testing::InitGoogleTest(&argc, argv);
+    ::testing::GTEST_FLAG(catch_exceptions) = false;
     return RUN_ALL_TESTS();
 }

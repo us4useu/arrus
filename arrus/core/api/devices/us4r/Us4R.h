@@ -379,8 +379,8 @@ public:
      */
     virtual const char *getBackplaneFirmwareVersion() = 0;
 
-    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
-    setSubsequences(const std::vector<Slice> &slices, const std::optional<float> &sris) override = 0;
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
 

@@ -881,8 +881,4 @@ std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
     return ius4oem->GetTGCValueRange();
 }
 
-void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
-    this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
-}
-
 }// namespace arrus::devices

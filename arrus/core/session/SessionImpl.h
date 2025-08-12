@@ -36,7 +36,7 @@ public:
     void close() override;
     void setParameters(const Parameters &params) override;
     State getCurrentState() override;
-    UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, ArrayId arrayId) override;
+    UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
 
 private:
     ARRUS_DEFINE_ENUM_TO_STRING(

@@ -1,8 +1,9 @@
 #ifndef ARRUS_CORE_API_SESSION_SESSION_H
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
-#include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/common/Parameters.h"
+#include "arrus/core/api/common/Slice.h"
+#include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -134,9 +135,9 @@ public:
      * @param slices slices to set to each Scheme sub-sequence
      * @param sris sris to apply to each Scheme sub-sequence
      * @return returns the buffer and metadata for the modified Scheme. The metadata array size is always equal to
-     *   the number of sequences in the original Scheme
+     *   the number of seqeuences in the original Scheme
      */
-    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) = 0;
+    virtual UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     virtual ~Session() = default;
 

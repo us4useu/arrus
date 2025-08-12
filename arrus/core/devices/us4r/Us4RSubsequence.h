@@ -42,7 +42,7 @@ private:
     /** Physical firing [start, end) NOTE: left-side inclusive, right-side exclusive. */
     uint16_t start, end;
     uint32_t timeToNextTrigger;
-    /** OEM buffers for the selected sub-sequence. */
+    /** Arrays for each OEM, TX/RX sequence id -> array. */
     std::vector<Us4OEMBufferArrayDef> arrays;
     /** FCM for the selected sub-sequence */
     FrameChannelMappingBuilder fcm;
@@ -99,8 +99,17 @@ public:
         ARRUS_REQUIRES_TRUE_IAE(start <= end, "Sub-sequence start should be not greater than the end");
         if(start == end) {
             // Return empty sub-sequence (i.e. the sequence should be turned off).
+            std::vector<Us4OEMBufferArrayDef> arrays;
+            for(const auto &buffer: oemBuffers) {
+                const auto refArray = buffer.getArrayDef(sequenceId);
+                arrays.push_back(Us4OEMBufferArrayDef{
+                    refArray.getAddress(),
+                    framework::NdArrayDef({0}, refArray.getDefinition().getDataType()),
+                    {}
+                });
+            }
             return Us4RSubsequence{
-                start, start, 0, {}, FrameChannelMappingBuilder{0, 0}
+                start, start, 0, arrays, FrameChannelMappingBuilder{0, 0}
             };
         }
         validate(sequenceId, start, end);
@@ -149,11 +158,12 @@ public:
      */
     std::vector<Us4OEMBuffer> recreateOEMBuffers(const std::vector<std::vector<Us4OEMBufferArrayDef>> &arrayDefs) {
         const auto nSequences = arrayDefs.size();
+        const auto noems = oemBuffers.size();
         // OEM -> TX/RX sequence -> OEM buffer array definition (transposed oemArrays)
-        std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays(nSequences);
+        std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays(noems);
 
         for(size_t sequence = 0; sequence < nSequences; ++sequence) {
-            for(size_t oem = 0; oem < arrayDefs.at(sequence).size(); ++oem) {
+            for(size_t oem = 0; oem < noems; ++oem) {
                 oemArrays.at(oem).push_back(arrayDefs.at(sequence).at(oem));
             }
         }
@@ -283,7 +293,7 @@ private:
         }
         const auto &seq = sequences.at(sequenceId);
         const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
-        if(stop >= currentSequenceSize) {
+        if(stop > currentSequenceSize) {
             throw IllegalArgumentException(
                 format("The new sub-sequence [{}, {}] is outside of the scope of the sequence with id: {} "
                              " [0, {})", start, stop, sequenceId, currentSequenceSize));
