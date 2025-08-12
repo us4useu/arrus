@@ -37,7 +37,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        std::vector<uint16_t> pulserInterruptMasking = {}
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -52,7 +53,9 @@ public:
           bitstreams(std::move(bitstreams)),
           limits(std::move(limits)),
           watchdogSettings(std::move(watchdogSettings)),
-          allowDuplicateOEMIds(allowDuplicateOEMIds)
+          allowDuplicateOEMIds(allowDuplicateOEMIds),
+          pulserInterruptMasking(std::move(pulserInterruptMasking))
+        
     {}
 
     Us4RSettings(
@@ -70,7 +73,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        std::vector<uint16_t> pulserInterruptMasking = {}
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -86,7 +90,8 @@ public:
                 std::move(bitstreams),
                 std::move(limits),
                 std::move(watchdogSettings),
-                allowDuplicateOEMIds
+                allowDuplicateOEMIds,
+                std::move(pulserInterruptMasking)
         )
     {}
 
@@ -183,6 +188,8 @@ public:
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
+    const std::vector<uint16_t> &getPulserInterruptMask() const { return pulserInterruptMasking; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -242,6 +249,9 @@ private:
       * the software.
       */
      bool allowDuplicateOEMIds{true};
+
+     /* */
+     std::vector<uint16_t> pulserInterruptMasking;
 };
 
 }

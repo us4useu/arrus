@@ -1336,6 +1336,7 @@ void Us4RImpl::handlePulserInterrupt() {
         this->disableHV();
     }
     else {
+        if() //...
         this->stop();
         this->disableHV();
     }
