@@ -498,7 +498,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
-    std::vector<uint16_t> pulserInterrputMask;
+    std::vector<uint8_t> pulserInterrputMask;
     int txFrequencyRange = 1;
     bool allowDuplicateOEMIds = true; // default values
 
@@ -534,7 +534,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     if (!us4r.pulser_interrupt_mask().empty()) {
         auto &pulserInterrputs = us4r.pulser_interrupt_mask();
         for (auto &nr: pulserInterrputs) {
-            pulserInterrputMask.emplace_back(static_cast<uint16_t>(nr));
+            pulserInterrputMask.emplace_back(static_cast<uint8_t>(nr));
         }
     }
     WatchdogSettings watchdog = WatchdogSettings::defaultSettings();

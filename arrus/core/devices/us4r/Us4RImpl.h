@@ -45,7 +45,8 @@ public:
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
              const RxSettings &rxSettings, std::vector<std::unordered_set<unsigned short>> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
-             bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings, bool isExternalTrigger);
+             bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings, bool isExternalTrigger,
+             const std::vector<uint8_t> pulserInterruptMasking);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -259,6 +260,7 @@ private:
     bool hasIOBitstreamAdressing{false};
     std::optional<Ordinal> frameMetadataOEM{Ordinal(0)};
     bool isExternalTrigger;
+    std::vector<uint8_t> pulserInterruptMasking;
 
     std::optional<Us4RSubsequenceFactory> subsequenceFactory;
     std::optional<Us4RSubsequence> currentSubsequenceParams;

@@ -236,6 +236,8 @@ public:
     MOCK_METHOD(void, ResetDMACallbacks, (), (override));
     MOCK_METHOD(void, SetPulserInterruptCallback, (const std::function<void()> &), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
+    MOCK_METHOD(std::vector<uint16_t>, GetPulsersStatusRegister, (), (override));
+    MOCK_METHOD(std::vector<std::string>, GetPulserStatusRegisterDescription, (uint16_t status), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

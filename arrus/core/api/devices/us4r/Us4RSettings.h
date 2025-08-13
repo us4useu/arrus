@@ -38,7 +38,7 @@ public:
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
         bool allowDuplicateOEMIds = true,
-        std::vector<uint16_t> pulserInterruptMasking = {}
+        std::vector<uint8_t> pulserInterruptMasking = {}
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -74,7 +74,7 @@ public:
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
         bool allowDuplicateOEMIds = true,
-        std::vector<uint16_t> pulserInterruptMasking = {}
+        std::vector<uint8_t> pulserInterruptMasking = {}
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -188,7 +188,7 @@ public:
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
-    const std::vector<uint16_t> &getPulserInterruptMask() const { return pulserInterruptMasking; }
+    const std::vector<uint8_t> &getPulserInterruptMask() const { return pulserInterruptMasking; }
 
 private:
     /* A list of settings for Us4OEMs.
@@ -251,7 +251,7 @@ private:
      bool allowDuplicateOEMIds{true};
 
      /* */
-     std::vector<uint16_t> pulserInterruptMasking;
+     std::vector<uint8_t> pulserInterruptMasking;
 };
 
 }
