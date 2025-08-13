@@ -118,6 +118,13 @@ public:
         return devices::DeviceId{devices::DeviceType::Probe, ordinal};
     }
 
+    /**
+     * Returns the number of ops in the given TX/RX sequence.
+     */
+    size_t size() const {
+        return txrxs.size();
+    }
+
 private:
     std::vector<TxRx> txrxs;
     TGCCurve tgcCurve;

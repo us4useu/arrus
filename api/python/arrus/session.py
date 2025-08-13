@@ -25,7 +25,7 @@ import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.core
 import arrus.framework
-from typing import Sequence, Dict, Iterable, List
+from typing import Sequence, Dict, Iterable, List, Optional
 from numbers import Number
 
 from arrus.devices.ultrasound import Ultrasound
@@ -310,12 +310,30 @@ class Session(AbstractSession):
         self._context = SessionContext(medium=value)
 
     def set_subsequences(self, slices: List[slice], processing=None, sris: List[Optional[float]] = None):
+        """
+        Selects [start, end) slices for each sub-sequence.
+
+        The `slices` array should have exactly n elements, where n is the number of currently uploaded sequences.
+        The element slice[i] sets the [start, end) range for the i-th sequence.
+
+        The `sris` should have exactly n elements, or should be empty (which means that no additional sri should be
+        applied).
+
+        To turn off the given sequence, just set start equal to end (e.g. Slice(0, 0)). For such sequences, the metadata
+        will
+
+        :param slices: slices to set to each Scheme sub-sequence
+        :param sris: sris to apply to each Scheme sub-sequence
+        :return returns: the buffer and metadata for the modified Scheme. The metadata array size is always equal to
+           the number of sequences in the original Scheme
+        """
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
-        arrus_slices = arrus.utils.core.convert_to_arrus_slices(slices)
         sris = [] if sris is None else sris
 
-        # TODO poprawic konwersje Optional[float]
-        upload_result = self._session_handle.setSubsequences(arrus_slices, sris)
+        arrus_slices = arrus.utils.core.convert_to_arrus_slices(slices)
+        arrus_sris = arrus.utils.core.convert_to_optional_vector(sris)
+
+        upload_result = self._session_handle.setSubsequences(arrus_slices, arrus_sris)
 
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
@@ -343,8 +361,25 @@ class Session(AbstractSession):
 
     def set_subsequence(self, start, end, array_id=0, processing=None, sri=None):
         """
-        # TODO
+        Turns on the sequence with the arrayId and sets the TX/RXs to the [start, end) range. This method turns off all
+        the uploaded TX/RX sequences except sequence pointed by `arrayId`.
+
+        This method requires that:
+
+        - start < end (start == end would mean that the given sequence should bet turned off, and that would mean that all TX/RXs sequences should be turned off, which current does not make sense),
+        - the scheme was uploaded,
+        - the TX/RX sequence length is greater than the `end` value,
+        - the scheme is stopped.
+
+        :param start: the TX/RX number which should now be the first TX/RX
+        :param end: the TX/RX number which should now be the last TX/RX
+        :param sri: the new SRI to apply
+        :param array_id: id array to select, default: array with id 0
+        :param processing: processing that should be used to process the output data for the given sub-sequence
+        :return: the new data buffer and metadata
         """
+        if start >= end:
+            raise ValueError("The `set_subsequence` method requires start < end.")
         if self._current_scheme is None:
             raise ValueError("Please upload the scheme first")
         sequences = self._current_scheme.tx_rx_sequence

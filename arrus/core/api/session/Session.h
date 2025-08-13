@@ -121,6 +121,25 @@ public:
     virtual State getCurrentState() = 0;
 
     /**
+     * Turns on the sequence with the arrayId and sets the TX/RXs to the [start, end) range. This method turns off all
+     * the uploaded TX/RX sequences except sequence pointed by `arrayId`.
+     *
+     * This method requires that:
+     *
+     * - start < end (start == end would mean that the given sequence should bet turned off, and that would mean that all TX/RXs sequences should be turned off, which current does not make sense),
+     * - the scheme was uploaded,
+     * - the TX/RX sequence length is greater than the `end` value,
+     * - the scheme is stopped.
+     *
+     * @param start the TX/RX number which should now be the first TX/RX
+     * @param end the TX/RX number which should now be the last TX/RX
+     * @param sri the new SRI to apply
+     * @param arrayId id array to select, default: array with id 0
+     * @return the new data buffer and metadata
+     */
+    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) = 0;
+
+    /**
      * Selects [start, end) slices for each sub-sequence.
      *
      * The `slices` array should have exactly n elements, where n is the number of currently uploaded sequences.

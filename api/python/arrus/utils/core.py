@@ -3,7 +3,7 @@ import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
 from arrus.devices.device import parse_device_id, DeviceId
-from typing import Dict, Any, Iterable, Tuple, Union, List
+from typing import Dict, Any, Iterable, Tuple, Union, List, Optional
 import arrus.ops.us4r
 
 _UINT16_MIN = 0
@@ -283,5 +283,16 @@ def assert_hv_voltage_correct(value):
                          f"[{min_v}, {max_v}]")
 
 
-def convert_to_arrus_slice(s: slice):
-    return arrus.core.Slice(s.start, s.stop, s.step)
+def convert_to_arrus_slices(slices: List[slice]):
+    vector = arrus.core.SliceVector()
+    for s in slices:
+        step = 1 if s.step is None else s.step
+        core_slice = arrus.core.Slice(s.start, s.stop, step)
+        arrus.core.SlicePushBack(vector, core_slice)
+    return vector
+
+def convert_to_optional_vector(values: List[Optional[float]]):
+    vector = arrus.core.OptionalFloatVector()
+    for v in values:
+        arrus.core.OptionalVectorFloatPushBack(vector, v)
+    return vector

@@ -523,6 +523,8 @@ using namespace arrus::ops::us4r;
 namespace std {
 %template(TxRxVector) vector<arrus::ops::us4r::TxRx>;
 %template(ArrusNdArrayVector) vector<arrus::framework::NdArray>;
+%template(SliceVector) vector<arrus::Slice>;
+%template(OptionalFloatVector) vector<std::optional<float>>;
 };
 
 %inline %{
@@ -551,6 +553,14 @@ void Arrus2dArrayVectorPushBack(
         false // is view => copy
     );
     arrays.push_back(array);
+}
+
+void SlicePushBack(std::vector<arrus::Slice> &vector, arrus::Slice &slice) {
+    vector.push_back(slice);
+}
+
+void OptionalVectorFloatPushBack(std::vector<std::optional<float>> &vector, std::optional<float> value) {
+    vector.push_back(value);
 }
 
 %};
