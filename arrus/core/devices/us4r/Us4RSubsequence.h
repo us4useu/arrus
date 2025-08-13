@@ -114,10 +114,10 @@ public:
         }
         validate(sequenceId, start, end);
         uint16_t oemStart = logicalToPhysicalOp.at(sequenceId).at(start).first;
-        uint16_t oemEnd = logicalToPhysicalOp.at(sequenceId).at(end).second;
+        uint16_t oemEnd = logicalToPhysicalOp.at(sequenceId).at(end-1).second;
 
         uint16_t oemStartLocal = logicalToPhysicalOpLocal.at(sequenceId).at(start).first;
-        uint16_t oemEndLocal = logicalToPhysicalOpLocal.at(sequenceId).at(end).second;
+        uint16_t oemEndLocal = logicalToPhysicalOpLocal.at(sequenceId).at(end-1).second;
 
         std::vector<Us4OEMBufferArrayDef> views;
         // Update us4OEM buffers.
@@ -125,7 +125,7 @@ public:
         // for creating new host buffer).
         // We do not recalculate firing numbers! This way transfer registrar will use the proper firing numbers.
         for (const auto &oemBuffer : oemBuffers) {
-            views.push_back(getOEMBufferArrayDefs(oemBuffer, sequenceId, oemStartLocal, oemEndLocal));
+            views.push_back(getOEMBufferArrayDef(oemBuffer, sequenceId, oemStartLocal, oemEndLocal));
         }
         // Update FCM.
         FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*(fcm.at(sequenceId)));
@@ -159,7 +159,7 @@ public:
     std::vector<Us4OEMBuffer> recreateOEMBuffers(const std::vector<std::vector<Us4OEMBufferArrayDef>> &arrayDefs) {
         const auto nSequences = arrayDefs.size();
         const auto noems = oemBuffers.size();
-        // OEM -> TX/RX sequence -> OEM buffer array definition (transposed oemArrays)
+        // OEM -> TX/RX sequence -> OEM buffer array definition (transposed arrayDefs)
         std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays(noems);
 
         for(size_t sequence = 0; sequence < nSequences; ++sequence) {
@@ -305,32 +305,28 @@ private:
         // NOTE: end is inclusive (and the below method expects [start, end) range.
         std::optional<float> extend = getSRIExtend(
             std::begin(referenceOEMSequence)+start,
-            std::begin(referenceOEMSequence)+end+1,
+            std::begin(referenceOEMSequence)+end,
             sri
         );
-        auto lastOpPri = referenceOEMSequence.at(end).getPri() + extend.value_or(0);
+        auto lastOpPri = referenceOEMSequence.at(end-1).getPri() + extend.value_or(0);
         return getPRIMicroseconds(lastOpPri);
     }
 
     /**
      * Returns the view of this buffer for slice [start, end) (note: end is exclusive) of the given array.
      */
-    Us4OEMBufferArrayDef getOEMBufferArrayDefs(const Us4OEMBuffer &buffer, ArrayId arrayId, uint16 start, uint16 end) const {
+    Us4OEMBufferArrayDef getOEMBufferArrayDef(const Us4OEMBuffer &buffer, ArrayId arrayId, uint16 start, uint16 end) const {
         if (start > end) {
             throw IllegalArgumentException("Us4OEMBufferView: start cannot exceed end");
         }
         const auto& arrayDef = buffer.getArrayDef(arrayId);
         if(start == end || arrayDef.getSize() == 0) {
             // Empty the current (arrayDef) or te new (start, end) array.
-            return Us4OEMBufferArrayDef {
-                arrayDef.getAddress(),
-                framework::NdArrayDef{{0, }, arrayDef.getDefinition().getDataType()},
-                {}
-            };
+            return getEmptyArrayDef(arrayDef);
         }
         const auto& parts = arrayDef.getParts();
 
-        if (end >= parts.size()) {
+        if (end > parts.size()) {
             throw IllegalArgumentException(
                 format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})", end, parts.size()));
         }
@@ -339,11 +335,7 @@ private:
         Us4OEMBufferArrayParts newParts(b+start, b+end); // NOTE: end is exclusive
         if(newParts.empty()) {
             // empty array
-            return Us4OEMBufferArrayDef {
-                arrayDef.getAddress(),
-                framework::NdArrayDef{{0, }, arrayDef.getDefinition().getDataType()},
-                {}
-            };
+            return getEmptyArrayDef(arrayDef);
         }
         // Calculate new shape of the array.
         auto oldShape = arrayDef.getDefinition().getShape();
@@ -360,6 +352,14 @@ private:
             newAddress,
             newDefinition,
             newParts
+        };
+    }
+    Us4OEMBufferArrayDef getEmptyArrayDef(const Us4OEMBufferArrayDef &refArrayDef) const {
+        auto emptyArrayShape = refArrayDef.getDefinition().getShape();
+        emptyArrayShape.getMutable(0) = 0;// The number of samples.
+        return Us4OEMBufferArrayDef {refArrayDef.getAddress(),
+            framework::NdArrayDef{emptyArrayShape, refArrayDef.getDefinition().getDataType()},
+            {}
         };
     }
 
