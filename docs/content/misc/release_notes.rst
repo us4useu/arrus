@@ -1,6 +1,13 @@
 Release notes
 =============
 
+0.13.x
+------
+
+- core (driver)
+    - Accelerated HV voltage setting by storing HVPS coefficients in the flash memory on OEM+. To take advantage of this, calibration must be performed using Us4OEMStatus; otherwise, there will be no acceleration. #M_OEM-155
+    - Added the Us4R::setSubsequences(slices, sris) method. # M_US4R-36.
+
 0.12.x
 ------
 
@@ -8,11 +15,16 @@ Release notes
 
 - core (driver):
 
-    - Exposed DDC digital gain (after the decimation filter) #M_OEM-153.
+    - Added support for us4OEM+ HF. #US4R-588, #US4R-576, #US4R-424, #M_OEM-142.
+    - Removed in the us4OEM+ HVPS HV1 < HV0 PWM constraint #M_OEM-169.
+    - Exposed digital backplane firmware version number in the API #M_US4R-24.
+    - Exposed DDC digital gain parameter (after the decimation filter) #M_OEM-153.
+    - Changed the delay between TX and RX, now the OEM pulsers will change to OEM after all channels of the given pulser finish transmitting (changed RX_DELAY_MODE to all TX mode) #M_US4R-29.
+    - Exposed the possibility to set VCAT (setVCat method) #US4R-656.
+    - Exposed the possibility to program custom TX waveforms. #US4R-507, #M_OEM-188.
 
 0.11.x
 -----
-
 
 0.11.2
 
