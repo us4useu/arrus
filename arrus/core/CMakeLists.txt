@@ -202,6 +202,7 @@ set(SRC_FILES
     api/devices/probe/MatchingLayer.h
     api/version.h
     common/os.h
+    common/math.h
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
