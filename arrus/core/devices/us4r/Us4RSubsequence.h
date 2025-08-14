@@ -347,13 +347,15 @@ private:
         auto newDefinition = framework::NdArrayDef{newShape, arrayDef.getDefinition().getDataType()};
         // Calculate new address of the array.
         // The new address is the current address + offset caused by the start part.
-        auto newAddress = arrayDef.getAddress() + std::begin(newParts)->getAddress();
+        auto newAddress = std::begin(newParts)->getAddress();
+
         return Us4OEMBufferArrayDef {
             newAddress,
             newDefinition,
             newParts
         };
     }
+
     Us4OEMBufferArrayDef getEmptyArrayDef(const Us4OEMBufferArrayDef &refArrayDef) const {
         auto emptyArrayShape = refArrayDef.getDefinition().getShape();
         emptyArrayShape.getMutable(0) = 0;// The number of samples.
