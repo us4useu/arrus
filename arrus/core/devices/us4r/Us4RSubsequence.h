@@ -175,7 +175,7 @@ public:
             std::vector<Us4OEMBufferElement> newElements;
             // Calculate the new element size.
             size_t newElementSize = std::accumulate(
-                std::begin(arrays), std::end(arrays), 0,
+                std::begin(arrays), std::end(arrays), size_t(0),
                 [](const auto acc, const auto &array){
                     return acc + array.getSize();
                 }
