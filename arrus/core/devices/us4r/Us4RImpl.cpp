@@ -1304,7 +1304,7 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
     ARRUS_REQUIRES_TRUE_IAE(sris.empty() || slices.size() == sris.size(),
                             "The list of SRIs should be empty or have the same length as the list of slices.");
     // vars/consts
-    const SequenceId nSequences = currentScheme->getTxRxSequences().size();
+    const SequenceId nSequences = ARRUS_SAFE_CAST(currentScheme->getTxRxSequences().size(), SequenceId);
     const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
     // Physical start/end, etc.
     std::vector<Us4RSubsequence> params;
@@ -1320,8 +1320,8 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
-    for(SequenceId id = 0; id < nSequences; ++id) {
-        auto p = subsequenceFactory->get(id, slices.at(id).getStart(), slices.at(id).getEnd(), sris.at(id));
+    for(SequenceId i = 0; i < nSequences; ++i) {
+        auto p = subsequenceFactory->get(i, ARRUS_SAFE_CAST(slices.at(i).getStart(), uint16_t), ARRUS_SAFE_CAST(slices.at(i).getEnd(), uint16_t), sris.at(i));
         params.push_back(p);
         oemArrays.push_back(p.getArrayDefs());
         if(!p.empty()) {
