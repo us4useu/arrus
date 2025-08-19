@@ -129,6 +129,7 @@ public:
     void setLnaHpfCornerFrequency(uint32_t frequency) override;
     void disableLnaHpf() override;
     void setAdcHpfCornerFrequency(uint32_t frequency) override;
+    void setHpfCornerFrequency(uint32_t frequency) override;
     void disableAdcHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;

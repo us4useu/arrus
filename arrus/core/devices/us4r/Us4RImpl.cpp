@@ -951,6 +951,10 @@ void Us4RImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
                        "setAdcHpfCornerFrequency");
 }
 
+void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
+    setAdcHpfCornerFrequency(frequency);
+}
+
 void Us4RImpl::disableAdcHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAdcHpf(); }, "disableAdcHpf");
 }

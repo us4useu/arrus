@@ -345,6 +345,15 @@ public:
     virtual void setAdcHpfCornerFrequency(uint32_t frequency) = 0;
 
     /**
+     * Enables ADC digital high-pass filter and sets a given corner frequency.
+     *
+     * This method is just a synonym for `setAdcHpfCornerFrequency`.
+     *
+     * @param frequency ADC high-pass filter corner frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
      * Disables ADC digital high-pass filter.
      */
     virtual void disableAdcHpf() = 0;
