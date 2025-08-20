@@ -2,11 +2,13 @@ import abc
 import queue
 import copy
 import sys
+import re
 
 import numpy as np
 import importlib
 import importlib.util
 import dataclasses
+from collections import defaultdict
 
 import arrus.core
 import arrus.exceptions
@@ -113,29 +115,30 @@ class Session(AbstractSession):
             )
 
         raw_seqs = []
-        tx_delay_constants = ()
+        tx_delay_constants_by_name = defaultdict(list)
         # TODO make sure all sequences have the same TGC (different TGCs are not supported)
         # Convert to raw sequences and upload.
         sequences = [dataclasses.replace(s, name=f"TxRxSequence:{i}")
                      if s.name is None else s
                      for i, s in enumerate(sequences)]
+        constants_by_sequence_name = self._group_constants_by_sequence_name(sequences, constants)
         for i, sequence in enumerate(sequences):
             kernel_context = self._create_kernel_context(
                 sequence,
                 us_device_dto,
                 medium,
                 scheme.digital_down_conversion,
-                constants
+                constants_by_sequence_name.get(sequence.name, [])
             )
             conversion_results = arrus.kernels.get_kernel(type(sequence))(kernel_context)
             raw_seq = conversion_results.sequence
             raw_seqs.append(raw_seq)
-            tx_delay_constants = conversion_results.constants
+            tx_delay_constants_by_name[sequence.name] = conversion_results.constants
 
         actual_scheme = dataclasses.replace(
             scheme,
             tx_rx_sequence=raw_seqs,
-            constants=tx_delay_constants
+            constants=tx_delay_constants_by_name
         )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
@@ -468,3 +471,26 @@ class Session(AbstractSession):
             medium=medium, custom_data={},
             constants=constants
         )
+
+    def _group_constants_by_sequence_name(self, sequences, constants):
+        # Validate constant names:
+        #
+        # - the sequence name should be in the collection of sequences,
+        # - the constant name is expected to be /{SequenceName}/txFocus (currently only TX focus is supported)
+        result = defaultdict(list)
+        pattern = re.compile(r"^/([A-Za-z][A-Za-z0-9_]*)/([^/]+)$")
+        sequence_names = {s.name.trim() for s in sequences}
+        for constant in constants:
+            r = pattern.match(constant.name)
+            if r:
+                sequence_name, parameter_name = r.groups()
+                if sequence_name not in sequence_names:
+                    raise ValueError(f"One of the constants is assigned to unknown sequence with name {sequence_name}")
+                if parameter_name != "txFocus":
+                    raise ValueError("Currently only 'txFocus' parameter is supported")
+                result[sequence_name].append(constant)
+            else:
+                raise ValueError(f"The Constant name should follow the following pattern: {pattern.pattern}")
+        return result
+
+

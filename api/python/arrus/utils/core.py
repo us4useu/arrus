@@ -170,6 +170,14 @@ def convert_array_to_vector_float(array):
 
 
 def convert_to_core_scheme(scheme):
+    """
+    Converts Python arrus.Scheme into the C++ API arrus::ops::us4r::Scheme.
+    
+    NOTE: the scheme.constants is expected to be a dictionary grouped by the sequence name.
+
+    :param scheme:
+    :return:
+    """
     builder = arrus.core.SchemeBuilder()
     seqs = scheme.tx_rx_sequence
     if not isinstance(seqs, Iterable):
@@ -188,7 +196,8 @@ def convert_to_core_scheme(scheme):
     # Convert sequence to core sequence.
     for s in seqs:
         core_seq = arrus.utils.core.convert_to_core_sequence(s)
-        builder.addSequence(core_seq)
+
+        builder.addSequence(core_seq, scheme.constants.get())
 
     core_work_mode = {
         "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
@@ -200,7 +209,7 @@ def convert_to_core_scheme(scheme):
     builder.withWorkMode(core_work_mode)
     ddc = scheme.digital_down_conversion
     # TODO constants
-    if(scheme.digital_down_conversion is not None):
+    if scheme.digital_down_conversion is not None:
         ddc = arrus.core.DigitalDownConversion(
             ddc.demodulation_frequency,
             convert_array_to_vector_float(ddc.fir_coefficients),

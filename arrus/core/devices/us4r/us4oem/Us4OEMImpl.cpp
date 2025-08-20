@@ -231,14 +231,14 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
             // Set delay definition tables.
+
             for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
-                auto delays = txDelays.at(delaysId).row(opId).toVector<float>();
+                auto delays = txDelays.at(sequenceId).at(delaysId).row(opId).toVector<float>();
                 setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx());
             }
             // Then set the profile from the input sequence (for backward-compatibility).
             // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
             // and reduces the risk of causing new bugs in the whole mapping implementation.
-            // This will be optimized in TODO(0.12.0).
             setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx());
             if(isOEMPlus()) {
                 ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(op.getTxWaveform()));
