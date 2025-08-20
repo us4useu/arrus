@@ -154,7 +154,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
     setTxTimeouts(txTimeouts);
-    uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
+    uploadFirings(sequences, ddc, {txDelays, }, rxMappingRegister);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(ARRUS_SAFE_CAST(getNumberOfTriggers(sequences, rxBufferSize), uint16_t));
     auto [bufferDef, rxTimeOffset] = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
@@ -192,7 +192,7 @@ Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us
 
 void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                const std::optional<DigitalDownConversion> &ddc,
-                               const std::vector<arrus::framework::NdArray> &txDelays,
+                               const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                                const Us4OEMRxMappingRegister &rxMappingRegister) {
     using SequenceId = uint16;
     using OpId = uint16;
@@ -231,15 +231,15 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
             // Set delay definition tables.
-
-            for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
-                auto delays = txDelays.at(sequenceId).at(delaysId).row(opId).toVector<float>();
-                setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx());
+            const auto &sequenceDelays = txDelays.at(sequenceId);
+            for (size_t delaysId = 0; delaysId < sequenceDelays.size(); ++delaysId) {
+                auto delays = sequenceDelays.at(delaysId).row(opId).toVector<float>();
+                setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx(), sequenceId);
             }
             // Then set the profile from the input sequence (for backward-compatibility).
             // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
             // and reduces the risk of causing new bugs in the whole mapping implementation.
-            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx());
+            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx(),sequenceId);
             if(isOEMPlus()) {
                 ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(op.getTxWaveform()));
             }
@@ -754,7 +754,8 @@ size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> 
 }
 
 void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
-                             size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx) {
+                             size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx,
+                             SequenceId sequenceId) {
     ARRUS_REQUIRES_EQUAL_IAE(txAperture.size(), delays.size());
     std::vector<float> delaysToBeApplied(txAperture.size());
     for (uint8 ch = 0; ch < ARRUS_SAFE_CAST(txAperture.size(), uint8); ++ch) {
@@ -765,7 +766,7 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
         }
         delaysToBeApplied.at(ch) = delay;
     }
-    ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId);
+    ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId, ARRUS_SAFE_CAST(sequenceId, size_t));
 }
 
 void Us4OEMImpl::clearDMACallbacks() {

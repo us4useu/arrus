@@ -6,6 +6,7 @@
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
+#include "arrus/core/common/collections.h"
 #include "us4r_api_version.h"
 #include <chrono>
 #include <future>
@@ -400,7 +401,6 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferSize = scheme.getRxBufferSize();
     auto workMode = scheme.getWorkMode();
-
     unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
     ARRUS_REQUIRES_TRUE_E(
@@ -610,11 +610,22 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
     // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
     std::vector<std::vector<TxRxParametersSequence>> oemSequences;
-    // Convert probe sequence -> OEM Sequences
 
+    // Group TX delay profiles by sequence name. Also, validates NdArray names.
+    std::unordered_map<std::string, std::vector<::arrus::framework::NdArray>> txDelayProfilesBySequence = groupTxDelaysBySequence(txDelayProfiles);
+
+
+    // Sequence ordinal number -> OEM -> profile id -> TX delays (2D array (n firings, n channels)).
+    // NOTE: if for the given tx sequence and OEM there is no TX delays profile, an empty array should be stored.
+    std::vector<std::vector<std::vector<::arrus::framework::NdArray>>> oemDelaysByOEMBySequence(noems);
+
+    // Convert probe sequence -> OEM
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
-        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
+        const auto &profile = mapGetValueOrNone(txDelayProfilesBySequence, s.getName())
+                                  .value_or(std::vector<::arrus::framework::NdArray>{});
+
+        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, profile);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
 
         logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
@@ -622,6 +633,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
 
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
+            oemDelaysByOEMBySequence.at(oem).emplace_back(std::move(oemDelays.at(oem)));
         }
     }
     std::vector<Us4OEMBuffer> buffers;
@@ -632,9 +644,8 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     float rxTimeOffset = 0.0f;
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
-        // TODO Consider implementing dynamic change of delay profiles
         auto uploadResult = us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc,
-                                                    std::vector<NdArray>{}, timeouts.getTimeouts());
+                                                    oemDelaysByOEMBySequence.at(oem), timeouts.getTimeouts());
         buffers.emplace_back(uploadResult.getBufferDescription());
         auto oemFCM = uploadResult.acquireFCMs();
         if (oem==0) { rxTimeOffset = uploadResult.getRxTimeOffset(); }
@@ -1422,6 +1433,12 @@ float Us4RImpl::getMaximumTGCValue() const {
 
 std::pair<float, float> Us4RImpl::getTGCValueRange() const {
     return us4oems.at(0)->getTGCValueRange();
+}
+
+std::unordered_map<std::string, std::vector<::arrus::framework::NdArray>>
+Us4RImpl::groupTxDelaysBySequence(const std::vector<NdArray> &txDelayProfiles) {
+    // TODO implement
+    return std::unordered_map<std::string, std::vector<::arrus::framework::NdArray>>();
 }
 
 }// namespace arrus::devices

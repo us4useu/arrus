@@ -145,7 +145,9 @@ public:
     ARRUS_CPP_EXPORT
     SchemeBuilder& addSequence(TxRxSequence sequence);
     ARRUS_CPP_EXPORT
-    SchemeBuilder& addSequence(TxRxSequence sequence, std::vector<arrus::framework::NdArray> &constants);
+    SchemeBuilder& addConstant(arrus::framework::NdArray constants);
+    ARRUS_CPP_EXPORT
+    SchemeBuilder& setConstants(const std::vector<arrus::framework::NdArray> &constants);
     ARRUS_CPP_EXPORT
     SchemeBuilder& withOutputBufferDefinition(framework::DataBufferSpec spec);
     ARRUS_CPP_EXPORT

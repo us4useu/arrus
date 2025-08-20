@@ -168,13 +168,13 @@ private:
     void setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
                                  const std::vector<uint16_t> &periods);
     void setCurrentSamplingFrequency(float fs) { this->currentSamplingFrequency = fs; }
-    void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId, size_t delaysId,
-                     const std::unordered_set<ChannelIdx> &maskedChannelsTx);
+    void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
+                     size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx, SequenceId i);
     void setTgcCurve(const ops::us4r::TGCCurve &tgc);
     Us4OEMChannelsGroupsMask getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture);
     void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                       const std::vector<arrus::framework::NdArray> &txDelays,
+                       const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                        const Us4OEMRxMappingRegister &rxMappingRegister);
     std::pair<size_t, float> scheduleReceiveDDC(size_t outputAddress,
                                                 uint32 startSample, uint32 endSample, uint16 entryId,

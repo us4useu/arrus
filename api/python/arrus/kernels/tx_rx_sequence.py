@@ -218,7 +218,7 @@ def convert_to_us4r_sequence_with_constants(
             Constant(
                 value=full_tx_delays,
                 placement=tx_focus_const.placement,
-                name=f"sequence/txDelays:{i}"
+                name=f"/{original_sequence.name}/txDelays:{i}"
             )
         )
     return sequence, tx_center_delay, output_constants

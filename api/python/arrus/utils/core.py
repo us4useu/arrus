@@ -85,7 +85,7 @@ def convert_to_core_sequence(seq):
             f"[{_UINT16_MIN}, {_UINT16_MAX}]"
         )
     core_seq = arrus.core.TxRxSequence(core_seq, seq.tgc_curve.tolist(), sri,
-                                       seq.n_repeats)
+                                       seq.n_repeats, seq.name)
     return core_seq
 
 
@@ -196,8 +196,9 @@ def convert_to_core_scheme(scheme):
     # Convert sequence to core sequence.
     for s in seqs:
         core_seq = arrus.utils.core.convert_to_core_sequence(s)
-
         builder.addSequence(core_seq, scheme.constants.get())
+
+    builder.setConstants(convert_constants_to_arrus_ndarray(scheme.constants))
 
     core_work_mode = {
         "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
@@ -208,7 +209,6 @@ def convert_to_core_scheme(scheme):
     }[scheme.work_mode]
     builder.withWorkMode(core_work_mode)
     ddc = scheme.digital_down_conversion
-    # TODO constants
     if scheme.digital_down_conversion is not None:
         ddc = arrus.core.DigitalDownConversion(
             ddc.demodulation_frequency,

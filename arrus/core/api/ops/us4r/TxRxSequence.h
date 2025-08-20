@@ -58,8 +58,8 @@ public:
      * @param sri sequence repetition interval - the total time that a given sequence should take.
      * @param nRepeats - the number of repetitions of a given sequence. Determines the size of the batch
      */
-    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI, int16 nRepeats = 1)
-        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats) {}
+    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI, int16 nRepeats = 1, std::string name = "")
+        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats), name(name) {}
 
     TxRxSequence copy(std::vector<TxRx> ops) {
         return TxRxSequence(std::move(ops), this->tgcCurve, this->sri.value(), this->nRepeats);
@@ -125,11 +125,17 @@ public:
         return txrxs.size();
     }
 
+    /**
+     * Returns the name of sequence.
+     */
+    const std::string &getName() const { return name; }
+
 private:
     std::vector<TxRx> txrxs;
     TGCCurve tgcCurve;
     std::optional<float> sri;
     int16 nRepeats;
+    std::string name;
 };
 
 }// namespace arrus::ops::us4r

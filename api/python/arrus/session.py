@@ -115,7 +115,7 @@ class Session(AbstractSession):
             )
 
         raw_seqs = []
-        tx_delay_constants_by_name = defaultdict(list)
+        tx_delay_constants = []
         # TODO make sure all sequences have the same TGC (different TGCs are not supported)
         # Convert to raw sequences and upload.
         sequences = [dataclasses.replace(s, name=f"TxRxSequence:{i}")
@@ -133,12 +133,12 @@ class Session(AbstractSession):
             conversion_results = arrus.kernels.get_kernel(type(sequence))(kernel_context)
             raw_seq = conversion_results.sequence
             raw_seqs.append(raw_seq)
-            tx_delay_constants_by_name[sequence.name] = conversion_results.constants
+            tx_delay_constants.extend(conversion_results.constants)
 
         actual_scheme = dataclasses.replace(
             scheme,
             tx_rx_sequence=raw_seqs,
-            constants=tx_delay_constants_by_name
+            constants=tx_delay_constants
         )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)

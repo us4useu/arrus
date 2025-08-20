@@ -236,6 +236,9 @@ private:
     std::vector<arrus::session::Metadata::SharedHandle>
     createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
 
+    std::unordered_map<std::string, std::vector<::arrus::framework::NdArray>>
+    groupTxDelaysBySequence(const std::vector<::arrus::framework::NdArray> &txDelayProfiles);
+
     std::mutex deviceStateMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
