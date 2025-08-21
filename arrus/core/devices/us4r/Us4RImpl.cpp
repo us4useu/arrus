@@ -12,6 +12,7 @@
 #include <future>
 #include <memory>
 #include <thread>
+#include <regex>
 
 #define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
     if (!rxSettings.has_value()) {                                                                                     \
@@ -430,6 +431,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
         buffers,
         fcms
     };
+    sequenceNameToOrdinalMap = getSequenceNameToOrdinalMap(currentScheme.value());
     // Metadata
     std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     return {this->buffer, metadatas};
@@ -612,20 +614,20 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<std::vector<TxRxParametersSequence>> oemSequences;
 
     // Group TX delay profiles by sequence name. Also, validates NdArray names.
-    std::unordered_map<std::string, std::vector<::arrus::framework::NdArray>> txDelayProfilesBySequence = groupTxDelaysBySequence(txDelayProfiles);
+    const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
 
 
     // Sequence ordinal number -> OEM -> profile id -> TX delays (2D array (n firings, n channels)).
     // NOTE: if for the given tx sequence and OEM there is no TX delays profile, an empty array should be stored.
-    std::vector<std::vector<std::vector<::arrus::framework::NdArray>>> oemDelaysByOEMBySequence(noems);
+    vector<vector<vector<NdArray>>> oemDelaysByOEMBySequence(noems);
 
     // Convert probe sequence -> OEM
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
-        const auto &profile = mapGetValueOrNone(txDelayProfilesBySequence, s.getName())
-                                  .value_or(std::vector<::arrus::framework::NdArray>{});
+        const auto &profiles = mapGetValueOrNone(txDelayProfilesBySequence, s.getName())
+                                  .value_or(vector<NdArray>{});
 
-        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, profile);
+        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, profiles);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
 
         logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
@@ -1212,17 +1214,35 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
+    std::vector<std::pair<SequenceId, int>> values;
+    // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
+    // TODO set profiles on all TX/RX sequences.
+    // and just interpret the string as sequence ordinal number?
+    // Validate
     for (auto &item : params.items()) {
         auto &key = item.first;
-        auto value = item.second;
-        logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
-        if (key != "/sequence:0/txFocus") {
-            throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
+        auto &value = item.second;
+        const auto [sequenceName, parameterName] = parseTxDelaysParamName(key);
+        const auto sequenceOrdinal = mapGetValueOrNone(sequenceNameToOrdinalMap, sequenceName);
+        if(!sequenceOrdinal.has_value()) {
+            throw IllegalArgumentException(format("Could not find TX/RX sequence with name: {}", sequenceName));
         }
+        // Wer accept txDelays and txFocus; as for the txFocus, this is basically a shortcut for now
+        // (Python API translates focus to delays during the programming).
+        if(parameterName != "txDelays" && parameterName != "txFocus") {
+            throw IllegalArgumentException("Only txDelays and tx focus parameters are supported");
+        }
+        values.emplace_back({sequenceOrdinal.value(), value});
+    }
+
+    // Execute
+    for (const auto &[sequenceOrdinal, value] : values) {
+        logger->log(LogSeverity::INFO, format("Setting value {} to sequence with ordinal: {}", value, sequenceOrdinal));
+
         this->us4oems[0]->getIUs4OEM()->TriggerStop();
         try {
             for (auto &us4oem : us4oems) {
-                us4oem->getIUs4OEM()->SetTxDelays(value);
+                us4oem->getIUs4OEM()->SetTxDelays(value, ARRUS_SAFE_CAST(sequenceOrdinal, size_t));
             }
         } catch (...) {
             // Try resume.
@@ -1435,10 +1455,86 @@ std::pair<float, float> Us4RImpl::getTGCValueRange() const {
     return us4oems.at(0)->getTGCValueRange();
 }
 
-std::unordered_map<std::string, std::vector<::arrus::framework::NdArray>>
-Us4RImpl::groupTxDelaysBySequence(const std::vector<NdArray> &txDelayProfiles) {
-    // TODO implement
-    return std::unordered_map<std::string, std::vector<::arrus::framework::NdArray>>();
+// Dynamic TX delays setting.
+std::unordered_map<std::string, Us4RImpl::DelayProfiles>
+Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, const std::vector<NdArray> &txDelayProfiles) {
+    // sequence name -> (param ordinal number, NdArray); this structure will be used in order to sort and
+    // check if there are no gaps between constant ordinal numbers.
+    using OrderedArray = std::pair<size_t, NdArray>;
+    std::unordered_map<std::string, std::vector<OrderedArray>> arraysBySequence;
+    // Actual result map.
+    std::unordered_map<std::string, std::vector<NdArray>> result;
+
+    std::unordered_set<std::string> sequenceNames;
+    for (const auto& s : sequences) {
+        sequenceNames.insert(trim(s.getName()));
+        arraysBySequence[s.getName()] = std::vector<OrderedArray>();
+    }
+
+    for(const auto &profile: txDelayProfiles) {
+        const auto [sequenceName, paramName, paramOrdinal] = parseTxDelaysConstantName(profile.getName());
+        if(paramName != "txDelays") {
+            throw IllegalArgumentException("Us4R supports only `txDelays` dynamic parameter change");
+        }
+        arraysBySequence[sequenceName].push_back({paramOrdinal, profile});
+    }
+
+    // Sort each list of Sequence constants and check if there are no gaps in the constant numbering, copy the
+    // arrays to the result map.
+    for(const auto &name: sequenceNames) {
+        auto &arrays = arraysBySequence.at(name);
+        std::sort(std::begin(arrays), std::end(arrays),
+                  [](const auto& a, const auto& b) {
+                      return a.first < b.first;
+                  });
+        // Check if there are no gaps in numbering of the constants, and copy the arrays to the target map.
+        for(size_t i = 0; i < arrays.size(); ++i) {
+            const auto &a = arrays.at(i);
+            if(a.first != i) {
+                throw IllegalArgumentException(format("The Constants numbering should have no gaps, e.g. Delays:0, Delays:2 "
+                                               "are not accepted (found: /{}/txDelays:{}, expected: {})", name, a.first, i));
+            }
+            result[name].push_back(a.second);
+        }
+    }
+    return result;
+}
+
+std::tuple<std::string, std::string, size_t> Us4RImpl::parseTxDelaysConstantName(const std::string &name) const {
+    std::smatch match;
+    if(std::regex_match(name, match, CONSTANT_NAME_PATTERN)) {
+        std::string sequenceName = match[1].str();
+        std::string parameterName = match[2].str();
+        size_t parameterOrdinal = stoi(match[3].str());
+        return {sequenceName, parameterName, parameterOrdinal};
+    } else {
+        throw IllegalArgumentException(
+            "The constant name should follow the following pattern: ^/([A-Za-z][A-Za-z0-9_]*)/([^/]+):([0-9]+)$"
+        );
+    }
+}
+
+std::tuple<std::string, std::string> Us4RImpl::parseTxDelaysParamName(const std::string &name) const {
+    std::smatch match;
+    if(std::regex_match(name, match, CONSTANT_NAME_PATTERN)) {
+        std::string sequenceName = match[1].str();
+        std::string parameterName = match[2].str();
+        return {sequenceName, parameterName};
+    } else {
+        throw IllegalArgumentException(
+            "The constant name should follow the following pattern: ^/([A-Za-z][A-Za-z0-9_]*)/([^/]+)$"
+        );
+    }
+}
+
+std::unordered_map<std::string, SequenceId>
+Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
+    std::unordered_map<std::string, SequenceId> result;
+    const auto &sequences = scheme.getTxRxSequences();
+    for(SequenceId i = 0; i < sequences.size(); ++i) {
+        result[sequences.at(i).getName()] = i;
+    }
+    return result;
 }
 
 }// namespace arrus::devices

@@ -256,7 +256,7 @@ Session::State SessionImpl::getCurrentState() { return state; }
 
 UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) {
     if(!currentScheme.has_value()) {
-        throw ::arrus::IllegalArgumentException("Pleas call upload method before setting the sub-sequence");
+        throw ::arrus::IllegalArgumentException("Please call upload method before setting the sub-sequence");
     }
     if(start >= end) {
         throw ::arrus::IllegalArgumentException("The setSubsequence method requires start < end.");

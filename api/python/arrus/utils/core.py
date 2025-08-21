@@ -196,7 +196,7 @@ def convert_to_core_scheme(scheme):
     # Convert sequence to core sequence.
     for s in seqs:
         core_seq = arrus.utils.core.convert_to_core_sequence(s)
-        builder.addSequence(core_seq, scheme.constants.get())
+        builder.addSequence(core_seq)
 
     builder.setConstants(convert_constants_to_arrus_ndarray(scheme.constants))
 

@@ -142,7 +142,7 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
                                       uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                                      const std::vector<arrus::framework::NdArray> &txDelays,
+                                      const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                                       const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
@@ -154,7 +154,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
     setTxTimeouts(txTimeouts);
-    uploadFirings(sequences, ddc, {txDelays, }, rxMappingRegister);
+    uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(ARRUS_SAFE_CAST(getNumberOfTriggers(sequences, rxBufferSize), uint16_t));
     auto [bufferDef, rxTimeOffset] = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
@@ -230,7 +230,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
-            // Set delay definition tables.
+            // Set delay definition tables, specific for the given sequence.
             const auto &sequenceDelays = txDelays.at(sequenceId);
             for (size_t delaysId = 0; delaysId < sequenceDelays.size(); ++delaysId) {
                 auto delays = sequenceDelays.at(delaysId).row(opId).toVector<float>();

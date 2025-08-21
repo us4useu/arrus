@@ -71,7 +71,7 @@ public:
     Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
                               ops::us4r::Scheme::WorkMode workMode,
                               const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                              const std::vector<arrus::framework::NdArray> &txDelays,
+                              const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                               const std::vector<TxTimeout> &txTimeouts) override;
 
     float getSamplingFrequency() override;

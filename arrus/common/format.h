@@ -107,6 +107,23 @@ inline std::string toString(const Interval<T> i) {
                            i.start(), i.end());
 }
 
+/**
+ * Removes whitespaces from the beginning and the end of the string.
+ */
+std::string trim(const std::string& str) {
+    auto start = std::find_if_not(str.begin(), str.end(), ::isspace);
+    auto end = std::find_if_not(str.rbegin(), str.rend(), ::isspace).base();
+    if (start >= end) return "";
+    return std::string(start, end);
+}
+
+/**
+ * Returns true when the given str starts with the given prefix.
+ */
+bool startsWith(const std::string& str, const std::string& prefix) {
+    return str.size() >= prefix.size() && str.compare(0, prefix.size(), prefix) == 0;
+}
+
 }
 
 #endif //ARRUS_COMMON_FORMAT_H

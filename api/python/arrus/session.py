@@ -148,7 +148,6 @@ class Session(AbstractSession):
             us_device_dto,
             data_sampling_frequency=us_device.current_sampling_frequency
         )
-
         # Output buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
