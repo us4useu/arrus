@@ -4,6 +4,7 @@
 // String formatting and parsing utilities.
 // Currently wraps fmt library calls.
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <stdexcept>
 #include <cctype>
 #include <vector>
@@ -110,17 +111,19 @@ inline std::string toString(const Interval<T> i) {
 /**
  * Removes whitespaces from the beginning and the end of the string.
  */
-std::string trim(const std::string& str) {
+template<typename T>
+T trim(const T& str) {
     auto start = std::find_if_not(str.begin(), str.end(), ::isspace);
     auto end = std::find_if_not(str.rbegin(), str.rend(), ::isspace).base();
     if (start >= end) return "";
-    return std::string(start, end);
+    return T(start, end);
 }
 
 /**
  * Returns true when the given str starts with the given prefix.
  */
-bool startsWith(const std::string& str, const std::string& prefix) {
+template<typename T>
+bool startsWith(const T& str, const T& prefix) {
     return str.size() >= prefix.size() && str.compare(0, prefix.size(), prefix) == 0;
 }
 

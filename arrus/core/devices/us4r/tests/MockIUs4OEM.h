@@ -29,7 +29,7 @@ public:
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
     MOCK_METHOD(::us4us::us4r::Vector<float>, SetTxDelays, (const ::us4us::us4r::Span<float> &delays, const uint16_t firing, size_t profile, size_t sequenceId), (override));
-    MOCK_METHOD(void, SetTxDelays, (const std::vector<size_t> profiles), (override));
+    MOCK_METHOD(void, SetTxDelays, (const std::vector<size_t> &profiles), (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
     (override));

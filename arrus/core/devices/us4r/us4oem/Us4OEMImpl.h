@@ -139,6 +139,8 @@ public:
     void clearDMACallbacks() override;
     std::pair<float, float> getTGCValueRange() const override;
 
+    void setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) override;
+
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;
@@ -229,6 +231,8 @@ private:
         {0.0f, false},
         {12.0f, true}
     }};
+    /** The current TX delay profiles (their ids/ordinal numbers). Maps Sequence id -> TX delay profile id. */
+    std::vector<size_t> currentTxDelayProfileIds;
 };
 
 }// namespace arrus::devices

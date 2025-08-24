@@ -7,6 +7,7 @@
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include "arrus/core/common/collections.h"
+#include "arrus/common/format.h"
 #include "us4r_api_version.h"
 #include <chrono>
 #include <future>
@@ -1214,9 +1215,9 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    std::vector<std::pair<SequenceId, int>> values;
+    logger->log(LogSeverity::INFO, format("Setting {}", params.toString()));
+    std::vector<std::pair<size_t, size_t>> values;
     // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
-    // TODO set profiles on all TX/RX sequences.
     // and just interpret the string as sequence ordinal number?
     // Validate
     for (auto &item : params.items()) {
@@ -1232,26 +1233,25 @@ void Us4RImpl::setParameters(const Parameters &params) {
         if(parameterName != "txDelays" && parameterName != "txFocus") {
             throw IllegalArgumentException("Only txDelays and tx focus parameters are supported");
         }
-        values.emplace_back({sequenceOrdinal.value(), value});
+        if(value < 0) {
+            throw IllegalArgumentException(format("The value {} should not be negative", value));
+        }
+        values.emplace_back(std::make_pair(ARRUS_SAFE_CAST(sequenceOrdinal.value(), size_t), static_cast<size_t>(value)));
     }
 
     // Execute
-    for (const auto &[sequenceOrdinal, value] : values) {
-        logger->log(LogSeverity::INFO, format("Setting value {} to sequence with ordinal: {}", value, sequenceOrdinal));
-
-        this->us4oems[0]->getIUs4OEM()->TriggerStop();
-        try {
-            for (auto &us4oem : us4oems) {
-                us4oem->getIUs4OEM()->SetTxDelays(value, ARRUS_SAFE_CAST(sequenceOrdinal, size_t));
-            }
-        } catch (...) {
-            // Try resume.
-            this->us4oems[0]->getIUs4OEM()->TriggerStart();
-            throw;
+    this->us4oems[0]->getIUs4OEM()->TriggerStop();
+    try {
+        for (auto &us4oem : us4oems) {
+            us4oem->setTxDelaysProfiles(values);
         }
-        // Everything OK, resume.
+    } catch (...) {
+        // Try resume.
         this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        throw;
     }
+    // Everything OK, resume.
+    this->us4oems[0]->getIUs4OEM()->TriggerStart();
 }
 
 BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {

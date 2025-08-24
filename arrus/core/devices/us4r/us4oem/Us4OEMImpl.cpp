@@ -199,6 +199,9 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
 
     bool isDDCOn = ddc.has_value();
     const Us4OEMChannelsGroupsMask emptyChannelGroups;
+
+    // Reset the currently selected profiles.
+    currentTxDelayProfileIds = std::vector<size_t>(sequences.size());
     // us4OEM sequencer firing/entry id (global).
     OpId firingId = 0;
     for (SequenceId sequenceId = 0; sequenceId < ARRUS_SAFE_CAST(sequences.size(), SequenceId); ++sequenceId) {
@@ -230,16 +233,22 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
-            // Set delay definition tables, specific for the given sequence.
-            const auto &sequenceDelays = txDelays.at(sequenceId);
-            for (size_t delaysId = 0; delaysId < sequenceDelays.size(); ++delaysId) {
-                auto delays = sequenceDelays.at(delaysId).row(opId).toVector<float>();
-                setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx(), sequenceId);
+            size_t nProfiles = 0;
+            if(!txDelays.empty()) {
+                // Set delay definition tables, specific for the given sequence.
+                const auto &sequenceDelays = txDelays.at(sequenceId);
+                nProfiles = sequenceDelays.size();
+                for (size_t delaysId = 0; delaysId < sequenceDelays.size(); ++delaysId) {
+                    auto delays = sequenceDelays.at(delaysId).row(opId).toVector<float>();
+                    setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx(), sequenceId);
+                }
             }
             // Then set the profile from the input sequence (for backward-compatibility).
             // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
             // and reduces the risk of causing new bugs in the whole mapping implementation.
-            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx(),sequenceId);
+            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, nProfiles, op.getMaskedChannelsTx(),sequenceId);
+            // Remember what is the currently selected TX delay profile.
+            currentTxDelayProfileIds.at(sequenceId) = nProfiles;
             if(isOEMPlus()) {
                 ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(op.getTxWaveform()));
             }
@@ -262,7 +271,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     }
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
-    ius4oem->SetTxDelays(txDelays.size());
+    ius4oem->SetTxDelays(currentTxDelayProfileIds);
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
@@ -880,6 +889,20 @@ void Us4OEMImpl::setRxSettings(const RxSettings &settings) {
 
 std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
     return ius4oem->GetTGCValueRange();
+}
+
+void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) {
+    std::vector<size_t> newProfiles(currentTxDelayProfileIds.size());
+    for(const auto [sequenceId, profileId] : profiles) {
+        if(sequenceId > currentTxDelayProfileIds.size()) {
+            throw IllegalArgumentException(format("The sequence with id {} is out of the scope of the "
+                                           "currently uploaded scheme (the number of uploaded sequences: {})",
+                                                  sequenceId, currentTxDelayProfileIds.size()));
+        }
+        newProfiles.at(sequenceId) = profileId;
+    }
+    ius4oem->SetTxDelays(newProfiles);
+    currentTxDelayProfileIds = newProfiles;
 }
 
 }// namespace arrus::devices

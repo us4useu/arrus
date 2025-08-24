@@ -281,7 +281,7 @@ public:
     TxRxParametersSequence(const std::vector<TxRxParameters> &parameters, const uint16 nRepeats,
                            const std::optional<float> &sri, ops::us4r::TGCCurve tgcCurve,
                            const DeviceId &txProbeId, const DeviceId &rxProbeId,
-                           const std::string &name)
+                           const std::string &name = "")
         : parameters(parameters), nRepeats(nRepeats), sri(sri), tgcCurve(std::move(tgcCurve)), txProbeId(txProbeId),
           rxProbeId(rxProbeId), name(name) {}
 
