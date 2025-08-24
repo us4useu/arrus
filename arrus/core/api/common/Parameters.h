@@ -46,7 +46,7 @@ public:
 
     std::string toString() const {
         std::stringstream s;
-        s << this;
+        s << *this;
         return s.str();
     }
 

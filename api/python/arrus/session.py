@@ -108,12 +108,6 @@ class Session(AbstractSession):
         processing = scheme.processing
         constants = scheme.constants
 
-        if len(constants) > 0 and len(sequences) > 1:
-            raise ValueError(
-                "Currently session constants can only be provided for a "
-                "single-sequence schemes."
-            )
-
         raw_seqs = []
         tx_delay_constants = []
         # TODO make sure all sequences have the same TGC (different TGCs are not supported)
@@ -477,16 +471,17 @@ class Session(AbstractSession):
         # - the sequence name should be in the collection of sequences,
         # - the constant name is expected to be /{SequenceName}/txFocus (currently only TX focus is supported)
         result = defaultdict(list)
-        pattern = re.compile(r"^/([A-Za-z][A-Za-z0-9_]*)/([^/]+)$")
-        sequence_names = {s.name.trim() for s in sequences}
+        # TODO NOTE: assuming Us4R:0 device here
+        pattern = re.compile(r"^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$")
+        sequence_names = {s.name.strip() for s in sequences}
         for constant in constants:
             r = pattern.match(constant.name)
             if r:
                 sequence_name, parameter_name = r.groups()
                 if sequence_name not in sequence_names:
                     raise ValueError(f"One of the constants is assigned to unknown sequence with name {sequence_name}")
-                if parameter_name != "txFocus":
-                    raise ValueError("Currently only 'txFocus' parameter is supported")
+                if not parameter_name.startswith("txFocus"):
+                    raise ValueError(f"Currently only 'txFocus' parameter is supported (got: {parameter_name})")
                 result[sequence_name].append(constant)
             else:
                 raise ValueError(f"The Constant name should follow the following pattern: {pattern.pattern}")

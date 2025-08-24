@@ -328,7 +328,7 @@ public:
         if (shape.size() != 1) {
             throw IllegalArgumentException("toVector method works only for 1D arrays.");
         }
-        size_t n = shape.size();
+        size_t n = shape.get(0);
         std::vector<T> result(n);
         for (size_t i = 0; i < n; ++i) {
             result[i] = get<T>(i);

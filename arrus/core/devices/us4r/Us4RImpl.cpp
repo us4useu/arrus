@@ -616,7 +616,10 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
 
     // Group TX delay profiles by sequence name. Also, validates NdArray names.
     const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
-
+    sequenceNumberOfTxDelayProfiles.clear();
+    for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
+        sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
+    }
 
     // Sequence ordinal number -> OEM -> profile id -> TX delays (2D array (n firings, n channels)).
     // NOTE: if for the given tx sequence and OEM there is no TX delays profile, an empty array should be stored.
@@ -1233,8 +1236,12 @@ void Us4RImpl::setParameters(const Parameters &params) {
         if(parameterName != "txDelays" && parameterName != "txFocus") {
             throw IllegalArgumentException("Only txDelays and tx focus parameters are supported");
         }
+        auto nProfiles = mapGetValueOrNone(sequenceNumberOfTxDelayProfiles, sequenceName).value_or(0);
         if(value < 0) {
             throw IllegalArgumentException(format("The value {} should not be negative", value));
+        }
+        if(static_cast<size_t>(value) >= nProfiles) {
+            throw IllegalArgumentException(format("The value {} exceeds the number of currently uploaded TX delay profiles: {}", value, nProfiles));
         }
         values.emplace_back(std::make_pair(ARRUS_SAFE_CAST(sequenceOrdinal.value(), size_t), static_cast<size_t>(value)));
     }
@@ -1509,20 +1516,24 @@ std::tuple<std::string, std::string, size_t> Us4RImpl::parseTxDelaysConstantName
         return {sequenceName, parameterName, parameterOrdinal};
     } else {
         throw IllegalArgumentException(
-            "The constant name should follow the following pattern: ^/([A-Za-z][A-Za-z0-9_]*)/([^/]+):([0-9]+)$"
+            format("The constant name should follow the following pattern: "
+                   "^//([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$, "
+                   "got: {}", name)
         );
     }
 }
 
 std::tuple<std::string, std::string> Us4RImpl::parseTxDelaysParamName(const std::string &name) const {
     std::smatch match;
-    if(std::regex_match(name, match, CONSTANT_NAME_PATTERN)) {
+    if(std::regex_match(name, match, PARAMETER_NAME_PATTERN)) {
         std::string sequenceName = match[1].str();
         std::string parameterName = match[2].str();
         return {sequenceName, parameterName};
     } else {
         throw IllegalArgumentException(
-            "The constant name should follow the following pattern: ^/([A-Za-z][A-Za-z0-9_]*)/([^/]+)$"
+            format("The constant name should follow the following pattern: "
+                   "/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$, "
+                   "got: {}", name)
         );
     }
 }

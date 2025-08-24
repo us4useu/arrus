@@ -240,6 +240,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 nProfiles = sequenceDelays.size();
                 for (size_t delaysId = 0; delaysId < sequenceDelays.size(); ++delaysId) {
                     auto delays = sequenceDelays.at(delaysId).row(opId).toVector<float>();
+
                     setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx(), sequenceId);
                 }
             }
@@ -893,7 +894,7 @@ std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
 
 void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) {
     std::vector<size_t> newProfiles(currentTxDelayProfileIds.size());
-    for(const auto [sequenceId, profileId] : profiles) {
+    for(const auto &[sequenceId, profileId] : profiles) {
         if(sequenceId > currentTxDelayProfileIds.size()) {
             throw IllegalArgumentException(format("The sequence with id {} is out of the scope of the "
                                            "currently uploaded scheme (the number of uploaded sequences: {})",

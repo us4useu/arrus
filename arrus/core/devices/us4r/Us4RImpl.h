@@ -281,11 +281,13 @@ private:
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
     std::optional<float> currentRxTimeOffset;
     /** Expected constant name: /SequenceName/parameterName:ordinal */
-    const std::regex CONSTANT_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_]*)/([^/]+):([0-9]+)$)"};
+    const std::regex CONSTANT_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$)"};
     /** Expected parameter name: /SequenceName/parameterName */
-    const std::regex PARAMETER_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_]*)/([^/]+)$)"};
+    const std::regex PARAMETER_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$)"};
     /** TX/RX sequence name to ordinal number (i.e. position in the list of sequences of the Scheme). */
     std::unordered_map<std::string, SequenceId> sequenceNameToOrdinalMap;
+    /** The number of TX delay profiles set for the sequence with the given name */
+    std::unordered_map<std::string, size_t> sequenceNumberOfTxDelayProfiles;
 };
 
 }// namespace arrus::devices
