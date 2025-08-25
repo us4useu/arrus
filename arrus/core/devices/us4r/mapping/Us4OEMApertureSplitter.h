@@ -257,7 +257,7 @@ public:
                 }
                 outputTxDelayProfiles.emplace(static_cast<uint16_t>(seqIdx), outputProfiles);
             }
-            return Result{result, opDestOp, opDestChannel, delayProfiles,
+            return Result{result, opDestOp, opDestChannel, outputTxDelayProfiles,
                           logical2PhysicalMap};
         }
     }
