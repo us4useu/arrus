@@ -156,8 +156,7 @@ public:
     SchemeBuilder& withWorkMode(Scheme::WorkMode mode);
     ARRUS_CPP_EXPORT
     SchemeBuilder& withDigitalDownConversion(DigitalDownConversion ddc);
-    ARRUS_CPP_EXPORT
-
+    
     ARRUS_CPP_EXPORT
     Scheme build();
 private:
