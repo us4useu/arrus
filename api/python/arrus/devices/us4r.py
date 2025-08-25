@@ -593,7 +593,7 @@ class Us4RDTO:
         if not isinstance(probes, Iterable):
             probes = (probes, )
         # NOTE: the number of probes is expected to be relatively small (< 10)
-        probes = [p for p in self.probe if p.device_id == id]
+        probes = [p for p in probes if p.device_id == id]
         if len(probes) == 0:
             raise ValueError(f"There is no probe with id: {id}")
         if len(probes) > 1:

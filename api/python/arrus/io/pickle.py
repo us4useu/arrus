@@ -16,7 +16,7 @@ if not is_package_available("dill"):
                      "Please install it first e.g. `pip install dill`")
 import dill
 import pickle
-from typing import Dict, Type, Any, Iterable
+from typing import Dict, Type, Any, Iterable, Tuple
 
 
 def read_pickled_metadata(filepath: str) -> ConstMetadata:
@@ -42,10 +42,12 @@ def read_pickled_metadata(filepath: str) -> ConstMetadata:
         )
     # Get (major, minor) Ignore dev suffix
     major, minor = version.split(".")[:2]
+    major, minor = int(major), int(minor)
 
     # Compare it with the current (major, minor)
     import arrus
     current_major, current_minor = arrus.__version__.split(".")[:2]
+    current_major, current_minor = int(current_major), int(current_minor)
 
     # Strategy #0
     if (major, minor) == (current_major, current_minor):
@@ -61,21 +63,33 @@ def read_pickled_metadata(filepath: str) -> ConstMetadata:
 
     # We have some older version of file -- use one of
     # import strategy.
-    strategy = _IMPORT_STRATEGIES.get((major, minor))
-    if strategy is None:
+    if (major, minor) not in _IMPORT_STRATEGIES:
         raise ValueError(f"The given metadata file (version: {version}) "
                          f"is no longer supported "
                          f"current ARRUS version: {arrus.__version__}.")
-
+    strategy = _IMPORT_STRATEGIES.get((major, minor))
+    if strategy is None:
+        # No conversion is needed.
+        return metadata
     # Read the file one more time, this time using the custom unpickler
     with open(filepath, "rb") as f:
         metadata = ArrusBackwardCompatibilityUnpickler(
             f, class_map=strategy.get_unpickler_class_map()
-        )
+        ).load()
     # Apply strategies on the metadata fields (e.g. replace stubs with
     # the current version objects, wrap the field into a list, etc.).
-    metadata = _update_metadata(metadata, strategy=strategy)
-    return metadata
+
+    # Currently, we update only the context and data description
+    # no other modifications are expected.
+    context = _update_dataclass(
+        metadata.context, strategy=strategy,
+        current_name="context"
+    )
+    data_description = _update_dataclass(
+        metadata.data_description, strategy=strategy,
+        current_name="data_description"
+    )
+    return metadata.copy(context=context, data_desc=data_description)
 
 
 ## Unpickler
@@ -111,7 +125,7 @@ class FieldImportStrategy:
     def process(self, value: Any) -> Any:
         return value
 
-    def get_unpickler_class(self) -> Type:
+    def get_unpickler_class(self) -> Tuple[str, Type]:
         """
         Returns a pair (source class absolute name -> dummy class),
         in case some dummy class should  be used for the given field,
@@ -138,7 +152,7 @@ class VersionImportStrategy:
         to replace the old classes with the stubs.
         """
         result = {}
-        for strategy in self.field_strategies.items():
+        for strategy in self.field_strategies.values():
             r = strategy.get_unpickler_class()
             if r is not None:
                 abs_name, cls = r
@@ -178,7 +192,6 @@ class Arrus010Us4RDTO:
 
 
 class Arrus010Us4RDTOImportStrategy(FieldImportStrategy):
-
     def __init__(self):
         super().__init__()
 
@@ -187,9 +200,7 @@ class Arrus010Us4RDTOImportStrategy(FieldImportStrategy):
 
     def process(self, value: Arrus010Us4RDTO) -> Us4RDTO:
         """
-        Conerts to a single-element tuple (provided the support for multi-sequence schemes.
-        :param value:
-        :return:
+        Converts to a single-element tuple (provided the support for multi-sequence schemes.
         """
         return Us4RDTO(
             probe=(value.probe, ),
@@ -198,15 +209,15 @@ class Arrus010Us4RDTOImportStrategy(FieldImportStrategy):
             data_sampling_frequency=65e6,
         )
 
-    def get_unpickler_class(self) -> Type:
-        return Arrus010Us4RDTO
+    def get_unpickler_class(self) -> Tuple[str, Type]:
+        return "arrus.devices.us4r.Us4RDTO", Arrus010Us4RDTO
 
 
 class Arrus010ImportStrategy(VersionImportStrategy):
     def __init__(self):
         super().__init__(
             {
-                "context.device": Arrus010Us4RDTOImportStrategy
+                "context.device": Arrus010Us4RDTOImportStrategy()
                 # No longer needed.
                 # "context.sequence": Arrus010SchemeTxRxSequenceImportStrategy(),
                 # "context.raw_sequence": Arrus010SchemeTxRxSequenceImportStrategy()
@@ -216,11 +227,13 @@ class Arrus010ImportStrategy(VersionImportStrategy):
 
 _IMPORT_STRATEGIES = {
     # metadata (major, minor)
-    (0, 10): Arrus010ImportStrategy()
+    (0, 10): Arrus010ImportStrategy(),
+    # No non-backward compatible changes between 0.11.0 and 0.12.0
+    (0, 11): None
 }
 
 
-def _update_metadata(obj: Any, strategy: VersionImportStrategy, current_name=None) -> Any:
+def _update_dataclass(obj: Any, strategy: VersionImportStrategy, current_name=None) -> Any:
     if not is_dataclass(obj):
         return obj
 
@@ -233,17 +246,17 @@ def _update_metadata(obj: Any, strategy: VersionImportStrategy, current_name=Non
             kwargs[f.name] = field_strategy.process(value)
         else:
             if is_dataclass(value):
-                kwargs[f.name] = _update_metadata(
+                kwargs[f.name] = _update_dataclass(
                     value, strategy, current_name=abs_field_name
                 )
             elif isinstance(value, list):
                 kwargs[f.name] = [
-                    _update_metadata(v, strategy=strategy, current_name=current_name)
+                    _update_dataclass(v, strategy=strategy, current_name=current_name)
                     if is_dataclass(v) else v for v in value
                 ]
             elif isinstance(value, dict):
                 kwargs[f.name] = {
-                    k: _update_metadata(v, strategy=strategy, current_name=current_name)
+                    k: _update_dataclass(v, strategy=strategy, current_name=current_name)
                     if is_dataclass(v) else v
                     for k, v in value.items()
                 }
