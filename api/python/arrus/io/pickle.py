@@ -19,7 +19,7 @@ import pickle
 from typing import Dict, Type, Any, Iterable, Tuple
 
 
-def read_pickled_metadata(filepath: str) -> ConstMetadata:
+def read_pickled_metadata(filepath: str, force_version: str = None) -> ConstMetadata:
     """
     Reads pickled metadata from the filed pointed by the given filepath.
 
@@ -34,7 +34,12 @@ def read_pickled_metadata(filepath: str) -> ConstMetadata:
     # Read ARRUS version from the metadata file.
     with open(filepath, "rb") as f:
         metadata = dill.load(f)
-    version: str = metadata.version
+
+    if force_version is not None:
+        version = force_version
+    else:
+        version = metadata.version
+
     if version is None:
         raise ValueError(
             "Couldn't read metadata version from "
@@ -203,7 +208,7 @@ class Arrus010Us4RDTOImportStrategy(FieldImportStrategy):
         Converts to a single-element tuple (provided the support for multi-sequence schemes.
         """
         return Us4RDTO(
-            probe=(value.probe, ),
+            probe=value.probe,
             sampling_frequency=value.sampling_frequency,
             # Only us4OEM 65 MHz systems could be used with ARRUS 0.10.0 or earlier
             data_sampling_frequency=65e6,

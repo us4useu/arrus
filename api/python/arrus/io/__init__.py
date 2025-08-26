@@ -4,7 +4,7 @@ Common ARRUS I/O functions.
 from arrus.metadata import ConstMetadata
 
 
-def read_metadata(filepath: str, format: str = None) -> ConstMetadata:
+def read_metadata(filepath: str, format: str = None, **kwargs) -> ConstMetadata:
     """
     Reads the metadata from the file pointed by the filepath.
 
@@ -26,7 +26,7 @@ def read_metadata(filepath: str, format: str = None) -> ConstMetadata:
         # forcing pickle-related dependencies for the whole arrus
         # package.
         from arrus.io.pickle import read_pickled_metadata
-        return read_pickled_metadata(filepath)
+        return read_pickled_metadata(filepath, **kwargs)
     else:
         raise ValueError(f"Unsupported file format: {format}")
 
