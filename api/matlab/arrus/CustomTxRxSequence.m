@@ -57,8 +57,8 @@ classdef CustomTxRxSequence
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txVoltage  (1,1) {mustBeNonnegative} = 0;
-        txVoltageId (1,:) = 1
+        txVoltage  (:,:) {mustBeNonnegative} = 0;
+        txVoltageId (1,:) = 2
         txFrequency (1,:) = []
         txNPeriods (1,:) = []
         rxDepthRange (1,:) {mustBeProperNumber}
@@ -102,7 +102,7 @@ classdef CustomTxRxSequence
                       "workMode must be one of the following: MANUAL, HOST, SYNC, or ASYNC.");
             end
 
-            if ~xor(isempty(obj.txWaveform), isempty(obj.txFrequency) && isempty(obj.txNPeriods) && isempty(obj.txInvert))
+            if ~xor(isempty(obj.txWaveform), isempty(obj.txFrequency) && isempty(obj.txNPeriods) && ~obj.txInvert)
                 error("ARRUS:IllegalArgument", ...
                 "Exactly one of the following should be provided: txWaveform or (txFrequency, txNPeriods, and txInvert)");
             end
@@ -139,9 +139,11 @@ classdef CustomTxRxSequence
             if ~ismatrix(obj.txVoltage) || (~isscalar(obj.txVoltage) && ~all(size(obj.txVoltage)==[2 2]))
                 error("ARRUS:IllegalArgument", 'txVoltage must be scalar or 2x2 array');
             end
-            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) <= obj.txVoltage(2,:))
-                error("ARRUS:IllegalArgument", 'txVoltage(1,:) must be higher than txVoltage(2,:)');
+            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) >= obj.txVoltage(2,:))
+                error("ARRUS:IllegalArgument", 'txVoltage(2,:) must be higher than txVoltage(1,:)');
             end
+
+            %% Pulse validation
             if isempty(obj.txWaveform)
                 if isempty(obj.txInvert)
                     obj.txInvert = false;
@@ -151,6 +153,8 @@ classdef CustomTxRxSequence
                 obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
                 obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
                 obj.txInvert            = double(obj.txInvert);
+            else
+                obj.txInvert            = [];
             end
         end
     end
