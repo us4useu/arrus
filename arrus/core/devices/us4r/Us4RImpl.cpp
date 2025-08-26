@@ -177,6 +177,8 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
         auto txCycles1 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getPulseCycles();
         auto txCycles2 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getPulseCycles();
         if(txCycles1.end() >= 32 || txCycles2.end() >= 32) {
+            ARRUS_REQUIRES_TRUE(voltages.at(1).has_value() && voltages.at(0).has_value(), 
+                        "When using push pulses (>32 cycles) both HV voltage amplitdes (HV0 & HV1) must be provided");
             ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltagePlus() - voltages.at(0)->getVoltagePlus()) <= 10, 
                         "When using push pulses (>32 cycles) voltage difference between HVP0 and HVP1 rails must be <= 10 V");
             ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltageMinus() - voltages.at(0)->getVoltageMinus()) <= 10, 
