@@ -217,12 +217,6 @@ public:
         };
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const Pulse &pulse) {
-        os << "centerFrequency: " << pulse.centerFrequency << " nPeriods: " << pulse.nPeriods
-           << " inverse: " << pulse.inverse << " amplitudeLevel: " << pulse.amplitudeLevel;
-        return os;
-    }
-
 private:
     static bool areAlmostEqual(float a, float b, float atol) {
         return std::fabs(a - b) < atol;
