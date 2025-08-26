@@ -172,6 +172,18 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     ARRUS_REQUIRES_TRUE(voltages.size() == N_RAILS, "Voltages for HV0 and HV1 should be provided.");
     ARRUS_REQUIRES_TRUE(voltages.at(1).has_value(), "HV voltage amplitude 2 (HV0) must be provided.");
 
+    //check if push pulse and limit voltage difference to 10V
+    for(auto &oem: us4oems) {
+        auto txCycles1 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getPulseCycles();
+        auto txCycles2 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getPulseCycles();
+        if(txCycles1.end() >= 32 || txCycles2.end() >= 32) {
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltagePlus() - voltages.at(0)->getVoltagePlus()) <= 10, 
+                        "When using push pulses (>32 cycles) voltage difference between HVP0 and HVP1 rails must be <= 10 V");
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltageMinus() - voltages.at(0)->getVoltageMinus()) <= 10, 
+                        "When using push pulses (>32 cycles) voltage difference between HVM0 and HVM1 rails must be <= 10 V");
+        }
+    }
+
     auto &hvModel = this->hv[0]->getModelId();
     bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
     bool isHVPS = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps";
