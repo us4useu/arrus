@@ -130,7 +130,6 @@ pipeline {
                     "/cfg/DARRUS_PY_VERSION=${params.PY_VERSION}  " +
                     "${getPythonExecutableParameter(env, params.PY_VERSION)}  " +
                     "py=ON matlab=ON "
-                    """
             }
         }
         stage('Build') {
