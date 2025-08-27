@@ -385,7 +385,7 @@ def getArrusWhlNamePattern(params, releaseName) {
     def versionPattern = ~/^v\d+\.\d+\.\d+(-dev)?$/;
     def whlReleaseName = releaseName;
     if (whlReleaseName ==~ versionPattern) {
-        whlReleaseName = input.substring(1);
+        whlReleaseName = whlReleaseName.substring(1);
         whlReleaseName = releaseName.replace("-dev", ".dev");
     }
     if(us4us.isPrereleaseV2(params)) {
