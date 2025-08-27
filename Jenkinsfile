@@ -125,7 +125,7 @@ pipeline {
                     "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
                     "/publish_py/release_name='${env.RELEASE_NAME}'  " +
                     "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
-                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern()}'  " +
+                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern(params)}'  " +
                     "/publish_py/dst_artifact='__same__'  " +
                     "/publish_py/repository_name='pjarosik/arrus'  " +
                     "/publish_py/description='${getBuildName(currentBuild)} (Python)'  " +
@@ -376,9 +376,9 @@ pipeline {
      }
 }
 
-def getArrusWhlNamePattern() {
+def getArrusWhlNamePattern(params) {
     pythonVersion = "cp${params.PY_VERSION}".replace(".", "");
-    if(us4us.isPrerelease("${env.BRANCH_NAME}")) {
+    if(us4us.isPrereleaseV2(params)) {
         return "arrus*${us4us.getTimestamp()}*${pythonVersion}*.whl";
     }
     else {
