@@ -124,6 +124,7 @@ pipeline {
                     "/publish_matlab/repository_name='pjarosik/arrus'  " +
                     "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
                     "/publish_py/release_name='${env.RELEASE_NAME}'  " +
+                    "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
                     "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern()}'  " +
                     "/publish_py/dst_artifact='__same__'  " +
                     "/publish_py/repository_name='pjarosik/arrus'  " +
