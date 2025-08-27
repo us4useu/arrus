@@ -15,7 +15,7 @@ pipeline {
      }
 
     environment {
-        PROJECT_NAME = "arrus"
+        PROJECT_NAME = "arrus-test"
         PLATFORM = us4us.getPlatformName(env)
         BUILD_ENV_ADDRESS = us4us.getUs4usJenkinsVariable(env, "BUILD_ENV_ADDRESS")
         DOCKER_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONS") // Deprecated
@@ -23,8 +23,8 @@ pipeline {
         DOCKER_DIRS = us4us.getRemoteDirs(env, "docker", "DOCKER_BUILD_ROOT")
         SSH_DIRS = us4us.getRemoteDirs(env, "ssh", "SSH_BUILD_ROOT")
         TARGET_WORKSPACE_DIR = us4us.getTargetWorkspaceDir(env, "DOCKER_BUILD_ROOT", "SSH_BUILD_ROOT")
-        TARGET_PRERELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus")
-        TARGET_RELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus")
+        TARGET_PRERELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus-test")
+        TARGET_RELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus-test")
         CONAN_HOME_DIR = us4us.getUs4usJenkinsVariable(env, "CONAN_HOME_DIR")
         CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
         BUILD_TYPE = us4us.getBuildType(env)
