@@ -80,7 +80,7 @@ pipeline {
                     def githubSourceArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}": "${TARGET_RELEASE_DIR}";
                     env.GITHUB_SOURCE_ARTIFACT_PATH = githubSourceArtifactPath;
                     // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
-                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}": "${TARGET_RELEASE_DIR}";
+                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}/python": "${TARGET_RELEASE_DIR}";
                     env.GITHUB_PY_ARTIFACT_PATH = pyArtifactPath;
                     // Install dir.
                     def installDir = "${INSTALL_DIR_PREFIX}/${RELEASE_NAME}";
@@ -125,7 +125,7 @@ pipeline {
                     "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
                     "/publish_py/release_name='${env.RELEASE_NAME}'  " +
                     "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
-                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern(params)}'  " +
+                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/${getArrusWhlNamePattern(params, env.RELEASE_NAME)}'  " +
                     "/publish_py/dst_artifact='__same__'  " +
                     "/publish_py/repository_name='pjarosik/arrus'  " +
                     "/publish_py/description='${getBuildName(currentBuild)} (Python)'  " +
@@ -376,13 +376,15 @@ pipeline {
      }
 }
 
-def getArrusWhlNamePattern(params) {
+def getArrusWhlNamePattern(params, releaseName) {
     pythonVersion = "cp${params.PY_VERSION}".replace(".", "");
+    // releaseName can be e.g. v0.12.0-dev, but whl will be always v0.12.0.dev
+    whlReleaseName = releaseName.replace("-dev", ".dev");
     if(us4us.isPrereleaseV2(params)) {
-        return "arrus*${us4us.getTimestamp()}*${pythonVersion}*.whl";
+        return "arrus*${whlReleaseName}*${us4us.getTimestamp()}*${pythonVersion}*.whl";
     }
     else {
-        return "arrus*${pythonVersion}*.whl";
+        return "arrus*${whlReleaseName}*${pythonVersion}*.whl";
     }
 }
 
