@@ -66,27 +66,27 @@ pipeline {
 
         stage('Configure') {
             // It is always required, even if it is just publishing -- just to handle properly the PublishGithub stages.
-            script {
-                env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
-                env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
-                // Release name: version number if this stable release, or pre-release if this is dev.
-                def releaseName = us4us.getReleaseName(env, params);
-                env.RELEASE_NAME = releaseName;
-                // In case we are not performing the official release
-                // e.g. we are building -dev package, publish the packages
-                // from the pre-release dir.
-                // This one is for C++ and MATLAB (the pre-release artifacts are in the .../pre-release/directory).
-                def githubSourceArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}": "${TARGET_RELEASE_DIR}";
-                env.GITHUB_SOURCE_ARTIFACT_PATH = githubSourceArtifactPath;
-                // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
-                def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}": "${TARGET_RELEASE_DIR}";
-                env.GITHUB_PY_ARTIFACT_PATH = pyArtifactPath;
-                // Install dir.
-                def installDir = "${INSTALL_DIR_PREFIX}/${RELEASE_NAME}";
-                env.INSTALL_DIR = installDir;
-                env.ARRUS_APPEND_VERSION_SUFFIX_DATE = params.RELEASE ? "OFF" : "ON";
-            }
             steps {
+                script {
+                    env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
+                    env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    def releaseName = us4us.getReleaseName(env, params);
+                    env.RELEASE_NAME = releaseName;
+                    // In case we are not performing the official release
+                    // e.g. we are building -dev package, publish the packages
+                    // from the pre-release dir.
+                    // This one is for C++ and MATLAB (the pre-release artifacts are in the .../pre-release/directory).
+                    def githubSourceArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}": "${TARGET_RELEASE_DIR}";
+                    env.GITHUB_SOURCE_ARTIFACT_PATH = githubSourceArtifactPath;
+                    // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
+                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}": "${TARGET_RELEASE_DIR}";
+                    env.GITHUB_PY_ARTIFACT_PATH = pyArtifactPath;
+                    // Install dir.
+                    def installDir = "${INSTALL_DIR_PREFIX}/${RELEASE_NAME}";
+                    env.INSTALL_DIR = installDir;
+                    env.ARRUS_APPEND_VERSION_SUFFIX_DATE = params.RELEASE ? "OFF" : "ON";
+                }
                 sh """
                    pydevops --clean --stage cfg \
                     --host '${env.BUILD_ENV_ADDRESS}' \
