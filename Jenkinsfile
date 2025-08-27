@@ -384,9 +384,9 @@ def getArrusWhlNamePattern(params, releaseName) {
     // releaseName can be e.g. v0.12.0-dev, but whl will be always v0.12.0.dev
     def versionPattern = ~/^v\d+\.\d+\.\d+(-dev)?$/;
     def whlReleaseName = releaseName;
-    if (whlReleaseName =~ versionPattern) {
+    if (whlReleaseName ==~ versionPattern) {
         whlReleaseName = whlReleaseName.substring(1);
-        whlReleaseName = releaseName.replace("-dev", ".dev");
+        whlReleaseName = whlReleaseName.replace("-dev", ".dev");
     }
     if(us4us.isPrereleaseV2(params)) {
         return "arrus*${whlReleaseName}*${us4us.getTimestamp()}*${pythonVersion}*.whl";
