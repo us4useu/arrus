@@ -87,7 +87,7 @@ pipeline {
                     env.INSTALL_DIR = installDir;
                     env.ARRUS_APPEND_VERSION_SUFFIX_DATE = params.RELEASE ? "OFF" : "ON";
                 }
-                sh "pydevops --clean --stage cfg "
+                sh "pydevops --clean --stage cfg " +
                     "--host '${env.BUILD_ENV_ADDRESS}'  " +
                     "${getDockerOptionsForTemplate(env.DOCKER_OPTIONSv2)}   " +
                     "--src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build'  " +
