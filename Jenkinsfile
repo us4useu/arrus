@@ -29,7 +29,6 @@ pipeline {
         CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
         BUILD_TYPE = us4us.getBuildType(env)
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
-        US4R_API_RELEASE_DIR = getUs4rApiReleaseDirV2(env, params, "${env.JOB_NAME}")
         IS_SCM_ONLY = isSCMOnly(params)
         INSTALL_DIR_PREFIX = "${TARGET_PRERELEASE_DIR}/unzipped"
     }
