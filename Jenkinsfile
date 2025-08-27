@@ -404,5 +404,5 @@ def isSCMOnly(params) {
  Currently, it is basically the path to "unzipped" directory in the pre-release directory.
  */
 def getUs4rApiReleaseDirV2(env, params, jobName) {
-    getTargetArtifactsDir(env, params, jobName, false, "us4r-hal");
+    return us4us.getTargetArtifactsDir(env, params, jobName, false, "us4r-hal");
 }
