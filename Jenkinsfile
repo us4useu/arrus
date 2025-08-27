@@ -122,11 +122,11 @@ pipeline {
                     "/publish_matlab/dst_artifact='__same__'  " +
                     "/publish_matlab/repository_name='pjarosik/arrus'  " +
                     "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
-                    "/publish_python/release_name='${env.RELEASE_NAME}'  " +
-                    "/publish_python/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern()}'  " +
-                    "/publish_python/dst_artifact='__same__'  " +
-                    "/publish_python/repository_name='pjarosik/arrus'  " +
-                    "/publish_python/description='${getBuildName(currentBuild)} (Python)'  " +
+                    "/publish_py/release_name='${env.RELEASE_NAME}'  " +
+                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern()}'  " +
+                    "/publish_py/dst_artifact='__same__'  " +
+                    "/publish_py/repository_name='pjarosik/arrus'  " +
+                    "/publish_py/description='${getBuildName(currentBuild)} (Python)'  " +
                     "/publish_docs/version='${env.RELEASE_NAME}'  " +
                     "/publish_docs/install_dir='${env.INSTALL_DIR}/'  " +
                     "/cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE}  " +
