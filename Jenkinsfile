@@ -254,7 +254,7 @@ pipeline {
                     env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
                     def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
 
-                    packagesName.each { packageName ->
+                    packagesNames.each { packageName ->
                         def sourceArtifacts = "${TARGET_PRERELEASE_DIR}/${packageName}*"
                         sh "cp ${sourceArtifacts} ${targetFolder}"
                         echo "The files ${sourceArtifacts} were copied to ${targetFolder}"
