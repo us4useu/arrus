@@ -86,6 +86,10 @@ pipeline {
                     def installDir = "${INSTALL_DIR_PREFIX}/${RELEASE_NAME}";
                     env.INSTALL_DIR = installDir;
                     env.ARRUS_APPEND_VERSION_SUFFIX_DATE = params.RELEASE ? "OFF" : "ON";
+
+                    // Determine the path where the us4r-api is located.
+                    // TODO(US4R-594) this should be removed after splitting ARRUS and HAL.
+                    env.US4R_API_RELEASE_DIR = getUs4rApiReleaseDirV2(env);
                 }
                 sh "pydevops --clean --stage cfg " +
                     "--host '${env.BUILD_ENV_ADDRESS}'  " +
@@ -401,6 +405,8 @@ def isSCMOnly(params) {
  Returns the path to the unzipped us4r-api package.
  Currently, it is basically the path to "unzipped" directory in the pre-release directory.
  */
-def getUs4rApiReleaseDirV2(env, params, jobName) {
-    return us4us.getTargetArtifactsDir(env, params, jobName, false, "us4r-hal");
+def getUs4rApiReleaseDirV2(env) {
+    def nasDir = us4us.getUs4usJenkinsVariable(env, "NAS_DIR");
+    def platformName = us4us.getPlatformNameAndBuildType("${env.JOB_NAME}");
+    return "${nasDir}/us4r-hal/pre-release/${platformName}/unzipped/";
 }
