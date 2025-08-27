@@ -382,7 +382,12 @@ pipeline {
 def getArrusWhlNamePattern(params, releaseName) {
     pythonVersion = "cp${params.PY_VERSION}".replace(".", "");
     // releaseName can be e.g. v0.12.0-dev, but whl will be always v0.12.0.dev
-    whlReleaseName = releaseName.replace("-dev", ".dev");
+    def versionPattern = ~/^v\d+\.\d+\.\d+(-dev)?$/;
+    def whlReleaseName = releaseName;
+    if (whlReleaseName ==~ pattern) {
+        whlReleaseName = input.substring(1);
+        whlReleaseName = releaseName.replace("-dev", ".dev");
+    }
     if(us4us.isPrereleaseV2(params)) {
         return "arrus*${whlReleaseName}*${us4us.getTimestamp()}*${pythonVersion}*.whl";
     }
