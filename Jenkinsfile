@@ -87,50 +87,49 @@ pipeline {
                     env.INSTALL_DIR = installDir;
                     env.ARRUS_APPEND_VERSION_SUFFIX_DATE = params.RELEASE ? "OFF" : "ON";
                 }
-                sh """
-                   pydevops --clean --stage cfg \
-                    --host '${env.BUILD_ENV_ADDRESS}' \
-                    ${getDockerOptionsForTemplate(env.DOCKER_OPTIONSv2)}  \
-                    --src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' \
-                    ${env.DOCKER_DIRS} \
-                    ${env.SSH_DIRS} \
-                    --options \
-                    build_type='${env.BUILD_TYPE}' \
-                    us4r_api_release_dir='${env.US4R_API_RELEASE_DIR}' \
-                    /cfg/conan/conan_home='${env.CONAN_HOME_DIR}' \
-                    /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
-                    /install/prefix='${env.INSTALL_DIR}' \
-                    /package_cpp/release_name='${RELEASE_NAME}' \
-                    /package_cpp/src_artifact='${env.INSTALL_DIR}/VERSION.rst;${env.INSTALL_DIR}/LICENSE;${env.INSTALL_DIR}/THIRD_PARTY_LICENSES;${env.INSTALL_DIR}/lib64;${env.INSTALL_DIR}/include;${env.INSTALL_DIR}/docs/arrus-cpp.pdf;${env.INSTALL_DIR}/examples' \
-                    /package_cpp/dst_dir='${env.TARGET_PRERELEASE_DIR}'  \
-                    /package_cpp/dst_artifact='${env.CPP_PACKAGE_NAME}' \
-                    /package_matlab/release_name='${RELEASE_NAME}' \
-                    /package_matlab/src_artifact='${env.INSTALL_DIR}/matlab;${env.INSTALL_DIR}/VERSION.rst' \
-                    /package_matlab/dst_dir='${env.TARGET_PRERELEASE_DIR}'  \
-                    /package_matlab/dst_artifact='${env.MATLAB_PACKAGE_NAME}' \
-                    /publish_cpp/release_name='${env.RELEASE_NAME}' \
-                    /publish_cpp/target_commitish='${env.BRANCH_NAME}'" \
-                    /publish_cpp/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.CPP_PACKAGE_NAME}*' \
-                    /publish_cpp/dst_artifact='__same__' \
-                    /publish_cpp/repository_name='pjarosik/arrus' \
-                    /publish_cpp/description='${getBuildName(currentBuild)} (C++)' \
-                    /publish_matlab/release_name='${env.RELEASE_NAME}' \
-                    /publish_matlab/target_commitish='${env.BRANCH_NAME}'" \
-                    /publish_matlab/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.MATLAB_PACKAGE_NAME}*' \
-                    /publish_matlab/dst_artifact='__same__' \
-                    /publish_matlab/repository_name='pjarosik/arrus' \
-                    /publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)' \
-                    /publish_python/release_name='${env.RELEASE_NAME}' \
-                    /publish_python/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern()}' \
-                    /publish_python/dst_artifact='__same__' \
-                    /publish_python/repository_name='pjarosik/arrus' \
-                    /publish_python/description='${getBuildName(currentBuild)} (Python)' \
-                    /publish_docs/version='${env.RELEASE_NAME}' \
-                    /publish_docs/install_dir='${env.INSTALL_DIR}/' \
-                    /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE} \
-                    /cfg/DARRUS_PY_VERSION=${params.PY_VERSION} \
-                    ${getPythonExecutableParameter(env, params.PY_VERSION)} \
-                    py=ON matlab=ON
+                sh "pydevops --clean --stage cfg "
+                    "--host '${env.BUILD_ENV_ADDRESS}'  " +
+                    "${getDockerOptionsForTemplate(env.DOCKER_OPTIONSv2)}   " +
+                    "--src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build'  " +
+                    "${env.DOCKER_DIRS}  " +
+                    "${env.SSH_DIRS}  " +
+                    "--options  " +
+                    "build_type='${env.BUILD_TYPE}'  " +
+                    "us4r_api_release_dir='${env.US4R_API_RELEASE_DIR}'  " +
+                    "/cfg/conan/conan_home='${env.CONAN_HOME_DIR}'  " +
+                    "/cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}'  " +
+                    "/install/prefix='${env.INSTALL_DIR}'  " +
+                    "/package_cpp/release_name='${RELEASE_NAME}'  " +
+                    "/package_cpp/src_artifact='${env.INSTALL_DIR}/VERSION.rst;${env.INSTALL_DIR}/LICENSE;${env.INSTALL_DIR}/THIRD_PARTY_LICENSES;${env.INSTALL_DIR}/lib64;${env.INSTALL_DIR}/include;${env.INSTALL_DIR}/docs/arrus-cpp.pdf;${env.INSTALL_DIR}/examples'  " +
+                    "/package_cpp/dst_dir='${env.TARGET_PRERELEASE_DIR}'   " +
+                    "/package_cpp/dst_artifact='${env.CPP_PACKAGE_NAME}'  " +
+                    "/package_matlab/release_name='${RELEASE_NAME}'  " +
+                    "/package_matlab/src_artifact='${env.INSTALL_DIR}/matlab;${env.INSTALL_DIR}/VERSION.rst'  " +
+                    "/package_matlab/dst_dir='${env.TARGET_PRERELEASE_DIR}'   " +
+                    "/package_matlab/dst_artifact='${env.MATLAB_PACKAGE_NAME}'  " +
+                    "/publish_cpp/release_name='${env.RELEASE_NAME}'  " +
+                    "/publish_cpp/target_commitish='${env.BRANCH_NAME}'  " +
+                    "/publish_cpp/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.CPP_PACKAGE_NAME}*'  " +
+                    "/publish_cpp/dst_artifact='__same__'  " +
+                    "/publish_cpp/repository_name='pjarosik/arrus'  " +
+                    "/publish_cpp/description='${getBuildName(currentBuild)} (C++)'  " +
+                    "/publish_matlab/release_name='${env.RELEASE_NAME}'  " +
+                    "/publish_matlab/target_commitish='${env.BRANCH_NAME}'"  " +
+                    "/publish_matlab/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.MATLAB_PACKAGE_NAME}*'  " +
+                    "/publish_matlab/dst_artifact='__same__'  " +
+                    "/publish_matlab/repository_name='pjarosik/arrus'  " +
+                    "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
+                    "/publish_python/release_name='${env.RELEASE_NAME}'  " +
+                    "/publish_python/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern()}'  " +
+                    "/publish_python/dst_artifact='__same__'  " +
+                    "/publish_python/repository_name='pjarosik/arrus'  " +
+                    "/publish_python/description='${getBuildName(currentBuild)} (Python)'  " +
+                    "/publish_docs/version='${env.RELEASE_NAME}'  " +
+                    "/publish_docs/install_dir='${env.INSTALL_DIR}/'  " +
+                    "/cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE}  " +
+                    "/cfg/DARRUS_PY_VERSION=${params.PY_VERSION}  " +
+                    "${getPythonExecutableParameter(env, params.PY_VERSION)}  " +
+                    "py=ON matlab=ON "
                     """
             }
         }
