@@ -114,7 +114,7 @@ pipeline {
                     "/publish_cpp/repository_name='pjarosik/arrus'  " +
                     "/publish_cpp/description='${getBuildName(currentBuild)} (C++)'  " +
                     "/publish_matlab/release_name='${env.RELEASE_NAME}'  " +
-                    "/publish_matlab/target_commitish='${env.BRANCH_NAME}'"  " +
+                    "/publish_matlab/target_commitish='${env.BRANCH_NAME}'  " +
                     "/publish_matlab/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.MATLAB_PACKAGE_NAME}*'  " +
                     "/publish_matlab/dst_artifact='__same__'  " +
                     "/publish_matlab/repository_name='pjarosik/arrus'  " +
