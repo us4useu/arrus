@@ -132,7 +132,7 @@ pipeline {
                     "/cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE}  " +
                     "/cfg/DARRUS_PY_VERSION=${params.PY_VERSION}  " +
                     "${getPythonExecutableParameter(env, params.PY_VERSION)}  " +
-                    "py=ON matlab=ON "
+                    "py=ON "
             }
         }
         stage('Build') {
