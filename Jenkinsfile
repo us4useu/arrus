@@ -10,6 +10,7 @@ pipeline {
         booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish Python package.')
         booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish Matlab package.')
         booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish Matlab package.')
+        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Publish ARRUS documentation (web).')
         choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], description: 'Python version to use.')
         booleanParam(name: 'SCM_ONLY', defaultValue: false, description: 'Perform SCM checkout only, in order to e.g. update parameters of the pipeline.')
      }
@@ -326,8 +327,11 @@ pipeline {
             }
         }
         stage('PublishDocs') {
-             when{
-                 environment name: 'PUBLISH_DOCS', value: 'true'
+            when {
+                allOf {
+                    expression { params.PUBLISH }
+                    expression { params.PUBLISH_DOCS }
+                }
              }
              steps {
                    withCredentials([usernamePassword(credentialsId: 'us4us-dev-github-credentials', usernameVariable: 'username', passwordVariable: 'password')]){
