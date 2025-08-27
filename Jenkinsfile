@@ -136,6 +136,7 @@ pipeline {
                     "${getPythonExecutableParameter(env, params.PY_VERSION)}  " +
                     "py=ON matlab=ON docs=ON /cfg/cmake/DMatlab_ROOT_DIR=/opt/MATLAB/current"
             }
+            // TODO enable MISC_OPTIONS
         }
         stage('Build') {
             when {
