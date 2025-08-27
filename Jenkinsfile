@@ -268,8 +268,11 @@ pipeline {
             }
         }
         stage('PublishCpp') {
-            when{
-                environment name: 'PUBLISH_CPP', value: 'true'
+            when {
+                allOf {
+                    expression { params.PUBLISH }
+                    expression { params.PUBLISH_CPP }
+                }
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
@@ -285,8 +288,11 @@ pipeline {
             }
         }
         stage('PublishPython') {
-            when{
-                environment name: 'PUBLISH_PY', value: 'true'
+            when {
+                allOf {
+                    expression { params.PUBLISH }
+                    expression { params.PUBLISH_PY }
+                }
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
@@ -301,8 +307,11 @@ pipeline {
             }
         }
         stage('PublishMatlab') {
-            when{
-                environment name: 'PUBLISH_MATLAB', value: 'true'
+            when {
+                allOf {
+                    expression { params.PUBLISH }
+                    expression { params.PUBLISH_MATLAB }
+                }
             }
             steps {
                   withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
