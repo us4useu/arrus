@@ -127,10 +127,10 @@ pipeline {
                     /publish_python/description='${getBuildName(currentBuild)} (Python)' \
                     /publish_docs/version='${env.RELEASE_NAME}' \
                     /publish_docs/install_dir='${env.INSTALL_DIR}/' \
-                    ${env.MISC_OPTIONS} \
                     /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE} \
                     /cfg/DARRUS_PY_VERSION=${params.PY_VERSION} \
-                    ${getPythonExecutableParameter(env, params.PY_VERSION)}
+                    ${getPythonExecutableParameter(env, params.PY_VERSION)} \
+                    py=ON matlab=ON
                     """
             }
         }
