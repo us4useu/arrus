@@ -264,7 +264,7 @@ pipeline {
                     // Python and docs => copy the .whl files to the install directory.
                     def releaseName = us4us.getReleaseName(env, params);
                     def installDir = "${INSTALL_DIR_PREFIX}/${releaseName}";
-                    sh "cp ${installDir}/python/${getArrusWhlNamePattern()} ${targetFolder}";
+                    sh "cp ${installDir}/python/${getArrusWhlNamePattern(params)} ${targetFolder}";
                     sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
                 }
             }
