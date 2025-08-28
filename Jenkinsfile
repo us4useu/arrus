@@ -71,17 +71,7 @@ pipeline {
                     env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
                     env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
                     // Release name: version number if this stable release, or pre-release if this is dev.
-                    def releaseName = us4us.getReleaseName(env, params);
-                    env.RELEASE_NAME = releaseName;
-                    // In case we are not performing the official release
-                    // e.g. we are building -dev package, publish the packages
-                    // from the pre-release dir.
-                    // This one is for C++ and MATLAB (the pre-release artifacts are in the .../pre-release/directory).
-                    def githubSourceArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}": "${TARGET_RELEASE_DIR}";
-                    env.GITHUB_SOURCE_ARTIFACT_PATH = githubSourceArtifactPath;
-                    // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
-                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}/python": "${TARGET_RELEASE_DIR}";
-                    env.GITHUB_PY_ARTIFACT_PATH = pyArtifactPath;
+                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
                     // Install dir.
                     def installDir = "${INSTALL_DIR_PREFIX}/${RELEASE_NAME}";
                     env.INSTALL_DIR = installDir;
@@ -111,24 +101,6 @@ pipeline {
                     "/package_matlab/src_artifact='${env.INSTALL_DIR}/matlab;${env.INSTALL_DIR}/VERSION.rst'  " +
                     "/package_matlab/dst_dir='${env.TARGET_PRERELEASE_DIR}'   " +
                     "/package_matlab/dst_artifact='${env.MATLAB_PACKAGE_NAME}'  " +
-                    "/publish_cpp/release_name='${env.RELEASE_NAME}'  " +
-                    "/publish_cpp/target_commitish='${env.BRANCH_NAME}'  " +
-                    "/publish_cpp/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.CPP_PACKAGE_NAME}*'  " +
-                    "/publish_cpp/dst_artifact='__same__'  " +
-                    "/publish_cpp/repository_name='us4useu/arrus'  " +
-                    "/publish_cpp/description='${getBuildName(currentBuild)} (C++)'  " +
-                    "/publish_matlab/release_name='${env.RELEASE_NAME}'  " +
-                    "/publish_matlab/target_commitish='${env.BRANCH_NAME}'  " +
-                    "/publish_matlab/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.MATLAB_PACKAGE_NAME}*'  " +
-                    "/publish_matlab/dst_artifact='__same__'  " +
-                    "/publish_matlab/repository_name='us4useu/arrus'  " +
-                    "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
-                    "/publish_py/release_name='${env.RELEASE_NAME}'  " +
-                    "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
-                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/${getArrusWhlNamePattern(params, env.RELEASE_NAME)}'  " +
-                    "/publish_py/dst_artifact='__same__'  " +
-                    "/publish_py/repository_name='us4useu/arrus'  " +
-                    "/publish_py/description='${getBuildName(currentBuild)} (Python)'  " +
                     "/publish_docs/version='${env.RELEASE_NAME}'  " +
                     "/publish_docs/install_dir='${env.INSTALL_DIR}/'  " +
                     "/cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE}  " +
@@ -277,15 +249,25 @@ pipeline {
                 }
             }
             steps {
-                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
-                  sh """pydevops --stage publish_cpp \
-                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                      ${DOCKER_DIRS} \
-                      ${SSH_DIRS} \
-                      --options \
-                      token='$token'
-
-                     """
+                script {
+                    env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
+                    env.GITHUB_SOURCE_ARTIFACT_PATH = getSourceArtifactPath(env, params);
+                }
+                withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                  sh "pydevops --stage publish_cpp " +
+                      "--src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' " +
+                      "${DOCKER_DIRS}  " +
+                      "${SSH_DIRS}  " +
+                      "--options  " +
+                      "token='$token'  " +
+                      "/publish_cpp/release_name='${env.RELEASE_NAME}'  " +
+                      "/publish_cpp/target_commitish='${env.BRANCH_NAME}'  " +
+                      "/publish_cpp/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.CPP_PACKAGE_NAME}*'  " +
+                      "/publish_cpp/dst_artifact='__same__'  " +
+                      "/publish_cpp/repository_name='us4useu/arrus'  " +
+                      "/publish_cpp/description='${getBuildName(currentBuild)} (C++)'  "
                 }
             }
         }
@@ -297,14 +279,27 @@ pipeline {
                 }
             }
             steps {
-                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
-                  sh """pydevops --stage publish_py \
-                     --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                     ${DOCKER_DIRS} \
-                     ${SSH_DIRS} \
-                     --options \
-                     token='$token' \
-                     """
+                script {
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
+                    env.GITHUB_SOURCE_ARTIFACT_PATH = getSourceArtifactPath(env, params);
+                    // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
+                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}/python": "${TARGET_RELEASE_DIR}";
+                    env.GITHUB_PY_ARTIFACT_PATH = pyArtifactPath;
+                }
+                withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                  sh "pydevops --stage publish_py  " +
+                     "--src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build'  " +
+                     "${DOCKER_DIRS}  " +
+                     "${SSH_DIRS}  " +
+                     "--options  " +
+                     "token='$token'  " +
+                     "/publish_py/release_name='${env.RELEASE_NAME}'  " +
+                     "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
+                     "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/${getArrusWhlNamePattern(params, env.RELEASE_NAME)}'  " +
+                     "/publish_py/dst_artifact='__same__'  " +
+                     "/publish_py/repository_name='us4useu/arrus'  " +
+                     "/publish_py/description='${getBuildName(currentBuild)} (Python)'  "
                 }
             }
         }
@@ -316,14 +311,25 @@ pipeline {
                 }
             }
             steps {
-                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
-                  sh """pydevops --stage publish_matlab \
-                     --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                     ${DOCKER_DIRS} \
-                     ${SSH_DIRS} \
-                     --options \
-                     token='$token'
-                     """
+                script {
+                    env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
+                    env.GITHUB_SOURCE_ARTIFACT_PATH = getSourceArtifactPath(env, params);
+                }
+                withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                sh "pydevops --stage publish_matlab  " +
+                    "--src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build'  " +
+                    "${DOCKER_DIRS}  " +
+                    "${SSH_DIRS}  " +
+                    "--options  " +
+                    "token='$token' " +
+                    "/publish_matlab/release_name='${env.RELEASE_NAME}'  " +
+                    "/publish_matlab/target_commitish='${env.BRANCH_NAME}'  " +
+                    "/publish_matlab/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.MATLAB_PACKAGE_NAME}*'  " +
+                    "/publish_matlab/dst_artifact='__same__'  " +
+                    "/publish_matlab/repository_name='us4useu/arrus'  " +
+                    "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  "
                 }
             }
         }
@@ -429,4 +435,12 @@ def getUs4rApiReleaseDirV2(env) {
     def nasDir = us4us.getUs4usJenkinsVariable(env, "NAS_DIR");
     def platformName = us4us.getPlatformNameAndBuildType("${env.JOB_NAME}");
     return "${nasDir}/us4r-hal/pre-release/${platformName}/unzipped/";
+}
+
+def getSourceArtifactPath(env, params) {
+    // In case we are not performing the official release
+    // e.g. we are building -dev package, publish the packages
+    // from the pre-release dir.
+    // This one is for C++ and MATLAB (the pre-release artifacts are in the .../pre-release/directory).
+    return us4us.isPrereleaseV2(params) ? "${env.TARGET_PRERELEASE_DIR}": "${env.TARGET_RELEASE_DIR}";
 }
