@@ -123,6 +123,12 @@ add_subdirectory(installer)
 ################################################################################
 # General docs
 ################################################################################
+execute_process(
+        COMMAND git rev-parse HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE ARRUS_GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 configure_file(VERSION.rst.in VERSION.rst)
 install(
         FILES ${CMAKE_CURRENT_BINARY_DIR}/VERSION.rst
