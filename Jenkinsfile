@@ -16,7 +16,7 @@ pipeline {
      }
 
     environment {
-        PROJECT_NAME = "arrus-test"
+        PROJECT_NAME = "arrus"
         PLATFORM = us4us.getPlatformName(env)
         BUILD_ENV_ADDRESS = us4us.getUs4usJenkinsVariable(env, "BUILD_ENV_ADDRESS")
         DOCKER_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONS") // Deprecated
@@ -24,8 +24,8 @@ pipeline {
         DOCKER_DIRS = us4us.getRemoteDirs(env, "docker", "DOCKER_BUILD_ROOT")
         SSH_DIRS = us4us.getRemoteDirs(env, "ssh", "SSH_BUILD_ROOT")
         TARGET_WORKSPACE_DIR = us4us.getTargetWorkspaceDir(env, "DOCKER_BUILD_ROOT", "SSH_BUILD_ROOT")
-        TARGET_PRERELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus-test")
-        TARGET_RELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus-test")
+        TARGET_PRERELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus")
+        TARGET_RELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus")
         CONAN_HOME_DIR = us4us.getUs4usJenkinsVariable(env, "CONAN_HOME_DIR")
         CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
         BUILD_TYPE = us4us.getBuildType(env)
@@ -115,19 +115,19 @@ pipeline {
                     "/publish_cpp/target_commitish='${env.BRANCH_NAME}'  " +
                     "/publish_cpp/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.CPP_PACKAGE_NAME}*'  " +
                     "/publish_cpp/dst_artifact='__same__'  " +
-                    "/publish_cpp/repository_name='pjarosik/arrus'  " +
+                    "/publish_cpp/repository_name='us4useu/arrus'  " +
                     "/publish_cpp/description='${getBuildName(currentBuild)} (C++)'  " +
                     "/publish_matlab/release_name='${env.RELEASE_NAME}'  " +
                     "/publish_matlab/target_commitish='${env.BRANCH_NAME}'  " +
                     "/publish_matlab/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.MATLAB_PACKAGE_NAME}*'  " +
                     "/publish_matlab/dst_artifact='__same__'  " +
-                    "/publish_matlab/repository_name='pjarosik/arrus'  " +
+                    "/publish_matlab/repository_name='us4useu/arrus'  " +
                     "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
                     "/publish_py/release_name='${env.RELEASE_NAME}'  " +
                     "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
                     "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/${getArrusWhlNamePattern(params, env.RELEASE_NAME)}'  " +
                     "/publish_py/dst_artifact='__same__'  " +
-                    "/publish_py/repository_name='pjarosik/arrus'  " +
+                    "/publish_py/repository_name='us4useu/arrus'  " +
                     "/publish_py/description='${getBuildName(currentBuild)} (Python)'  " +
                     "/publish_docs/version='${env.RELEASE_NAME}'  " +
                     "/publish_docs/install_dir='${env.INSTALL_DIR}/'  " +
