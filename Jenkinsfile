@@ -80,7 +80,7 @@ pipeline {
                     def githubSourceArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}": "${TARGET_RELEASE_DIR}";
                     env.GITHUB_SOURCE_ARTIFACT_PATH = githubSourceArtifactPath;
                     // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
-                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}": "${TARGET_RELEASE_DIR}";
+                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}/python": "${TARGET_RELEASE_DIR}";
                     env.GITHUB_PY_ARTIFACT_PATH = pyArtifactPath;
                     // Install dir.
                     def installDir = "${INSTALL_DIR_PREFIX}/${RELEASE_NAME}";
@@ -124,7 +124,8 @@ pipeline {
                     "/publish_matlab/repository_name='pjarosik/arrus'  " +
                     "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  " +
                     "/publish_py/release_name='${env.RELEASE_NAME}'  " +
-                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/python/${getArrusWhlNamePattern()}'  " +
+                    "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
+                    "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/${getArrusWhlNamePattern(params, env.RELEASE_NAME)}'  " +
                     "/publish_py/dst_artifact='__same__'  " +
                     "/publish_py/repository_name='pjarosik/arrus'  " +
                     "/publish_py/description='${getBuildName(currentBuild)} (Python)'  " +
@@ -133,7 +134,7 @@ pipeline {
                     "/cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE}  " +
                     "/cfg/DARRUS_PY_VERSION=${params.PY_VERSION}  " +
                     "${getPythonExecutableParameter(env, params.PY_VERSION)}  " +
-                    "py=ON matlab=ON /cfg/cmake/DMatlab_ROOT_DIR=/opt/MATLAB/current"
+                    "${env.MISC_OPTIONS} "
             }
         }
         stage('Build') {
@@ -253,7 +254,7 @@ pipeline {
                     env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
                     def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
 
-                    packagesName.each { packageName ->
+                    packageNames.each { packageName ->
                         def sourceArtifacts = "${TARGET_PRERELEASE_DIR}/${packageName}*"
                         sh "cp ${sourceArtifacts} ${targetFolder}"
                         echo "The files ${sourceArtifacts} were copied to ${targetFolder}"
@@ -263,7 +264,7 @@ pipeline {
                     // Python and docs => copy the .whl files to the install directory.
                     def releaseName = us4us.getReleaseName(env, params);
                     def installDir = "${INSTALL_DIR_PREFIX}/${releaseName}";
-                    sh "cp ${installDir}/python/${getArrusWhlNamePattern()} ${targetFolder}";
+                    sh "cp ${installDir}/python/${getArrusWhlNamePattern(params, env.RELEASE_NAME)} ${targetFolder}";
                     sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
                 }
             }
@@ -375,13 +376,20 @@ pipeline {
      }
 }
 
-def getArrusWhlNamePattern() {
+def getArrusWhlNamePattern(params, releaseName) {
     pythonVersion = "cp${params.PY_VERSION}".replace(".", "");
-    if(us4us.isPrerelease("${env.BRANCH_NAME}")) {
-        return "arrus*${us4us.getTimestamp()}*${pythonVersion}*.whl";
+    // releaseName can be e.g. v0.12.0-dev, but whl will be always v0.12.0.dev
+    def versionPattern = ~/^v\d+\.\d+\.\d+(-dev)?$/;
+    def whlReleaseName = releaseName;
+    if (whlReleaseName ==~ versionPattern) {
+        whlReleaseName = whlReleaseName.substring(1);
+        whlReleaseName = whlReleaseName.replace("-dev", ".dev");
+    }
+    if(us4us.isPrereleaseV2(params)) {
+        return "arrus*${whlReleaseName}*${us4us.getTimestamp()}*${pythonVersion}*.whl";
     }
     else {
-        return "arrus*${pythonVersion}*.whl";
+        return "arrus*${whlReleaseName}*${pythonVersion}*.whl";
     }
 }
 
