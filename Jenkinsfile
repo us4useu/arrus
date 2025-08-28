@@ -134,9 +134,8 @@ pipeline {
                     "/cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE}  " +
                     "/cfg/DARRUS_PY_VERSION=${params.PY_VERSION}  " +
                     "${getPythonExecutableParameter(env, params.PY_VERSION)}  " +
-                    "py=ON matlab=ON docs=ON /cfg/cmake/DMatlab_ROOT_DIR=/opt/MATLAB/current"
+                    "${env.MISC_OPTIONS} "
             }
-            // TODO enable MISC_OPTIONS
         }
         stage('Build') {
             when {
@@ -200,42 +199,41 @@ pipeline {
         }
 
         // ------------------------------------------ PUBLISH STEPS.
-        // TODO enable
-//         stage('ValidateRelease') {
-//             when{
-//                 allOf {
-//                     expression { params.PUBLISH }
-//                     expression { params.RELEASE }
-//                 }
-//             }
-//             steps {
-//                 script {
-//                     // C++/MATLAB => unzip the packages and check if the VERRSION.rst has the correct git commit
-//                     env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
-//                     env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
-//                     def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
-//
-//                     packageNames.each { packageName ->
-//                         def packagePath = "${env.TARGET_PRERELEASE_DIR}/${packageName}.zip"
-//                         def releasedPackage = "${env.TARGET_RELEASE_DIR}/${packageName}.zip"
-//                         // Make sure that the version have not been already released.
-//                         if(us4us.isFileOrDirExists(releasedPackage)) {
-//                             error "The version ${env.VERSION} has been already released! (remove ${releasedPackage} and Github releases in case you would like to re-release this version)."
-//                         }
-//                         // Make sure that the package we publish was generated for the same commit as the current HEAD.
-//                         // NOTE! It is still possible, that someone will commit something on that branch in between
-//                         // the ValidateCommit and Publish to repository. However, it seems to be quite unlikely
-//                         // and can be neglected.
-//                         def versionFilePath = us4us.extractFileToTempDirectory(packagePath, "VERSION.rst")
-//                         us4us.validateCommit(versionFilePath)
-//                     }
-//                     // Python and docs => check if the Version.rst in the INSTALL_DIR is correct
-//                     def releaseName = us4us.getReleaseName(env, params);
-//                     def installDir = "${INSTALL_DIR_PREFIX}/${releaseName}";
-//                     us4us.validateCommit("${installDir}/VERSION.rst");
-//                 }
-//             }
-//         }
+        stage('ValidateRelease') {
+            when{
+                allOf {
+                    expression { params.PUBLISH }
+                    expression { params.RELEASE }
+                }
+            }
+            steps {
+                script {
+                    // C++/MATLAB => unzip the packages and check if the VERRSION.rst has the correct git commit
+                    env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
+                    env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
+                    def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
+
+                    packageNames.each { packageName ->
+                        def packagePath = "${env.TARGET_PRERELEASE_DIR}/${packageName}.zip"
+                        def releasedPackage = "${env.TARGET_RELEASE_DIR}/${packageName}.zip"
+                        // Make sure that the version have not been already released.
+                        if(us4us.isFileOrDirExists(releasedPackage)) {
+                            error "The version ${env.VERSION} has been already released! (remove ${releasedPackage} and Github releases in case you would like to re-release this version)."
+                        }
+                        // Make sure that the package we publish was generated for the same commit as the current HEAD.
+                        // NOTE! It is still possible, that someone will commit something on that branch in between
+                        // the ValidateCommit and Publish to repository. However, it seems to be quite unlikely
+                        // and can be neglected.
+                        def versionFilePath = us4us.extractFileToTempDirectory(packagePath, "VERSION.rst")
+                        us4us.validateCommit(versionFilePath)
+                    }
+                    // Python and docs => check if the Version.rst in the INSTALL_DIR is correct
+                    def releaseName = us4us.getReleaseName(env, params);
+                    def installDir = "${INSTALL_DIR_PREFIX}/${releaseName}";
+                    us4us.validateCommit("${installDir}/VERSION.rst");
+                }
+            }
+        }
 
         stage('PublishNAS') {
             when {
@@ -267,8 +265,7 @@ pipeline {
                     def releaseName = us4us.getReleaseName(env, params);
                     def installDir = "${INSTALL_DIR_PREFIX}/${releaseName}";
                     sh "cp ${installDir}/python/${getArrusWhlNamePattern(params, env.RELEASE_NAME)} ${targetFolder}";
-                    // TODO enable the below
-//                     sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
+                    sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
                 }
             }
         }
