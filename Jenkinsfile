@@ -281,7 +281,8 @@ pipeline {
             steps {
                 script {
                     // Release name: version number if this stable release, or pre-release if this is dev.
-                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
+                    def releaseName = us4us.getReleaseName(env, params);
+                    env.RELEASE_NAME = releaseName;
                     env.GITHUB_SOURCE_ARTIFACT_PATH = getSourceArtifactPath(env, params);
                     // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
                     def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}/python": "${TARGET_RELEASE_DIR}";
