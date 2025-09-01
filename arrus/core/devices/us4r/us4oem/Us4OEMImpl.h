@@ -199,6 +199,7 @@ private:
         const std::unordered_set<ChannelIdx> &channelsMask);
     void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
     void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) override;
+    void InitializeDspCircuit(HvpsDspParameters params) override;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;

@@ -885,4 +885,8 @@ void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_
     this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
 }
 
+void Us4OEMImpl::InitializeDspCircuit(HvpsDspParameters params) {
+    this->ius4oem->InitializeDspCircuit(params);
+}
+
 }// namespace arrus::devices

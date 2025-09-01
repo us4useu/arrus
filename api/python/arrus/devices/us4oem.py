@@ -134,3 +134,9 @@ class Us4OEM(Device):
         This method is intended to be used in the probe_check implementation.
         """
         return arrus.core.arrusUs4OEMWaitForHVPSMeasuerementDone(self._handle, timeout)
+
+    def initialize_dsp_circuit(self, params):
+        """
+        Configures the HVPS realtime preoction.
+        """
+        return self._handle.InitializeDspCircuit(params)
