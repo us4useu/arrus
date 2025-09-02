@@ -363,6 +363,18 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.disableHpf()
 
+    def disable_lna_hpf(self):
+        """
+        Disables LNA analog high-pass filter.
+        """
+        self._handle.disableLnaHpf()
+
+    def disable_all_hpf(self):
+        """
+        Disables all (configurable) HPF filters on the device.
+        """
+        self._handle.disableAllHpf()
+
     def set_afe(self, addr, reg):
         """
         Writes AFE register

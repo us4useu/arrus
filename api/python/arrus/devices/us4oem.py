@@ -2,6 +2,7 @@ import ctypes
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.core
 import numpy as np
+from enum import Enum
 
 
 DEVICE_TYPE = DeviceType("Us4OEM")
@@ -62,6 +63,12 @@ class HVPSMeasurement:
 
 
 class Us4OEM(Device):
+
+    class Variant(Enum):
+        LEGACY = "LEGACY"
+        PLUS_32_RX = "PLUS_32_RX"
+        PLUS_64_RX = "PLUS_64_RX"
+        PLUS_HF = "PLUS_HF"
 
     def __init__(self, handle):
         self._handle = handle
@@ -134,3 +141,11 @@ class Us4OEM(Device):
         This method is intended to be used in the probe_check implementation.
         """
         return arrus.core.arrusUs4OEMWaitForHVPSMeasuerementDone(self._handle, timeout)
+
+    def get_variant(self) -> Variant:
+        """
+        Returns the variant of the device.
+        :return:
+        """
+        core_variant = self._handle.getVariant()
+
