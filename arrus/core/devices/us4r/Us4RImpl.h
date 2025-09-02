@@ -171,6 +171,8 @@ public:
     void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
     void setVcat(const std::vector<float> &attenuation) override;
     void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
+    void setHpfCornerFrequency(uint32_t frequency) override;
+    void disableHpf() override;
 
 private:
     struct VoltageLogbook {

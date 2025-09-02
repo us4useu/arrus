@@ -344,9 +344,25 @@ public:
     virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
 
     /**
+     * Enables ADC high-pass filter and sets a given corner frequency.
+     *
+     * Note: this method is just an alias for setAdcHpfCornerFrequency.
+     *
+     * @param frequency high-pass filter corner frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
      * Disables LNA analog high-pass filter.
      */
     virtual void disableLnaHpf() = 0;
+
+    /**
+     * Disables ADC high-pass filter.
+     *
+     * Note: this method is just an alias for setAdcHpfCornerFrequency.
+     */
+    virtual void disableHpf() = 0;
 
     /**
      * Enables ADC digital high-pass filter and sets a given corner frequency.
