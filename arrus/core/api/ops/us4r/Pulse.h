@@ -63,12 +63,6 @@ public:
         return nPeriods/centerFrequency;
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const Pulse &pulse) {
-        os << "centerFrequency: " << pulse.centerFrequency << " nPeriods: " << pulse.nPeriods
-           << " inverse: " << pulse.inverse << " amplitudeLevel: " << (uint32_t)pulse.amplitudeLevel;
-        return os;
-    }
-
     Waveform toWaveform() const {
         WaveformBuilder wb;
         float t = 1.0f/getCenterFrequency();
