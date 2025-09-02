@@ -894,14 +894,14 @@ void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_
     this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
 }
 
-Us4OEM::Variant getVariant() {
-    const auto &sn = this->serialNumber.value();
-    auto variantStr = "";
+Us4OEM::Variant Us4OEMImpl::getVariant() {
+    const auto &sn = this->serialNumber.get();
+    auto variantStr = std::string();
     // us4OEM+
     std::regex expectedPattern("^([a-zA-Z][a-zA-Z\\-]?)([0-9]{10}).*");
     std::smatch matches;
 
-    if (serial_number.empty()) {
+    if (sn.empty()) {
         // Legacy us4OEM
         return Us4OEM::Variant::LEGACY;
     } else if (std::regex_match(sn, matches, expectedPattern)) {
@@ -931,7 +931,6 @@ Us4OEM::Variant getVariant() {
     else {
         throw IllegalStateException(format("Unknown variant for OEM with SN: {}", sn));
     }
-
 }
 
 }// namespace arrus::devices

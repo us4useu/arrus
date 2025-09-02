@@ -62,13 +62,29 @@ class HVPSMeasurement:
         }[value]
 
 
-class Us4OEM(Device):
+class Variant(Enum):
+    """
+    Us4OEM variant.
+    """
+    LEGACY = "LEGACY"
+    PLUS_32_RX = "PLUS_32_RX"
+    PLUS_64_RX = "PLUS_64_RX"
+    PLUS_HF = "PLUS_HF"
 
-    class Variant(Enum):
-        LEGACY = "LEGACY"
-        PLUS_32_RX = "PLUS_32_RX"
-        PLUS_64_RX = "PLUS_64_RX"
-        PLUS_HF = "PLUS_HF"
+
+def _variant_enum_to_enum(enum):
+    """
+    Variant C++ Enum to Python Enum.
+    """
+    return {
+        arrus.core.Us4OEM.Variant_LEGACY: Variant.LEGACY,
+        arrus.core.Us4OEM.Variant_PLUS_32_RX: Variant.PLUS_32_RX,
+        arrus.core.Us4OEM.Variant_PLUS_64_RX: Variant.PLUS_64_RX,
+        arrus.core.Us4OEM.Variant_PLUS_HF: Variant.PLUS_HF,
+    }[enum]
+
+
+class Us4OEM(Device):
 
     def __init__(self, handle):
         self._handle = handle
@@ -144,8 +160,9 @@ class Us4OEM(Device):
 
     def get_variant(self) -> Variant:
         """
-        Returns the variant of the device.
-        :return:
+        Returns variant of the device.
         """
         core_variant = self._handle.getVariant()
+        return _variant_enum_to_enum(core_variant)
+
 
