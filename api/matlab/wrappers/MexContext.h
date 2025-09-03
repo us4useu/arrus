@@ -116,6 +116,8 @@ public:
             switch(array.getDataType()) {
             case ::arrus::framework::NdArray::DataType::INT16:
                 return createTypedArray<::arrus::int16>(array);
+            case ::arrus::framework::NdArray::DataType::FLOAT32:
+                return createTypedArray<::arrus::float64>(array);
             default:
                 throw IllegalArgumentException(format("Unhandled arrus data type: {}",
                                                std::to_string(size_t(array.getDataType()))));
@@ -148,6 +150,48 @@ public:
         auto *start = &array[0];
         auto *end = start + nElements;
         return getArrayFactory().createArray(dims, start, end);
+    }
+
+    ::arrus::framework::NdArray createNdArray(const ::matlab::data::Array &array,
+                                              const std::string &placement, const std::string &name) {
+        try {
+            switch(array.getType()) {
+            case ::matlab::data::ArrayType::DOUBLE:
+                return createTypedNdArrayCastFloat(array, placement, name);
+            default:
+                throw IllegalArgumentException(format("Unhandled arrus data type: {}",
+                                                      std::to_string(size_t(array.getType()))));
+            }
+        } catch (const std::exception &e) {
+            throw IllegalArgumentException(format("Exception while creating array: {}", e.what()));
+        }
+    }
+
+    ::arrus::framework::NdArray createTypedNdArrayCastFloat(
+        const ::matlab::data::TypedArray<double> &array, const std::string &placement,
+        const std::string &name) {
+
+        if(array.isEmpty()) {
+            return ::arrus::framework::NdArray();
+        }
+        ::matlab::data::ArrayDimensions dims = array.getDimensions();
+
+        const auto shape = ::arrus::framework::NdArrayDef::Shape(dims);
+        const auto p = ::arrus::devices::DeviceId::parse(placement);
+
+        if(array.getMemoryLayout() == ::matlab::data::MemoryLayout::COLUMN_MAJOR) {
+            // Note: F-contiguous shape to C-shape (just reverse orders).
+            std::reverse(std::begin(dims), std::end(dims));
+        }
+
+        // TODO: we are doing double copy here..., so this is not the most optimal way to upload constants,
+        // anyway, should be sufficient for now
+        std::vector<float> values(array.getNumberOfElements());
+        std::transform(
+            std::begin(array), std::end(array), std::begin(values),
+            [](const auto v){return (float)v; }
+        );
+        return ::arrus::framework::NdArray::asarray<float>(values, shape, p, name);
     }
 
 private:
