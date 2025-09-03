@@ -156,6 +156,8 @@ public:
                                               const std::string &placement, const std::string &name) {
         try {
             switch(array.getType()) {
+            case ::matlab::data::ArrayType::SINGLE:
+                return createTypedNdArrayCastFloat(array, placement, name);
             case ::matlab::data::ArrayType::DOUBLE:
                 return createTypedNdArrayCastFloat(array, placement, name);
             default:
