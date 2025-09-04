@@ -83,6 +83,7 @@ set(SOURCE_FILES
         arrus/devices/cpu.py
         arrus/devices/gpu.py
         arrus/devices/us4r.py
+        arrus/devices/us4oem.py
         arrus/devices/probe.py
         arrus/devices/device.py
         arrus/kernels/__init__.py

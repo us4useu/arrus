@@ -4,6 +4,7 @@
 #include <cmath>
 #include <thread>
 #include <utility>
+#include <regex>
 
 #include "Us4OEMDescriptorFactory.h"
 #include "Us4OEMTxRxValidator.h"
@@ -891,6 +892,45 @@ std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
 
 void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
     this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
+}
+
+Us4OEM::Variant Us4OEMImpl::getVariant() {
+    const auto &sn = this->serialNumber.get();
+    auto variantStr = std::string();
+    // us4OEM+
+    std::regex expectedPattern("^([a-zA-Z][a-zA-Z\\-]?)([0-9]{10}).*");
+    std::smatch matches;
+
+    if (sn.empty()) {
+        // Legacy us4OEM
+        return Us4OEM::Variant::LEGACY;
+    } else if (std::regex_match(sn, matches, expectedPattern)) {
+        // us4OEM+
+        const auto mountingType = matches[1].str();
+        const auto number = matches[2].str();
+
+        if (mountingType == "ST" || mountingType == "RA") {
+            // Legacy us4OEM+ serial number pattern
+            variantStr = number.substr(0, 2);
+        } else {
+            // Current us4OEM+ serial number pattern
+            variantStr = number.substr(8, 2);
+        }
+    }
+
+    const auto variantSymbol = variantStr.at(0);
+    if(variantSymbol == '0')  {
+        return Us4OEM::Variant::PLUS_RX_32;
+    }
+    else if(variantSymbol == '1') {
+        return Us4OEM::Variant::PLUS_RX_64;
+    }
+    else if(variantSymbol == '2') {
+        return Us4OEM::Variant::PLUS_HF;
+    }
+    else {
+        throw IllegalStateException(format("Unknown variant for OEM with SN: {}", sn));
+    }
 }
 
 }// namespace arrus::devices

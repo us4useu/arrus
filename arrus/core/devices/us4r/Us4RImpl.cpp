@@ -1412,4 +1412,16 @@ void Us4RImpl::disableHpf() {
     this->disableAdcHpf();
 }
 
+void Us4RImpl::disableAllHpf() {
+    this->disableAdcHpf();
+    this->disableLnaHpf();
+}
+
+Us4OEM::Variant Us4RImpl::getVariant() {
+    // There is no option, that we will have system with multiple OEM variants, right?...
+    // ... right ?
+    // ... right ?!
+    return us4oems.at(0)->getVariant();
+}
+
 }// namespace arrus::devices

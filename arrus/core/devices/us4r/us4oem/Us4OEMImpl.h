@@ -126,6 +126,7 @@ public:
     void setWaitForHVPSMeasurementDone() override;
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
     float getActualTxFrequency(float frequency) override;
+    Variant getVariant() override;
 
     bool isOEMPlus() {
         return isOEMPlus(getOemVersion());

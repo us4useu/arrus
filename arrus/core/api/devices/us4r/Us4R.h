@@ -450,6 +450,16 @@ public:
      */
     virtual float getMaximumTGCValue() const = 0;
 
+    /**
+     * Disables all high-pass filters on the device.
+     */
+    virtual void disableAllHpf() = 0;
+
+    /**
+     * Returns system variant (LEGACY/PLUS_32RX. etc.).
+     */
+    virtual Us4OEM::Variant getVariant() = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

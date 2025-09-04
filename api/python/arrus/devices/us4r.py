@@ -18,6 +18,8 @@ from arrus.devices.probe import ProbeDTO
 
 from arrus.kernels.simple_tx_rx_sequence import get_sample_range
 from arrus.kernels.tx_rx_sequence import get_tx_rx_sequence_sample_range
+import arrus.devices.us4oem
+from arrus.devices.us4oem import Variant
 
 DEVICE_TYPE = DeviceType("Us4R")
 
@@ -363,6 +365,18 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.disableHpf()
 
+    def disable_lna_hpf(self):
+        """
+        Disables LNA analog high-pass filter.
+        """
+        self._handle.disableLnaHpf()
+
+    def disable_all_hpf(self):
+        """
+        Disables all (configurable) HPF filters on the device.
+        """
+        self._handle.disableAllHpf()
+
     def set_afe(self, addr, reg):
         """
         Writes AFE register
@@ -574,6 +588,13 @@ class Us4R(Device, Ultrasound):
 
     def get_maximum_tgc_value(self):
         return self._handle.getMaximumTGCValue()
+
+    def get_variant(self) -> Variant:
+        """
+        Returns variant of the device.
+        """
+        core_variant = self._handle.getVariant()
+        return arrus.devices.us4oem._variant_enum_to_enum(core_variant)
 
 
 # ------------------------------------------ LEGACY MOCK

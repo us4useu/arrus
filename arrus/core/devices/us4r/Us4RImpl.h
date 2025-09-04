@@ -130,6 +130,7 @@ public:
     void disableLnaHpf() override;
     void setAdcHpfCornerFrequency(uint32_t frequency) override;
     void disableAdcHpf() override;
+    void disableAllHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
@@ -173,6 +174,7 @@ public:
     void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableHpf() override;
+    virtual Us4OEM::Variant getVariant() override;
 
 private:
     struct VoltageLogbook {
