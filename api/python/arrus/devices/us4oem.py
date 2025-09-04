@@ -67,8 +67,8 @@ class Variant(Enum):
     Us4OEM variant.
     """
     LEGACY = "LEGACY"
-    PLUS_32_RX = "PLUS_32_RX"
-    PLUS_64_RX = "PLUS_64_RX"
+    PLUS_RX_32 = "PLUS_RX_32"
+    PLUS_RX_64 = "PLUS_RX_64"
     PLUS_HF = "PLUS_HF"
 
 
@@ -78,8 +78,8 @@ def _variant_enum_to_enum(enum):
     """
     return {
         arrus.core.Us4OEM.Variant_LEGACY: Variant.LEGACY,
-        arrus.core.Us4OEM.Variant_PLUS_32_RX: Variant.PLUS_32_RX,
-        arrus.core.Us4OEM.Variant_PLUS_64_RX: Variant.PLUS_64_RX,
+        arrus.core.Us4OEM.Variant_PLUS_RX_32: Variant.PLUS_RX_32,
+        arrus.core.Us4OEM.Variant_PLUS_RX_64: Variant.PLUS_RX_64,
         arrus.core.Us4OEM.Variant_PLUS_HF: Variant.PLUS_HF,
     }[enum]
 
