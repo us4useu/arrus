@@ -1,11 +1,11 @@
-% Example script for raw rf imaging when using plane waves and angular scanning
+% Example script for raw rf imaging when using plane waves, angular scanning, and custom waveforms
 
 %% Initialize the system
-addpath('..\');
-addpath('..\arrus');
+addpath('../');
+addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
-us  = Us4R('configFile', 'us4r.prototxt');
+us  = Us4R.create('configFile', 'us4r.prototxt');
 
 %% Selected parameters
 % To program plane wave sequence, set 'txFocus' to infinity.
@@ -50,8 +50,8 @@ seq = CustomTxRxSequence(... % Obligatory parameters
 us.upload(seq);
 
 %% Preview (continuous in-loop operation)
-% Warning: the raw rf display methods (imageRawRf and plotRawRf) require
-% the rf to be real, and thus the hwDdcEnable must be set to false.
+% NOTE: the raw rf display methods (imageRawRf and plotRawRf) require
+% the raw data to be real, and thus the hwDdcEnable must be set to false.
 
 % Show image of all rf echoes in the sequence
 us.imageRawRf('amplitudeLim',1e3);
@@ -61,8 +61,4 @@ us.plotRawRf('selectedLines',96);
 
 %% Collecting data (single execution of the sequence)
 [raw,img] = us.run;
-
-%% Close session
-us.closeSession;
-
 
