@@ -62,7 +62,7 @@ private:
  */
 class TxTimeoutRegisterFactory {
 public:
-    static constexpr uint16_t EPSILON = 10; // an additional margin for TX timeout [us]
+    static constexpr uint16_t EPSILON = 2; // an additional margin for TX timeout [us]
 
     explicit TxTimeoutRegisterFactory(
         size_t nTimeouts,
