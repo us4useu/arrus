@@ -1045,7 +1045,7 @@ classdef Us4R < handle
             
             % txWaveform is not supported here yet
             for iSeq=1:nSeq
-                if ~isempty(obj.seq.txWaveform)
+                if ~isempty(seqIn(iSeq).txWaveform)
                     error("mergeSequences: txWaveform cannot be used in multi-sequence approach");
                 end
             end
