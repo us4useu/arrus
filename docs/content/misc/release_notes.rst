@@ -21,7 +21,7 @@ Release notes
     - Added support for LNA HPF for AFE58JD18 and AFE58JD48 #US4R-424.
     - Reduced minimum TX timeout value to 2 us #M_OEM-204.
 
-- Python API;
+- Python API:
 
     - Added support for Python 3.11 and Python 3.12 #ARRUS-489.
     - Exposed the possibility to program custom TX waveforms #US4R-507, #M_OEM-188.
