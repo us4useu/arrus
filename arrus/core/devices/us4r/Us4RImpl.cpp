@@ -1498,10 +1498,6 @@ std::pair<float, float> Us4RImpl::getTGCValueRange() const {
     return us4oems.at(0)->getTGCValueRange();
 }
 
-void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
-    this->setAdcHpfCornerFrequency(frequency);
-}
-
 void Us4RImpl::disableHpf() {
     this->disableAdcHpf();
 }
