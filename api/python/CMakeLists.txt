@@ -99,6 +99,7 @@ set(SOURCE_FILES
         arrus/utils/core.py
         arrus/utils/gui.py
         arrus/utils/probe_check.py
+        arrus/utils/us4r_remap_gpu.cu
         )
 
 set(TEST_FILES

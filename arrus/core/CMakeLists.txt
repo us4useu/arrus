@@ -207,7 +207,8 @@ set(SRC_FILES
     devices/us4r/TxWaveformConverter.h
 )
 
-set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
+    api/common/Slice.h)
 
 # Generate version.cpp file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")

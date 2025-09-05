@@ -28,8 +28,8 @@ public:
     MOCK_METHOD(void, InitializeTX, (), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
-    MOCK_METHOD(::us4us::us4r::Vector<float>, SetTxDelays, (const ::us4us::us4r::Span<float> &delays, const uint16_t firing, size_t profile), (override));
-    MOCK_METHOD(void, SetTxDelays, (size_t profile), (override));
+    MOCK_METHOD(::us4us::us4r::Vector<float>, SetTxDelays, (const ::us4us::us4r::Span<float> &delays, const uint16_t firing, size_t profile, size_t sequenceId), (override));
+    MOCK_METHOD(void, SetTxDelays, (const std::vector<size_t> &profiles), (override));
     MOCK_METHOD(float, SetTxFreqency,
             (const float frequency, const unsigned short firing),
     (override));
@@ -207,7 +207,7 @@ public:
     MOCK_METHOD(void, DisableProbeCheck, (), (override));
     MOCK_METHOD(float, GetMinTxPulseLength, (), (const, override));
     MOCK_METHOD(float, GetMaxTxPulseLength, (), (const, override));
-    MOCK_METHOD(void, SetSubsequence, (uint16_t start, uint16_t end, bool syncMode, uint32_t endTimeToNextTrigger), (override));
+    MOCK_METHOD(void, SetSubsequences, (const std::vector<uint16_t> &start, const std::vector<uint16_t> &end, bool syncMode, const std::vector<uint32_t> &endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));

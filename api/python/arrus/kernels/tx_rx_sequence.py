@@ -104,12 +104,12 @@ def _get_full_tx_delays(constant_delays, sequence_with_masks):
     """
     output_array = []
     for i, op in enumerate(sequence_with_masks.ops):
-        tx = op.tx
+        tx = op.tx[0]  # TX #0 (we do not allow anymore TXs when constants are provided)
+        delays = constant_delays[i][0] # TX delays #0 (we do not allow anymore TXs when constants are provided)
         core_delays = np.zeros(tx.aperture.shape, dtype=np.float32)
-        core_delays[tx.aperture] = constant_delays[i]
+        core_delays[tx.aperture] = delays
         output_array.append(core_delays)
     return np.stack(output_array)
-
 
 def __merge_txs(txs):
     """
@@ -196,22 +196,29 @@ def convert_to_us4r_sequence_with_constants(
     sequence = dataclasses.replace(sequence, ops=new_ops)
 
     output_constants = []
+
     for i, tx_focus_const in enumerate(tx_focus_constants):
         focus = tx_focus_const.value
-        focuses = [focus]*len(sequence_with_masks.ops)
+
+        # Currently we do not allow constants with multi-TX sequences.
+        focuses = []  # (n TX/RXs, n TXs in the op)
+        for op in sequence_with_masks.ops:
+            if isinstance(op.tx, typing.Iterable) and len(op.tx) > 1:
+                raise ValueError("Multi-TX ops are not supported with TX focus constants")
+            focuses.append([focus])  # note: a single TX in the op in the list
+
         constant_delays, _ = get_tx_delays_for_focuses(
             probe=probe_tx,
             sequence=original_sequence,
             seq_with_masks=sequence_with_masks,
             tx_focuses=focuses
         )
-        full_tx_delays = _get_full_tx_delays(
-            constant_delays, sequence_with_masks)
+        full_tx_delays = _get_full_tx_delays(constant_delays, sequence_with_masks)
         output_constants.append(
             Constant(
                 value=full_tx_delays,
                 placement=tx_focus_const.placement,
-                name=f"sequence/txDelays:{i}"
+                name=f"/{original_sequence.name}/txDelays:{i}"
             )
         )
     return sequence, tx_center_delay, output_constants
