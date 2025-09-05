@@ -99,8 +99,8 @@ public:
     void disableHV() override;
     void cleanupBuffers(bool cleanupSequencerTransfers = false);
 
-    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
-    void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
+    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
+    void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
     std::vector<float> getTgcCurvePoints(float endSample) const override;
@@ -130,6 +130,7 @@ public:
     void disableLnaHpf() override;
     void setAdcHpfCornerFrequency(uint32_t frequency) override;
     void disableAdcHpf() override;
+    void disableAllHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
@@ -168,9 +169,12 @@ public:
     float getMaximumTGCValue() const override;
 
     std::pair<float, float> getTGCValueRange() const;
-    void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) override;
+    void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
     void setVcat(const std::vector<float> &attenuation) override;
-    void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
+    void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
+    void setHpfCornerFrequency(uint32_t frequency) override;
+    void disableHpf() override;
+    virtual Us4OEM::Variant getVariant() override;
 
 private:
     struct VoltageLogbook {

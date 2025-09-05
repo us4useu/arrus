@@ -4,6 +4,7 @@
 #include <cmath>
 #include <thread>
 #include <utility>
+#include <regex>
 
 #include "Us4OEMDescriptorFactory.h"
 #include "Us4OEMTxRxValidator.h"
@@ -21,6 +22,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
 #include "utils.h"
 #include "arrus/core/devices/us4r/TxWaveformConverter.h"
+#include "arrus/core/devices/us4r/TxWaveformSoftStartConverter.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -241,7 +243,14 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             // This will be optimized in TODO(0.12.0).
             setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx());
             if(isOEMPlus()) {
-                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(op.getTxWaveform()));
+                auto waveform = op.getTxWaveform();
+                // Waveform pre-processing.
+                if(softStartConverter.apply(op.getTxWaveform())) {
+                    waveform = softStartConverter.convert(waveform);
+                    this->logger->log(LogSeverity::INFO, "The given TX pulse has at least 128 cycles, applying reduced "
+                                                         "duty cycle for the first 5 us of the TX pulse (25%, 50%, 75%).");
+                }
+                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
             }
             else {
                 // Legacy OEM.
@@ -883,6 +892,45 @@ std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
 
 void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
     this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
+}
+
+Us4OEM::Variant Us4OEMImpl::getVariant() {
+    const auto &sn = this->serialNumber.get();
+    auto variantStr = std::string();
+    // us4OEM+
+    std::regex expectedPattern("^([a-zA-Z][a-zA-Z\\-]?)([0-9]{10}).*");
+    std::smatch matches;
+
+    if (sn.empty()) {
+        // Legacy us4OEM
+        return Us4OEM::Variant::LEGACY;
+    } else if (std::regex_match(sn, matches, expectedPattern)) {
+        // us4OEM+
+        const auto mountingType = matches[1].str();
+        const auto number = matches[2].str();
+
+        if (mountingType == "ST" || mountingType == "RA") {
+            // Legacy us4OEM+ serial number pattern
+            variantStr = number.substr(0, 2);
+        } else {
+            // Current us4OEM+ serial number pattern
+            variantStr = number.substr(8, 2);
+        }
+    }
+
+    const auto variantSymbol = variantStr.at(0);
+    if(variantSymbol == '0')  {
+        return Us4OEM::Variant::PLUS_RX_32;
+    }
+    else if(variantSymbol == '1') {
+        return Us4OEM::Variant::PLUS_RX_64;
+    }
+    else if(variantSymbol == '2') {
+        return Us4OEM::Variant::PLUS_HF;
+    }
+    else {
+        throw IllegalStateException(format("Unknown variant for OEM with SN: {}", sn));
+    }
 }
 
 }// namespace arrus::devices

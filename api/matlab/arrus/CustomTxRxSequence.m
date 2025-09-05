@@ -1,51 +1,6 @@
 classdef CustomTxRxSequence
-    % A sequence of Tx/Rx operations to perform on a device.
-    %
-    % :param txCenterElement: vector of tx aperture center elements [element]
-    % :param txApertureCenter: vector of tx aperture center positions [m]
-    % :param txApertureSize: vector of tx aperture sizes [element]
-    % :param rxCenterElement: vector of rx aperture center elements [element]
-    % :param rxApertureCenter: vector of rx aperture center positions [m]
-    % :param rxApertureSize: size of the rx aperture [element]
-    % :param txFocus: vector of tx focal lengths [m]
-    % :param txAngle: vector of tx angles [rad]
-    % :param speedOfSound: speed of sound for [m/s]
-    % :param txVoltage: tx voltage level [V]. Can be: \
-    %   scalar (pulse voltage range is [-txVoltage +txVoltage] for the \
-    %   whole sequence), or 2x2 array (defines two sets of negative and \
-    %   positive tx voltage amplitudes: [v1neg, v1pos; v2neg, v2pos]; the \
-    %   voltage range can be selected individually for each tx using txVoltageId). \
-    %   txVoltage must always be nonnegative and v1 must be higher than v2. \
-    %   "Legacy" systems only support scalar txVoltage
-    % :param txVoltageId: vector of tx voltage level identifiers (can be 1 \
-    %   for [-v1neg +v1pos] range or 2 for [-v2neg +v2pos] range)
-    % :param txFrequency: vector of tx frequencies [Hz]
-    % :param txNPeriods: vector of numbers of sine periods in the tx burst (can be 0.5, 1, 1.5, etc.)
-    % :param rxDepthRange: defines the end (if scalar) or \
-    %   the begining and the end (if two-element vector) \ 
-    %   of the acquisition expressed by depth range [m]
-    % :param rxNSamples: number of samples (if scalar) or \
-    %   starting and ending sample numbers (if 2-element vector) \ 
-    %   of recorded signal [sample]
-    % :param hwDdcEnable: enables complex iq output
-    % :param decimation: decimation factor, for real output (hwDdcEnable==false) \
-    %   it must be positive integer, for complex output (hwDdcEnable==true) \
-    %   it must be multiple of 0.25 and be >=2
-    % :param nRepetitions: number of repetitions of the sequence (positive integer).
-    % :param txPri: tx pulse repetition interval [s]
-    % :param tgcStart: TGC starting gain [dB]
-    % :param tgcSlope: TGC gain slope [dB/m]
-    % :param txInvert: tx pulse polarity marker
-    % :param workMode: system mode of operation, can be "MANUAL","HOST","SYNC", \
-    %   or "ASYNC"
-    % :param sri: sequence repeting interval [s]
-    % :param bufferSize: number of buffer elements (each element contains \
-    %   data for a single sequence execution)
-    % :param txWaveform: TX waveform to use, an instance of arrus.ops.us4r.Waveform
-    %
-    % TGC gain = tgcStart + tgcSlope * propagation distance
-    % TGC gain is limited to 14-54 dB, any values out of that range
-    % will be set to 54 dB (if > 54 dB) or 14 dB (if <14 dB)
+    % A class that stores parameters of the sequence of Tx/Rx \
+    % operations to be performed on the device.
     
     properties
         txCenterElement (1,:) {mustBeFinite, mustBeReal}
@@ -57,8 +12,8 @@ classdef CustomTxRxSequence
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
-        txVoltage  (1,1) {mustBeNonnegative} = 0;
-        txVoltageId (1,:) = 1
+        txVoltage  (:,:) {mustBeNonnegative} = 0;
+        txVoltageId (1,:) = 2
         txFrequency (1,:) = []
         txNPeriods (1,:) = []
         rxDepthRange (1,:) {mustBeProperNumber}
@@ -78,6 +33,67 @@ classdef CustomTxRxSequence
     
     methods
         function obj = CustomTxRxSequence(varargin)
+            % Creates a CustomTxRxSequence object.
+            % 
+            % Syntax:
+            % obj = CustomTxRxSequence(name, value, ..., name, value)
+            % 
+            % All inputs are organized in name-value pairs.
+            % 
+            % :param txCenterElement: Center elements of the Tx apertures [elem]. \
+            %   Numerical vector.
+            % :param txApertureCenter: Center positions of the Tx apertures [m]. \
+            %   Numerical vector.
+            % :param txApertureSize: Sizes of the Tx apertures [elem]. \
+            %   Numerical vector.
+            % :param rxCenterElement: Center elements of the Rx apertures [elem]. \
+            %   Numerical vector.
+            % :param rxApertureCenter: Center positions of the Rx apertures [m]. \
+            %   Numerical vector.
+            % :param rxApertureSize: Size of the Rx apertures [elem]. \
+            %   Numerical scalar.
+            % :param txFocus: Tx focal distances [m]. Numerical vector.
+            % :param txAngle: Tx angles [rad]. Numerical vector.
+            % :param speedOfSound: Speed of sound determining the Tx delay \
+            %   profiles [m/s]. Numerical scalar.
+            % :param txVoltage: Tx voltage level [V]. Can be: \
+            %   a scalar (pulse voltage range is [-txVoltage +txVoltage] for the \
+            %   whole sequence), or a 2x2 array (defines two sets of negative and \
+            %   positive Tx voltage amplitudes: [v1neg, v1pos; v2neg, v2pos]; the \
+            %   voltage range can be selected individually for each Tx using txVoltageId). \
+            %   txVoltage must always be nonnegative and v1 must be higher than v2. \
+            %   "Legacy" systems only support scalar txVoltage.
+            % :param txVoltageId: Tx voltage level identifiers (can be 1 \
+            %   for range [-v1neg +v1pos], or 2 for [-v2neg +v2pos]). \
+            %   Numerical vector.
+            % :param txFrequency: Tx frequencies [Hz]. Numerical vector.
+            % :param txNPeriods: Numbers of sine periods in the Tx burst \
+            %   (can be 0.5, 1, 1.5, etc.). Numerical vector.
+            % :param rxDepthRange: Acquisition depth range [m]. If scalar, \
+            %   it defines the upper depth limit (the lower one is set to 0). \
+            %   If 2-elem vector, it defines the lower and upper depth limits. \
+            %   Numerical scalar/2-elem vector.
+            % :param rxNSamples: Number of acquired samples. Numerical scalar.
+            % :param hwDdcEnable: Enables hardware DDC (Digital Down Conversion). \
+            %   It results in complex iq output data. Logical scalar.
+            % :param decimation: Hardware decimation factor. Numerical \
+            %   scalar, positive integer.
+            % :param nRepetitions: Number of repetitions of the sequence. \
+            %   Numerical scalar, positive integer.
+            % :param txPri: Tx pulse repetition interval [s]. Numerical scalar.
+            % :param tgcStart: TGC starting gain [dB]. Numerical scalar.
+            % :param tgcSlope: TGC gain slope [dB/m]. Numerical scalar.
+            % :param txInvert: Tx pulse polarity inversion. Logical vector.
+            % :param workMode: System mode of operation. String scalar, \
+            %   can be "MANUAL", "HOST", "SYNC", or "ASYNC".
+            % :param sri: Sequence repeting interval [s]. Numerical scalar.
+            % :param bufferSize: number of buffer elements (each element contains \
+            %   data for a single sequence execution). Numerical scalar.
+            % :param txWaveform: TX waveform to use. Scalar object of \
+            %   arrus.ops.us4r.Waveform class.
+            % 
+            % TGC gain = tgcStart + tgcSlope * propagation distance
+
             if mod(nargin, 2) == 1
                 error("ARRUS:params", ...
                       "Input should be a list of  'key', value params.");
@@ -102,7 +118,7 @@ classdef CustomTxRxSequence
                       "workMode must be one of the following: MANUAL, HOST, SYNC, or ASYNC.");
             end
 
-            if ~xor(isempty(obj.txWaveform), isempty(obj.txFrequency) && isempty(obj.txNPeriods) && isempty(obj.txInvert))
+            if ~xor(isempty(obj.txWaveform), isempty(obj.txFrequency) && isempty(obj.txNPeriods) && ~obj.txInvert)
                 error("ARRUS:IllegalArgument", ...
                 "Exactly one of the following should be provided: txWaveform or (txFrequency, txNPeriods, and txInvert)");
             end
@@ -139,9 +155,11 @@ classdef CustomTxRxSequence
             if ~ismatrix(obj.txVoltage) || (~isscalar(obj.txVoltage) && ~all(size(obj.txVoltage)==[2 2]))
                 error("ARRUS:IllegalArgument", 'txVoltage must be scalar or 2x2 array');
             end
-            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) <= obj.txVoltage(2,:))
-                error("ARRUS:IllegalArgument", 'txVoltage(1,:) must be higher than txVoltage(2,:)');
+            if ~isscalar(obj.txVoltage) && any(obj.txVoltage(1,:) >= obj.txVoltage(2,:))
+                error("ARRUS:IllegalArgument", 'txVoltage(2,:) must be higher than txVoltage(1,:)');
             end
+
+            %% Pulse validation
             if isempty(obj.txWaveform)
                 if isempty(obj.txInvert)
                     obj.txInvert = false;
@@ -151,6 +169,8 @@ classdef CustomTxRxSequence
                 obj.txNPeriods          = mustBeProperLength(obj.txNPeriods,nTx);
                 obj.txInvert            = mustBeProperLength(obj.txInvert,nTx);
                 obj.txInvert            = double(obj.txInvert);
+            else
+                obj.txInvert            = [];
             end
         end
     end

@@ -172,6 +172,20 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     ARRUS_REQUIRES_TRUE(voltages.size() == N_RAILS, "Voltages for HV0 and HV1 should be provided.");
     ARRUS_REQUIRES_TRUE(voltages.at(1).has_value(), "HV voltage amplitude 2 (HV0) must be provided.");
 
+    //check if push pulse and limit voltage difference to 10V
+    for(auto &oem: us4oems) {
+        auto txCycles1 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getPulseCycles();
+        auto txCycles2 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx2().getPulseCycles();
+        if(txCycles1.end() > 32 || txCycles2.end() > 32) {
+            ARRUS_REQUIRES_TRUE(voltages.at(1).has_value() && voltages.at(0).has_value(), 
+                        "When using push pulses (>32 cycles) both HV voltage amplitdes (HV0 & HV1) must be provided");
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltagePlus() - voltages.at(0)->getVoltagePlus()) <= 10, 
+                        "When using push pulses (>32 cycles) voltage difference between HVP0 and HVP1 rails must be <= 10 V");
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltageMinus() - voltages.at(0)->getVoltageMinus()) <= 10, 
+                        "When using push pulses (>32 cycles) voltage difference between HVM0 and HVM1 rails must be <= 10 V");
+        }
+    }
+
     auto &hvModel = this->hv[0]->getModelId();
     bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
     bool isHVPS = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps";
@@ -728,25 +742,26 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true, false); }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setTgcSamples(tgcCurvePoints)
                              .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
                              .build();
     setRxSettings(newRxSettings);
 }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if (y.empty()) {
         // Turn off TGC
-        setTgcCurve(y, applyCharacteristic);
+        setTgcCurve(y, applyCharacteristic, clip);
     } else {
         vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setTgcCurve(tgcValues, applyCharacteristic);
+        setTgcCurve(tgcValues, applyCharacteristic, clip);
     }
 }
 
@@ -764,24 +779,25 @@ std::vector<float> Us4RImpl::interpolateToSystemTGC(const vector<float> &t, cons
     return tgcValues;
 }
 
-void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic) {
+void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if (y.empty()) {
         // Turn off TGC
-        setVcat(y, applyCharacteristic);
+        setVcat(y, applyCharacteristic, clip);
     } else {
         vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setVcat(tgcValues, applyCharacteristic);
+        setVcat(tgcValues, applyCharacteristic, clip);
     }
 }
 
-void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true); }
+void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true, false); }
 
-void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic) {
+void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setVcat(attenuation)
                              .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
                              .build();
     setRxSettings(newRxSettings);
 }
@@ -1386,6 +1402,26 @@ float Us4RImpl::getMaximumTGCValue() const {
 
 std::pair<float, float> Us4RImpl::getTGCValueRange() const {
     return us4oems.at(0)->getTGCValueRange();
+}
+
+void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
+    this->setAdcHpfCornerFrequency(frequency);
+}
+
+void Us4RImpl::disableHpf() {
+    this->disableAdcHpf();
+}
+
+void Us4RImpl::disableAllHpf() {
+    this->disableAdcHpf();
+    this->disableLnaHpf();
+}
+
+Us4OEM::Variant Us4RImpl::getVariant() {
+    // There is no option, that we will have system with multiple OEM variants, right?...
+    // ... right ?
+    // ... right ?!
+    return us4oems.at(0)->getVariant();
 }
 
 }// namespace arrus::devices

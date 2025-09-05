@@ -2,6 +2,9 @@
 #define ARRUS_CORE_DEVICES_US4R_US4RFACTORYIMPL_H
 
 #include <stdexcept>
+#include <unordered_set>
+#include <algorithm>
+#include <iterator>
 
 #include "arrus/common/asserts.h"
 #include "arrus/core/devices/probe/ProbeSettingsValidator.h"
@@ -66,7 +69,9 @@ public:
             // Get IUs4OEM handles only, without initializing them.
             // This is in order to enable internal trigger before
             // OEMs are initialized.
-            auto ius4oemHandles = getIUS4OEMs((Ordinal)(us4OEMSettings.size()));
+            auto ius4oemHandles = getIUS4OEMs((Ordinal)(us4OEMSettings.size()), settings.isAllowDuplicateOEMIds());
+
+            // initialization
             std::vector<IUs4OEM*> ius4oems;
             for(auto &handle: ius4oemHandles) {
                 ius4oems.push_back(handle.get());
@@ -110,9 +115,11 @@ public:
     }
 
 private:
-    std::vector<IUs4OEMHandle> getIUS4OEMs(Ordinal nOEMs) {
+    std::vector<IUs4OEMHandle> getIUS4OEMs(Ordinal nOEMs, bool allowDuplicateIds) {
         ARRUS_REQUIRES_AT_LEAST(nOEMs, 1, "At least one us4oem should be configured.");
         std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nOEMs);
+        // OEM initial validation
+        validateOEMIds(ius4oems, allowDuplicateIds);
         // Modifies input list - sorts ius4oems by ID in ascending order.
         ius4oemInitializer->sortModulesById(ius4oems);
         return ius4oems;
@@ -224,9 +231,34 @@ private:
         std::transform(std::begin(probeSettings), std::end(probeSettings), std::inserter(f, std::begin(f)),
                        [](const auto &p){return p.getBitstreamId().has_value();});
         if(f.size() > 1) {
-            throw IllegalArgumentException("All probes should be bitsream addressable or not");
+            throw IllegalArgumentException("All probes should be bitstream addressable or not.");
         }
         return *std::begin(f);
+    }
+
+    void validateOEMIds(const std::vector<IUs4OEMHandle> &oems, bool allowDuplicateIds) {
+        std::unordered_set<unsigned int> idsSet;
+        // transform vector to set
+        std::transform(std::begin(oems), std::end(oems), std::inserter(idsSet, std::end(idsSet)), [](const auto &oem) {
+            return oem->GetID();
+        });
+
+        if(idsSet.size() < oems.size()) {
+            // We have some duplicates, prepare error/warning message.
+            std::stringstream stringBuilder;
+            stringBuilder << "Detected OEMs with non-unique IDs. ";
+            for(size_t i = 0; i < oems.size(); ++i) {
+                stringBuilder << "PCI device: " << i << ", ID: " << oems.at(i)->GetID()  << "; ";
+            }
+            if(allowDuplicateIds) {
+                getDefaultLogger()->log(LogSeverity::WARNING, stringBuilder.str());
+            }
+            else {
+                stringBuilder << " To replace this error with warning message, set `allow_duplicate_oem_ids` "
+                                 "in the us4r settings to true.";
+                throw IllegalArgumentException(stringBuilder.str());
+            }
+        }
     }
 
     std::unique_ptr<IUs4OEMFactory> ius4oemFactory;

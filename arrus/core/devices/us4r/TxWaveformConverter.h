@@ -43,6 +43,8 @@ public:
     constexpr static uint32_t END_STATE = 0b1110;
     // Waveform sampling frequency
     constexpr static float SAMPLING_FREQUENCY = 130e6f;
+    // The minimum possible duration for a single state.
+    constexpr static float MINIMUM_DURATION = 2.0f / SAMPLING_FREQUENCY;
     // Number of bits for the duration field
     constexpr static uint32_t DURATION_BITS_SIZE = 7;
     // MAXIMUM single duration; +1, because it's 127 + 2
@@ -54,7 +56,12 @@ public:
     // Maximum number of registers in a segment with repetition > 1.
     constexpr static uint32_t MAX_REPEATED_SEGMENT_LENGTH = 4;
 
-    static void validateSegment(const ops::us4r::WaveformSegment &segment, const size_t nRepetitions) {
+    /**
+     * Segment validator that can be applied regardless of whether the waveform is alraeady preprocessed (i.e.
+     * replaced with the proper 2-,3-, or 4-state repetitions).
+     * In other words, this validation procedure should be always valid, regardless of the wf definition.
+     */
+    static void validateSegmentCommon(const ops::us4r::WaveformSegment &segment, const size_t nRepetitions) {
         auto segmentLength = segment.getState().size();
         if (segmentLength == 0) {
             throw IllegalArgumentException("Segment cannot be empty");
@@ -62,6 +69,24 @@ public:
         if (nRepetitions == 0) {
             throw IllegalArgumentException("The number of repetitions must be greater than 0");
         }
+    }
+
+    /**
+     * Input (user provided) waveform validation, specific for STHV1600 pulsers.
+     */
+    static void validateWaveform(const ops::us4r::Waveform &wf) {
+        // Input validation.
+        if(wf.getSegments().empty()) {
+            throw IllegalArgumentException("Waveform definition (segments) should not be an empty list.");
+        }
+        for(size_t i = 0; i < wf.getSegments().size(); ++i) {
+            validateSegmentCommon(wf.getSegments().at(i), wf.getNRepetitions().at(i));
+        }
+    }
+
+    static void validateSegment(const ops::us4r::WaveformSegment &segment, const size_t nRepetitions) {
+        validateSegmentCommon(segment, nRepetitions);
+        auto segmentLength = segment.getState().size();
 
         if (nRepetitions > 1 && ((segmentLength < 2) || (segmentLength > 4))) {
             throw IllegalArgumentException("The repeated segment should have between 2 and 4 components.");
@@ -283,7 +308,7 @@ public:
                     }
                 } else {
                     throw IllegalArgumentException(
-                        format("The TX waveform includes too long single state duration: {}", d));
+                        format("The TX waveform contains too long single state duration: {}", d));
                 }
             }
         }
@@ -328,6 +353,8 @@ public:
     }
 
     static std::vector<uint32_t> toPulser(const ::arrus::ops::us4r::Waveform &wf) {
+        validateWaveform(wf);
+        // Calculate.
         std::vector<uint32_t> result;
         std::vector<SegmentWithRepetitions> preprocessedSegments;
         for (size_t s = 0; s < wf.getSegments().size(); ++s) {
@@ -354,7 +381,8 @@ public:
                 uint32 durationClk = toClk(duration);
                 if (durationClk < 2) {
                     throw IllegalArgumentException(format(
-                        "The minimum number of cycles that can be set on the pulser is 2, got: {}", durationClk));
+                        "The minimum waveform state duration that can be set on the pulser is {}, got: {}",
+                        MINIMUM_DURATION, duration));
                 }
                 // The actual number of cycles is durationClk + 2 cycles
                 durationClk -= 2;

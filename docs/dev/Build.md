@@ -14,7 +14,7 @@ The docker image contains all the packages needed to build ARRUS packages
 and documentation.
 To use it, change current directory to this repositorym, then call:
 ```
-docker build -f .docker/build/Dockerfile --build-arg TARGETPLATFORM=linux/amd64 --no-cache -t us4useu/arrus-build
+docker build -f .docker/build/Dockerfile --build-arg TARGETPLATFORM=linux/amd64 --no-cache -t us4useu/arrus-build .
 docker run -it --rm us4useu/arrus-build:latest
 ```
 For `linux_aarch64` remember to change `TARGETPLATFORM` to `linux/arm64`.

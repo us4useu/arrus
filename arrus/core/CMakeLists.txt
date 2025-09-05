@@ -202,9 +202,11 @@ set(SRC_FILES
     api/devices/probe/MatchingLayer.h
     api/version.h
     common/os.h
+    common/math.h
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
+   devices/us4r/TxWaveformSoftStartConverter.h
 )
 
 set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
@@ -327,6 +329,7 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
     create_core_test(devices/us4r/Us4RSubsequenceTest.cpp "devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp")
     create_core_test(devices/us4r/TxWaveformConverterTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/TxWaveformSoftStartConverterTest.cpp)
 endif ()
 
 ################################################################################

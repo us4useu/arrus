@@ -8,10 +8,41 @@ Release notes
 
 - core (driver):
 
-    - Exposed DDC digital gain (after the decimation filter) #M_OEM-153.
+    - Exposed the possibility to program custom TX waveforms. #US4R-507, #M_OEM-188.
+    - Added support for us4OEM+ HF. #US4R-588, #US4R-576, #US4R-424, #M_OEM-142, #M_OEM-174, #M_US4R-9, #US4R-651, #US4R-644.
+    - Removed in the us4OEM+ HVPS HV1 < HV0 PWM constraint #M_OEM-169.
+    - Exposed digital backplane firmware version number in the API #M_US4R-24.
+    - Exposed DDC digital gain parameter (after the decimation filter) #M_OEM-153.
+    - Changed the delay between TX and RX, now the OEM pulsers will change to OEM after all channels of the given pulser finish transmitting (changed RX_DELAY_MODE to all TX mode) #M_US4R-29.
+    - Exposed the possibility to set VCAT (setVCat method) #US4R-656.
+    - Implemented 10V voltage difference limit on HV rails for push pulses, #M_US4R-35.
+    - Added support for DBARLitePCIE firmware 1.2.1.0.
+    - Changed HVPS voltage calibration tolerance to 1.0V #M_OEM-154.
+    - Added support for LNA HPF for AFE58JD18 and AFE58JD48 #US4R-424.
+    - Reduced minimum TX timeout value to 2 us #M_OEM-204.
+
+- Python API:
+
+    - Added support for Python 3.11 and Python 3.12 #ARRUS-489.
+    - Exposed the possibility to program custom TX waveforms #US4R-507, #M_OEM-188.
+    - Exposed digital backplane firmware version number in the API #M_US4R-24.
+    - Exposed HPF setters #M_US4R-358.
+
+- MATLAB API:
+
+    - Exposed the possibility to program custom TX waveforms #US4R-507, #M_OEM-188.
+    - Fixed timestamp calculations for Color Doppler #ARRUS-474.
+
 
 0.11.x
 -----
+
+
+0.11.3
+
+- core (driver):
+
+    - Added support for long (12 characters) OEM+ serial numbers #M_OEM-190.
 
 
 0.11.2
