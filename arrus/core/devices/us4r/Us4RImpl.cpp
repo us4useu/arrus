@@ -163,10 +163,30 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 }
 
 void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
+    // Process the input voltages.
     std::vector<std::optional<HVVoltage>> newVoltages(voltages.size());
     std::transform(voltages.begin(), voltages.end(), newVoltages.begin(),
                    [](const auto v){return std::make_optional(v);});
-    setVoltage(newVoltages);
+
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    try {
+        if(this->state == State::STARTED) {
+            // pause the TX/RX sequence execution
+            this->us4oems[0]->getIUs4OEM()->TriggerStop();
+        }
+        setVoltage(newVoltages);
+        if(this->state == State::STARTED) {
+            // resume
+            this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        }
+    } catch(const std::exception &e) {
+        this->logger->log(LogSeverity::ERROR, format("Exception while setting voltage, stopping the system: {}", e.what()));
+        this->stop();
+        throw e;
+    } catch(...) {
+        this->logger->log(LogSeverity::ERROR, "Unknown exception while setting voltage, stopping the system.");
+        this->stop();
+    }
 }
 
 void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages) {
@@ -1528,7 +1548,7 @@ Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, co
         auto &arrays = arraysBySequence.at(name);
         std::sort(std::begin(arrays), std::end(arrays),
                   [](const auto& a, const auto& b) {
-                      return a.first < b.first;
+                    return a.first < b.first;
                   });
         // Check if there are no gaps in numbering of the constants, and copy the arrays to the target map.
         for(size_t i = 0; i < arrays.size(); ++i) {
