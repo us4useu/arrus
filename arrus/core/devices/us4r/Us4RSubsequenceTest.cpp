@@ -115,8 +115,8 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
                                DeviceId(arrus::devices::DeviceType::Probe, 0)},
     }};
     std::vector<LogicalToPhysicalOp> mapping = {{
-        {{0, 1}, {2, 3}},// OEM: 0
-        {{0, 1}, {2, 3}},// OEM: 1
+        {{0, 2}, {2, 4}},// OEM: 0
+        {{0, 2}, {2, 4}},// OEM: 1
     }};
 
     Us4OEMBufferArrayDef arrayDefOEM0{
@@ -216,12 +216,12 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
 
     Us4RSubsequenceFactory factory{{seq}, mapping, oemSequences, oemBuffers, fcms};
 
-    const auto res = factory.get(0, 1, 1, std::nullopt);
+    const auto res = factory.get(0, 1, 2, std::nullopt);
+    const auto resultOEMBuffers = factory.recreateOEMBuffers({res.getArrayDefs()});
     EXPECT_EQ(res.getStart(), 2);
-    EXPECT_EQ(res.getEnd(), 3);
+    EXPECT_EQ(res.getEnd(), 4);
 
     // OEM buffers:
-    const auto &resultOEMBuffers = res.getOemBuffers();
     const auto &oem0Buffer = resultOEMBuffers.at(0);
     EXPECT_EQ(oem0Buffer.getElement(0).getSize(), 2 * 4096);
     EXPECT_EQ(oem0Buffer.getElement(0).getAddress(), 0);
@@ -369,12 +369,12 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     // second logical op was translated to a single physical op 2.
     std::vector<LogicalToPhysicalOp> mapping = {{
                                                     // sequence 0
-                                                    {0, 0},
-                                                    {1, 1},
+                                                    {0, 1},
+                                                    {1, 2},
                                                 },
                                                 {
                                                     // sequence 1
-                                                    {0, 0},
+                                                    {0, 1},
                                                 }};
 
     // Output array: sequence 0.
@@ -476,12 +476,12 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     Us4RSubsequenceFactory factory{seqs, mapping, oemSequences, oemBuffers, fcms};
 
     // Select sequence 0, only the first TX/RX
-    const auto res = factory.get(0, 0, 0, std::nullopt);
+    const auto res = factory.get(0, 0, 1, std::nullopt);
+    const auto resultOEMBuffers = factory.recreateOEMBuffers({res.getArrayDefs()});
     EXPECT_EQ(res.getStart(), 0);
-    EXPECT_EQ(res.getEnd(), 0);
+    EXPECT_EQ(res.getEnd(), 1);
 
     // OEM buffers:
-    const auto &resultOEMBuffers = res.getOemBuffers();
     const auto &oem0Buffer = resultOEMBuffers.at(0);
     EXPECT_EQ(oem0Buffer.getElement(0).getSize(), 4096);
     EXPECT_EQ(oem0Buffer.getElement(0).getAddress(), 0);
@@ -501,12 +501,12 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     EXPECT_EQ(outputFCM->getLogical(0, 1), FrameChannelMappingAddress(1, 0, 0));
     // Select sequence 1.
 
-    const auto res1 = factory.get(1, 0, 0, std::nullopt);
+    const auto res1 = factory.get(1, 0, 1, std::nullopt);
+    const auto resultOEMBuffers1 = factory.recreateOEMBuffers({res1.getArrayDefs()});
     EXPECT_EQ(res1.getStart(), 2);
-    EXPECT_EQ(res1.getEnd(), 2);
+    EXPECT_EQ(res1.getEnd(), 3);
 
     // OEM buffers:
-    const auto &resultOEMBuffers1 = res1.getOemBuffers();
     const auto &oem0Buffer1 = resultOEMBuffers1.at(0);
     EXPECT_EQ(oem0Buffer1.getElement(0).getSize(), 4096);
     EXPECT_EQ(oem0Buffer1.getElement(0).getAddress(), 0);
@@ -516,7 +516,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     EXPECT_EQ(oem1Buffer1.getElement(0).getSize(), 0);
     EXPECT_EQ(oem1Buffer1.getElement(0).getAddress(), 0);
     EXPECT_EQ(oem1Buffer1.getArrayDef(0).getDefinition().getShape(), Tuple<size_t>({0, 1}));
-    EXPECT_EQ(oem1Buffer1.getParts(0).at(0).getEntryId(), 2);
+    EXPECT_TRUE(oem1Buffer1.getParts(0).empty());
 
     // FCM:
     auto outputFCM1 = res1.buildFCM();
@@ -530,5 +530,6 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG(arrus::Logging);
     ::testing::InitGoogleTest(&argc, argv);
+    ::testing::GTEST_FLAG(catch_exceptions) = false;
     return RUN_ALL_TESTS();
 }

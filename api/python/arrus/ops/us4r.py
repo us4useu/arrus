@@ -330,11 +330,9 @@ class TxRxSequence:
 
     def get_subsequence(self, start, end):
         """
-        Limits the sequence to the given sub-sequence [start, end] both inclusive.
+        Limits the sequence to the given sub-sequence [start, end) (left-side inclusive).
         """
-        return dataclasses.replace(
-            self,
-            ops=self.ops[start:(end+1)])
+        return dataclasses.replace(self, ops=self.ops[start:end])
 
 
 @dataclass(frozen=True)

@@ -23,8 +23,8 @@ public:
     float getCurrentSamplingFrequency() const override = 0;
     arrus::devices::Probe *getProbe(Ordinal ordinal) override = 0;
 
-    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override = 0;
 };
 
 }

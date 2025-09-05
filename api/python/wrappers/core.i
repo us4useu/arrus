@@ -238,6 +238,7 @@ using namespace ::arrus;
 %ignore arrus::Tuple::operator[];
 
 %include "arrus/core/api/common/Tuple.h"
+%include "arrus/core/api/common/Slice.h"
 %include "arrus/core/api/common/Interval.h"
 %include "arrus/core/api/common/Span.h"
 %include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
@@ -522,6 +523,8 @@ using namespace arrus::ops::us4r;
 namespace std {
 %template(TxRxVector) vector<arrus::ops::us4r::TxRx>;
 %template(ArrusNdArrayVector) vector<arrus::framework::NdArray>;
+%template(SliceVector) vector<arrus::Slice>;
+%template(OptionalFloatVector) vector<std::optional<float>>;
 };
 
 %inline %{
@@ -550,6 +553,14 @@ void Arrus2dArrayVectorPushBack(
         false // is view => copy
     );
     arrays.push_back(array);
+}
+
+void SlicePushBack(std::vector<arrus::Slice> &vector, arrus::Slice &slice) {
+    vector.push_back(slice);
+}
+
+void OptionalVectorFloatPushBack(std::vector<std::optional<float>> &vector, std::optional<float> value) {
+    vector.push_back(value);
 }
 
 %};

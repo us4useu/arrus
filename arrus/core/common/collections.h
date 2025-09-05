@@ -81,6 +81,17 @@ mapContains(const std::unordered_map<T, U> &map, const T &key) {
     return map.find(key) != std::end(map);
 }
 
+template<typename T, typename U>
+inline std::optional<U>
+mapGetValueOrNone(const std::unordered_map<T, U> &map, const T &key) {
+    const auto res = map.find(key);
+    if(res != std::end(map)) {
+        return res->second;
+    }
+    else {
+        return std::nullopt;
+    }
+}
 
 template<typename T, typename U>
 inline std::vector<std::pair<T, U>>

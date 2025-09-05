@@ -144,16 +144,19 @@ public:
     SchemeBuilder() = default;
     ARRUS_CPP_EXPORT
     SchemeBuilder& addSequence(TxRxSequence sequence);
-   ARRUS_CPP_EXPORT
+    ARRUS_CPP_EXPORT
+    SchemeBuilder& addConstant(arrus::framework::NdArray constants);
+    ARRUS_CPP_EXPORT
+    SchemeBuilder& setConstants(const std::vector<arrus::framework::NdArray> &constants);
+    ARRUS_CPP_EXPORT
     SchemeBuilder& withOutputBufferDefinition(framework::DataBufferSpec spec);
-   ARRUS_CPP_EXPORT
+    ARRUS_CPP_EXPORT
     SchemeBuilder& withRxBufferSize(uint16 rxBufferSize);
     ARRUS_CPP_EXPORT
     SchemeBuilder& withWorkMode(Scheme::WorkMode mode);
     ARRUS_CPP_EXPORT
     SchemeBuilder& withDigitalDownConversion(DigitalDownConversion ddc);
-    // TODO support constants
-
+    
     ARRUS_CPP_EXPORT
     Scheme build();
 private:

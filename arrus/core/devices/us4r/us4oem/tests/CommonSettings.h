@@ -130,10 +130,11 @@ struct TestTxRxParamsSequence {
     ops::us4r::TGCCurve tgcCurve = {};
     DeviceId txProbeId{arrus::devices::DeviceType::Probe, 0};
     DeviceId rxProbeId{arrus::devices::DeviceType::Probe, 0};
+    std::string name = "";
 
     [[nodiscard]] arrus::devices::us4r::TxRxParametersSequence get() const {
         return arrus::devices::us4r::TxRxParametersSequence {
-            txrx, nRepeats, sri, tgcCurve, txProbeId, rxProbeId
+            txrx, nRepeats, sri, tgcCurve, txProbeId, rxProbeId, name
         };
     }
 };

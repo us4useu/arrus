@@ -1,9 +1,11 @@
 #ifndef ARRUS_CORE_API_COMMON_PARAMETERS_H
 #define ARRUS_CORE_API_COMMON_PARAMETERS_H
 
+#include "arrus/core/api/common/exceptions.h"
+#include <ostream>
+#include <sstream>
 #include <unordered_map>
 #include <utility>
-#include "arrus/core/api/common/exceptions.h"
 
 namespace arrus {
 
@@ -33,6 +35,20 @@ public:
     }
 
     const std::unordered_map<std::string, int> &items() const { return values; }
+
+    friend std::ostream &operator<<(std::ostream &os, const Parameters &parameters) {
+        os << "Parameters: ";
+        for(const auto &[key, value]: parameters.values) {
+            os << key << ": " << value << ", ";
+        }
+        return os;
+    }
+
+    std::string toString() const {
+        std::stringstream s;
+        s << *this;
+        return s.str();
+    }
 
 private:
     std::unordered_map<std::string, int> values;
