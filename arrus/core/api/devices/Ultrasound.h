@@ -93,7 +93,7 @@ public:
      * applied).
      *
      * To turn off the given sequence, just set start equal to end (e.g. Slice(0, 0)). For such sequences, the metadata
-     * will
+     * will describe only empty data (dummy metadata).
      *
      * @param slices slices to set to each Scheme sub-sequence
      * @param sris sris to apply to each Scheme sub-sequence
