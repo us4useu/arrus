@@ -160,10 +160,30 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 }
 
 void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
+    // Process the input voltages.
     std::vector<std::optional<HVVoltage>> newVoltages(voltages.size());
     std::transform(voltages.begin(), voltages.end(), newVoltages.begin(),
                    [](const auto v){return std::make_optional(v);});
-    setVoltage(newVoltages);
+
+    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    try {
+        if(this->state == State::STARTED) {
+            // pause the TX/RX sequence execution
+            this->us4oems[0]->getIUs4OEM()->TriggerStop();
+        }
+        setVoltage(newVoltages);
+        if(this->state == State::STARTED) {
+            // resume
+            this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        }
+    } catch(const std::exception &e) {
+        this->logger->log(LogSeverity::ERROR, format("Exception while setting voltage, stopping the system: {}", e.what()));
+        this->stop();
+        throw e;
+    } catch(...) {
+        this->logger->log(LogSeverity::ERROR, "Unknown exception while setting voltage, stopping the system.");
+        this->stop();
+    }
 }
 
 void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages) {
