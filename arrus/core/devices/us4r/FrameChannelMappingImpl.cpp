@@ -121,7 +121,7 @@ void FrameChannelMappingBuilder::setNumberOfFrames(const std::vector<uint32> &nF
 }
 
 /**
- * Creates slice [start, end] (both inclusive).
+ * Creates slice [start, end) (right-side exclusive).
  */
 void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
     // TODO for some reason the below slicing does not work properly with Eigen 3.4.0, therefore a manual slice
@@ -134,12 +134,12 @@ void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
     if(start > end) {
         throw std::runtime_error("start > end");
     }
-    int nFrames = end+1-start;
+    int nFrames = end-start;
     int nChannels = (int)(this->us4oemMapping.cols());
     auto newUs4oemMapping = FrameChannelMappingImpl::Us4OEMMapping(nFrames, nChannels);
     auto newFrameMapping = FrameChannelMappingImpl::FrameMapping(nFrames, nChannels);
     auto newChannelMapping = FrameChannelMappingImpl::ChannelMapping(nFrames, nChannels);
-    for(FrameNumber frame = start; frame <= end; ++frame) {
+    for(FrameNumber frame = start; frame < end; ++frame) {
         for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
             auto newFrameNr = frame-start;
             newUs4oemMapping(newFrameNr, channel) = this->us4oemMapping(frame, channel);

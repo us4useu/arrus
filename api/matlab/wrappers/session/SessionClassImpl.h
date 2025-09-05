@@ -113,7 +113,7 @@ public:
         }
         auto *session = get(obj);
         ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri.has_value() ? sri.value(): 0));
-        auto uploadResult = session->setSubsequence(start, end, sri, arrayId);
+        auto uploadResult = session->setSubsequences({Slice{start, end}}, {sri});
         setToMatlabOutput(outputs, uploadResult);
     }
 

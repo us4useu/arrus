@@ -109,7 +109,7 @@ def convert_to_tx_rx_sequence(c: float, op: SimpleTxRxSequence, probe_model,
                 init_delay=op.init_delay, placement=op.rx_placement)
         txrx.append(TxRx(tx, rx, op.pri))
     # TGC curve should be set on later stage
-    result = TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats)
+    result = TxRxSequence(txrx, tgc_curve=[], sri=op.sri, n_repeats=op.n_repeats, name=op.name)
     return result
 
 

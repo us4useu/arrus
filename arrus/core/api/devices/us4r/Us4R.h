@@ -16,6 +16,7 @@
 #include "arrus/core/api/devices/Ultrasound.h"
 #include "arrus/core/api/session/Metadata.h"
 #include "arrus/core/api/devices/us4r/HVVoltage.h"
+#include "arrus/core/api/common/Slice.h"
 
 namespace arrus::devices {
 
@@ -372,6 +373,15 @@ public:
     virtual void setAdcHpfCornerFrequency(uint32_t frequency) = 0;
 
     /**
+     * Enables ADC digital high-pass filter and sets a given corner frequency.
+     *
+     * This method is just a synonym for `setAdcHpfCornerFrequency`.
+     *
+     * @param frequency ADC high-pass filter corner frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
      * Disables ADC digital high-pass filter.
      */
     virtual void disableAdcHpf() = 0;
@@ -406,8 +416,8 @@ public:
      */
     virtual const char *getBackplaneFirmwareVersion() = 0;
 
-    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
 

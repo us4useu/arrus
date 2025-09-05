@@ -14,16 +14,17 @@ int main() noexcept {
     using namespace ::arrus::framework;
     try {
         arrus::useDefaultLoggerFactory()->setClogLevel(arrus::LogSeverity::TRACE);
-        auto settings = ::arrus::io::readSessionSettings("/home/pjarosik/tmp/test.prototxt");
+        auto settings = ::arrus::io::readSessionSettings("/opt/us4us/us4ndt.prototxt");
         auto session = ::arrus::session::createSession(settings);
-        auto ultrasound = (::arrus::devices::Ultrasound*) session->getDevice("/Ultrasound:0");
+        auto ultrasound = (::arrus::devices::Us4R*) session->getDevice("/Ultrasound:0");
         auto probe = ultrasound->getProbe(0);
+	ultrasound->setVoltage(5);
 
         unsigned nElements = probe->getModel().getNumberOfElements().product();
         std::cout << "Probe with " << nElements << " elements." << std::endl;
 
         ::arrus::BitMask aperture(nElements, false);
-        for(int i = 0; i < 64; ++i) {
+        for(int i = 0; i < 32; ++i) {
             aperture[i] = true;
         }
 
@@ -33,7 +34,7 @@ int main() noexcept {
         std::vector<TxRx> txrxs;
 
         // 10 plane waves
-        for(int i = 0; i < 175; ++i) {
+        for(int i = 0; i < 2; ++i) {
             // NOTE: the below vector should have size == probe number of elements.
             // This probably will be modified in the future
             // (delays only for active tx elements will be needed).
@@ -49,6 +50,10 @@ int main() noexcept {
 
         std::condition_variable cv;
         using namespace std::chrono_literals;
+	size_t nSamples = 1024;
+	size_t tx = 0;
+	size_t rx = 4;
+
 
         OnNewDataCallback callback = [&, i = 0](const BufferElement::SharedHandle &ptr) mutable {
             try {
@@ -60,6 +65,15 @@ int main() noexcept {
                 std::cout << "- shape: (" << ptr->getData().getShape()[0] <<
                     ", " << ptr->getData().getShape()[1] <<
                     ")" << std::endl;
+
+		std::cout << "Line values: ";
+
+		for(size_t j = 0; j < nSamples; ++j) {
+			std::cout << ptr->getData().get<short>(tx*nSamples+j, rx) << ", ";
+		}
+
+		std::cout << std::endl;
+
 
                 // Stop the system after 10-th frame.
                 if(i == 30) {

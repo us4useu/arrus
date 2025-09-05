@@ -1,6 +1,15 @@
 Release notes
 =============
 
+0.13.x
+------
+
+- core (driver)
+
+    - Accelerated HV voltage setting by storing HVPS coefficients in the flash memory on OEM+. To take advantage of this, calibration must be performed using Us4OEMStatus; otherwise, there will be no acceleration. #M_OEM-155
+    - Added the Us4R::setSubsequences(slices, sris) method. #M_US4R-36.
+    - Changed the behavior of ``Us4R::setSubsequence`` and ``Us4R::setSubsequences``: from now on, start and end define the range [start, end) (right-open). Previously, it was [start, end] (right-closed). #M_US4R-36.
+
 0.12.x
 ------
 

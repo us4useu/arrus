@@ -6,11 +6,14 @@
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
+#include "arrus/core/common/collections.h"
+#include "arrus/common/format.h"
 #include "us4r_api_version.h"
 #include <chrono>
 #include <future>
 #include <memory>
 #include <thread>
+#include <regex>
 
 #define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
     if (!rxSettings.has_value()) {                                                                                     \
@@ -197,11 +200,11 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
         auto txCycles1 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getPulseCycles();
         auto txCycles2 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx2().getPulseCycles();
         if(txCycles1.end() > 32 || txCycles2.end() > 32) {
-            ARRUS_REQUIRES_TRUE(voltages.at(1).has_value() && voltages.at(0).has_value(), 
+            ARRUS_REQUIRES_TRUE(voltages.at(1).has_value() && voltages.at(0).has_value(),
                         "When using push pulses (>32 cycles) both HV voltage amplitdes (HV0 & HV1) must be provided");
-            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltagePlus() - voltages.at(0)->getVoltagePlus()) <= 10, 
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltagePlus() - voltages.at(0)->getVoltagePlus()) <= 10,
                         "When using push pulses (>32 cycles) voltage difference between HVP0 and HVP1 rails must be <= 10 V");
-            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltageMinus() - voltages.at(0)->getVoltageMinus()) <= 10, 
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltageMinus() - voltages.at(0)->getVoltageMinus()) <= 10,
                         "When using push pulses (>32 cycles) voltage difference between HVM0 and HVM1 rails must be <= 10 V");
         }
     }
@@ -434,7 +437,6 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferSize = scheme.getRxBufferSize();
     auto workMode = scheme.getWorkMode();
-
     unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
     ARRUS_REQUIRES_TRUE_E(
@@ -464,6 +466,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
         buffers,
         fcms
     };
+    sequenceNameToOrdinalMap = getSequenceNameToOrdinalMap(currentScheme.value());
     // Metadata
     std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     return {this->buffer, metadatas};
@@ -528,7 +531,8 @@ void Us4RImpl::start() {
         // The sequencer pointer (the entry from which sequencer starts) should not be reset when
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
         // the sequencer pointers will appropriately set to the start param value.
-        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
+        // Set it to the current beginning of the array 0.
+        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().at(0).getStart() : 0;
         us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t));
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
@@ -637,17 +641,31 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
     // OEM -> list of sequences to upload on the OEM
     auto sequencesByOEM = std::vector{noems, OEMSequences{}};
-    // sequence -> op -> a range of physical TX/RXs [start, end]
+    // sequence -> op -> a range of physical TX/RXs [start, end)
     // NOTE: start and end are local per sequence, i.e. logicalToPhysicalMapping.at(i).at(0) is counted
-    // from te beginning of the i-th sequence.
+    // from the beginning of the i-th sequence.
     std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
     // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
     std::vector<std::vector<TxRxParametersSequence>> oemSequences;
-    // Convert probe sequence -> OEM Sequences
 
+    // Group TX delay profiles by sequence name. Also, validates NdArray names.
+    const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
+    sequenceNumberOfTxDelayProfiles.clear();
+    for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
+        sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
+    }
+
+    // Sequence ordinal number -> OEM -> profile id -> TX delays (2D array (n firings, n channels)).
+    // NOTE: if for the given tx sequence and OEM there is no TX delays profile, an empty array should be stored.
+    vector<vector<vector<NdArray>>> oemDelaysByOEMBySequence(noems);
+
+    // Convert probe sequence -> OEM
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
-        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
+        const auto &profiles = mapGetValueOrNone(txDelayProfilesBySequence, s.getName())
+                                  .value_or(vector<NdArray>{});
+
+        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, profiles);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
 
         logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
@@ -655,6 +673,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
 
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
+            oemDelaysByOEMBySequence.at(oem).emplace_back(std::move(oemDelays.at(oem)));
         }
     }
     std::vector<Us4OEMBuffer> buffers;
@@ -665,9 +684,8 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     float rxTimeOffset = 0.0f;
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
-        // TODO Consider implementing dynamic change of delay profiles
         auto uploadResult = us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc,
-                                                    std::vector<NdArray>{}, timeouts.getTimeouts());
+                                                    oemDelaysByOEMBySequence.at(oem), timeouts.getTimeouts());
         buffers.emplace_back(uploadResult.getBufferDescription());
         auto oemFCM = uploadResult.acquireFCMs();
         if (oem==0) { rxTimeOffset = uploadResult.getRxTimeOffset(); }
@@ -986,6 +1004,10 @@ void Us4RImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
                        "setAdcHpfCornerFrequency");
 }
 
+void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
+    setAdcHpfCornerFrequency(frequency);
+}
+
 void Us4RImpl::disableAdcHpf() {
     applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAdcHpf(); }, "disableAdcHpf");
 }
@@ -1232,26 +1254,47 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
+    logger->log(LogSeverity::INFO, format("Setting {}", params.toString()));
+    std::vector<std::pair<size_t, size_t>> values;
+    // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
+    // and just interpret the string as sequence ordinal number?
+    // Validate
     for (auto &item : params.items()) {
         auto &key = item.first;
-        auto value = item.second;
-        logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
-        if (key != "/sequence:0/txFocus") {
-            throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
+        auto &value = item.second;
+        const auto [sequenceName, parameterName] = parseTxDelaysParamName(key);
+        const auto sequenceOrdinal = mapGetValueOrNone(sequenceNameToOrdinalMap, sequenceName);
+        if(!sequenceOrdinal.has_value()) {
+            throw IllegalArgumentException(format("Could not find TX/RX sequence with name: {}", sequenceName));
         }
-        this->us4oems[0]->getIUs4OEM()->TriggerStop();
-        try {
-            for (auto &us4oem : us4oems) {
-                us4oem->getIUs4OEM()->SetTxDelays(value);
-            }
-        } catch (...) {
-            // Try resume.
-            this->us4oems[0]->getIUs4OEM()->TriggerStart();
-            throw;
+        // Wer accept txDelays and txFocus; as for the txFocus, this is basically a shortcut for now
+        // (Python API translates focus to delays during the programming).
+        if(parameterName != "txDelays" && parameterName != "txFocus") {
+            throw IllegalArgumentException("Only txDelays and tx focus parameters are supported");
         }
-        // Everything OK, resume.
-        this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        auto nProfiles = mapGetValueOrNone(sequenceNumberOfTxDelayProfiles, sequenceName).value_or(0);
+        if(value < 0) {
+            throw IllegalArgumentException(format("The value {} should not be negative", value));
+        }
+        if(static_cast<size_t>(value) >= nProfiles) {
+            throw IllegalArgumentException(format("The value {} exceeds the number of currently uploaded TX delay profiles: {}", value, nProfiles));
+        }
+        values.emplace_back(std::make_pair(ARRUS_SAFE_CAST(sequenceOrdinal.value(), size_t), static_cast<size_t>(value)));
     }
+
+    // Execute
+    this->us4oems[0]->getIUs4OEM()->TriggerStop();
+    try {
+        for (auto &us4oem : us4oems) {
+            us4oem->setTxDelaysProfiles(values);
+        }
+    } catch (...) {
+        // Try resume.
+        this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        throw;
+    }
+    // Everything OK, resume.
+    this->us4oems[0]->getIUs4OEM()->TriggerStart();
 }
 
 BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
@@ -1327,30 +1370,61 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
     return rxDelay;
 }
 
-std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float> &sri) {
-    if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
-        throw ::arrus::IllegalStateException("Call upload method before setting a new sub-sequence.");
-    }
+std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
+    // Validation
+    // - all slices should have exactly step = 1
+    ARRUS_REQUIRES_TRUE_E(subsequenceFactory.has_value() && currentScheme.has_value(),
+                          ::arrus::IllegalStateException("Call upload method before setting a new subsequences."));
+    ARRUS_REQUIRES_TRUE_IAE(!slices.empty(), "At least one sub-sequence should be selected");
+    ARRUS_REQUIRES_TRUE_IAE(slices.size() == currentScheme->getTxRxSequences().size(),
+                            "You should provide the same number of slices as the number of currently uploaded TX/RX sequences.");
+    ARRUS_REQUIRES_TRUE_IAE(sris.empty() || slices.size() == sris.size(),
+                            "The list of SRIs should be empty or have the same length as the list of slices.");
+    // vars/consts
+    const SequenceId nSequences = ARRUS_SAFE_CAST(currentScheme->getTxRxSequences().size(), SequenceId);
+    const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    // Physical start/end, etc.
+    std::vector<Us4RSubsequence> params;
+    std::vector<uint16_t> starts, ends;
+    std::vector<uint32_t> timeToNextTriggers;
+    // TX/RX sequence -> OEM buffer -> array definition
+    std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays;
+    // Handle empty sris array.
+    std::vector<std::optional<float>> actualSris = sris.empty() ?
+                                                                getNTimes<std::optional<float>>(std::nullopt, nSequences):
+                                                                sris;
     // Clear callback (the new one will be registered later, in the prepareHostBuffer)
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
-    auto params = subsequenceFactory->get(sequenceId, start, end, sri);
-    bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    for(SequenceId i = 0; i < nSequences; ++i) {
+        auto p = subsequenceFactory->get(i, ARRUS_SAFE_CAST(slices.at(i).getStart(), uint16_t), ARRUS_SAFE_CAST(slices.at(i).getEnd(), uint16_t), sris.at(i));
+        params.push_back(p);
+        oemArrays.push_back(p.getArrayDefs());
+        if(!p.empty()) {
+            // Filter out empty sub-sequences
+            starts.push_back(p.getStart());
+            ends.push_back(p.getEnd());
+            timeToNextTriggers.push_back(p.getTimeToNextTrigger());
+        }
+    }
+
     for (auto &oem : us4oems) {
-        oem->setSubsequence(params.getStart(), params.getEnd(), isSyncMode, params.getTimeToNextTrigger());
+        oem->getIUs4OEM()->SetSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
     }
     currentSubsequenceParams = params;
-
+    const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
-                      currentScheme->getWorkMode(), params.getOemBuffers(), true);
+                      currentScheme->getWorkMode(), subsequenceBuffers, true);
     // Create metadata
     std::vector<FrameChannelMappingImpl::Handle> fcms;
-    fcms.emplace_back(params.buildFCM());
+    for(const auto &p: params) {
+        fcms.emplace_back(p.buildFCM());
+    }
     auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     // A single metadata is assumed here.
-    return {this->buffer, metadatas.at(0)};
+    return {this->buffer, metadatas};
 }
 
 void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
@@ -1442,6 +1516,92 @@ Us4OEM::Variant Us4RImpl::getVariant() {
     // ... right ?
     // ... right ?!
     return us4oems.at(0)->getVariant();
+}
+
+// Dynamic TX delays setting.
+std::unordered_map<std::string, Us4RImpl::DelayProfiles>
+Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, const std::vector<NdArray> &txDelayProfiles) {
+    // sequence name -> (param ordinal number, NdArray); this structure will be used in order to sort and
+    // check if there are no gaps between constant ordinal numbers.
+    using OrderedArray = std::pair<size_t, NdArray>;
+    std::unordered_map<std::string, std::vector<OrderedArray>> arraysBySequence;
+    // Actual result map.
+    std::unordered_map<std::string, std::vector<NdArray>> result;
+
+    std::unordered_set<std::string> sequenceNames;
+    for (const auto& s : sequences) {
+        sequenceNames.insert(trim(s.getName()));
+        arraysBySequence[s.getName()] = std::vector<OrderedArray>();
+    }
+
+    for(const auto &profile: txDelayProfiles) {
+        const auto [sequenceName, paramName, paramOrdinal] = parseTxDelaysConstantName(profile.getName());
+        if(paramName != "txDelays") {
+            throw IllegalArgumentException("Us4R supports only `txDelays` dynamic parameter change");
+        }
+        arraysBySequence[sequenceName].push_back({paramOrdinal, profile});
+    }
+
+    // Sort each list of Sequence constants and check if there are no gaps in the constant numbering, copy the
+    // arrays to the result map.
+    for(const auto &name: sequenceNames) {
+        auto &arrays = arraysBySequence.at(name);
+        std::sort(std::begin(arrays), std::end(arrays),
+                  [](const auto& a, const auto& b) {
+                    return a.first < b.first;
+                  });
+        // Check if there are no gaps in numbering of the constants, and copy the arrays to the target map.
+        for(size_t i = 0; i < arrays.size(); ++i) {
+            const auto &a = arrays.at(i);
+            if(a.first != i) {
+                throw IllegalArgumentException(format("The Constants numbering should have no gaps, e.g. Delays:0, Delays:2 "
+                                                      "are not accepted (found: /{}/txDelays:{}, expected: {})", name, a.first, i));
+            }
+            result[name].push_back(a.second);
+        }
+    }
+    return result;
+}
+
+std::tuple<std::string, std::string, size_t> Us4RImpl::parseTxDelaysConstantName(const std::string &name) const {
+    std::smatch match;
+    if(std::regex_match(name, match, CONSTANT_NAME_PATTERN)) {
+        std::string sequenceName = match[1].str();
+        std::string parameterName = match[2].str();
+        size_t parameterOrdinal = stoi(match[3].str());
+        return {sequenceName, parameterName, parameterOrdinal};
+    } else {
+        throw IllegalArgumentException(
+            format("The constant name should follow the following pattern: "
+                   "^//([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$, "
+                   "got: {}", name)
+        );
+    }
+}
+
+std::tuple<std::string, std::string> Us4RImpl::parseTxDelaysParamName(const std::string &name) const {
+    std::smatch match;
+    if(std::regex_match(name, match, PARAMETER_NAME_PATTERN)) {
+        std::string sequenceName = match[1].str();
+        std::string parameterName = match[2].str();
+        return {sequenceName, parameterName};
+    } else {
+        throw IllegalArgumentException(
+            format("The constant name should follow the following pattern: "
+                   "/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$, "
+                   "got: {}", name)
+        );
+    }
+}
+
+std::unordered_map<std::string, SequenceId>
+Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
+    std::unordered_map<std::string, SequenceId> result;
+    const auto &sequences = scheme.getTxRxSequences();
+    for(SequenceId i = 0; i < sequences.size(); ++i) {
+        result[sequences.at(i).getName()] = i;
+    }
+    return result;
 }
 
 }// namespace arrus::devices
