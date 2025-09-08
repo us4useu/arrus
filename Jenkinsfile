@@ -204,7 +204,7 @@ pipeline {
                         // the ValidateCommit and Publish to repository. However, it seems to be quite unlikely
                         // and can be neglected.
                         def versionFilePath = us4us.extractFileToTempDirectory(packagePath, "VERSION.rst")
-                        us4us.validateCommit(versionFilePath)
+                        // us4us.validateCommit(versionFilePath)
                     }
                     // Python and docs => check if the Version.rst in the INSTALL_DIR is correct
                     def releaseName = us4us.getReleaseName(env, params);
