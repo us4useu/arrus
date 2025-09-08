@@ -12,7 +12,7 @@ Release notes
 
 - Python API:
 
-    - Provided arrus.io package for const metadata backward compatibility (up to ARRUS 0.9.0 and 0.10.0). #ARRUS-488.
+    - Provided arrus.io package for const metadata backward compatibility (up to ARRUS 0.9.0 and 0.10.0), see `arrus.io.read_metadata` function #ARRUS-488.
 
 0.12.x
 ------
