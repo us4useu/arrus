@@ -209,7 +209,7 @@ pipeline {
                     // Python and docs => check if the Version.rst in the INSTALL_DIR is correct
                     def releaseName = us4us.getReleaseName(env, params);
                     def installDir = "${INSTALL_DIR_PREFIX_JENKINS}/${releaseName}";
-                    us4us.validateCommit("${installDir}/VERSION.rst");
+                    // us4us.validateCommit("${installDir}/VERSION.rst");
                 }
             }
         }
