@@ -10,6 +10,10 @@ Release notes
     - Added the Us4R::setSubsequences(slices, sris) method. #M_US4R-36.
     - Changed the behavior of ``Us4R::setSubsequence`` and ``Us4R::setSubsequences``: from now on, start and end define the range [start, end) (right-open). Previously, it was [start, end] (right-closed). #M_US4R-36.
 
+- Python API:
+
+    - Provided arrus.io package for const metadata backward compatibility (up to ARRUS 0.9.0 and 0.10.0), see `arrus.io.read_metadata` function #ARRUS-488.
+
 0.12.x
 ------
 

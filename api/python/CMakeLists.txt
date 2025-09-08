@@ -101,6 +101,8 @@ set(SOURCE_FILES
         arrus/utils/gui.py
         arrus/utils/probe_check.py
         arrus/utils/us4r_remap_gpu.cu
+        arrus/io/__init__.py
+        arrus/io/pickle.py
         )
 
 set(TEST_FILES

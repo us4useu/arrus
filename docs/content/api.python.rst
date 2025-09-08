@@ -257,6 +257,13 @@ B-mode imaging pipeline using cupy/numpy
 .. autoclass:: arrus.utils.imaging.Mean
     :show-inheritance:
 
+
+Metadata I/O
+------------
+
+.. autofunction:: arrus.io.read_metadata
+
+
 Logging
 -------
 .. autofunction:: arrus.set_clog_level
