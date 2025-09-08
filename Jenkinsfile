@@ -195,10 +195,6 @@ pipeline {
                     packageNames.each { packageName ->
                         def packagePath = "${env.TARGET_PRERELEASE_DIR_JENKINS}/${packageName}.zip"
                         def releasedPackage = "${env.TARGET_RELEASE_DIR_JENKINS}/${packageName}.zip"
-                        // Make sure that the version have not been already released.
-                        if(us4us.isFileOrDirExists(releasedPackage)) {
-                            error "The version ${env.VERSION} has been already released! (remove ${releasedPackage} and Github releases in case you would like to re-release this version)."
-                        }
                         // Make sure that the package we publish was generated for the same commit as the current HEAD.
                         // NOTE! It is still possible, that someone will commit something on that branch in between
                         // the ValidateCommit and Publish to repository. However, it seems to be quite unlikely
