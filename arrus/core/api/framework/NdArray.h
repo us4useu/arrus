@@ -67,7 +67,7 @@ public:
 
     template<typename T> static DataType getDataType() { throw IllegalArgumentException("Unsupported data type."); }
 
-    template<typename T> NdArray asarray(const std::vector<T> &vector) {
+    template<typename T> static NdArray asarray(const std::vector<T> &vector) {
         Shape shape = {vector.size()};
         DataType dataType = getDataType<T>();
         devices::DeviceId placement{devices::DeviceType::CPU, 0};
@@ -75,6 +75,24 @@ public:
         if (!vector.empty()) {
             std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
         }
+        return std::move(result);
+    }
+
+    template<typename T> static NdArray asarray(const std::vector<T> &vector,
+                    const Shape &shape, const ::arrus::devices::DeviceId &placement, const std::string &name) {
+        DataType dataType = getDataType<T>();
+        NdArray result{shape, dataType, placement, name};
+        if (!vector.empty()) {
+            std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
+        }
+        return std::move(result);
+    }
+
+    template<typename T> static NdArray asarray(const T *data, const Shape &shape, const std::string &name) {
+        DataType dataType = getDataType<T>();
+        devices::DeviceId placement{devices::DeviceType::CPU, 0};
+        NdArray result{shape, dataType, placement, name};
+        std::memcpy(result.ptr, (char *) data, result.sizeBytes);
         return std::move(result);
     }
 

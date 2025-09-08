@@ -15,6 +15,17 @@ public:
     using Handle = std::unique_ptr<Us4OEM>;
     using RawHandle = PtrHandle<Us4OEM>;
 
+    enum class Variant {
+        /** legacy us4OEM */
+        LEGACY,
+        /** OEM+ 32 RX, AFE JD18 */
+        PLUS_RX_32,
+        /** OEM+ 64 RX */
+        PLUS_RX_64,
+        /** OEM HF */
+        PLUS_HF
+    };
+
    /**
     * Us4OEM ADC test pattern state.
     */
@@ -217,6 +228,11 @@ public:
      * @return the actual frequency that will be set
      */
     virtual float getActualTxFrequency(float frequency) = 0;
+
+    /**
+     * Returns the variant of OEM.
+     */
+    virtual Variant getVariant() = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

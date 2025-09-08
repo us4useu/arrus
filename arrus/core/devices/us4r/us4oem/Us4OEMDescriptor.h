@@ -45,7 +45,7 @@ public:
           sampleTxStart(sampleTxStart) {}
 
     bool isUs4OEMLegacy() {return version == US4OEM_LEGACY_REVISION; }
-    bool isUs4OEMPlus() {return version == US4OEM_PLUS_REVISION; }
+    bool isUs4OEMPlus() {return version >= US4OEM_PLUS_REVISION; }
     ChannelIdx getNTxChannels() const { return N_TX_CHANNELS; }
     ChannelIdx getNRxChannels() const { return nRxChannels; }
     ChannelIdx getNAddressableRxChannels() const { return N_ADDR_CHANNELS; }
