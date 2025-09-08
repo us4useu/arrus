@@ -24,14 +24,21 @@ pipeline {
         DOCKER_DIRS = us4us.getRemoteDirs(env, "docker", "DOCKER_BUILD_ROOT")
         SSH_DIRS = us4us.getRemoteDirs(env, "ssh", "SSH_BUILD_ROOT")
         TARGET_WORKSPACE_DIR = us4us.getTargetWorkspaceDir(env, "DOCKER_BUILD_ROOT", "SSH_BUILD_ROOT")
-        TARGET_PRERELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus")
-        TARGET_RELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus")
+
+        TARGET_PRERELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus", false)
+        TARGET_RELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus", false)
+
+        TARGET_PRERELEASE_DIR_JENKINS = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus", true)
+        TARGET_RELEASE_DIR_JENKINS = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus", true)
+
         CONAN_HOME_DIR = us4us.getUs4usJenkinsVariable(env, "CONAN_HOME_DIR")
         CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
         BUILD_TYPE = us4us.getBuildType(env)
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
         IS_SCM_ONLY = isSCMOnly(params)
         INSTALL_DIR_PREFIX = "${TARGET_PRERELEASE_DIR}/unzipped"
+
+        INSTALL_DIR_PREFIX_JENKINS = "${TARGET_PRERELEASE_DIR_JENKINS}/unzipped"
     }
 
     stages {
@@ -186,12 +193,8 @@ pipeline {
                     def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
 
                     packageNames.each { packageName ->
-                        def packagePath = "${env.TARGET_PRERELEASE_DIR}/${packageName}.zip"
-                        def releasedPackage = "${env.TARGET_RELEASE_DIR}/${packageName}.zip"
-                        // Make sure that the version have not been already released.
-                        if(us4us.isFileOrDirExists(releasedPackage)) {
-                            error "The version ${env.VERSION} has been already released! (remove ${releasedPackage} and Github releases in case you would like to re-release this version)."
-                        }
+                        def packagePath = "${env.TARGET_PRERELEASE_DIR_JENKINS}/${packageName}.zip"
+                        def releasedPackage = "${env.TARGET_RELEASE_DIR_JENKINS}/${packageName}.zip"
                         // Make sure that the package we publish was generated for the same commit as the current HEAD.
                         // NOTE! It is still possible, that someone will commit something on that branch in between
                         // the ValidateCommit and Publish to repository. However, it seems to be quite unlikely
@@ -201,7 +204,7 @@ pipeline {
                     }
                     // Python and docs => check if the Version.rst in the INSTALL_DIR is correct
                     def releaseName = us4us.getReleaseName(env, params);
-                    def installDir = "${INSTALL_DIR_PREFIX}/${releaseName}";
+                    def installDir = "${INSTALL_DIR_PREFIX_JENKINS}/${releaseName}";
                     us4us.validateCommit("${installDir}/VERSION.rst");
                 }
             }
@@ -218,7 +221,7 @@ pipeline {
                 // copy the package from the pre-release directory to the release directory
                 // also, copy the docs directory
                 script {
-                    def targetFolder = "${env.TARGET_RELEASE_DIR}";
+                    def targetFolder = "${env.TARGET_RELEASE_DIR_JENKINS}";
                     sh "mkdir -p ${targetFolder}";
                     sh "mkdir -p ${targetFolder}/docs";
                     // C++/MATLAB => copy the .zip files to the release directory
@@ -227,7 +230,7 @@ pipeline {
                     def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
 
                     packageNames.each { packageName ->
-                        def sourceArtifacts = "${TARGET_PRERELEASE_DIR}/${packageName}*"
+                        def sourceArtifacts = "${TARGET_PRERELEASE_DIR_JENKINS}/${packageName}*"
                         sh "cp ${sourceArtifacts} ${targetFolder}"
                         echo "The files ${sourceArtifacts} were copied to ${targetFolder}"
                     };
@@ -235,9 +238,12 @@ pipeline {
                     // TODO consider handling .whl in some other way...
                     // Python and docs => copy the .whl files to the install directory.
                     def releaseName = us4us.getReleaseName(env, params);
-                    def installDir = "${INSTALL_DIR_PREFIX}/${releaseName}";
+                    def installDir = "${INSTALL_DIR_PREFIX_JENKINS}/${releaseName}";
                     sh "cp ${installDir}/python/${getArrusWhlNamePattern(params, env.RELEASE_NAME)} ${targetFolder}";
-                    sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
+                    if(us4us.isFileOrDirExists("${installDir}/docs")) {
+                        // Copy the docs dir only when it is available.
+                        sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
+                    }
                 }
             }
         }
