@@ -244,7 +244,10 @@ pipeline {
                     def releaseName = us4us.getReleaseName(env, params);
                     def installDir = "${INSTALL_DIR_PREFIX_JENKINS}/${releaseName}";
                     sh "cp ${installDir}/python/${getArrusWhlNamePattern(params, env.RELEASE_NAME)} ${targetFolder}";
-                    sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
+                    if(us4us.isFileOrDirExists("${installDir}/docs")) {
+                        // Copy the docs dir only when it is available.
+                        sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
+                    }
                 }
             }
         }
