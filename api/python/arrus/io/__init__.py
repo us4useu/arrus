@@ -10,7 +10,7 @@ def read_metadata(filepath: str, format: str = None, **kwargs) -> ConstMetadata:
 
     NOTE: currently, only the pickle file format is supported. By default, 'pickle' file format will be used.
 
-    NOTE: this method DO NOT the version field (we do not recommend saving
+    NOTE: this method DOES NOT modify the version field (we do not recommend saving
     the result of this function a new pickle file).
 
     :param filepath: path to the metadata file

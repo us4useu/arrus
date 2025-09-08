@@ -21,7 +21,7 @@ from typing import Dict, Type, Any, Iterable, Tuple
 
 def read_pickled_metadata(filepath: str, force_version: str = None) -> ConstMetadata:
     """
-    Reads pickled metadata from the filed pointed by the given filepath.
+    Reads pickled metadata from the file pointed by the given filepath.
 
     NOTE: we do not recommend saving the result of this function to another file,
     otherwise you may not be able to read the newly-pickled
@@ -123,7 +123,7 @@ class FieldImportStrategy:
         to the given field name and value.
 
         :param value: the value currently assigned to that field
-        :return: True if the given field should be modified, false otherwise
+        :return: True if the given field should be modified, False otherwise
         """
         return True
 
@@ -183,9 +183,7 @@ class Arrus010SchemeTxRxSequenceImportStrategy(FieldImportStrategy):
 
     def process(self, value: Any) -> Any:
         """
-        Conerts to a single-element tuple (provided the support for multi-sequence schemes.
-        :param value:
-        :return:
+        Converts to a single-element tuple (provided the support for multi-sequence schemes.
         """
         return (value, )
 
