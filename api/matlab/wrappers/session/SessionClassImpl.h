@@ -14,6 +14,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/session/SessionSettings.h"
+#include "arrus/core/api/common/Parameters.h"
 
 namespace arrus::matlab {
 
@@ -32,6 +33,7 @@ public:
         ARRUS_MATLAB_ADD_METHOD("run", run);
         ARRUS_MATLAB_ADD_METHOD("close", close);
         ARRUS_MATLAB_ADD_METHOD("setSubsequence", setSubsequence);
+        ARRUS_MATLAB_ADD_METHOD("setParameters", setParameters);
     }
 
     MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) override {
@@ -115,6 +117,26 @@ public:
         ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri.has_value() ? sri.value(): 0));
         auto uploadResult = session->setSubsequences({Slice{start, end}}, {sri});
         setToMatlabOutput(outputs, uploadResult);
+    }
+
+    void setParameters(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 2, "setParameters");
+        auto key = inputs[0];
+        auto val = inputs[1];
+
+        ARRUS_MATLAB_REQUIRES_TYPE(key, ::matlab::data::ArrayType::MATLAB_STRING);
+        ARRUS_MATLAB_REQUIRES_TYPE(val, ::matlab::data::ArrayType::UINT64);
+
+        size_t n = key.getNumberOfElements();
+
+        auto builder = arrus::ParametersBuilder();
+        for(size_t i = 0; i < n; ++i) {
+            builder.add(key[i], val[i]);
+        }
+        auto parameters = builder.build();
+
+        auto *session = get(obj);
+        session->setParameters(parameters);
     }
 
     /**

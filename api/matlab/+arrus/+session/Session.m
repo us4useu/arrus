@@ -97,6 +97,15 @@ classdef Session < handle
             rxOffset = res{1, 7};
         end
 
+        function setParameters(obj, keys, values)
+            % Sets the current key-value parameter preset.
+            % 
+            % :param start: vector of keys
+            % :param stop: vector of values
+            
+            obj.ptr.callMethod("setParameters", 0, keys, uint64(values));
+        end
+
         function run(obj)
             %
             % Runs the uploaded scheme.
