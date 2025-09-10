@@ -17,10 +17,19 @@ classdef Scheme
         outputBuffer arrus.framework.DataBufferDef = arrus.framework.DataBufferDef("type", "FIFO", "nElements", 2)
         workMode (1, 1) = "HOST"
         digitalDownConversion = []
-        constants arrus.framework.NdArray = []
+        constants = []
     end
     methods
         function obj = Scheme(varargin)
+            
+            % Check if 'constants' type is NdArray
+            for i=1:2:(numel(varargin)-1)
+                key = varargin{i};
+                if (isStringScalar(key) || isChar(key)) && strcmp(key,'constants') && ~isa(varargin{i+1},'arrus.framework.NdArray')
+                    error("Error setting property 'constants' of class 'Scheme'. Value must be of type arrus.framework.NdArray");
+                end
+            end
+
             obj = arrus.utils.setArgs(obj, varargin, obj.REQUIRED_PARAMS);
         end
     end
