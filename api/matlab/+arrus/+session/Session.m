@@ -97,13 +97,13 @@ classdef Session < handle
             rxOffset = res{1, 7};
         end
 
-        function setParameters(obj, keys, values)
+        function setParameters(obj, key, value)
             % Sets the current key-value parameter preset.
             % 
-            % :param keys: vector of keys
-            % :param values: vector of values
+            % :param key: key
+            % :param value: value
             
-            obj.ptr.callMethod("setParameters", 0, keys, uint64(values));
+            obj.ptr.callMethod("setParameters", 0, key, int32(value));
         end
 
         function run(obj)

@@ -125,14 +125,12 @@ public:
         auto val = inputs[1];
 
         ARRUS_MATLAB_REQUIRES_TYPE(key, ::matlab::data::ArrayType::MATLAB_STRING);
-        ARRUS_MATLAB_REQUIRES_TYPE(val, ::matlab::data::ArrayType::UINT64);
+        ARRUS_MATLAB_REQUIRES_TYPE(val, ::matlab::data::ArrayType::INT32);
 
-        size_t n = key.getNumberOfElements();
+        std::string keyStr = key[0];
 
-        auto builder = arrus::ParametersBuilder();
-        for(size_t i = 0; i < n; ++i) {
-            builder.add(key[i], val[i]);
-        }
+        arrus::ParametersBuilder builder;
+        builder.add(keyStr, static_cast<int>(val[0]));
         auto parameters = builder.build();
 
         auto *session = get(obj);
