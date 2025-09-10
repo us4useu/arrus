@@ -100,8 +100,8 @@ classdef Session < handle
         function setParameters(obj, keys, values)
             % Sets the current key-value parameter preset.
             % 
-            % :param start: vector of keys
-            % :param stop: vector of values
+            % :param keys: vector of keys
+            % :param values: vector of values
             
             obj.ptr.callMethod("setParameters", 0, keys, uint64(values));
         end
