@@ -177,14 +177,13 @@ public:
             return ::arrus::framework::NdArray();
         }
         ::matlab::data::ArrayDimensions dims = array.getDimensions();
-
-        const auto shape = ::arrus::framework::NdArrayDef::Shape(dims);
-        const auto p = ::arrus::devices::DeviceId::parse(placement);
-
         if(array.getMemoryLayout() == ::matlab::data::MemoryLayout::COLUMN_MAJOR) {
             // Note: F-contiguous shape to C-shape (just reverse orders).
             std::reverse(std::begin(dims), std::end(dims));
         }
+
+        const auto shape = ::arrus::framework::NdArrayDef::Shape(dims);
+        const auto p = ::arrus::devices::DeviceId::parse(placement);
 
         // TODO: we are doing double copy here..., so this is not the most optimal way to upload constants,
         // anyway, should be sufficient for now
