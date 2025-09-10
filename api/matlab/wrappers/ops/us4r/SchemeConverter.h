@@ -85,7 +85,7 @@ public:
             return Scheme{txRxSequence, rxBufferSize, outputBuffer, workMode, digitalDownConversion.value(), constants};
         }
         else {
-            return Scheme{txRxSequence, rxBufferSize, outputBuffer, workMode};
+            return Scheme{txRxSequence, rxBufferSize, outputBuffer, workMode, std::nullopt, constants};
         }
     }
 
