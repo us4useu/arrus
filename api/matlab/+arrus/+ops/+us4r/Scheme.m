@@ -25,7 +25,8 @@ classdef Scheme
             % Check if 'constants' type is NdArray
             for i=1:2:(numel(varargin)-1)
                 key = varargin{i};
-                if (isStringScalar(key) || ischar(key)) && strcmp(key,'constants') && ~isa(varargin{i+1},'arrus.framework.NdArray')
+                if (isStringScalar(key) || ischar(key)) && strcmp(key,'constants') && ...
+                        ~isempty(varargin{i+1}) && ~isa(varargin{i+1},'arrus.framework.NdArray')
                     error("Error setting property 'constants' of class 'Scheme'. Value must be of type arrus.framework.NdArray");
                 end
             end
