@@ -24,6 +24,8 @@ public:
 
     UniqueHandle(nullptr_t v = nullptr): ptr{v} {}
 
+    ~UniqueHandle() { delete ptr; }
+
     UniqueHandle(const UniqueHandle &other) {
         if(other) {
             ptr = new T{*other};
