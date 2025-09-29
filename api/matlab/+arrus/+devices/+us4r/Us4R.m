@@ -19,6 +19,13 @@ classdef Us4R < handle
             %
             obj.ptr.callMethod("disableHV", 0);
         end
+		
+		function logVoltage(obj)
+            %
+            % Disables HV.
+            %
+            obj.ptr.callMethod("logVoltage", 0);
+        end
 
         function setVoltage(obj, voltage)
             % Enables HV and sets a given voltage(s).
