@@ -44,16 +44,12 @@ public:
         ARRUS_MATLAB_ADD_METHOD("setLnaHpfCornerFrequency", setLnaHpfCornerFrequency);
         ARRUS_MATLAB_ADD_METHOD("disableAdcHpf", disableAdcHpf);
         ARRUS_MATLAB_ADD_METHOD("setAdcHpfCornerFrequency", setAdcHpfCornerFrequency);
-		ARRUS_MATLAB_ADD_METHOD("logVoltage", logVoltage);
+
     }
 
     void disableHV(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         ctx->logInfo("Us4R: disabling HV");
         get(obj)->disableHV();
-    }
-	
-	void logVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-			ctx->logInfo(format("voltage: {}, {}, {}, {}", get(obj)->getUs4OEM(0)->getMeasuredHVPVoltage(), get(obj)->getUs4OEM(0)->getMeasuredHVMVoltage(), get(obj)->getUs4OEM(1)->getMeasuredHVPVoltage(), get(obj)->getUs4OEM(1)->getMeasuredHVMVoltage()));
     }
 
     void setVoltage(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
