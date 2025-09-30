@@ -280,9 +280,10 @@ public:
     TxRxParametersSequence() = default;
     TxRxParametersSequence(const std::vector<TxRxParameters> &parameters, const uint16 nRepeats,
                            const std::optional<float> &sri, ops::us4r::TGCCurve tgcCurve,
-                           const DeviceId &txProbeId, const DeviceId &rxProbeId)
+                           const DeviceId &txProbeId, const DeviceId &rxProbeId,
+                           const std::string &name = "")
         : parameters(parameters), nRepeats(nRepeats), sri(sri), tgcCurve(std::move(tgcCurve)), txProbeId(txProbeId),
-          rxProbeId(rxProbeId) {}
+          rxProbeId(rxProbeId), name(name) {}
 
     [[nodiscard]] std::vector<TxRxParameters> getParameters() const { return parameters; }
 
@@ -294,6 +295,7 @@ public:
     ops::us4r::TGCCurve getTgcCurve() const { return tgcCurve; }
     const DeviceId &getTxProbeId() const { return txProbeId; }
     const DeviceId &getRxProbeId() const { return rxProbeId; }
+    const std::string &getName() const { return name; }
 
     auto begin() const { return std::begin(parameters); }
     auto end() const { return std::end(parameters); }
@@ -361,6 +363,7 @@ private:
     ops::us4r::TGCCurve tgcCurve;
     DeviceId txProbeId{DeviceType::Probe, 0};
     DeviceId rxProbeId{DeviceType::Probe, 0};
+    std::string name;
 };
 
 using TxParametersSequenceColl = std::vector<TxRxParametersSequence>;
@@ -375,6 +378,7 @@ public:
         sequence.tgcCurve = s.getTgcCurve();
         sequence.txProbeId = s.getTxProbeId();
         sequence.rxProbeId = s.getRxProbeId();
+        sequence.name = s.getName();
         return *this;
     }
 
@@ -384,6 +388,7 @@ public:
         sequence.tgcCurve = s.getTgcCurve();
         sequence.txProbeId = s.getTxProbeId();
         sequence.rxProbeId = s.getRxProbeId();
+        sequence.name = s.getName();
         return *this;
     }
 

@@ -17,6 +17,7 @@ classdef Scheme
         outputBuffer arrus.framework.DataBufferDef = arrus.framework.DataBufferDef("type", "FIFO", "nElements", 2)
         workMode (1, 1) = "HOST"
         digitalDownConversion = []
+        constants arrus.framework.NdArray = []
     end
     methods
         function obj = Scheme(varargin)

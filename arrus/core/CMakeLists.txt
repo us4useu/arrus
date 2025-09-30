@@ -202,13 +202,15 @@ set(SRC_FILES
     api/devices/probe/MatchingLayer.h
     api/version.h
     common/os.h
+    common/math.h
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
    devices/us4r/TxWaveformSoftStartConverter.h
 )
 
-set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
+    api/common/Slice.h)
 
 # Generate version.cpp file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")

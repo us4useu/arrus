@@ -7,7 +7,7 @@
 #include "arrus/core/common/hash.h"
 
 namespace arrus::devices {
-/** logical op id -> physical [start, end] ops */
+/** logical op id -> physical [start, end) ops */
 using LogicalToPhysicalOp = std::vector<std::pair<OpId, OpId>>;
 }
 

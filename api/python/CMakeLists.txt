@@ -83,6 +83,7 @@ set(SOURCE_FILES
         arrus/devices/cpu.py
         arrus/devices/gpu.py
         arrus/devices/us4r.py
+        arrus/devices/us4oem.py
         arrus/devices/probe.py
         arrus/devices/device.py
         arrus/kernels/__init__.py
@@ -99,6 +100,9 @@ set(SOURCE_FILES
         arrus/utils/core.py
         arrus/utils/gui.py
         arrus/utils/probe_check.py
+        arrus/utils/us4r_remap_gpu.cu
+        arrus/io/__init__.py
+        arrus/io/pickle.py
         )
 
 set(TEST_FILES

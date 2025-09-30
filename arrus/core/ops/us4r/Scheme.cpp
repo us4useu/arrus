@@ -88,6 +88,16 @@ SchemeBuilder & SchemeBuilder::addSequence(TxRxSequence sequence) {
     return *this;
 }
 
+SchemeBuilder & SchemeBuilder::addConstant(::arrus::framework::NdArray constant) {
+    this->scheme.impl->constants.push_back(std::move(constant));
+    return *this;
+}
+
+SchemeBuilder & SchemeBuilder::setConstants(const std::vector<::arrus::framework::NdArray> &constants) {
+    this->scheme.impl->constants = constants;
+    return *this;
+}
+
 SchemeBuilder& SchemeBuilder::withOutputBufferDefinition(DataBufferSpec spec) {
     this->scheme.impl->outputBuffer = spec;
     return *this;

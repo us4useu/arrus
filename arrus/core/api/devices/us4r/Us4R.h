@@ -16,6 +16,7 @@
 #include "arrus/core/api/devices/Ultrasound.h"
 #include "arrus/core/api/session/Metadata.h"
 #include "arrus/core/api/devices/us4r/HVVoltage.h"
+#include "arrus/core/api/common/Slice.h"
 
 namespace arrus::devices {
 
@@ -344,9 +345,25 @@ public:
     virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
 
     /**
+     * Enables ADC high-pass filter and sets a given corner frequency.
+     *
+     * Note: this method is just an alias for setAdcHpfCornerFrequency.
+     *
+     * @param frequency high-pass filter corner frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
      * Disables LNA analog high-pass filter.
      */
     virtual void disableLnaHpf() = 0;
+
+    /**
+     * Disables ADC high-pass filter.
+     *
+     * Note: this method is just an alias for setAdcHpfCornerFrequency.
+     */
+    virtual void disableHpf() = 0;
 
     /**
      * Enables ADC digital high-pass filter and sets a given corner frequency.
@@ -390,8 +407,8 @@ public:
      */
     virtual const char *getBackplaneFirmwareVersion() = 0;
 
-    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
 
@@ -433,6 +450,16 @@ public:
      * Returns maximum available TGC value, according to the currently set parameters.
      */
     virtual float getMaximumTGCValue() const = 0;
+
+    /**
+     * Disables all high-pass filters on the device.
+     */
+    virtual void disableAllHpf() = 0;
+
+    /**
+     * Returns system variant (LEGACY/PLUS_32RX. etc.).
+     */
+    virtual Us4OEM::Variant getVariant() = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

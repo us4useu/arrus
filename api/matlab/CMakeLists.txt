@@ -102,7 +102,7 @@ else()
 endif()
 
 
-add_custom_target(matlab_toolbox ALL DEPENDS ${TIMESTAMP})
+add_custom_target(matlab_toolbox ALL DEPENDS ${TIMESTAMP} arrus_mex_object_wrapper)
 
 set_target_properties(
     matlab_toolbox

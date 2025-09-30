@@ -2,6 +2,7 @@ import ctypes
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.core
 import numpy as np
+from enum import Enum
 
 
 DEVICE_TYPE = DeviceType("Us4OEM")
@@ -59,6 +60,28 @@ class HVPSMeasurement:
             "VOLTAGE": arrus.core.HVPSMeasurement.VOLTAGE,
             "CURRENT": arrus.core.HVPSMeasurement.CURRENT
         }[value]
+
+
+class Variant(Enum):
+    """
+    Us4OEM variant.
+    """
+    LEGACY = "LEGACY"
+    PLUS_RX_32 = "PLUS_RX_32"
+    PLUS_RX_64 = "PLUS_RX_64"
+    PLUS_HF = "PLUS_HF"
+
+
+def _variant_enum_to_enum(enum):
+    """
+    Variant C++ Enum to Python Enum.
+    """
+    return {
+        arrus.core.Us4OEM.Variant_LEGACY: Variant.LEGACY,
+        arrus.core.Us4OEM.Variant_PLUS_RX_32: Variant.PLUS_RX_32,
+        arrus.core.Us4OEM.Variant_PLUS_RX_64: Variant.PLUS_RX_64,
+        arrus.core.Us4OEM.Variant_PLUS_HF: Variant.PLUS_HF,
+    }[enum]
 
 
 class Us4OEM(Device):
@@ -134,3 +157,12 @@ class Us4OEM(Device):
         This method is intended to be used in the probe_check implementation.
         """
         return arrus.core.arrusUs4OEMWaitForHVPSMeasuerementDone(self._handle, timeout)
+
+    def get_variant(self) -> Variant:
+        """
+        Returns variant of the device.
+        """
+        core_variant = self._handle.getVariant()
+        return _variant_enum_to_enum(core_variant)
+
+

@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <utility>
 #include <thread>
+#include <regex>
 
 #include <boost/algorithm/string.hpp>
 #include <vector>
@@ -34,6 +35,7 @@ namespace arrus::devices {
 class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
+    using DelayProfiles = std::vector<::arrus::framework::NdArray>;
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
@@ -130,7 +132,9 @@ public:
     void setLnaHpfCornerFrequency(uint32_t frequency) override;
     void disableLnaHpf() override;
     void setAdcHpfCornerFrequency(uint32_t frequency) override;
+    void setHpfCornerFrequency(uint32_t frequency) override;
     void disableAdcHpf() override;
+    void disableAllHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
@@ -155,8 +159,8 @@ public:
         return probes.at(ordinal).get();
     }
 
-    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override;
+    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
@@ -172,6 +176,8 @@ public:
     void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
     void setVcat(const std::vector<float> &attenuation) override;
     void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
+    void disableHpf() override;
+    virtual Us4OEM::Variant getVariant() override;
 
 private:
     struct VoltageLogbook {
@@ -236,7 +242,19 @@ private:
     std::vector<arrus::session::Metadata::SharedHandle>
     createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
 
-    std::mutex deviceStateMutex;
+    /**
+     * Returns a map sequence id -> list of TX delay arrays.
+     */
+    std::unordered_map<std::string, DelayProfiles>
+    groupTxDelaysBySequence(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences,
+                            const std::vector<::arrus::framework::NdArray> &txDelayProfiles);
+
+    std::tuple<std::string, std::string, size_t> parseTxDelaysConstantName(const std::string &name) const;
+    std::tuple<std::string, std::string> parseTxDelaysParamName(const std::string &name) const;
+    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
+    std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
+
+        std::mutex deviceStateMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
     std::optional<DigitalBackplane::Handle> digitalBackplane;
@@ -263,11 +281,18 @@ private:
     bool maskDVDDInterrupt;
 
     std::optional<Us4RSubsequenceFactory> subsequenceFactory;
-    std::optional<Us4RSubsequence> currentSubsequenceParams;
+    std::optional<std::vector<Us4RSubsequence>> currentSubsequenceParams;
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
     std::optional<float> currentRxTimeOffset;
-    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
+    /** Expected constant name: /SequenceName/parameterName:ordinal */
+    const std::regex CONSTANT_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$)"};
+    /** Expected parameter name: /SequenceName/parameterName */
+    const std::regex PARAMETER_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$)"};
+    /** TX/RX sequence name to ordinal number (i.e. position in the list of sequences of the Scheme). */
+    std::unordered_map<std::string, SequenceId> sequenceNameToOrdinalMap;
+    /** The number of TX delay profiles set for the sequence with the given name */
+    std::unordered_map<std::string, size_t> sequenceNumberOfTxDelayProfiles;
 };
 
 }// namespace arrus::devices
