@@ -32,7 +32,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
                    bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger,
-                   std::vector<uint8_t> pulserInterruptMasking)
+                   bool maskDVDDInterrput)
     : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
@@ -48,7 +48,8 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     this->bitstreams = std::move(bitstreams);
     this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
     this->isExternalTrigger = isExternalTrigger;
-    this->pulserInterruptMasking = pulserInterruptMasking;
+    this->maskDVDDInterrput = maskDVDDInterrput;
+
     for (size_t i = 0; i < this->probeSettings.size(); ++i) {
         const auto &s = this->probeSettings.at(i).getModel();
         this->probes.push_back(std::make_unique<ProbeImpl>(DeviceId{DeviceType::Probe, Ordinal(i)}, s));
@@ -1339,26 +1340,20 @@ void Us4RImpl::handlePulserInterrupt() {
     }
     else {
         //..
-        auto maskedInterrupts = this->pulserInterruptMasking;
+        auto DVDDMasked = this->maskDVDDInterrupt;
 
-        if(maskedInterrupts.empty()) {
-            this->stop();
-            this->disableHV();
-        }
-        else {
-            for(auto &oem: this->us4oems) {
-                auto status = oem->getIUs4OEM()->GetPulsersStatusRegister(); //get interrupt status registers of 8 pulsers
-                for(size_t n = 0; n<status.size(); ++n) {
-                    uint16_t mask = 0;
-                    for (uint8_t bit : maskedInterrupts) {
-                        mask |= (1u << bit);
-                    }
-                    if(status.at(n) & ~mask) {
-                        this->stop();
-                        this->disableHV();
-                    }
+        if(DVDDMasked) { //if DVDD interrput status is masked -> ignore if it occurs
+            auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
+            for(size_t n = 0; n<status.size(); ++n) {
+                if(status.at(n) & ~0b0000000000000100) { //bit 2 = DVDD interrupt
+                    this->stop();
+                    this->disableHV();
                 }
             }
+        }
+        else {
+            this->stop();
+            this->disableHV();
         }
     }
     for(auto &oem: this->us4oems) {

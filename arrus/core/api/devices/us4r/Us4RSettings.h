@@ -38,7 +38,7 @@ public:
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
         bool allowDuplicateOEMIds = true,
-        std::vector<uint8_t> pulserInterruptMasking = {}
+        bool maskDVDDInterrupt = false
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -54,7 +54,7 @@ public:
           limits(std::move(limits)),
           watchdogSettings(std::move(watchdogSettings)),
           allowDuplicateOEMIds(allowDuplicateOEMIds),
-          pulserInterruptMasking(std::move(pulserInterruptMasking))
+          maskDVDDInterrupt(maskDVDDInterrupt)
         
     {}
 
@@ -74,7 +74,7 @@ public:
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
         bool allowDuplicateOEMIds = true,
-        std::vector<uint8_t> pulserInterruptMasking = {}
+        bool maskDVDDInterrupt = false
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -91,7 +91,7 @@ public:
                 std::move(limits),
                 std::move(watchdogSettings),
                 allowDuplicateOEMIds,
-                std::move(pulserInterruptMasking)
+                maskDVDDInterrupt
         )
     {}
 
@@ -188,7 +188,7 @@ public:
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
-    const std::vector<uint8_t> &getPulserInterruptMask() const { return pulserInterruptMasking; }
+    const bool isDVDDInterruptMasked() const { return maskDVDDInterrupt; }
 
 private:
     /* A list of settings for Us4OEMs.
@@ -250,8 +250,10 @@ private:
       */
      bool allowDuplicateOEMIds{true};
 
-     /* */
-     std::vector<uint8_t> pulserInterruptMasking;
+     /**
+     * False value means that Pulser DVDD interrput is enabled and error will raised when it occurs
+     */
+     bool maskDVDDInterrupt{false};
 };
 
 }
