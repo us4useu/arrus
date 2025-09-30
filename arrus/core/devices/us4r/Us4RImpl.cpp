@@ -75,7 +75,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     for(auto &oem: this->us4oems) {
         // Register pulser IRQ handling procedure.
         if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
-            oem->getIUs4OEM()->SetPulserInterruptCallback(
+            oem->getIUs4OEM()->SetShutdownCallbackFunction(
                 [this]() {this->handlePulserInterrupt(); }
             );
         }
