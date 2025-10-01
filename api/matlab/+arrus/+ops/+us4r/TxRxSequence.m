@@ -15,6 +15,7 @@ classdef TxRxSequence
         tgcCurve (1, :) {mustBeReal} = []
         sri (1, 1) {mustBeReal, mustBeNonnegative} = 0
         nRepeats (1, 1) {mustBePositive, mustBeInteger} = 1
+        name 
     end
     methods
         function obj = TxRxSequence(varargin)

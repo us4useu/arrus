@@ -12,6 +12,7 @@ classdef Us4R < handle
         sys
         seq
         subSeq
+        preset
         rec
         us4r
         session
@@ -268,7 +269,7 @@ classdef Us4R < handle
             obj.us4r.setAdcHpfCornerFrequency(frequency);
         end
 
-        function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
+        function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming, preset)
             % Uploads operations to the us4R system.
             %
             % :param sequenceOperation: Tx/Rx sequence to perform on the \
@@ -278,6 +279,8 @@ classdef Us4R < handle
             % :param enableHardwareProgramming: determines if the \
             %   hardware is programmed or not. Logical scalar. Optional, \
             %   default = true.
+            % :param preset: set of system presets. :class:`CustomPreset` \
+            %   vector.
             % 
             % :returns: updated Us4R object.
             
@@ -294,6 +297,11 @@ classdef Us4R < handle
             if nargin>=3 && ~isempty(reconstructOperation) && ~isa(reconstructOperation,'Reconstruction')
                 error("ARRUS:IllegalArgument", ...
                       'Invalid reconstruction object, must be Reconstruction');
+            end
+
+            if nargin>=5 && ~isempty(preset) && ~isa(preset,'CustomPreset')
+                error("ARRUS:IllegalArgument", ...
+                      'Invalid preset object, must be CustomPreset');
             end
             
             obj.setSeqParams(...
@@ -326,6 +334,11 @@ classdef Us4R < handle
 
             obj.seq.seqLim = [1 numel(obj.seq.txAng)];
             
+            % Custom presets
+            if nargin>=5
+                obj.preset = preset;
+            end
+
             % Program hardware
             if nargin<4 || enableHardwareProgramming
                 obj.programHW;
@@ -335,6 +348,7 @@ classdef Us4R < handle
                 error('Support for enableHardwareProgramming=false is temporarily suspended');
             end
             
+            % Reconstruction
             if nargin<3 || isempty(reconstructOperation)
                 obj.rec.enable = false;
                 return;
@@ -1605,7 +1619,16 @@ classdef Us4R < handle
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
-            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", [], "sri", obj.seq.sri);
+            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", [], "sri", obj.seq.sri, "name", "TxRxSequence");
+            
+            % Presets
+            if isempty(obj.preset)
+                constants = [];
+            else
+                for i=1:numel(obj.preset)
+                    constants(i) = arrus.framework.NdArray('value', obj.preset(i).txDelay, 'placement', "Us4R:0", 'name', "/TxRxSequence/txDelays:" + string(i-1));
+                end
+            end
             
             % Digital Down Conversion
             if obj.seq.hwDdcEnable
@@ -1621,6 +1644,7 @@ classdef Us4R < handle
             scheme = Scheme('txRxSequence', txrxSeq, ...
                             'workMode', obj.seq.workMode, ...
                             'digitalDownConversion', ddc, ...
+                            'constants', constants, ...
                             'rxBufferSize', obj.seq.bufferSize, ...
                             'outputBuffer', arrus.framework.DataBufferDef("type", "FIFO", "nElements", obj.seq.bufferSize));
             
