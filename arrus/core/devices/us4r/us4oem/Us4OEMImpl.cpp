@@ -587,13 +587,13 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer(uint16 startEntry) {
+void Us4OEMImpl::enableSequencer(uint16 startEntry, bool dvddMask) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry, dvddMask);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }

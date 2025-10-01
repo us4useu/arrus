@@ -35,7 +35,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
                    bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger,
-                   bool maskDVDDInterrput)
+                   bool maskDVDDInterrupt)
     : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
@@ -51,7 +51,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     this->bitstreams = std::move(bitstreams);
     this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
     this->isExternalTrigger = isExternalTrigger;
-    this->maskDVDDInterrput = maskDVDDInterrput;
+    this->maskDVDDInterrupt = maskDVDDInterrupt;
 
     for (size_t i = 0; i < this->probeSettings.size(); ++i) {
         const auto &s = this->probeSettings.at(i).getModel();
@@ -536,7 +536,7 @@ void Us4RImpl::start() {
         // the sequencer pointers will appropriately set to the start param value.
         // Set it to the current beginning of the array 0.
         auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().at(0).getStart() : 0;
-        us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t));
+        us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t), maskDVDDInterrupt);
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
         this->digitalBackplane.value()->enableExternalTrigger();
@@ -1451,11 +1451,13 @@ void Us4RImpl::handlePulserInterrupt() {
         auto DVDDMasked = this->maskDVDDInterrupt;
 
         if(DVDDMasked) { //if DVDD interrput status is masked -> ignore if it occurs
-            auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
-            for(size_t n = 0; n<status.size(); ++n) {
-                if(status.at(n) & ~0b0000000000000100) { //bit 2 = DVDD interrupt
-                    this->stop();
-                    this->disableHV();
+            for(auto &oem: this->us4oems) {
+                auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
+                for(size_t n = 0; n<status.size(); ++n) {
+                    if(status.at(n) & ~0b0000000000000100) { //bit 2 = DVDD interrupt
+                        this->stop();
+                        this->disableHV();
+                    }
                 }
             }
         }
