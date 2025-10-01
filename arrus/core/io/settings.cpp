@@ -499,7 +499,6 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
     bool maskDVDDInterrupt = false; // default value
-    std::vector<uint8_t> pulserInterrputMask;
     int txFrequencyRange = 1;
     bool allowDuplicateOEMIds = true; // default values
 
