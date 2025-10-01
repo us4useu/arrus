@@ -12,6 +12,10 @@ Release notes
     - C++ API: made RxSettings backward compatible #M_US4R-44.
     - Fixed nullptr_t namespace in UniqueHandle class (C++ API) #ARRUS-496.
 
+- MATLAB API:
+
+    - Exposed Session.setParameters method #ARRUS-492.
+
 0.13.0
 
 - core (driver)
