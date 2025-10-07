@@ -4,11 +4,26 @@ Release notes
 0.13.x
 ------
 
+0.13.1
+
+- core (driver)
+
+    - Fixed minor memory leakage issues #M_US4R-42.
+    - C++ API: made RxSettings backward compatible #M_US4R-44.
+    - Fixed nullptr_t namespace in UniqueHandle class (C++ API) #ARRUS-496.
+
+- MATLAB API:
+
+    - Exposed Session.setParameters method #ARRUS-492.
+
+0.13.0
+
 - core (driver)
 
     - Accelerated HV voltage setting by storing HVPS coefficients in the flash memory on OEM+. To take advantage of this, calibration must be performed using Us4OEMStatus; otherwise, there will be no acceleration. #M_OEM-155
     - Added the Us4R::setSubsequences(slices, sris) method. #M_US4R-36.
     - Changed the behavior of ``Us4R::setSubsequence`` and ``Us4R::setSubsequences``: from now on, start and end define the range [start, end) (right-open). Previously, it was [start, end] (right-closed). #M_US4R-36.
+    - Increased HVP1/HVM1 standby current limits from 50 mA to 100 mA #M_OEM-203.
 
 - Python API:
 

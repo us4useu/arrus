@@ -2,6 +2,8 @@
 #define ARRUS_CORE_API_COMMON_UNIQUEHANDLE_H
 
 #include <memory>
+#include <cstddef>
+
 
 namespace arrus {
 
@@ -22,7 +24,7 @@ public:
         return UniqueHandle<T>{new T(std::forward<Args>(args)...)};
     }
 
-    UniqueHandle(nullptr_t v = nullptr): ptr{v} {}
+    UniqueHandle(std::nullptr_t v = nullptr): ptr{v} {}
 
     ~UniqueHandle() { delete ptr; }
 

@@ -6,7 +6,13 @@ pipeline {
     parameters {
         booleanParam(name: 'RELEASE', defaultValue: false, description: 'Is this release? When set to true, the VERSION parameter is required.')
         string(name: 'VERSION', defaultValue: '', description: 'Release version number.')
-        booleanParam(name: 'PUBLISH', defaultValue: false, description: 'Publish arrus on github server. When set to true, only the publish stages will be executed. When set to false, only the build stages will be executed. This will publish the latest build of the given release or branch. NOTE: the scope of publication can be limited using PUBLISH_PY/PUBLISH_CPP/PUBLISH_MATLAB')
+        choice(
+            name: 'ACTION',
+            choices: ["BUILD", "PUBLISH"],
+            description: "Action to perform. "+
+                         "Select BUILD to performed local build (i.e. the output files will be stored only in the pre-release directory on NAS). " +
+                         "Selection PUBLISH to publish artifacts on github servers. This action will publish the latest build of the given release or branch."
+        )
         booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish Python package.')
         booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish Matlab package.')
         booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish Matlab package.')
@@ -118,7 +124,7 @@ pipeline {
         }
         stage('Build') {
             when {
-                expression { return params.PUBLISH == false }
+                expression { return params.ACTION == "BUILD" }
             }
             steps {
                 sh """pydevops --stage build \
@@ -130,7 +136,7 @@ pipeline {
         }
         stage('Test') {
             when {
-                expression { return params.PUBLISH == false }
+                expression { return params.ACTION == "BUILD" }
             }
             steps {
                 sh """pydevops --stage test \
@@ -142,7 +148,7 @@ pipeline {
         }
         stage('Install') {
             when {
-                expression { return params.PUBLISH == false }
+                expression { return params.ACTION == "BUILD" }
             }
             steps {
                 sh """pydevops --stage install \
@@ -154,7 +160,7 @@ pipeline {
         }
         stage('PackageCpp') {
             when {
-                expression { return params.PUBLISH == false }
+                expression { return params.ACTION == "BUILD" }
             }
             steps {
                 sh """pydevops --stage package_cpp \
@@ -166,7 +172,7 @@ pipeline {
         }
         stage('PackageMatlab') {
              when {
-                expression { return params.PUBLISH == false }
+                expression { return params.ACTION == "BUILD" }
              }
              steps {
                  sh """pydevops --stage package_matlab \
@@ -181,7 +187,7 @@ pipeline {
         stage('ValidateRelease') {
             when{
                 allOf {
-                    expression { params.PUBLISH }
+                    expression { params.ACTION == "PUBLISH" }
                     expression { params.RELEASE }
                 }
             }
@@ -213,7 +219,7 @@ pipeline {
         stage('PublishNAS') {
             when {
                 allOf {
-                    expression { params.PUBLISH }
+                    expression { params.ACTION == "PUBLISH" }
                     expression { params.RELEASE } // We don't need -dev packages in the `release` directory on NAS.
                 }
             }
@@ -250,7 +256,7 @@ pipeline {
         stage('PublishCpp') {
             when {
                 allOf {
-                    expression { params.PUBLISH }
+                    expression { params.ACTION == "PUBLISH" }
                     expression { params.PUBLISH_CPP }
                 }
             }
@@ -280,7 +286,7 @@ pipeline {
         stage('PublishPython') {
             when {
                 allOf {
-                    expression { params.PUBLISH }
+                    expression { params.ACTION == "PUBLISH" }
                     expression { params.PUBLISH_PY }
                 }
             }
@@ -313,7 +319,7 @@ pipeline {
         stage('PublishMatlab') {
             when {
                 allOf {
-                    expression { params.PUBLISH }
+                    expression { params.ACTION == "PUBLISH" }
                     expression { params.PUBLISH_MATLAB }
                 }
             }
@@ -343,7 +349,7 @@ pipeline {
         stage('PublishDocs') {
             when {
                 allOf {
-                    expression { params.PUBLISH }
+                    expression { params.ACTION == "PUBLISH" }
                     expression { params.PUBLISH_DOCS }
                 }
              }
