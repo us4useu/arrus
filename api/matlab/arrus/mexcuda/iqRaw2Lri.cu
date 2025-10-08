@@ -1,4 +1,5 @@
 #define M_PI 3.14159265358979
+#define INF (1.f/0.f)
 #include "mex.h"
 #include "gpu/mxGPUArray.h"
 #include <string>
@@ -8,9 +9,6 @@ __constant__ float zElemConst[256];
 __constant__ float xElemConst[256];
 __constant__ float tangElemConst[256];
 
-texture <float2, cudaTextureType1DLayered, cudaReadModeElementType> iqRawTex;
-texture <float, cudaTextureType1D, cudaReadModeElementType> rxApodTex;
-
 __forceinline__ __device__ float ownHypotf(float x, float y)
 {
     return sqrtf(x*x + y*y);
@@ -18,6 +16,8 @@ __forceinline__ __device__ float ownHypotf(float x, float y)
 
 
 __global__ void iqRaw2Lri(  float2 * iqLri, 
+                            cudaTextureObject_t iqRawTex, 
+                            cudaTextureObject_t rxApodTex, 
                             float const * zPix, 
                             float const * xPix, 
                             float const * txFoc, 
@@ -49,7 +49,7 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
     }
     
     int iElem;
-    float txDist, rxDist, rxTang, txApod, rxApod, time, iSamp;
+    float txDist, rxDist, rxTangZX, rxTang, txApod, rxApod, time, iSamp;
     float modSin, modCos, sampRe, sampIm, pixRe, pixIm, pixWgh;
     float const sosInv = 1 / sos;
 //     float const zDistInv = 1 / zPix[z];
@@ -57,13 +57,15 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
     for (int iTx=0; iTx<nTx; iTx++) {
         
         iElem = (rxApOrigElem[iTx] + nRx <= nElem) ? rxApOrigElem[iTx] + nRx - 1 : nElem - 1;
-        rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-        rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
+        rxTangZX = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+        rxTang = __fdividef(rxTangZX - tangElemConst[iElem], 1.f + rxTangZX*tangElemConst[iElem]);
+        rxTang = (rxTangZX<0.f && -tangElemConst[iElem]<0.f && rxTang>0.f) ? -INF : rxTang;
         float minRxTangPix = fmax(minRxTang[iTx], rxTang);
         
         iElem = (rxApOrigElem[iTx] >= 0) ? rxApOrigElem[iTx] : 0;
-        rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-        rxTang = __fdividef(rxTang - tangElemConst[iElem], 1.f + rxTang*tangElemConst[iElem]);
+        rxTangZX = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+        rxTang = __fdividef(rxTangZX - tangElemConst[iElem], 1.f + rxTangZX*tangElemConst[iElem]);
+        rxTang = (rxTangZX>0.f && -tangElemConst[iElem]>0.f && rxTang<0.f) ? INF : rxTang;
         float maxRxTangPix = fmin(maxRxTang[iTx], rxTang);
         
         float const rngRxTangInv = 1 / (maxRxTangPix - minRxTangPix); // inverted tangent range
@@ -122,20 +124,23 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
             for (int iRx=0; iRx<nRx; iRx++) {
                 iElem = iRx + rxApOrigElem[iTx];
                 if (iElem<0 || iElem>=nElem) continue;
+
+                // check if pixel is in front of the element
+                if ((xPix[x] - xElemConst[iElem])*tangElemConst[iElem] + (zPix[z] - zElemConst[iElem])*1.f < 0.f) continue;
                 
                 rxDist = ownHypotf(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-//                 rxTang = (xPix[x] - xElemConst[iElem]) * zDistInv;
-                rxTang = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
-                rxTang = __fdividef(rxTang-tangElemConst[iElem], 1.f+rxTang*tangElemConst[iElem]);
+//                 rxTangZX = (xPix[x] - xElemConst[iElem]) * zDistInv;
+                rxTangZX = __fdividef(xPix[x] - xElemConst[iElem], zPix[z] - zElemConst[iElem]);
+                rxTang = __fdividef(rxTangZX-tangElemConst[iElem], 1.f+rxTangZX*tangElemConst[iElem]);
                 if (rxTang < minRxTangPix || rxTang > maxRxTangPix) continue;
                 rxApod = (rxTang-minRxTangPix)*rngRxTangInv; // <0,1>, needs normalized texture fetching, errors at aperture sided
-                rxApod = tex1D(rxApodTex, rxApod);
+                rxApod = tex1D<float>(rxApodTex, rxApod);
                 
                 time = (txDist + rxDist) * sosInv + initDel[iTx];
                 iSamp = time * fs;
                 if (iSamp<static_cast<float>(nSampOmit[iTx]) || iSamp>static_cast<float>(nSamp-1)) continue;
                 
-                float2 iqSamp = tex1DLayered(iqRawTex, iSamp + 0.5f, iRx + iTx*nRx);
+                float2 iqSamp = tex1DLayered<float2>(iqRawTex, iSamp + 0.5f, iRx + iTx*nRx);
                 sampRe = iqSamp.x;
                 sampIm = iqSamp.y;
                 
@@ -249,7 +254,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     int nXPix;
     int nRx;
     int nTx;
-    int nRxApodSamp;
+    int rxApodNSamp;
     
     dim3 const threadsPerBlock = {16, 16, 1};
     dim3 blocksPerGrid;
@@ -325,7 +330,7 @@ void mexFunction(int nlhs, mxArray * plhs[],
     nElem = mxGPUGetNumberOfElements(xElem);
     nZPix = mxGPUGetNumberOfElements(zPix);
     nXPix = mxGPUGetNumberOfElements(xPix);
-    nRxApodSamp = mxGPUGetNumberOfElements(rxApod);
+    rxApodNSamp = mxGPUGetNumberOfElements(rxApod);
     if (mxGPUGetNumberOfDimensions(iqRaw)<3) {
         nTx = 1;
     }
@@ -378,44 +383,67 @@ void mexFunction(int nlhs, mxArray * plhs[],
     cudaMemcpyToSymbol(tangElemConst, dev_tangElem, nElem*sizeof(float), 0, cudaMemcpyDeviceToDevice);
     
     /* configure texture reference (apodization) */
-    rxApodTex.normalized = true;
-    rxApodTex.addressMode[0] = cudaAddressModeBorder;
-    rxApodTex.filterMode = cudaFilterModeLinear;
+    cudaChannelFormatDesc rxApodFormatDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
+    cudaArray* rxApodCudaArray;
+    cudaMallocArray(&rxApodCudaArray, &rxApodFormatDesc, rxApodNSamp, 0);
+    cudaMemcpyToArray(rxApodCudaArray, 0, 0, dev_rxApod, rxApodNSamp*sizeof(float), cudaMemcpyDeviceToDevice);
     
-    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
-    cudaArray* cuArrayApod;
-    cudaMallocArray(&cuArrayApod, &channelDesc, nRxApodSamp, 0);
-    cudaMemcpyToArray(cuArrayApod, 0, 0, dev_rxApod, nRxApodSamp*sizeof(float), cudaMemcpyDeviceToDevice);
-    cudaBindTextureToArray(rxApodTex, cuArrayApod, channelDesc);
+    struct cudaResourceDesc rxApodResDesc;
+    memset(&rxApodResDesc, 0, sizeof(rxApodResDesc));
+    rxApodResDesc.resType = cudaResourceTypeArray;
+    rxApodResDesc.res.array.array = rxApodCudaArray;
+    
+    struct cudaTextureDesc rxApodTexDesc;
+    memset(&rxApodTexDesc, 0, sizeof(rxApodTexDesc));
+    rxApodTexDesc.addressMode[0] = cudaAddressModeBorder;
+    rxApodTexDesc.filterMode = cudaFilterModeLinear;
+    rxApodTexDesc.readMode = cudaReadModeElementType;
+    rxApodTexDesc.normalizedCoords = 1;
+    
+    cudaTextureObject_t rxApodTex = 0;
+    cudaCreateTextureObject(&rxApodTex, &rxApodResDesc, &rxApodTexDesc, NULL);
     
     /* configure texture reference */
-    iqRawTex.normalized  = false;
-    iqRawTex.addressMode[0] = cudaAddressModeBorder;
-    iqRawTex.filterMode  = cudaFilterModeLinear;
-    
     int nTxPerPart = (nRx*nTx <= 2048) ? nTx : 2048/nRx;
     int nPart = (nTx+nTxPerPart-1)/nTxPerPart;
     
-    cudaArray* cuArray;
-    cudaExtent cuArraySize =  make_cudaExtent(nSamp, 0, nRx*nTxPerPart);
-    cudaMalloc3DArray(&cuArray, &iqRawTex.channelDesc, cuArraySize, cudaArrayLayered);
-    cudaBindTextureToArray(iqRawTex, cuArray);
+    cudaChannelFormatDesc iqRawFormatDesc = cudaCreateChannelDesc(32, 32, 0, 0, cudaChannelFormatKindFloat);
+    cudaArray* iqRawCudaArray;
+    cudaExtent iqRawSize =  make_cudaExtent(nSamp, 0, nRx*nTxPerPart);
+    cudaMalloc3DArray(&iqRawCudaArray, &iqRawFormatDesc, iqRawSize, cudaArrayLayered);
+
+    struct cudaResourceDesc iqRawResDesc;
+    memset(&iqRawResDesc, 0, sizeof(iqRawResDesc));
+    iqRawResDesc.resType = cudaResourceTypeArray;
+    iqRawResDesc.res.array.array = iqRawCudaArray;
+    
+    struct cudaTextureDesc iqRawTexDesc;
+    memset(&iqRawTexDesc, 0, sizeof(iqRawTexDesc));
+    iqRawTexDesc.addressMode[0] = cudaAddressModeBorder;
+    iqRawTexDesc.filterMode = cudaFilterModeLinear;
+    iqRawTexDesc.readMode = cudaReadModeElementType;
+    iqRawTexDesc.normalizedCoords = 0;
+    
+    cudaTextureObject_t iqRawTex = 0;
+    cudaCreateTextureObject(&iqRawTex, &iqRawResDesc, &iqRawTexDesc, NULL);
     
     /* Kernel in loop - due to limited number of texture layers */
-    cudaMemcpy3DParms cuArrayCopy = {0};
-    cuArrayCopy.dstArray = cuArray;
-    cuArrayCopy.kind = cudaMemcpyDeviceToDevice;
+    cudaMemcpy3DParms iqRawCopyParams = {0};
+    iqRawCopyParams.dstArray = iqRawCudaArray;
+    iqRawCopyParams.kind = cudaMemcpyDeviceToDevice;
     for (int iPart=0; iPart<nPart; iPart++) {
         
         int nTxInThisPart = (iPart<(nPart-1)) ? nTxPerPart : (nTx-iPart*nTxPerPart);
         
         /* Prepare texture memory */
-        cuArrayCopy.srcPtr = make_cudaPitchedPtr(const_cast<float2 *>(dev_iqRaw)+iPart*nSamp*nRx*nTxPerPart, nSamp * sizeof(float2), nSamp, 1);
-        cuArrayCopy.extent = make_cudaExtent(nSamp, 1, nRx*nTxInThisPart);
-        cudaMemcpy3D(&cuArrayCopy);
+        iqRawCopyParams.srcPtr = make_cudaPitchedPtr(const_cast<float2 *>(dev_iqRaw)+iPart*nSamp*nRx*nTxPerPart, nSamp * sizeof(float2), nSamp, 1);
+        iqRawCopyParams.extent = make_cudaExtent(nSamp, 1, nRx*nTxInThisPart);
+        cudaMemcpy3D(&iqRawCopyParams);
         
         /* Execute CUDA kernel */
         iqRaw2Lri<<<blocksPerGrid, threadsPerBlock, sharedPerBlock>>>(dev_iqLri + iPart*nZPix*nXPix*nTxPerPart, 
+                                                                      iqRawTex, 
+                                                                      rxApodTex, 
                                                                       dev_zPix, 
                                                                       dev_xPix, 
                                                                       dev_foc       + iPart*nTxPerPart, 
@@ -438,11 +466,11 @@ void mexFunction(int nlhs, mxArray * plhs[],
     plhs[0] = mxGPUCreateMxArrayOnGPU(iqLri);
     
     /* Clean-up */
-    cudaUnbindTexture(iqRawTex);
-    cudaFreeArray(cuArray);
+    cudaDestroyTextureObject(iqRawTex);
+    cudaFreeArray(iqRawCudaArray);
     
-    cudaUnbindTexture(rxApodTex);
-    cudaFreeArray(cuArrayApod);
+    cudaDestroyTextureObject(rxApodTex);
+    cudaFreeArray(rxApodCudaArray);
     
     mxGPUDestroyGPUArray(iqLri);
     mxGPUDestroyGPUArray(iqRaw);

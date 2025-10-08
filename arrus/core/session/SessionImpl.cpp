@@ -254,12 +254,28 @@ void SessionImpl::verifyScheme(const ops::us4r::Scheme &scheme) {
 
 Session::State SessionImpl::getCurrentState() { return state; }
 
-UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional<float> sri, ArrayId arrayId) {
+UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) {
+    if(!currentScheme.has_value()) {
+        throw ::arrus::IllegalArgumentException("Please call upload method before setting the sub-sequence");
+    }
+    if(start >= end) {
+        throw ::arrus::IllegalArgumentException("The setSubsequence method requires start < end.");
+    }
+    std::vector<Slice> slices = getNTimes(Slice{0, 0}, currentScheme->getTxRxSequences().size());
+    std::vector<std::optional<float>> sris = getNTimes<std::optional<float>>(std::nullopt, currentScheme->getTxRxSequences().size());
+
+    slices.at(arrayId) = Slice{start, end};
+    sris.at(arrayId) = sri;
+
+    return setSubsequences(slices, sris);
+}
+
+UploadResult SessionImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
     std::lock_guard guard(stateMutex);
     ASSERT_STATE(State::STOPPED);
 
     auto ultrasound = (Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-    auto[buffer, metadata] = ultrasound->setSubsequence(arrayId, start, end, sri);
+    auto[buffer, metadata] = ultrasound->setSubsequences(slices, sris);
     return UploadResult(buffer, {metadata});
 }
 

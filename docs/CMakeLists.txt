@@ -125,14 +125,18 @@ endfunction()
 # Targets and installs.
 ################################################################################
 include(python)
-create_python_venv(docs_venv ${CMAKE_CURRENT_BINARY_DIR})
+set(ARRUS_DOCS_VENV_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs")
+if(ARRUS_PY_VENV_TARGET)
+    set(ARRUS_DOCS_VENV_TARGET_DIR "${ARRUS_PY_VENV_TARGET}/docs")
+endif()
+create_python_venv(docs_venv ${ARRUS_DOCS_VENV_TARGET_DIR})
 install_sphinx_package(sphinx_package docs_venv)
 
 # C++
 ## Generate doxygen xml files
 find_package(Doxygen)
 
-set(DOXYGEN_INPUT_DIR "${CMAKE_SOURCE_DIR}/arrus/core/api")
+set(DOXYGEN_INPUT_DIR "${CMAKE_SOURCE_DIR}/arrus/core/api ${Us4_ROOT_DIR}/include/Us4OEM/api")
 set(DOXYGEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cpp/doxy")
 set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml)
 
@@ -142,7 +146,6 @@ configure_file(${DOXYFILE_IN} ${DOXYFILE_OUT} @ONLY)
 
 file(MAKE_DIRECTORY ${DOXYGEN_OUTPUT_DIR})
 add_custom_command(OUTPUT ${DOXYGEN_INDEX_FILE}
-    DEPENDS ${DOXYGEN_INPUT_DIR}
     COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
     MAIN_DEPENDENCY ${DOXYFILE_OUT} ${DOXYFILE_IN}
     COMMENT "Generating Doxygen files.")

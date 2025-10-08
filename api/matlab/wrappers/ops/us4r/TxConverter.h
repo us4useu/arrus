@@ -4,6 +4,7 @@
 #include "api/matlab/wrappers/MexContext.h"
 #include "api/matlab/wrappers/convert.h"
 #include "api/matlab/wrappers/ops/us4r/PulseConverter.h"
+#include "api/matlab/wrappers/ops/us4r/WaveformConverter.h"
 #include "arrus/core/api/arrus.h"
 
 #include <mex.hpp>
@@ -20,11 +21,22 @@ public:
     inline static const std::string MATLAB_FULL_NAME = "arrus.ops.us4r.Tx";
 
     static TxConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
+        ::matlab::data::ObjectArray pulse = getMatlabProperty(ctx, object, "pulse");
+        std::optional<Waveform> wf;
+        if(ctx->isInstance(pulse, "arrus.ops.us4r.Pulse")) {
+            wf = ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Pulse, PulseConverter, pulse, object).toWaveform();
+        }
+        else if (ctx->isInstance(pulse, "arrus.ops.us4r.Waveform")) {
+            wf = ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Waveform, WaveformConverter, pulse, object);
+        }
+        else {
+            throw IllegalArgumentException("Unsupported pulse type");
+        }
         return TxConverter{
             ctx,
             ARRUS_MATLAB_GET_CPP_VECTOR(ctx, bool, aperture, object),
             ARRUS_MATLAB_GET_CPP_VECTOR(ctx, float, delays, object),
-            ARRUS_MATLAB_GET_CPP_OBJECT(ctx, Pulse, PulseConverter, pulse, object)
+            wf.value()
         };
     }
 
@@ -32,25 +44,25 @@ public:
         return TxConverter{ctx, object.getAperture(), object.getDelays(), object.getExcitation()};
     }
 
-    TxConverter(MexContext::SharedHandle ctx, std::vector<bool> aperture, std::vector<float> delays,
-                const Pulse &pulse)
-        : ctx(std::move(ctx)), aperture(std::move(aperture)), delays(std::move(delays)), pulse(pulse) {}
+    TxConverter(const MexContext::SharedHandle &ctx, const std::vector<bool> &aperture,
+                const std::vector<float> &delays, const Waveform &waveform)
+        : ctx(ctx), aperture(aperture), delays(delays), waveform(waveform) {}
 
-    [[nodiscard]] ::arrus::ops::us4r::Tx toCore() const { return ::arrus::ops::us4r::Tx{aperture, delays, pulse}; }
+    [[nodiscard]] ::arrus::ops::us4r::Tx toCore() const { return ::arrus::ops::us4r::Tx{aperture, delays, waveform}; }
 
     [[nodiscard]] ::matlab::data::Array toMatlab() const {
         return ctx->createObject(
             MATLAB_FULL_NAME,
             {ARRUS_MATLAB_GET_MATLAB_VECTOR_KV(ctx, bool, aperture),
              ARRUS_MATLAB_GET_MATLAB_VECTOR_KV(ctx, float, delays),
-             ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, Pulse, PulseConverter, pulse)});
+             ARRUS_MATLAB_GET_MATLAB_OBJECT_KV(ctx, Waveform, WaveformConverter, waveform)});
     }
 
 private:
     MexContext::SharedHandle ctx;
     std::vector<bool> aperture;
     std::vector<float> delays;
-    Pulse pulse;
+    Waveform waveform;
 };
 
 }// namespace arrus::matlab::ops::us4r

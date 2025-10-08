@@ -8,20 +8,24 @@ add_subdirectory(wrappers)
 ################################################################################
 set(SOURCE_FILES
     arrus/BModeDisplay.m
+    arrus/Color2VectorConverter.m
     arrus/CustomTxRxSequence.m
-    arrus/dopplerColorImaging.m
     arrus/downConversion.m
     arrus/DuplexDisplay.m
     arrus/mustBeDivisible.m
     arrus/Reconstruction.m
+    arrus/RemapToLogicalOrder.m
     arrus/scanConversion.m
     arrus/Us4R.m
+    arrus/Us4RHandle.m
+    arrus/WallClutterFilter.m
     arrus/wedgeParams.m
-    examples/Us4R_control_rawRfPwi.m
-    examples/Us4R_control_bmodePwi.m
-    examples/Us4R_control_bmodeDwi.m
-    examples/Us4R_control_bmodeLin.m
-    examples/Us4R_control_colorPwi.m
+    examples/bmodePwi.m
+    examples/bmodeDwi.m
+    examples/bmodeLin.m
+    examples/colorPwi.m
+    examples/rawRfPwi.m
+    examples/rawRfPwiCustomSequence.m
 )
 
 set(ARRUS_CUDA_MEX_SRC_FILES
@@ -98,7 +102,7 @@ else()
 endif()
 
 
-add_custom_target(matlab_toolbox ALL DEPENDS ${TIMESTAMP})
+add_custom_target(matlab_toolbox ALL DEPENDS ${TIMESTAMP} arrus_mex_object_wrapper)
 
 set_target_properties(
     matlab_toolbox

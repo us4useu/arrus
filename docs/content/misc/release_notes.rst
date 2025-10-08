@@ -1,8 +1,85 @@
 Release notes
 =============
 
+0.13.x
+------
+
+0.13.1
+
+- core (driver)
+
+    - Fixed minor memory leakage issues #M_US4R-42.
+    - C++ API: made RxSettings backward compatible #M_US4R-44.
+    - Fixed nullptr_t namespace in UniqueHandle class (C++ API) #ARRUS-496.
+
+- MATLAB API:
+
+    - Exposed Session.setParameters method #ARRUS-492.
+
+0.13.0
+
+- core (driver)
+
+    - Accelerated HV voltage setting by storing HVPS coefficients in the flash memory on OEM+. To take advantage of this, calibration must be performed using Us4OEMStatus; otherwise, there will be no acceleration. #M_OEM-155
+    - Added the Us4R::setSubsequences(slices, sris) method. #M_US4R-36.
+    - Changed the behavior of ``Us4R::setSubsequence`` and ``Us4R::setSubsequences``: from now on, start and end define the range [start, end) (right-open). Previously, it was [start, end] (right-closed). #M_US4R-36.
+    - Increased HVP1/HVM1 standby current limits from 50 mA to 100 mA #M_OEM-203.
+
+- Python API:
+
+    - Provided arrus.io package for const metadata backward compatibility (up to ARRUS 0.9.0 and 0.10.0), see `arrus.io.read_metadata` function #ARRUS-488.
+
+0.12.x
+------
+
+0.12.0
+
+- core (driver):
+
+    - Exposed the possibility to program custom TX waveforms. #US4R-507, #M_OEM-188.
+    - Added support for us4OEM+ HF. #US4R-588, #US4R-576, #US4R-424, #M_OEM-142, #M_OEM-174, #M_US4R-9, #US4R-651, #US4R-644.
+    - Removed in the us4OEM+ HVPS HV1 < HV0 PWM constraint #M_OEM-169.
+    - Exposed digital backplane firmware version number in the API #M_US4R-24.
+    - Exposed DDC digital gain parameter (after the decimation filter) #M_OEM-153.
+    - Changed the delay between TX and RX, now the OEM pulsers will change to OEM after all channels of the given pulser finish transmitting (changed RX_DELAY_MODE to all TX mode) #M_US4R-29.
+    - Exposed the possibility to set VCAT (setVCat method) #US4R-656.
+    - Implemented 10V voltage difference limit on HV rails for push pulses, #M_US4R-35.
+    - Added support for DBARLitePCIE firmware 1.2.1.0.
+    - Changed HVPS voltage calibration tolerance to 1.0V #M_OEM-154.
+    - Added support for LNA HPF for AFE58JD18 and AFE58JD48 #US4R-424.
+    - Reduced minimum TX timeout value to 2 us #M_OEM-204.
+
+- Python API:
+
+    - Added support for Python 3.11 and Python 3.12 #ARRUS-489.
+    - Exposed the possibility to program custom TX waveforms #US4R-507, #M_OEM-188.
+    - Exposed digital backplane firmware version number in the API #M_US4R-24.
+    - Exposed HPF setters #M_US4R-358.
+
+- MATLAB API:
+
+    - Exposed the possibility to program custom TX waveforms #US4R-507, #M_OEM-188.
+    - Fixed timestamp calculations for Color Doppler #ARRUS-474.
+
+
 0.11.x
 -----
+
+
+0.11.3
+
+- core (driver):
+
+    - Added support for long (12 characters) OEM+ serial numbers #M_OEM-190.
+
+
+0.11.2
+
+- core (driver):
+
+    - Fixed start/stop/start scheme call sequence for the legacy OEM devices, #US4R-726.
+    - Fixed an issue where a firmware-software mismatch could cause the computer to restart on some setups with PCIe connections, #M_OEM-178.
+
 
 0.11.1
 

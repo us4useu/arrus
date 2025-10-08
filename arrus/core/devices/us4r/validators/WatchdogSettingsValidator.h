@@ -3,11 +3,6 @@
 
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/us4r/external/ius4oem/LNAGainValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/PGAGainValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/ActiveTerminationValueMap.h"
-#include "arrus/core/devices/us4r/external/ius4oem/LPFCutoffValueMap.h"
 #include "arrus/core/common/validation.h"
 
 namespace arrus::devices {

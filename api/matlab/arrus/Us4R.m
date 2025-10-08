@@ -1,16 +1,18 @@
 classdef Us4R < handle
     % A handle to the Us4R system. 
     %
-    % This class provides functions to configure the system and perform
+    % This class provides functions to configure the system and perform \
     % data acquisition using the Us4R.
-    % 
-    % :param configFile: name of the prototxt file containing setup information.
-    % :param logTime: set to true if you want to display acquisition and reconstruction time. Optional.
+    
+    properties (Constant)
+        instance = Us4RHandle
+    end
 
-    properties(Access = private)
+    properties (Access = private)
         sys
         seq
         subSeq
+        preset
         rec
         us4r
         session
@@ -18,146 +20,269 @@ classdef Us4R < handle
         logTime
     end
     
-    methods
+    methods (Static)
 
-        function obj = Us4R(varargin)
+        function obj = create(varargin)
+            % Creates a handle to the Us4R system. 
+            % 
+            % Syntax:
+            % obj = Us4R.create(name, value, ..., name, value)
+            % 
+            % All inputs are organized in name-value pairs.
+            % 
+            % :param configFile: Name of the prototxt file that contains \
+            %   the setup information. String scalar or character vector. \
+            %   Obligatory input.
+            % :param logTime: Enables display of acquisition/processing \
+            %   time. Logical scalar. Optional.
+            % 
+            % :return: Us4R handle.
             
-            % Input parser
-            paramsParser = inputParser;
-            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
-            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
-            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
-            parse(paramsParser, varargin{:});
-            
-            configFile   = paramsParser.Results.configFile;
-            interfEnable = paramsParser.Results.interfEnable;
-            logTime      = paramsParser.Results.logTime;
-            
-            if isempty(configFile) || ~isfile(configFile)
-                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
-                if filterIndex	== 0
-                    obj = [];
-                    return;
-                else
-                    configFile = [pathName fileName];
+            instance = Us4R.instance;
+
+            if ~isempty(instance.handle) && ...
+               isvalid(instance.handle) && ...
+               instance.handle.getSessionState() ~= "CLOSED"
+
+                warning('There is an Us4R instance with an open session which needs to be closed.');
+
+                if instance.handle.getSessionState() == "STARTED"
+                    instance.handle.stopScheme();
                 end
-            end
-            
-            % Initialization
-            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
-            
-            obj.session = arrus.session.Session(configFile);
-            obj.us4r = obj.session.getDevice("/Us4R:0");
-            
-            obj.sys.nChArius = 32;
-            obj.sys.rxSampFreq = 65e6;
-            obj.sys.maxSeqLength = 2^14;
-            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
-            obj.sys.tgcOffset = 359; % [samp] includes tgcTriggerOffset=211 and tgcHalfResponseOffset=148;
-            obj.sys.tgcInterv = 153; % [samp]
-            obj.sys.reloadTime = 43e-6; % [s]
-            obj.logTime = logTime;
-            
-            % Check if valid GPU is available
-            isGpuAvailable = ~isempty(ver('parallel')) ...
-                           && parallel.gpu.GPUDevice.isAvailable;
-            if ~isGpuAvailable
-                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
-            end
-            % Add location of the CUDA kernels
-            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
-
-            % Probe parameters
-            probe = obj.us4r.getProbeModel;
-            obj.sys.nElem = double(probe.nElements);
-            obj.sys.pitch = probe.pitch;
-            obj.sys.freqRange = double(probe.txFrequencyRange);
-            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
-            if ~isempty(probe.lens)
-                obj.sys.lensSize = probe.lens.thickness;
-                obj.sys.lensSos = probe.lens.speedOfSound;
-            else
-                obj.sys.lensSize = 0;
-                obj.sys.lensSos = nan;
+                instance.handle.closeSession();
             end
 
-            % Position (pos,x,z) and orientation (ang) of each probe element
-            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
-            if obj.sys.curvRadius == 0
-                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
-                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
-                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
-            else
-                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
-                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
-                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
-                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
-            end
-
-            obj.sys.interfEnable = interfEnable;
-            if obj.sys.interfEnable
-                wedge = wedgeParams();
-                obj.sys.interfSize = wedge.interfSize;
-                obj.sys.interfAng  = wedge.interfAng;
-                obj.sys.interfSos  = wedge.interfSos;
-
-                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
-
-                xElemNoInterf = obj.sys.xElem;
-                zElemNoInterf = obj.sys.zElem;
-                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
-                              + zElemNoInterf * sin(obj.sys.interfAng);
-                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
-                              - xElemNoInterf * sin(obj.sys.interfAng) ...
-                              - obj.sys.interfSize;
-            end
-
-            obj.sys.tangElem = tan(obj.sys.angElem);
-            
-            obj.sys.isHardwareProgrammed = false;
-
+            obj = Us4R(varargin{:});
+            instance.handle = obj;
         end
+
+        function clear()
+            % Clears Us4R object.
+
+            instance = Us4R.instance;
+            if ~isempty(instance.handle)
+                if isvalid(instance.handle)
+                    instance.handle.delete();
+                end
+                instance.handle = [];
+            end
+        end
+
+    end
+
+    methods
         
         function closeSession(obj)
+            % Closes session
+
             obj.session.close();
         end
         
+        function state = getSessionState(obj)
+            % Returns session state. 
+            % 
+            % :return: Us4R session state. 
+            
+            state = obj.session.getCurrentState();
+        end
+
         function stopScheme(obj)
+            % Stops running scheme
+
             obj.session.stopScheme();
+            obj.buffer.iFrame = 0;
         end
 
         function setMaximumPulseLength(obj,maxPulseLength)
-            obj.us4r.setMaximumPulseLength(maxPulseLength);
+            % Sets Tx pulse length limit.
+            % 
+            % WARNING: this function is for experienced users only. \
+            % It allows to change the safety limits which may lead \
+            % to system damage.
+            % 
+            % :param maxPulseLength: Max pulse length [s]. \
+            %   Numerical scalar.
+
+            warning('Functionality temporarily suspended.');
+%             obj.us4r.setMaximumPulseLength(maxPulseLength);
         end
 
         function nProbeElem = getNProbeElem(obj)
+            % Returns number of probe elements.
+            % 
+            % NOTE: the returned value comes from the prototxt config \
+            % file. If the probe model in the config file is different \
+            % from the one actuually attached to the system, the returned \
+            % value may be wrong.
+            % 
+            % :return: number of probe elements. 
+
             nProbeElem = obj.sys.nElem;
         end
 
-        function setLnaGain(obj,gain)
-            obj.us4r.setLnaGain(gain);
-        end
+        function fs = getSamplingFrequency(obj)
+            % Returns nominal sampling frequency of the system. The actual \
+            % sampling frequency may be reduced by using decimation.
+            % 
+            % :return: nominal sampling frequency of the system [Hz].
 
-        function setPgaGain(obj,gain)
-            obj.us4r.setPgaGain(gain);
+            fs = obj.us4r.getSamplingFrequency();
         end
 
         function setTgcCurve(varargin)
+            % Sets analog TGC (Time Gain Control) curve.
+            % 
+            % TGC curve here includes all the analog gains/attenuation in \
+            % the system, i.e. LNA gain, PGA gain, and VCAT attenuation. \
+            % However, the setTgcCurve method adjust the TGC curve by \
+            % modifying only the VCAT curve. It does not affect the \
+            % LNA gain and PGA gain. Any of these can be controlled \
+            % individually using dedicated methods. The setTgcCurve \
+            % method is for controlling the overall gain curve.
+            % 
+            % Syntax:
+            % Us4RObj.create(time,gain,applyCharacteristic)
+            % Us4RObj.create(gain,applyCharacteristic)
+            % 
+            % :param time: sampling time with respect to the "sample 0" [s]. \
+            %   Numerical vector. Optional, must be the same length as gain, \
+            %   default = hardware sampling time.
+            % :param gain: gain samples [dB]. Numerical vector. Obligatory.
+            % :param applyCharacteristic: If set to true, enables compensation \
+            %   of nonlinear TGC characteristic. Logical scalar. Obligatory.
+            % 
+            % The actual TGC curve is a result of a linear interpolation \
+            % of the provided curve to the hardware sampling points. If \
+            % curve extrapolation is needed, curve boundary samples are \
+            % used.
+            % 
+            % If the input curve contains values that cannot be achieved \
+            % for the current LNA/PGA settings, the TGC curve is modified \
+            % (saturated).
+            % 
+            % Setting time and gain as empty vectors disables analog TGC.
+
             obj = varargin{1};
             obj.us4r.setTgcCurve(varargin{2:end});
         end
 
-        function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming)
+        function setVcatCurve(obj,time,attenuation,applyCharacteristic)
+            % Sets analog VCAT (Voltage Controlled Attenuator) curve.
+            % 
+            % Syntax:
+            % Us4RObj.create(time,attenuation,applyCharacteristic)
+            % 
+            % :param time: sampling time with respect to the "sample 0" [s]. \
+            %   Numerical vector. Must be the same length as attenuation.
+            % :param attenuation: attenuation samples [dB]. Numerical vector.
+            % :param applyCharacteristic: If set to true, enables compensation \
+            %   of nonlinear VCAT characteristic. Logical scalar.
+            % 
+            % The actual VCAT curve is a result of a linear interpolation \
+            % of the provided curve to the hardware sampling points. If \
+            % curve extrapolation is needed, curve boundary samples are \
+            % used.
+            % 
+            % Setting time and attenuation as empty vectors disables analog VCAT.
+            
+            obj.us4r.setVcat(time, attenuation, applyCharacteristic);
+            
+        end
+
+        function setDtgcAttenuation(obj,attenuation)
+            % Sets digital TGC attenuation.
+            % 
+            % Digital TGC is an alternative for analog TGC. It is limited \
+            % to a number of constant but precise attenuation levels.
+            % 
+            % Analog TGC/VCAT has to be disabled prior to setting digital \
+            % TGC.
+            % 
+            % :param attenuation: attenuation level [dB]. Numerical scalar.
+            % 
+            % Setting attenuation empty disables digital TGC.
+
+            obj.us4r.setDtgcAttenuation(attenuation);
+        end
+
+        function setActiveTermination(obj,impedance)
+            % Sets active termination (input impedance).
+            % 
+            % :param impedance: input impedance [ohm]. Numerical scalar.
+            
+            obj.us4r.setActiveTermination(impedance);
+        end
+
+        function setLnaGain(obj,gain)
+            % Sets LNA (Low Noise Amplifier) gain.
+            % 
+            % :param gain: LNA gain [dB]. Numerical scalar.
+            
+            obj.us4r.setLnaGain(gain);
+
+            obj.sys.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
+        end
+
+        function setPgaGain(obj,gain)
+            % Sets PGA (Programmable Gain Amplifier) gain.
+            % 
+            % :param gain: PGA gain [dB]. Numerical scalar.
+
+            obj.us4r.setPgaGain(gain);
+            
+            obj.sys.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
+        end
+
+        function setLpfCutoff(obj,frequency)
+            % Sets cutoff frequency of analog low-pass filter (aLPF).
+            % 
+            % :param frequency: aLPF cutoff frequency [Hz]. Numerical scalar.
+
+            obj.us4r.setLpfCutoff(frequency);
+        end
+
+        function disableLnaHpf(obj)
+            % Disables analog high-pass filter (aHPF).
+
+            obj.us4r.disableLnaHpf();
+        end
+
+        function setLnaHpfCornerFrequency(obj,frequency)
+            % Sets corner frequency of analog high-pass filter (aHPF).
+            % 
+            % :param frequency: aHPF corner frequency [Hz]. Numerical scalar.
+
+            obj.us4r.setLnaHpfCornerFrequency(frequency);
+        end
+
+        function disableAdcHpf(obj)
+            % Disables digital high-pass filter (dHPF).
+
+            obj.us4r.disableAdcHpf();
+        end
+
+        function setAdcHpfCornerFrequency(obj,frequency)
+            % Sets corner frequency of digital high-pass filter (dHPF).
+            % 
+            % :param frequency: dHPF corner frequency [Hz]. Numerical scalar.
+
+            obj.us4r.setAdcHpfCornerFrequency(frequency);
+        end
+
+        function upload(obj, sequenceOperation, reconstructOperation, enableHardwareProgramming, preset)
             % Uploads operations to the us4R system.
             %
-            % Supports :class:`CustomTxRxSequence`
-            % and :class:`Reconstruction` implementations.
-            %
-            % :param sequenceOperation: TX/RX sequence to perform on the us4R system
-            % :param reconstructOperation: reconstruction to perform with the collected data
-            % :param enableHardwareProgramming: determines if the hardware
-            % is programmed or not (optional, default = true)
-            % :returns: updated Us4R object
+            % :param sequenceOperation: Tx/Rx sequence to perform on the \
+            %   us4R system. :class:`CustomTxRxSequence` scalar.
+            % :param reconstructOperation: reconstruction to perform with \
+            %   the collected data. :class:`Reconstruction` scalar.
+            % :param enableHardwareProgramming: determines if the \
+            %   hardware is programmed or not. Logical scalar. Optional, \
+            %   default = true.
+            % :param preset: set of system presets. :class:`CustomPreset` \
+            %   vector.
+            % 
+            % :returns: updated Us4R object.
             
             if ~isa(sequenceOperation,'CustomTxRxSequence')
                 error("ARRUS:IllegalArgument", ...
@@ -172,6 +297,11 @@ classdef Us4R < handle
             if nargin>=3 && ~isempty(reconstructOperation) && ~isa(reconstructOperation,'Reconstruction')
                 error("ARRUS:IllegalArgument", ...
                       'Invalid reconstruction object, must be Reconstruction');
+            end
+
+            if nargin>=5 && ~isempty(preset) && ~isa(preset,'CustomPreset')
+                error("ARRUS:IllegalArgument", ...
+                      'Invalid preset object, must be CustomPreset');
             end
             
             obj.setSeqParams(...
@@ -199,10 +329,16 @@ classdef Us4R < handle
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
-                'bufferSize', sequenceOperation.bufferSize);
+                'bufferSize', sequenceOperation.bufferSize, ...
+                'txWaveform', sequenceOperation.txWaveform);
 
             obj.seq.seqLim = [1 numel(obj.seq.txAng)];
             
+            % Custom presets
+            if nargin>=5
+                obj.preset = preset;
+            end
+
             % Program hardware
             if nargin<4 || enableHardwareProgramming
                 obj.programHW;
@@ -212,6 +348,7 @@ classdef Us4R < handle
                 error('Support for enableHardwareProgramming=false is temporarily suspended');
             end
             
+            % Reconstruction
             if nargin<3 || isempty(reconstructOperation)
                 obj.rec.enable = false;
                 return;
@@ -250,14 +387,15 @@ classdef Us4R < handle
         end
 
         function uploadSequence(obj, sequenceOperation, enableHardwareProgramming)
-            % Uploads operations to the us4R system.
+            % Uploads multiple sequences to the us4R system.
             %
-            % Supports :class:`CustomTxRxSequence` implementation.
-            %
-            % :param sequenceOperation: TX/RX sequence to perform on the us4R system
-            % :param enableHardwareProgramming: determines if the hardware
-            % is programmed or not (optional, default = true)
-            % :returns: updated Us4R object
+            % :param sequenceOperation: Tx/Rx sequence to perform on the \
+            %   us4R system. :class:`CustomTxRxSequence` vector.
+            % :param enableHardwareProgramming: determines if the \
+            %   hardware is programmed or not. Logical scalar. Optional, \
+            %   default = true.
+            % 
+            % :returns: updated Us4R object.
 
             if ~isa(sequenceOperation,'CustomTxRxSequence')
                 error("ARRUS:IllegalArgument", ...
@@ -291,7 +429,8 @@ classdef Us4R < handle
                 'txInvert', sequenceOperation.txInvert, ...
                 'workMode', sequenceOperation.workMode, ...
                 'sri', sequenceOperation.sri, ...
-                'bufferSize', sequenceOperation.bufferSize);
+                'bufferSize', sequenceOperation.bufferSize, ...
+                'txWaveform', sequenceOperation.txWaveform);
 
             % Program hardware
             if nargin<3 || enableHardwareProgramming
@@ -305,6 +444,18 @@ classdef Us4R < handle
         end
 
         function selectSequence(obj, seqId, sri)
+            % Selects from pre-uploaded sequences the one to be executed.
+            %
+            % :param seqId: Tx/Rx sequence ID (index of the selected \
+            %   sequence in the vector of sequences passed to the \
+            %   uploadSequence method, counting from 1). Numerical scalar.
+            % :param sri: sequence repeting interval [s]. Numerical scalar. \
+            %   Optional, default = as defined in the selected sequence.
+            % 
+            % :returns: updated Us4R object.
+            % 
+            % NOTE: selecting sequence erases the information on the \
+            % previously uploaded reconstruction parameters. 
 
             if ~obj.sys.isHardwareProgrammed
                 error('Sequences must be uploaded prior to selecting one of them.');
@@ -324,11 +475,12 @@ classdef Us4R < handle
         end
 
         function setReconstruction(obj, reconstructOperation)
-            % Sets the reconstruction parameters.
+            % Uploads reconstruction parameters.
             %
-            % Supports :class:`Reconstruction` implementations.
-            %
-            % :param reconstructOperation: reconstruction to perform with the collected data
+            % :param reconstructOperation: reconstruction to perform with \
+            %   the collected data. :class:`Reconstruction` scalar.
+            % 
+            % :returns: updated Us4R object.
 
             if ~isa(reconstructOperation,'Reconstruction')
                 error("ARRUS:IllegalArgument", ...
@@ -369,44 +521,28 @@ classdef Us4R < handle
         end
         
         function [sys, seq] = getImagingMetadata(obj)
+            % Returns the system and sequence metadata
+            % 
+            % :return: system metadata and sequence metadata.
+
             sys = obj.sys;
             seq = obj.seq;
         end
         
-        function [rf,img] = run(obj)
+        function [raw, img, metadata] = run(obj)
             % Runs uploaded operations in the us4R system.
             %
-            % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
-            % implementations.
-            %
-            % :returns: RF frame and reconstructed image (if :class:`Reconstruction` operation was uploaded)
+            % :returns: raw data frame, reconstructed image \
+            %   (if :class:`Reconstruction` operation was uploaded), \
+            %   and frame metadata.
             
-            [rf, ~] = obj.execSequence;
-            obj.session.stopScheme();
+            [raw, metadata] = obj.execSequence;
+            obj.stopScheme;
 
-            rf = obj.rawDataReorganization(rf);
-
-            if obj.rec.enable
-                img = obj.execReconstr(rf(:,:,:,1));
-            else
-                img = [];
-            end
-        end
-        
-        function [rf, img, metadata] = runWithMetadata(obj)
-            % Runs uploaded operations in the us4R system.
-            %
-            % Supports :class:`CustomTxRxSequence` and :class:`Reconstruction`
-            % implementations.
-            %
-            % :returns: RF frame, reconstructed image (if :class:`Reconstruction` operation was uploaded) and metadata located in the first sample of the master module
-            [rf, metadata] = obj.execSequence;
-            obj.session.stopScheme();
-
-            rf = obj.rawDataReorganization(rf);
+            raw = obj.rawDataReorganization(raw);
 
             if obj.rec.enable
-                img = obj.execReconstr(rf(:,:,:,1));
+                img = obj.execReconstr(raw(:,:,:,1));
             else
                 img = [];
             end
@@ -414,9 +550,6 @@ classdef Us4R < handle
         
         function [rawBuffer, imgBuffer, sriBuffer] = runLoop(obj, isContinue, callback, varargin)
             % Runs the uploaded operations in a loop.
-            % 
-            % Supports :class:`CustomTxRxSequence` and \
-            % :class:`Reconstruction` implementations.
             %
             % :param isContinue: should the system continue executing \
             %   the op? Takes no parameters and returns a boolean value.
@@ -424,14 +557,14 @@ classdef Us4R < handle
             %   operation. Should take one parameter, which will be feed with \
             %   the output of the executed op.
             % :param bufferType: type of data stored in the cineloop buffer, \
-            %   can be "none", "raw", "img", or "all" (optional, default="none").
-            % :param bufferMode: buffer mode of operation. Can be "conc" \
+            %   can be "none", "raw", "img", or "all". Optional, default="none".
+            % :param bufferMode: mode of buffer operation. Can be "conc" \
             %   for concurrent or "subs" for subsequent operation with the \
             %   callback function. For "conc" the buffer is used as long as \
             %   isContinue is true. For "subs" the buffer is used as soon as \
             %   isContinue is false until the buffer is full.
             % :param bufferSize: size of the cineloop buffer as a number \
-            %   of sequence executions (optional, default=1).
+            %   of sequence executions. Optional, default=1.
             %
             % :returns: buffers containing raw data (rawBuffer), image data \
             %   (imgBuffer), and sequence repetition intervals (sriBuffer).
@@ -496,21 +629,16 @@ classdef Us4R < handle
 
             % Main loop (using buffers if bufferMode is "conc")
             i = 0;
-            tStampPrev = nan;
             while(isContinue())
                 i = i + 1;
                 
                 tic;
-                [rf, meta] = obj.execSequence;
+                rf = obj.execSequence;
                 acqTime = toc;
                 
                 tic;
                 rf = obj.rawDataReorganization(rf);
                 reorgTime = toc;
-
-                tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                sri = tStampCurr - tStampPrev;
-                tStampPrev = tStampCurr;
 
                 if obj.rec.enable
                     tic;
@@ -529,7 +657,7 @@ classdef Us4R < handle
                     if exist('recTime', 'var')
                         disp(['Rec.  time = ' num2str(recTime, '%5.3f') ' s']);
                     end
-                    disp(['Frame rate = ' num2str(1/sri, '%5.1f') ' fps']);
+                    disp(['Frame rate = ' num2str(1/obj.buffer.sri, '%5.1f') ' fps']);
                     disp('--------------------');
                 end
 
@@ -545,12 +673,12 @@ classdef Us4R < handle
                         imgBuffer(:,:,I,:) = img;
                     end
 
-                    sriBuffer(I) = sri;
+                    sriBuffer(I) = obj.buffer.sri;
                 end
             end
 
             if concBufferEnable
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Output buffer unwinding
@@ -562,13 +690,11 @@ classdef Us4R < handle
             else
                 % Second loop (acquisition of raw data for "subs" bufferMode)
                 for i=1:bufferSize
-                    [raw0Buffer(:,:,i), meta] = obj.execSequence;
+                    raw0Buffer(:,:,i) = obj.execSequence;
 
-                    tStampCurr = bin2dec(reshape(dec2bin(meta([8 7 6 5]),16).',1,64)) / obj.sys.rxSampFreq; % [s]
-                    sriBuffer(i) = tStampCurr - tStampPrev;
-                    tStampPrev = tStampCurr;
+                    sriBuffer(i) = obj.buffer.sri;
                 end
-                obj.session.stopScheme();
+                obj.stopScheme;
                 disp('runLoop: acquisition done');
 
                 % Postprocessing loop
@@ -588,6 +714,8 @@ classdef Us4R < handle
         end
         
         function plotRawRf(obj,varargin)
+            % Displays a plot of raw RF data.
+            % 
             % :param selectedLines: vector indicating the rf lines to be displayed. \
             %   Rf lines are numbered as follows: 1:rxApertureSize*nTx*nRep. \
             %   (optional name-value argument)
@@ -662,6 +790,8 @@ classdef Us4R < handle
                         error('Unsupported LNA gain value.');
                 end
                 
+                % WARNING: tgcCurve is no longer clipped in MATLAB API,
+                % this may lead to wrong amplitude limit correction here.
                 tgcCurveResamp = interp1(obj.subSeq.tgcPoints, obj.subSeq.tgcCurve, ...
                                          (obj.subSeq.startSample + (1:nSamp) - 1)*obj.subSeq.dec, "linear", nan);
                 ampUndistortLim = voltLim * 10.^(tgcCurveResamp/20) * obj.sys.adcVolt2Lsb;
@@ -672,7 +802,8 @@ classdef Us4R < handle
             end
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 data = gather(data(:,selectedLines));
                 if boundsEnable
                     data = [min(data,[],2), max(data,[],2)];
@@ -692,9 +823,13 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.stopScheme;
+
         end
         
         function imageRawRf(obj,varargin)
+            % Displays a color-coded image of raw RF data.
+            % 
             % :param selectedLines: vector indicating the rf lines to be displayed. \
             %   Rf lines are numbered as follows: 1:rxApertureSize*nTx*nRep. \
             %   (optional name-value argument)
@@ -742,7 +877,8 @@ classdef Us4R < handle
             colorbar;
             
             while(ishghandle(hFig))
-                data = obj.run;
+                data = obj.execSequence;
+                data = obj.rawDataReorganization(data);
                 try
                     set(hDisp, 'CData', gather(data(:,selectedLines)));
                     drawnow limitrate;
@@ -755,14 +891,139 @@ classdef Us4R < handle
                     end
                 end
             end
+            obj.stopScheme;
+
         end
         
-        function [img] = reconstructOffline(obj,rfRaw)
-            img = obj.execReconstr(rfRaw);
+        function [img] = reconstructOffline(obj,raw)
+            % Performs offline reconstruction of raw data. The Us4R \
+            % system should be prepared as if the data were to be \
+            % collected and processed online.
+            % 
+            % :param raw: raw data.
+            
+            img = obj.execReconstr(raw);
+        end
+
+        function delete(obj)
+            % Deletes the Us4R object
+            
+            if ~isempty(obj.session)
+                if obj.getSessionState()=="STARTED"
+                    obj.stopScheme();
+                end
+                if obj.getSessionState()=="STOPPED"
+                    obj.closeSession();
+                end
+            end
         end
     end
     
     methods(Access = private)
+
+        function obj = Us4R(varargin)
+
+            % Input parser
+            paramsParser = inputParser;
+            addParameter(paramsParser, 'configFile', [], @(x) validateattributes(x, {'char','string'}, {'scalartext'}, 'Us4R', 'configFile'));
+            addParameter(paramsParser, 'interfEnable', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'interfEnable'));
+            addParameter(paramsParser, 'logTime', false, @(x) validateattributes(x, {'logical'}, {'scalar'}, 'Us4R', 'logTime'));
+            parse(paramsParser, varargin{:});
+
+            configFile   = paramsParser.Results.configFile;
+            interfEnable = paramsParser.Results.interfEnable;
+            logTime      = paramsParser.Results.logTime;
+
+            if isempty(configFile) || ~isfile(configFile)
+                [fileName,pathName,filterIndex] = uigetfile('*.prototxt','Select prototxt config file');
+                if filterIndex	== 0
+                    obj = [];
+                    return;
+                else
+                    configFile = [pathName fileName];
+                end
+            end
+
+            % Initialization
+            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
+
+            obj.session = arrus.session.Session(configFile);
+            obj.us4r = obj.session.getDevice("/Us4R:0");
+
+            obj.sys.nChArius = 32;
+            obj.sys.rxSampFreq = obj.us4r.getSamplingFrequency();
+            obj.sys.maxSeqLength = 2^14;
+            obj.sys.adcVolt2Lsb = (2^16)/2; % 16-bit coding of 2Vpp range
+            obj.sys.reloadTime = 43e-6; % [s]
+            obj.logTime = logTime;
+            if obj.sys.rxSampFreq == 65e6
+                obj.sys.vcatRange = 40;
+            elseif obj.sys.rxSampFreq == 120e6
+                obj.sys.vcatRange = 36;
+            else
+                error('Arrus does not recognize AFE model');
+            end
+            obj.sys.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-obj.sys.vcatRange 0];
+
+            % Check if valid GPU is available
+            isGpuAvailable = ~isempty(ver('parallel')) ...
+                           && parallel.gpu.GPUDevice.isAvailable;
+            if ~isGpuAvailable
+                error('Arrus requires Parallel Computing Toolbox and a supported GPU device');
+            end
+            % Add location of the CUDA kernels
+            addpath([fileparts(mfilename('fullpath')) '/mexcuda']);
+
+            % Probe parameters
+            probe = obj.us4r.getProbeModel;
+            obj.sys.nElem = double(probe.nElements);
+            obj.sys.pitch = probe.pitch;
+            obj.sys.freqRange = double(probe.txFrequencyRange);
+            obj.sys.curvRadius = -probe.curvatureRadius; % (-/+ for convex/concave probes)
+            if ~isempty(probe.lens)
+                obj.sys.lensSize = probe.lens.thickness;
+                obj.sys.lensSos = probe.lens.speedOfSound;
+            else
+                obj.sys.lensSize = 0;
+                obj.sys.lensSos = nan;
+            end
+
+            % Position (pos,x,z) and orientation (ang) of each probe element
+            obj.sys.posElem = (-(obj.sys.nElem-1)/2 : (obj.sys.nElem-1)/2) * obj.sys.pitch; % [m] (1 x nElem) position of probe elements along the probes surface
+            if obj.sys.curvRadius == 0
+                obj.sys.angElem = zeros(1,obj.sys.nElem); % [rad] (1 x nElem) orientation of probe elements
+                obj.sys.xElem = obj.sys.posElem; % [m] (1 x nElem) z-position of probe elements
+                obj.sys.zElem = zeros(1,obj.sys.nElem);% [m] (1 x nElem) x-position of probe elements
+            else
+                obj.sys.angElem = obj.sys.posElem / -obj.sys.curvRadius;
+                obj.sys.xElem = -obj.sys.curvRadius * sin(obj.sys.angElem);
+                obj.sys.zElem = -obj.sys.curvRadius * cos(obj.sys.angElem);
+                obj.sys.zElem = obj.sys.zElem - min(obj.sys.zElem);
+            end
+
+            obj.sys.interfEnable = interfEnable;
+            if obj.sys.interfEnable
+                wedge = wedgeParams();
+                obj.sys.interfSize = wedge.interfSize;
+                obj.sys.interfAng  = wedge.interfAng;
+                obj.sys.interfSos  = wedge.interfSos;
+
+                obj.sys.angElem = obj.sys.angElem + obj.sys.interfAng;
+
+                xElemNoInterf = obj.sys.xElem;
+                zElemNoInterf = obj.sys.zElem;
+                obj.sys.xElem = xElemNoInterf * cos(obj.sys.interfAng) ...
+                              + zElemNoInterf * sin(obj.sys.interfAng);
+                obj.sys.zElem = zElemNoInterf * cos(obj.sys.interfAng) ...
+                              - xElemNoInterf * sin(obj.sys.interfAng) ...
+                              - obj.sys.interfSize;
+            end
+
+            obj.sys.tangElem = tan(obj.sys.angElem);
+
+            obj.sys.isHardwareProgrammed = false;
+
+        end
 
         function seqOut = mergeSequences(obj,seqIn)
 
@@ -795,7 +1056,14 @@ classdef Us4R < handle
                     end
                 end
             end
-
+            
+            % txWaveform is not supported here yet
+            for iSeq=1:nSeq
+                if ~isempty(seqIn(iSeq).txWaveform)
+                    error("mergeSequences: txWaveform cannot be used in multi-sequence approach");
+                end
+            end
+            
             % Some of the parameters not included in the above validation
             % must be defined in a "one or the other" mode. Checking if the
             % same fields are empty is enough.
@@ -871,7 +1139,8 @@ classdef Us4R < handle
                                 'txInvert',         'txInvert'; ...
                                 'workMode',         'workMode'; ...
                                 'sri',              'sri'; ...
-                                'bufferSize',       'bufferSize'};
+                                'bufferSize',       'bufferSize';...
+                                'txWaveform',       'txWaveform'};
 
             for iPar=1:size(seqParamMapping,1)
                 obj.seq.(seqParamMapping{iPar,2}) = [];
@@ -936,7 +1205,7 @@ classdef Us4R < handle
                 % rxNSamples (nSamp) must be coherent with rxDepthRange
                 nSamp = sampRange(2) - sampRange(1) + 1;
                 
-                % nSamp must be dividible by 64 (for now)
+                % nSamp must be divisible by 64 (for now)
                 nSamp = 64*ceil(nSamp/64);
                 obj.seq.nSamp = nSamp;
                 
@@ -956,20 +1225,18 @@ classdef Us4R < handle
             end
             
             %% TGC
-            obj.seq.tgcLim = double(obj.us4r.getLnaGain + obj.us4r.getPgaGain) + [-40 0];
-            
             % Default TGC start level
             if isempty(obj.seq.tgcStart)
-                obj.seq.tgcStart = obj.seq.tgcLim(1);
+                obj.seq.tgcStart = obj.sys.tgcLim(1);
             end
             
-            obj.seq.tgcPoints = obj.sys.tgcOffset : obj.sys.tgcInterv : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec; % [samp]
-            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope * obj.seq.tgcPoints / obj.sys.rxSampFreq * obj.seq.c;  % [dB]
-            if any(obj.seq.tgcCurve < obj.seq.tgcLim(1) | obj.seq.tgcCurve > obj.seq.tgcLim(2))
+            dt = 0.5e-6; % [s] arbitrary time step for the tgc curve
+            obj.seq.tgcPoints = 0 : dt : (obj.seq.startSample + obj.seq.nSamp - 1)*obj.seq.dec/obj.sys.rxSampFreq; % [s]
+            obj.seq.tgcCurve = obj.seq.tgcStart + obj.seq.tgcSlope*obj.seq.tgcPoints*obj.seq.c; % [dB]
+            if any(obj.seq.tgcCurve < obj.sys.tgcLim(1) | obj.seq.tgcCurve > obj.sys.tgcLim(2))
                 warning(['For LNA=' num2str(obj.us4r.getLnaGain) ...
                       'dB and PGA=' num2str(obj.us4r.getPgaGain) ...
-                      'dB, TGC values are limited to ' num2str(obj.seq.tgcLim(1)) '-'  num2str(obj.seq.tgcLim(2)) 'dB range.']);
-                obj.seq.tgcCurve = max(obj.seq.tgcLim(1),min(obj.seq.tgcLim(2),obj.seq.tgcCurve));
+                      'dB, TGC values must be limited to ' num2str(obj.sys.tgcLim(1)) '-'  num2str(obj.sys.tgcLim(2)) 'dB range.']);
             end
             
             %% Tx/Rx aperture missing parameters
@@ -995,20 +1262,27 @@ classdef Us4R < handle
                 error("setSeqParams: only SSTA scheme is supported when wedge interface is used");
             end
             
-            if obj.sys.interfEnable && (numel(unique(obj.seq.txFreq)) > 1 || numel(unique(obj.seq.txNPer)) > 1)
-                error("setSeqParams: txFrequency and txNPeriods must be constant when wedge interface is used");
+            if obj.sys.interfEnable
+                if ~isempty(obj.seq.txWaveform)
+                    error("setSeqParams: txWaveform cannot be used together with wedge interface");
+                elseif numel(unique(obj.seq.txFreq)) > 1 || numel(unique(obj.seq.txNPer)) > 1
+                    error("setSeqParams: txFrequency and txNPeriods must be constant when wedge interface is used");
+                end
             end
             
             %% Aperture masks & delays
             obj.calcTxRxApMask;
             obj.calcTxDelays;
-            
-            obj.seq.nSampOmit = (max(obj.seq.txDel) + obj.seq.txNPer./obj.seq.txFreq) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
-            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + obj.seq.txNPer./(2*obj.seq.txFreq);
+            if ~isempty(obj.seq.txWaveform)
+                txDuration = obj.seq.txWaveform.getTotalDuration();
+            else
+                txDuration = obj.seq.txNPer./obj.seq.txFreq;
+            end
+            obj.seq.nSampOmit = (max(obj.seq.txDel) + txDuration) * obj.seq.rxSampFreq + ceil(50 / obj.seq.dec);
+            obj.seq.initDel   = - obj.seq.startSample/obj.seq.rxSampFreq + obj.seq.txDelCent + txDuration / 2;
             if obj.sys.lensSize ~= 0
                 obj.seq.initDel = obj.seq.initDel + 2*obj.sys.lensSize/obj.sys.lensSos;
             end
-            
         end
 
         function setRecParams(obj,varargin)
@@ -1053,6 +1327,11 @@ classdef Us4R < handle
                 obj.rec.(recParamMapping{idPar,2}) = reshape(varargin{iPar*2},1,[]);
             end
             
+            %% Check if txWaveform is used - it is not supported in reconstruction
+            if ~isempty(obj.subSeq.txWaveform)
+                error("setRecParams: reconstruction cannot be performed when txWaveform is used");
+            end
+
             %% Software DDC parameters
             if isempty(obj.rec.swDdcEnable)
                 obj.rec.swDdcEnable = ~obj.subSeq.hwDdcEnable;
@@ -1097,6 +1376,11 @@ classdef Us4R < handle
                 obj.rec.rGrid = t * obj.rec.sos / 2;
             end
             
+            %% Validate color/vector modes
+            if obj.rec.colorEnable && obj.rec.vectorEnable
+                error("setRecParams: simultaneous color & vector operation is not supported");
+            end
+
             %% Validate frames selection
             if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.subSeq.nTx)
                 error("setRecParams: bmodeFrames refers to nonexistent transmission id");
@@ -1119,6 +1403,26 @@ classdef Us4R < handle
                 obj.rec.bmodeFrames = 1:obj.subSeq.nTx;
             end
             
+            %% Validate colorFrames
+            if obj.rec.colorEnable
+                if numel(unique(diff(obj.rec.colorFrames))) > 1
+                    error('Doppler is sampled at uneven rate within the sequence.');
+                elseif (obj.rec.colorFrames(2) - obj.rec.colorFrames(1) ~= ...
+                        obj.rec.colorFrames(1) - obj.rec.colorFrames(end) + obj.subSeq.nTx) && ...
+                       any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'}))
+                    warning('Doppler sampling rates within a batch and between subsequent batches are different.');
+                    obj.rec.colorBatchesConsistent = false;
+                else
+                    obj.rec.colorBatchesConsistent = true;
+                end
+            end
+
+            %% Validate vectorFrames
+            if obj.rec.vectorEnable
+                % validation needed
+                obj.rec.vectorBatchesConsistent = true;
+            end
+
             %% Validate/adjust size of the RxTangLims
             obj.rec.bmodeRxTangLim = reshape(obj.rec.bmodeRxTangLim,[],2);
             if obj.rec.bmodeEnable
@@ -1160,8 +1464,18 @@ classdef Us4R < handle
             obj.rec.zSize	= length(obj.rec.zGrid);
             obj.rec.xSize	= length(obj.rec.xGrid);
             
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                [~,obj.rec.wcFiltInitCoeff] = filter(obj.rec.wcFiltB,obj.rec.wcFiltA,ones(1000,1));
+            if obj.rec.colorEnable
+                obj.rec.wcf = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+            end
+
+            if obj.rec.vectorEnable
+                obj.rec.wcf0 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+                obj.rec.wcf1 = WallClutterFilter(obj.rec.wcFiltB,obj.rec.wcFiltA,[obj.rec.zSize obj.rec.xSize],'step');
+
+                obj.rec.color2vector = Color2VectorConverter(obj.subSeq.txAng(obj.rec.vect0Frames(1)), ...
+                                                             obj.subSeq.txAng(obj.rec.vect1Frames(1)), ...
+                                                             atan(mean(obj.rec.vect0RxTangLim(1,:))), ...
+                                                             atan(mean(obj.rec.vect1RxTangLim(1,:))), 3);
             end
             
             %% Set data types and move data to GPU memory
@@ -1185,16 +1499,10 @@ classdef Us4R < handle
             obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
             obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
             obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
-            obj.rec.wcFiltB        = gpuArray(single(obj.rec.wcFiltB));
-            obj.rec.wcFiltA        = gpuArray(single(obj.rec.wcFiltA));
             obj.subSeq.rxSampFreq  =          single(obj.subSeq.rxSampFreq);
             obj.rec.sos            =          single(obj.rec.sos);
             obj.subSeq.startSample =          single(obj.subSeq.startSample);
             obj.subSeq.txDelCent   =          single(obj.subSeq.txDelCent);
-
-            if (obj.rec.colorEnable || obj.rec.vectorEnable) && ~isempty(obj.rec.wcFiltA)
-                obj.rec.wcFiltInitCoeff = gpuArray(single(obj.rec.wcFiltInitCoeff)).';
-            end
 
             if ~obj.rec.gridModeEnable
                 obj.rec.rGrid      = gpuArray(single(obj.rec.rGrid));
@@ -1203,7 +1511,7 @@ classdef Us4R < handle
             end
 
         end
-        
+
         function calcTxRxApMask(obj)
             % calcTxRxApMask appends the following fields to the in/out obj:
             % obj.seq.txApOrig      - [element] (1 x nTx) number of probe element being the origin of the tx aperture
@@ -1288,7 +1596,7 @@ classdef Us4R < handle
             obj.seq.txDelCent	= txDelCent;
 
         end
-        
+
         function programHW(obj)
             
             import arrus.ops.us4r.*;
@@ -1302,12 +1610,25 @@ classdef Us4R < handle
             % Tx/Rx sequence
             nTx = obj.seq.nTx;
             for iTx=1:nTx
-                pulse = arrus.ops.us4r.Pulse('amplitudeLevel', obj.seq.txVoltageId(iTx), 'centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                if ~isempty(obj.seq.txWaveform)
+                    pulse = obj.seq.txWaveform;
+                else
+                    pulse = arrus.ops.us4r.Pulse('amplitudeLevel', obj.seq.txVoltageId(iTx), 'centerFrequency', obj.seq.txFreq(iTx), "nPeriods", obj.seq.txNPer(iTx), "inverse", obj.seq.txInvert(iTx));
+                end
                 txObj = Tx("aperture", obj.seq.txApMask(:,iTx).', 'delays', obj.seq.txDel(:,iTx).', "pulse", pulse);
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
                 txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
             end
-            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", obj.seq.tgcCurve, "sri", obj.seq.sri);
+            txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", [], "sri", obj.seq.sri, "name", "TxRxSequence");
+            
+            % Presets
+            if isempty(obj.preset)
+                constants = [];
+            else
+                for i=1:numel(obj.preset)
+                    constants(i) = arrus.framework.NdArray('value', obj.preset(i).txDelay, 'placement', "Us4R:0", 'name', "/TxRxSequence/txDelays:" + string(i-1));
+                end
+            end
             
             % Digital Down Conversion
             if obj.seq.hwDdcEnable
@@ -1323,6 +1644,7 @@ classdef Us4R < handle
             scheme = Scheme('txRxSequence', txrxSeq, ...
                             'workMode', obj.seq.workMode, ...
                             'digitalDownConversion', ddc, ...
+                            'constants', constants, ...
                             'rxBufferSize', obj.seq.bufferSize, ...
                             'outputBuffer', arrus.framework.DataBufferDef("type", "FIFO", "nElements", obj.seq.bufferSize));
             
@@ -1337,6 +1659,9 @@ classdef Us4R < handle
             % NOTE: the above outputs were used for calculation of data
             % reorganization addresses. Since subSequences are supported,
             % the corresponding data is obtained during setSubsequence call.
+
+            % time, value, applyCharacteristic
+            obj.us4r.setTgcCurve(obj.seq.tgcPoints, obj.seq.tgcCurve, 0, 1);
         end
 
         function selSubSeq(obj, seqId, sri)
@@ -1345,7 +1670,7 @@ classdef Us4R < handle
             seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
                                 'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
                                 'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
-                                'rxSampFreq', 'tgcLim', 'tgcPoints', 'tgcCurve', 'txDelCent'};
+                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent', 'txWaveform'};
             for iFld=1:numel(seqFieldsToCopy)
                 obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
             end
@@ -1357,8 +1682,12 @@ classdef Us4R < handle
                                 'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
                                 'nSampOmit', 'initDel'};
             for iFld=1:numel(seqFieldsToExtr)
-                obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
-                                                                                     : obj.seq.seqLim(seqId,2));
+                if isempty(obj.seq.(seqFieldsToExtr{iFld})) || isscalar(obj.seq.(seqFieldsToExtr{iFld}))
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld});
+                else
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
+                                                                                         : obj.seq.seqLim(seqId,2));
+                end
             end
 
             obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
@@ -1371,7 +1700,7 @@ classdef Us4R < handle
              obj.buffer.frameId, ...
              obj.buffer.channelId, ...
              obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
-                                                                   obj.seq.seqLim(seqId,2)-1, sri, 0);
+                                                                   obj.seq.seqLim(seqId,2)  , sri, 0);
 
             obj.buffer.framesOffset = obj.buffer.framesOffset.';
             obj.buffer.framesNumber = obj.buffer.framesNumber.';
@@ -1411,6 +1740,7 @@ classdef Us4R < handle
             end
 
             obj.buffer.iFrame = 0;
+            obj.buffer.tFrame = uint64(0);
             obj.rec.enable = false;
 
         end
@@ -1437,7 +1767,22 @@ classdef Us4R < handle
 
             metadata = zeros(nChan, nTrig0, 'int16');   % preallocate memory? Is metadata overlayed on the rf or does it move the rf? Delays!!!
             metadata(:, :) = rf(:, 1:nSamp:nTrig0*nSamp);
+            
+            tFrameNew = typecast(metadata(5:8), 'uint64'); % [clock cycles]
+            if obj.buffer.iFrame > 1
+                obj.buffer.sri = double(tFrameNew - obj.buffer.tFrame) / obj.sys.rxSampFreq; % [s]
+            else
+                obj.buffer.sri = nan;
+            end
+            obj.buffer.tFrame = tFrameNew;
 
+            % The below condition on sri is valid for simple Tx/Rx sequences,
+            % it may not work properly for a messed up sequence.
+            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 10e-9;
+
+            if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
+                warning('SYNC mode: sequence lag detected');
+            end
         end
         
         function img = execReconstr(obj,rfRaw)
@@ -1489,7 +1834,15 @@ classdef Us4R < handle
                 if obj.rec.colorEnable
                     rfBfrColor = obj.runCudaReconstruction(rfRaw,'color');
                     
-                    [color,power,turbu] = dopplerColorImaging(rfBfrColor, obj.subSeq, obj.rec);
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       ~obj.buffer.seqLagDetected && obj.rec.colorBatchesConsistent
+
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,false);
+                    else
+                        rfBfrColor = obj.rec.wcf.filter(rfBfrColor,true,obj.rec.wcFiltInitSize);
+                    end
+
+                    [color,power,turbu] = dopplerColor(rfBfrColor);
                 end
                 
                 % Vector Doppler image reconstruction
@@ -1497,7 +1850,20 @@ classdef Us4R < handle
                     rfBfrVect0 = obj.runCudaReconstruction(rfRaw,'vector0');
                     rfBfrVect1 = obj.runCudaReconstruction(rfRaw,'vector1');
                     
-                    [color,power,turbu] = dopplerColorImaging(cat(4,rfBfrVect0,rfBfrVect1), obj.subSeq, obj.rec);
+                    if any(strcmp(obj.subSeq.workMode,{'SYNC','ASYNC'})) && ...
+                       ~obj.buffer.seqLagDetected && obj.rec.vectorBatchesConsistent
+
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,false);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,false);
+                    else
+                        rfBfrVect0 = obj.rec.wcf0.filter(rfBfrVect0,true,obj.rec.wcFiltInitSize);
+                        rfBfrVect1 = obj.rec.wcf1.filter(rfBfrVect1,true,obj.rec.wcFiltInitSize);
+                    end
+
+                    [color0,power0,turbu0] = dopplerColor(rfBfrVect0);
+                    [color1,power1,turbu1] = dopplerColor(rfBfrVect1);
+
+                    [color,power,turbu] = obj.rec.color2vector.convert(color0,color1,power0,power1,turbu0,turbu1);
                 end
             end
 

@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "Pulse.h"
+#include "Waveform.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/DeviceId.h"
 
@@ -19,25 +20,36 @@ public:
 	 *
 	 * @param aperture transmit aperture specified as a bit mask; aperture[i] means that the i-th channel should be turned on
 	 * @param delays transmit delays to apply; delays[i] applies to channel i
-	 * @param excitation pulse to transmit
+	 * @param pulse pulse to transmit
 	 * @parma placement probe on which the Tx should be performed
 	 */
-    Tx(std::vector<bool> aperture, std::vector<float> delays, const Pulse &excitation, devices::DeviceId placement)
-        : aperture(std::move(aperture)), delays(std::move(delays)), excitation(excitation), placement(placement) {
+    Tx(std::vector<bool> aperture, std::vector<float> delays, const Pulse &pulse, devices::DeviceId placement)
+        : aperture(std::move(aperture)), delays(std::move(delays)), excitation(pulse.toWaveform()), placement(placement) {
+        if(placement.getDeviceType() != devices::DeviceType::Probe) {
+            throw IllegalArgumentException("Only probe can be set as a placement for TX.");
+        }
+    }
+
+    Tx(std::vector<bool> aperture, std::vector<float> delays, const Waveform &waveform, devices::DeviceId placement)
+        : aperture(std::move(aperture)), delays(std::move(delays)), excitation(waveform), placement(placement) {
         if(placement.getDeviceType() != devices::DeviceType::Probe) {
             throw IllegalArgumentException("Only probe can be set as a placement for TX.");
         }
     }
 
     Tx(std::vector<bool> aperture, std::vector<float> delays, const Pulse &excitation)
-        : aperture(std::move(aperture)), delays(std::move(delays)), excitation(excitation),
+        : aperture(std::move(aperture)), delays(std::move(delays)), excitation(excitation.toWaveform()),
+          placement(devices::DeviceId(devices::DeviceType::Probe, 0)) {}
+
+    Tx(std::vector<bool> aperture, std::vector<float> delays, const Waveform &waveform)
+        : aperture(std::move(aperture)), delays(std::move(delays)), excitation(waveform),
           placement(devices::DeviceId(devices::DeviceType::Probe, 0)) {}
 
     const std::vector<bool> &getAperture() const { return aperture; }
 
     const std::vector<float> &getDelays() const { return delays; }
 
-    const Pulse &getExcitation() const { return excitation; }
+    const Waveform &getExcitation() const { return excitation; }
 
     const devices::DeviceId &getPlacement() const { return placement; }
 
@@ -69,7 +81,7 @@ public:
 private:
     std::vector<bool> aperture;
     std::vector<float> delays;
-    Pulse excitation;
+    Waveform excitation;
     devices::DeviceId placement;
 };
 

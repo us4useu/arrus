@@ -74,15 +74,14 @@ public:
                 arrus::ops::us4r::TxRxSequenceLimits {
                     arrus::ops::us4r::TxRxLimits {
                         // amplitude 1 / rail 1
-                        // UNAVAILABLE (voltages set to 0)
-                        arrus::ops::us4r::TxLimits { // rail 0
+                        arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
                         // amplitude 2 / rail 0
-                        arrus::ops::us4r::TxLimits { // rail 1
+                        arrus::ops::us4r::TxLimits {
                             Interval<float>{minFrequency, maxFrequency},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
@@ -95,6 +94,45 @@ public:
                     },
                     Interval<uint32>{0, 4096}, // sequence length
                     4096 // maximum number of different TX/RXs
+                },
+                4, // maximum number of timeouts
+                35 // sample number TX start (i.e. TX delay = 0)
+            };
+        case 3:
+            // us4OEM+ variant 0, AFE JD48
+            return Us4OEMDescriptor{
+                version, // us4OEM version
+                32, // RX channels
+                20e-6f,  // min. RX time,
+                0e-6f, // RX time epsilon,
+                35e-6f, // TX parameters reprogramming time,
+                120e6f, // Sampling frequency [Hz]
+                1ull << 32u, // DDR memory size [B]
+                1ull << (14+12), // Max transfer size [B]
+                0.5f,  // number of TX periods resolution
+                isMaster,
+                arrus::ops::us4r::TxRxSequenceLimits {
+                    arrus::ops::us4r::TxRxLimits {
+                        // amplitude 1 / rail 1
+                        arrus::ops::us4r::TxLimits {
+                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{0.0f, 16.96e-6f}, // delay
+                            Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
+                            Interval<Voltage>{5, 90}
+                        },
+                        // amplitude 2 / rail 0
+                        arrus::ops::us4r::TxLimits {
+                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{0.0f, 16.96e-6f}, // delay
+                            Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
+                            Interval<Voltage>{5, 90}
+                        },
+                        arrus::ops::us4r::RxLimits {
+                            Interval<uint32>{64, 16384}
+                        },
+                        Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
+                    },
+                    Interval<uint32>{0, 4096} // sequence length
                 },
                 4, // maximum number of timeouts
                 35 // sample number TX start (i.e. TX delay = 0)

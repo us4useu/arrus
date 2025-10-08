@@ -1674,6 +1674,18 @@ probe_to_adapter_connections: [
             {
                 manufacturer: "us4us"
                 name: "atl/philips"
+            },
+            {
+                manufacturer: "us4us"
+                name: "atl/philips-us4r4"
+            },
+            {
+                manufacturer: "us4us"
+                name: "atl/philips-us4r"
+            },
+            {
+                manufacturer: "us4us"
+                name: "atl/philips2"
             }
         ]
         channel_mapping_ranges: {

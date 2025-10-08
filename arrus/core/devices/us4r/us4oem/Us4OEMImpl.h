@@ -13,6 +13,7 @@
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/common/format.h"
 #include "arrus/common/cache.h"
+#include "arrus/core/common/collections.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/common/types.h"
@@ -28,6 +29,7 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include "arrus/core/devices/us4r/TxWaveformSoftStartConverter.h"
 
 namespace arrus::devices {
 
@@ -70,7 +72,7 @@ public:
     Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
                               ops::us4r::Scheme::WorkMode workMode,
                               const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                              const std::vector<arrus::framework::NdArray> &txDelays,
+                              const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                               const std::vector<TxTimeout> &txTimeouts) override;
 
     float getSamplingFrequency() override;
@@ -80,7 +82,7 @@ public:
     Ius4OEMRawHandle getIUs4OEM() override;
     void enableSequencer(uint16 startEntry) override;
     std::vector<uint8_t> getChannelMapping() override;
-    void setRxSettings(const RxSettings &newSettings) override;
+    void setRxSettings(const RxSettings &settings) override;
     float getFPGATemperature() override;
     float getUCDTemperature() override;
     float getUCDExternalTemperature() override;
@@ -97,7 +99,7 @@ public:
     void setAfe(uint8_t address, uint16_t value) override;
     void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc);
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                     size_t nCoefficients) override;
+                     size_t nCoefficients, float gain) override;
     void disableAfeDemod() override { ius4oem->AfeDemodDisable(); }
     float getCurrentSamplingFrequency() const override;
     float getFPGAWallclock() override;
@@ -106,8 +108,11 @@ public:
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) override;
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &lengths) override;
-    void setHpfCornerFrequency(uint32_t frequency) override;
-    void disableHpf() override;
+
+    void setLnaHpfCornerFrequency(uint32_t frequency) override;
+    void disableLnaHpf() override;
+    void setAdcHpfCornerFrequency(uint32_t frequency) override;
+    void disableAdcHpf() override;
     Interval<Voltage> getAcceptedVoltageRange() override;
     Us4OEMDescriptor getDescriptor() const override;
 
@@ -121,12 +126,22 @@ public:
     void setWaitForHVPSMeasurementDone() override;
     void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
     float getActualTxFrequency(float frequency) override;
-
+    Variant getVariant() override;
 
     bool isOEMPlus() {
         return isOEMPlus(getOemVersion());
     }
+    bool isAFEJD18() override {
+        return getOemVersion() == 1 || getOemVersion() == 2;
+    }
+
+    bool isAFEJD48() override {
+        return getOemVersion() == 3;
+    }
     void clearDMACallbacks() override;
+    std::pair<float, float> getTGCValueRange() const override;
+
+    void setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
@@ -140,14 +155,9 @@ private:
     std::pair<uint32_t, float> getTxStartSampleNumberAfeDemod(float ddcDecimationFactor);
 
     // IUs4OEM AFE setters.
-    void setRxSettingsPrivate(const RxSettings &newSettings, bool force = false);
-    void setPgaGainAfe(uint16 value, bool force);
-    void setLnaGainAfe(uint16 value, bool force);
-    void setDtgcAttenuationAfe(std::optional<uint16> param, bool force);
-    void setLpfCutoffAfe(uint32 value, bool force);
-    void setActiveTerminationAfe(std::optional<uint16> param, bool force);
     void enableAfeDemod();
-    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq);
+    void setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength, float freq,
+                           float gain);
     void setAfeDemodDefault();
     void setAfeDemodDecimationFactor(uint8_t integer);
     void setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters);
@@ -162,13 +172,13 @@ private:
     void setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vector<uint8_t> &levels,
                                  const std::vector<uint16_t> &periods);
     void setCurrentSamplingFrequency(float fs) { this->currentSamplingFrequency = fs; }
-    void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId, size_t delaysId,
-                     const std::unordered_set<ChannelIdx> &maskedChannelsTx);
+    void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
+                     size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx, SequenceId i);
     void setTgcCurve(const ops::us4r::TGCCurve &tgc);
     Us4OEMChannelsGroupsMask getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture);
     void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                       const std::vector<arrus::framework::NdArray> &txDelays,
+                       const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                        const Us4OEMRxMappingRegister &rxMappingRegister);
     std::pair<size_t, float> scheduleReceiveDDC(size_t outputAddress,
                                                 uint32 startSample, uint32 endSample, uint16 entryId,
@@ -192,7 +202,6 @@ private:
         std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> aperture,
         const std::unordered_set<ChannelIdx> &channelsMask);
     void setTxTimeouts(const std::vector<TxTimeout> &txTimeouts);
-    void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) override;
 
     Logger::Handle logger;
     IUs4OEMHandle ius4oem;
@@ -201,6 +210,7 @@ private:
     std::vector<uint8_t> channelMapping;
     Us4OEMSettings::ReprogrammingMode reprogrammingMode;
     /** Current RX settings */
+    // TODO(ARRUS-179) consider removing the below property
     RxSettings rxSettings;
     bool externalTrigger{false};
     /** Current sampling frequency of the data produced by us4OEM. */
@@ -218,6 +228,15 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
+    /** Converts TX waveform to a waveform with soft-start applied */
+    TxWaveformSoftStartConverter softStartConverter{128, 5e-6f, {0.25f, 0.5f, 0.75f}, {1.0f/3.0f, 1.0f/3.0f, 1.0f/3.0f}};
+    /** DDC extra gain to apply, Currently, simply translates to the boolean value 'gain is off/on'.*/
+    const ValueMap<float, bool> DDC_GAIN_MAP{{
+        {0.0f, false},
+        {12.0f, true}
+    }};
+    /** The current TX delay profiles (their ids/ordinal numbers). Maps Sequence id -> TX delay profile id. */
+    std::vector<size_t> currentTxDelayProfileIds;
 };
 
 }// namespace arrus::devices

@@ -2,6 +2,8 @@
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
 #include "arrus/core/api/common/Parameters.h"
+#include "arrus/core/api/common/Slice.h"
+#include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceId.h"
@@ -29,6 +31,22 @@ public:
     enum class State {
         STOPPED, STARTED, CLOSED
     };
+
+    /**
+     * Returns a Session State name.
+     *
+     * @param state Session State
+     * @return a Session State name (string)
+     */
+    static std::string getSessionStateAsString(const State state) {
+        switch(state) {
+            case State::STOPPED: return "STOPPED";
+            case State::STARTED: return "STARTED";
+            case State::CLOSED: return "CLOSED";
+            default:
+                throw IllegalArgumentException("Unrecognized Session State.");
+        }
+    }
 
     /**
      * Returns a handle to device with given Id. The string format is:
@@ -103,11 +121,12 @@ public:
     virtual State getCurrentState() = 0;
 
     /**
-     * Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
+     * Turns on the sequence with the arrayId and sets the TX/RXs to the [start, end) range. This method turns off all
+     * the uploaded TX/RX sequences except sequence pointed by `arrayId`.
      *
      * This method requires that:
      *
-     * - start <= end (when start= == end, the system will run a single TX/RX sequence),
+     * - start < end (start == end would mean that the given sequence should bet turned off, and that would mean that all TX/RXs sequences should be turned off, which current does not make sense),
      * - the scheme was uploaded,
      * - the TX/RX sequence length is greater than the `end` value,
      * - the scheme is stopped.
@@ -119,6 +138,25 @@ public:
      * @return the new data buffer and metadata
      */
     virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) = 0;
+
+    /**
+     * Selects [start, end) slices for each sub-sequence.
+     *
+     * The `slices` array should have exactly n elements, where n is the number of currently uploaded sequences.
+     * The element slice[i] sets the [start, end) range for the i-th sequence.
+     *
+     * The `sris` should have eactly n elements, or should be empty (which means that no additional sri should be
+     * applied).
+     *
+     * To turn off the given sequence, just set start equal to end (e.g. Slice(0, 0)). For such sequences, the metadata
+     * will
+     *
+     * @param slices slices to set to each Scheme sub-sequence
+     * @param sris sris to apply to each Scheme sub-sequence
+     * @return returns the buffer and metadata for the modified Scheme. The metadata array size is always equal to
+     *   the number of seqeuences in the original Scheme
+     */
+    virtual UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     virtual ~Session() = default;
 

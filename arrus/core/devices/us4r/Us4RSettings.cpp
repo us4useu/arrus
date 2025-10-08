@@ -1,7 +1,7 @@
 #include "Us4RSettings.h"
 
 #include "arrus/core/devices/probe/ProbeSettings.h"
-#include "arrus/core/devices/us4r/RxSettings.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/devices/us4r/probeadapter/ProbeAdapterSettings.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMSettings.h"
 
@@ -25,7 +25,8 @@ std::ostream &operator<<(std::ostream &os, const Us4RSettings &settings) {
 
     auto &probeAdapterSettings = settings.getProbeAdapterSettings();
     auto &probeSettings = settings.getProbeSettingsList();
-    auto &rxSettings = settings.getRxSettings();
+    // TODO(ARRUS-179)
+//    auto &rxSettings = settings.getRxSettings();
     auto &channelsMask = settings.getChannelsMaskForAllProbes();
 
     os << " probeAdapterSettings: ";
@@ -35,7 +36,7 @@ std::ostream &operator<<(std::ostream &os, const Us4RSettings &settings) {
         os << probe;
     }
     os << " rxSettings: ";
-    printOptionalValue(rxSettings, os);
+//    printOptionalValue(rxSettings, os);
 
     for (auto mask : channelsMask) {
         os << " channels mask: ";

@@ -16,6 +16,7 @@
 #include "arrus/core/api/devices/Ultrasound.h"
 #include "arrus/core/api/session/Metadata.h"
 #include "arrus/core/api/devices/us4r/HVVoltage.h"
+#include "arrus/core/api/common/Slice.h"
 
 namespace arrus::devices {
 
@@ -121,12 +122,15 @@ public:
      *
      * TGC curve can have up to 1022 samples.
      *
-     * @param tgcCurvePoints tgc curve points to set.
+     * @param tgcCurvePoints tgc curve points to set (gain [dB])
      * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
+     * @param clip set it true if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+     * an IllegalArgumentException will be raised with message that the maximum possible gain value
+     * (resulting from amplifier settings such as LNA and PGA) is exceeded.
      */
-    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic)  = 0;
+    virtual void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip = false)  = 0;
 
     /**
      * Sets TGC curve points asynchronously.
@@ -142,12 +146,15 @@ public:
      * NOTE: TGC curve can have up to 1022 samples.
      *
      * @param t sampling time, relative to the "sample 0"
-     * @param y values to apply at given sampling time
+     * @param y gain values to apply at given sampling time [dB]
      * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
      * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
      * ::arrus::IllegalArgumentException will be thrown.
+     * @param clip set it true if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+     * an IllegalArgumentException will be raised with message that the maximum possible gain value
+     * (resulting from amplifier settings such as LNA and PGA) is exceeded.
      */
-    virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic)  = 0;
+    virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip = false) = 0;
 
     /**
      * Returns us4R TGC sampling points (along time axis, relative to the "sample 0"), up to given maximum time.
@@ -156,6 +163,53 @@ public:
      * @return TGC time points at which TGC curve sample takes place
      */
     virtual std::vector<float> getTgcCurvePoints(float maxT) const  = 0;
+
+    /**
+     * Sets VCAT time points asynchronously.
+     *
+     * Setting empty vectors t and y turns off analog TGC. Setting non-empty vector turns off DTGC
+     * and turns on analog TGC.
+     *
+     * Vectors t and y should have exactly the same size. The input t and y values will be interpolated
+     * into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
+     * Linear interpolation will be performed, the TGC curve will be extrapolated with the first (left-side of the cure)
+     * and the last sample (right side of the curve).
+     *
+     * NOTE: the curve can have up to 1022 samples.
+     *
+     * @param t sampling time, relative to the "sample 0"
+     * @param y attenuation values to apply at given sampling time [dB]
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     * @param clip set it true if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+     * an IllegalArgumentException will be raised with message that the maximum possible gain value
+     * (resulting from amplifier settings such as LNA and PGA) is exceeded.
+     */
+    virtual void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip = false)  = 0;
+
+    /**
+     * Equivalent to setVcat(curve, true, false).
+     */
+    virtual void setVcat(const std::vector<float> &tgcCurvePoints)  = 0;
+
+    /**
+     * Sets VCAT points asynchronously.
+     *
+     * Setting empty vector turns off analog TGC.
+     * Setting non-empty vector turns off DTGC and turns on analog TGC.
+     *
+     * The curve can have up to 1022 samples.
+     *
+     * @param tgcCurvePoints tgc curve points to set (gain [dB])
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise an
+     * ::arrus::IllegalArgumentException will be thrown.
+     * @param clip set it true if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+     * an IllegalArgumentException will be raised with message that the maximum possible gain value
+     * (resulting from amplifier settings such as LNA and PGA) is exceeded.
+     */
+    virtual void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip = false)  = 0;
 
     /**
      * Sets PGA gain.
@@ -284,14 +338,44 @@ public:
     virtual bool isStopOnOverflow() const = 0;
 
     /**
-     * Enables High-Pass Filter and sets a given corner frequency.
+     * Enables LNA analog high-pass filter and sets a given corner frequency.
      *
-     * Available corner frequency values (Hz): 4520'000, 2420'000, 1200'000, 600'000, 300'000, 180'000,
-     * 80'000, 40'000, 20'000.
-     *
-     * @param frequency corner high-pass filter frequency to set
+     * @param frequency LNA high-pass filter corner frequency to set
      */
-    virtual void setHpfCornerFrequency(uint32_t frequency)  = 0;
+    virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Enables ADC high-pass filter and sets a given corner frequency.
+     *
+     * Note: this method is just an alias for setAdcHpfCornerFrequency.
+     *
+     * @param frequency high-pass filter corner frequency to set
+     */
+    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables LNA analog high-pass filter.
+     */
+    virtual void disableLnaHpf() = 0;
+
+    /**
+     * Disables ADC high-pass filter.
+     *
+     * Note: this method is just an alias for setAdcHpfCornerFrequency.
+     */
+    virtual void disableHpf() = 0;
+
+    /**
+     * Enables ADC digital high-pass filter and sets a given corner frequency.
+     *
+     * @param frequency ADC high-pass filter corner frequency to set
+     */
+    virtual void setAdcHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables ADC digital high-pass filter.
+     */
+    virtual void disableAdcHpf() = 0;
 
     /**
      * Reads AFE register
@@ -308,12 +392,6 @@ public:
      */
     virtual void setAfe(uint8_t reg, uint16_t val) = 0;
 
-
-    /**
-     * Disables digital high-pass filter.
-     */
-    virtual void disableHpf()  = 0;
-
     /**
      * Returns serial number of the backplane (if available).
      */
@@ -324,8 +402,13 @@ public:
      */
     virtual const char *getBackplaneRevision() = 0;
 
-    std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override = 0;
+    /**
+     * Returns firmware version number of the backplane (if available).
+     */
+    virtual const char *getBackplaneFirmwareVersion() = 0;
+
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     virtual void setIOBitstream(unsigned short id, const std::vector<unsigned char> &levels, const std::vector<unsigned short> &periods) = 0;
 
@@ -338,7 +421,11 @@ public:
     Probe* getProbe(Ordinal ordinal) override = 0;
 
     /**
-     * Sets maximum pulse length that can be set during the TX/RX sequence programming.
+     * Sets maximum pulse length that can be set during the TX/RX sequence programming FOR THE AMPLITUDE 2 / RAIL HV 0.
+     *
+     * **NOTE this method is intended to be used only for the probe health check! DO NOT USE THIS METHOD TO SET
+     * THE MAXIMUM TX PULSE LENGTH e.g. FOR THE IMAGING PURPOSES.**
+     *
      * std::nullopt means to use up to 32 TX cycles.
      *
      * @param maxLength maximum pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
@@ -353,6 +440,26 @@ public:
      * @return the actual frequency that will be set
      */
     virtual float getActualTxFrequency(float frequency) = 0;
+
+    /**
+     * Returns minimum available TGC value, according to the currently set parameters.
+     */
+    virtual float getMinimumTGCValue() const = 0;
+
+    /**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+    virtual float getMaximumTGCValue() const = 0;
+
+    /**
+     * Disables all high-pass filters on the device.
+     */
+    virtual void disableAllHpf() = 0;
+
+    /**
+     * Returns system variant (LEGACY/PLUS_32RX. etc.).
+     */
+    virtual Us4OEM::Variant getVariant() = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

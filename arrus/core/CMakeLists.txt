@@ -95,8 +95,6 @@ set(SRC_FILES
     devices/us4r/Us4RSettingsConverterImpl.h
     devices/us4r/Us4RSettings.h
     devices/us4r/Us4RSettings.cpp
-    devices/us4r/RxSettings.h
-    devices/us4r/RxSettings.cpp
 
     devices/us4r/probeadapter/ProbeAdapterSettingsValidator.h
     devices/us4r/probeadapter/ProbeAdapterSettings.h
@@ -129,11 +127,6 @@ set(SRC_FILES
 
     devices/us4r/external/ius4oem/IUs4OEMFactory.h
     devices/us4r/external/ius4oem/IUs4OEMFactoryImpl.h
-    devices/us4r/external/ius4oem/LNAGainValueMap.h
-    devices/us4r/external/ius4oem/PGAGainValueMap.h
-    devices/us4r/external/ius4oem/ActiveTerminationValueMap.h
-    devices/us4r/external/ius4oem/LPFCutoffValueMap.h
-    devices/us4r/external/ius4oem/DTGCAttenuationValueMap.h
     devices/us4r/external/ius4oem/Us4RLoggerWrapper.h
     devices/us4r/external/ius4oem/IUs4OEMInitializer.h
     devices/us4r/external/ius4oem/IUs4OEMInitializerImpl.h
@@ -186,7 +179,6 @@ set(SRC_FILES
     api/arrus.h
     api/session.h
     api/common.h api/io.h
-    devices/us4r/validators/RxSettingsValidator.h
     devices/us4r/Us4OEMDataTransferRegistrar.h
     devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h
     devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h
@@ -210,10 +202,15 @@ set(SRC_FILES
     api/devices/probe/MatchingLayer.h
     api/version.h
     common/os.h
+    common/math.h
     version.cpp.in
+    api/ops/us4r/Waveform.h
+    devices/us4r/TxWaveformConverter.h
+   devices/us4r/TxWaveformSoftStartConverter.h
 )
 
-set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
+    api/common/Slice.h)
 
 # Generate version.cpp file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
@@ -247,8 +244,9 @@ target_include_directories(${TARGET_NAME}
 # Dependencies
 ################################################################################
 target_link_libraries(${TARGET_NAME}
-    PRIVATE
+    PUBLIC
     Us4::US4OEM
+    PRIVATE
     Us4::HV256
     Us4::DBARLite
     Us4::DBARLitePcie
@@ -329,9 +327,10 @@ if (ARRUS_RUN_TESTS)
         "protobuf::libprotobuf;arrus-core"
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
     create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
-
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
     create_core_test(devices/us4r/Us4RSubsequenceTest.cpp "devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp")
+    create_core_test(devices/us4r/TxWaveformConverterTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/TxWaveformSoftStartConverterTest.cpp)
 endif ()
 
 ################################################################################

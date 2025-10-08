@@ -14,6 +14,7 @@
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/session/SessionSettings.h"
+#include "arrus/core/api/common/Parameters.h"
 
 namespace arrus::matlab {
 
@@ -25,12 +26,14 @@ public:
 
     explicit SessionClassImpl(const std::shared_ptr<MexContext> &ctx) : ClassObjectManager(ctx, CLASS_NAME) {
         ARRUS_MATLAB_ADD_METHOD("getDevice", getDevice);
+        ARRUS_MATLAB_ADD_METHOD("getCurrentState", getCurrentState);
         ARRUS_MATLAB_ADD_METHOD("upload", upload);
         ARRUS_MATLAB_ADD_METHOD("startScheme", startScheme);
         ARRUS_MATLAB_ADD_METHOD("stopScheme", stopScheme);
         ARRUS_MATLAB_ADD_METHOD("run", run);
         ARRUS_MATLAB_ADD_METHOD("close", close);
         ARRUS_MATLAB_ADD_METHOD("setSubsequence", setSubsequence);
+        ARRUS_MATLAB_ADD_METHOD("setParameters", setParameters);
     }
 
     MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) override {
@@ -79,6 +82,12 @@ public:
         }
     }
 
+    void getCurrentState(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        ::arrus::session::Session::State state = get(obj)->getCurrentState();
+        std::string stateName = ::arrus::session::Session::getSessionStateAsString(state);
+        outputs[0] = ARRUS_MATLAB_GET_MATLAB_STRING(ctx, stateName);
+    }
+
     void upload(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 1, "upload");
         auto arg = inputs[0];
@@ -106,8 +115,26 @@ public:
         }
         auto *session = get(obj);
         ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri.has_value() ? sri.value(): 0));
-        auto uploadResult = session->setSubsequence(start, end, sri, arrayId);
+        auto uploadResult = session->setSubsequences({Slice{start, end}}, {sri});
         setToMatlabOutput(outputs, uploadResult);
+    }
+
+    void setParameters(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
+        ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 2, "setParameters");
+        auto key = inputs[0];
+        auto val = inputs[1];
+
+        ARRUS_MATLAB_REQUIRES_TYPE(key, ::matlab::data::ArrayType::MATLAB_STRING);
+        ARRUS_MATLAB_REQUIRES_TYPE(val, ::matlab::data::ArrayType::INT32);
+
+        std::string keyStr = key[0];
+
+        arrus::ParametersBuilder builder;
+        builder.add(keyStr, static_cast<int>(val[0]));
+        auto parameters = builder.build();
+
+        auto *session = get(obj);
+        session->setParameters(parameters);
     }
 
     /**

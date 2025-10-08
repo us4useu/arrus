@@ -5,27 +5,29 @@
 #include <unordered_map>
 #include <utility>
 #include <thread>
+#include <regex>
 
 #include <boost/algorithm/string.hpp>
+#include <vector>
 
-#include "TxTimeoutRegister.h"
 #include "BlockingQueue.h"
+#include "TxTimeoutRegister.h"
 #include "Us4REvent.h"
 #include "Us4RSubsequence.h"
 #include "arrus/common/asserts.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
+#include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/common/logging.h"
-#include "arrus/core/devices/us4r/RxSettings.h"
+#include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
-#include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/utils.h"
 
 namespace arrus::devices {
@@ -33,10 +35,11 @@ namespace arrus::devices {
 class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
+    using DelayProfiles = std::vector<::arrus::framework::NdArray>;
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
-    static float getRxDelay(const ops::us4r::TxRx &op, const std::function<float(float)> &actualTxFunc);
+    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
 
     ~Us4RImpl() override;
 
@@ -98,8 +101,8 @@ public:
     void disableHV() override;
     void cleanupBuffers(bool cleanupSequencerTransfers = false);
 
-    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) override;
-    void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic) override;
+    void setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
+    void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
     std::vector<float> getTgcCurvePoints(float endSample) const override;
@@ -125,8 +128,12 @@ public:
     float getMeasuredHVMVoltage(uint8_t oemId) override;
     void setStopOnOverflow(bool isStopOnOverflow) override;
     bool isStopOnOverflow() const override;
+    void setLnaHpfCornerFrequency(uint32_t frequency) override;
+    void disableLnaHpf() override;
+    void setAdcHpfCornerFrequency(uint32_t frequency) override;
     void setHpfCornerFrequency(uint32_t frequency) override;
-    void disableHpf() override;
+    void disableAdcHpf() override;
+    void disableAllHpf() override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;
@@ -136,6 +143,8 @@ public:
     void unregisterOutputBuffer(bool cleanSequencer);
     const char *getBackplaneSerialNumber() override;
     const char *getBackplaneRevision() override;
+    const char *getBackplaneFirmwareVersion() override;
+
     void setParameters(const Parameters &parameters) override;
     void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels,
                         const std::vector<uint16_t> &periods) override;
@@ -149,12 +158,25 @@ public:
         return probes.at(ordinal).get();
     }
 
-    std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) override;
+    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
     std::string getDescription() const override;
+    float getMinimumTGCValue() const override;
+
+    /**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+    float getMaximumTGCValue() const override;
+
+    std::pair<float, float> getTGCValueRange() const;
+    void setVcat(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
+    void setVcat(const std::vector<float> &attenuation) override;
+    void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
+    void disableHpf() override;
+    virtual Us4OEM::Variant getVariant() override;
 
 private:
     struct VoltageLogbook {
@@ -210,7 +232,7 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
-    float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
+    std::vector<float> interpolateToSystemTGC(const std::vector<float> &t, const std::vector<float> &y) const;
     void handlePulserInterrupt();
     void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
 
@@ -219,7 +241,19 @@ private:
     std::vector<arrus::session::Metadata::SharedHandle>
     createMetadata(std::vector<FrameChannelMappingImpl::Handle> fcms, float rxTimeOffset) const;
 
-    std::mutex deviceStateMutex;
+    /**
+     * Returns a map sequence id -> list of TX delay arrays.
+     */
+    std::unordered_map<std::string, DelayProfiles>
+    groupTxDelaysBySequence(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences,
+                            const std::vector<::arrus::framework::NdArray> &txDelayProfiles);
+
+    std::tuple<std::string, std::string, size_t> parseTxDelaysConstantName(const std::string &name) const;
+    std::tuple<std::string, std::string> parseTxDelaysParamName(const std::string &name) const;
+    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
+    std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
+
+        std::mutex deviceStateMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
     std::optional<DigitalBackplane::Handle> digitalBackplane;
@@ -245,11 +279,18 @@ private:
     bool isExternalTrigger;
 
     std::optional<Us4RSubsequenceFactory> subsequenceFactory;
-    std::optional<Us4RSubsequence> currentSubsequenceParams;
+    std::optional<std::vector<Us4RSubsequence>> currentSubsequenceParams;
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
     std::optional<float> currentRxTimeOffset;
-    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
+    /** Expected constant name: /SequenceName/parameterName:ordinal */
+    const std::regex CONSTANT_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$)"};
+    /** Expected parameter name: /SequenceName/parameterName */
+    const std::regex PARAMETER_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$)"};
+    /** TX/RX sequence name to ordinal number (i.e. position in the list of sequences of the Scheme). */
+    std::unordered_map<std::string, SequenceId> sequenceNameToOrdinalMap;
+    /** The number of TX delay profiles set for the sequence with the given name */
+    std::unordered_map<std::string, size_t> sequenceNumberOfTxDelayProfiles;
 };
 
 }// namespace arrus::devices
