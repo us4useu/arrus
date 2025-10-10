@@ -58,7 +58,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        bool maskDVDDInterrupt = false
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -73,7 +74,9 @@ public:
           bitstreams(std::move(bitstreams)),
           limits(std::move(limits)),
           watchdogSettings(std::move(watchdogSettings)),
-          allowDuplicateOEMIds(allowDuplicateOEMIds)
+          allowDuplicateOEMIds(allowDuplicateOEMIds),
+          maskDVDDInterrupt(maskDVDDInterrupt)
+        
     {}
 
     Us4RSettings(
@@ -91,7 +94,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        bool maskDVDDInterrupt = false
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -107,7 +111,8 @@ public:
                 std::move(bitstreams),
                 std::move(limits),
                 std::move(watchdogSettings),
-                allowDuplicateOEMIds
+                allowDuplicateOEMIds,
+                maskDVDDInterrupt
         )
     {}
 
@@ -204,6 +209,8 @@ public:
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
+    const bool isDVDDInterruptMasked() const { return maskDVDDInterrupt; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -263,6 +270,11 @@ private:
       * the software.
       */
      bool allowDuplicateOEMIds{true};
+
+     /**
+     * False value means that Pulser DVDD interrput is enabled and error will raised when it occurs
+     */
+     bool maskDVDDInterrupt{false};
 };
 
 }

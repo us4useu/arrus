@@ -53,7 +53,7 @@ public:
     MOCK_METHOD(void, SetRxDelay,
             (const float delay, const unsigned short firing), (override));
     MOCK_METHOD(void, EnableTransmit, (), (override));
-    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, uint16_t startEntry), (override));
+    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, uint16_t startEntry, bool maskDVDDInterrupt), (override));
     MOCK_METHOD(void, SetRxChannelMapping,
             ( const std::vector<uint8_t> & mapping, const uint16_t rxMapId),
     (override));
@@ -239,6 +239,8 @@ public:
     MOCK_METHOD(void, CalibrateHVPS, (), (override));
     MOCK_METHOD(bool, CheckHVPSCalibration, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
+    MOCK_METHOD(std::vector<uint16_t>, GetPulsersStatusRegister, (), (override));
+    MOCK_METHOD(std::vector<std::string>, GetPulserStatusRegisterDescription, (uint16_t status), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

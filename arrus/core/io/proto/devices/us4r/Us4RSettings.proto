@@ -51,4 +51,5 @@ message Us4RSettings {
   oneof optional_allow_duplicate_oem_ids {
     bool allow_duplicate_oem_ids = 19;
   }
+  bool mask_dvdd_failure_check = 20;
 }
