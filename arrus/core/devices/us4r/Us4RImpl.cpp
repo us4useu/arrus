@@ -1449,16 +1449,20 @@ void Us4RImpl::handlePulserInterrupt() {
     else {
         //..
         auto DVDDMasked = this->maskDVDDInterrupt;
-
+        bool nonDVDDFaultDetected = false;
+        
         if(DVDDMasked) { //if DVDD interrput status is masked -> ignore if it occurs
             for(auto &oem: this->us4oems) {
                 auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
                 for(size_t n = 0; n<status.size(); ++n) {
                     if(status.at(n) & ~0b0000000000000100) { //bit 2 = DVDD interrupt
-                        this->stop();
-                        this->disableHV();
+                        nonDVDDFaultDetected = true;
                     }
                 }
+            }
+            if(nonDVDDFaultDetected) {
+                this->stop();
+                this->disableHV();
             }
         }
         else {

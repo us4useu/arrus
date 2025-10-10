@@ -531,9 +531,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
-    if (us4r.mask_dvdd_failure_check()) {
-        maskDVDDInterrupt = true;
-    }
+    maskDVDDInterrupt = us4r.mask_dvdd_failure_check();
     WatchdogSettings watchdog = WatchdogSettings::defaultSettings();
     if(us4r.has_watchdog()) {
         auto enabled = us4r.watchdog().enabled();
