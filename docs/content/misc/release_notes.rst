@@ -1,6 +1,14 @@
 Release notes
 =============
 
+0.14.x
+------
+
+- core (driver):
+
+    - Exposed the possibility to mask DVDD pulser interrupt, #M_OEM-198
+
+
 0.13.x
 ------
 
