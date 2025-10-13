@@ -15,7 +15,7 @@ Release notes
 
     - Deprecations:
 
-        - ``us4us::us4r::RxSettings`` (alias: ``arrus::devices::RxSettings```) constructor (scheduled for remove: ARRUS 0.15.0)
+        - ``us4us::us4r::RxSettings`` (alias: ``arrus::devices::RxSettings``) constructor (scheduled for remove: ARRUS 0.15.0)
 
 0.13.1
 
