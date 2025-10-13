@@ -209,7 +209,7 @@ public:
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
-    const bool isDVDDInterruptMasked() const { return maskDVDDInterrupt; }
+    bool isDVDDInterruptMasked() const { return maskDVDDInterrupt; }
 
 private:
     /* A list of settings for Us4OEMs.
