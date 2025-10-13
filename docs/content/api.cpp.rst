@@ -91,6 +91,9 @@ Devices
 .. doxygenclass:: us4us::us4r::RxSettings
     :members:
 
+.. doxygenclass:: us4us::us4r::RxSettingsBuilder
+    :members:
+
 .. doxygenclass:: arrus::devices::WatchdogSettings
     :members:
 
