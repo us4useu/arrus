@@ -12,6 +12,30 @@ Release notes
 0.13.x
 ------
 
+0.13.3
+
+- core (driver)
+
+    - ...
+
+- Python API:
+
+    - Fixed ultrasound imaging for "start_scheme -> stop_scheme -> start_scheme" (without the imaging pipeline re-upload in between) sequence of calls #ARRUS-511.
+
+
+0.13.2
+
+- core (driver)
+
+    - Fixed the external trigger source on us4R platforms #M_US4R-46.
+    - Fixed the getFPGAWallclock() method behavior -- this method assumed 120 MHz clock ARRUS 0.12.0 (now it depends on the OEM variant) #M_OEM-214.
+
+- C++ API:
+
+    - Deprecations:
+
+        - ``us4us::us4r::RxSettings`` (alias: ``arrus::devices::RxSettings``) constructor (scheduled for remove: ARRUS 0.15.0)
+
 0.13.1
 
 - core (driver)

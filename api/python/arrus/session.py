@@ -187,9 +187,6 @@ class Session(AbstractSession):
         Stops execution of the scheme.
         """
         arrus.core.arrusSessionStopScheme(self._session_handle)
-        if self._current_processing is not None:
-            self._current_processing.close()
-            self._current_processing = None
 
     def run(self, sync: bool=False, timeout: int=None):
         """

@@ -75,6 +75,18 @@ Custom Tx/Rx sequences
 
 .. doxygentypedef:: arrus::ops::us4r::TGCCurve
 
+.. doxygenclass:: arrus::ops::us4r::Waveform
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::ops::us4r::WaveformSegment
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::ops::us4r::WaveformBuilder
+    :project: arrus
+    :members:
+
 Devices
 =======
 
@@ -89,6 +101,9 @@ Devices
     :members:
 
 .. doxygenclass:: us4us::us4r::RxSettings
+    :members:
+
+.. doxygenclass:: us4us::us4r::RxSettingsBuilder
     :members:
 
 .. doxygenclass:: arrus::devices::WatchdogSettings
