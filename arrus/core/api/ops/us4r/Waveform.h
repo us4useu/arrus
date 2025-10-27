@@ -15,7 +15,7 @@ namespace arrus::ops::us4r {
  * The duration[i] is the duration of the i-th state, i.e. state[i].
  *
  * @param state: the sequence of of states, one of the following values: -2 (HVM0), -1 (HVM1), 0 (CLAMP), 1 (HVP1), 2 (HVP0)
- * @param duration: the duration of the i-th state
+ * @param duration: the duration of the i-th state [seconds]
  */
 class WaveformSegment {
 public:

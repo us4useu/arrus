@@ -7,7 +7,6 @@ set(DOC_FILES
     index.rst
     content/introduction.rst
     content/examples/bmode_imaging.matlab.rst
-    content/user_guide.python.rst
     content/definitions.rst
     content/examples/img/coordinate_system.jpeg
     content/examples/img/apertures.jpeg
@@ -27,6 +26,9 @@ set(DOC_FILES
     content/api.matlab.rst
     content/api.cpp.rst
     content/examples/check_probe.python.rst
+    content/user_guide.cpp.rst
+    content/user_guide.matlab.rst
+    content/user_guide.python.rst
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 
