@@ -4,6 +4,17 @@ Release notes
 0.13.x
 ------
 
+0.13.3
+
+- core (driver)
+
+    - ...
+
+- Python API:
+
+    - Fixed ultrasound imaging for "start_scheme -> stop_scheme -> start_scheme" (without the imaging pipeline re-upload in between) sequence of calls #ARRUS-511.
+
+
 0.13.2
 
 - core (driver)
