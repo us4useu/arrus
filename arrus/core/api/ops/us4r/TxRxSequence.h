@@ -33,7 +33,7 @@ public:
      * @param rx - rx description
      * @param pri - pulse repetition interval
      */
-    TxRx(Tx tx, Rx rx, float pri) : tx(std::move(tx)), rx(std::move(rx)), pri(pri) {}
+    TxRx(Tx tx, Rx rx, float pri): tx(Tx(tx.getAperture(), tx.getDelays(), Pulse(1e6, 4, false), tx.getPlacement())), rx(std::move(rx)), pri(pri) {}
 
     const Tx &getTx() const { return tx; }
 

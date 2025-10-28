@@ -37,7 +37,7 @@ set(ARRUS_PY_VENV_TARGET "" CACHE STRING "The path where the Python venv should 
 
 if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
     string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")
-    set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}-dev${ARRUS_PROJECT_VERSION_SUFFIX}")
+    set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}-dev${ARRUS_PROJECT_VERSION_SUFFIX}+fake.ref.mvandv.26")
 endif()
 
 # Determining host platform.
