@@ -8,7 +8,7 @@ Release notes
 
 - core (driver)
 
-    - ...
+    - Fixed Us4OEM::getVariant() method for 14-character OEM+ serial numbers #M_OEM-225.
 
 - Python API:
 
