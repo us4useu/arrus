@@ -919,14 +919,24 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     const auto &sn = this->serialNumber.get();
     auto variantStr = std::string();
     // us4OEM+
-    std::regex expectedPattern("^([a-zA-Z][a-zA-Z\\-]?)([0-9]{10}).*");
+    const std::string pattern2OrdinalStr = "^([a-zA-Z][a-zA-Z\\-]?)([0-9]{10}).*";
+    std::regex pattern2OrdinalRegex(pattern2OrdinalStr);
+    const std::string pattern4OrdinalStr = "^([a-zA-Z][a-zA-Z\\-]?)([0-9]{12}).*";
+    std::regex pattern4OrdinalRegex(pattern4OrdinalStr);
+    const size_t OEM_PLUS_SN_2_ORDINAL_SIZE = 12;
+    const size_t OEM_PLUS_SN_4_ORDINAL_SIZE = 14;
+
     std::smatch matches;
 
     if (sn.empty()) {
         // Legacy us4OEM
         return Us4OEM::Variant::LEGACY;
-    } else if (std::regex_match(sn, matches, expectedPattern)) {
+    }
+    else if(sn.size() == OEM_PLUS_SN_2_ORDINAL_SIZE) {
         // us4OEM+
+        if(! std::regex_match(sn, matches, pattern2OrdinalRegex) ) {
+            throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should have the following pattern: {}.", pattern2OrdinalStr));
+        }
         const auto mountingType = matches[1].str();
         const auto number = matches[2].str();
 
@@ -937,6 +947,16 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
             // Current us4OEM+ serial number pattern
             variantStr = number.substr(8, 2);
         }
+    }
+    else if (sn.size() == OEM_PLUS_SN_4_ORDINAL_SIZE) {
+        if(! std::regex_match(sn, matches, pattern4OrdinalRegex) ) {
+            throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should have the following pattern: {}.", pattern4OrdinalStr));
+        }
+        const auto number = matches[2].str();
+        variantStr = number.substr(10, 2);
+    }
+    else {
+        throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn));
     }
 
     const auto variantSymbol = variantStr.at(0);
