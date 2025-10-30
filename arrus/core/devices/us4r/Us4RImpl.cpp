@@ -326,7 +326,6 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     // {HV 0} only
     // {HV 0, HV 1}
     std::vector<IHVVoltage> us4RVoltages;
-    float tolerance = 4.0f;// 4V tolerance
     // HV 0
     us4RVoltages.emplace_back(
         // Level 2 (-1)
@@ -342,7 +341,6 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
 
     // Set voltages.
     if (isHVPS) {
-        tolerance = 1.0f;
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
             futures.push_back(std::async(
@@ -362,6 +360,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     }
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    const float tolerance = isHVPS ? 1.0f : 4.0f;
     int retries = 5;
 
      if(isHV256) {
