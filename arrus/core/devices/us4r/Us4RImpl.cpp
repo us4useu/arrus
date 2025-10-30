@@ -360,7 +360,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     }
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    float tolerance = 4.0f;// 4V tolerance
+    const float tolerance = isHVPS ? 1.0f : 4.0f;
     int retries = 5;
 
      if(isHV256) {
