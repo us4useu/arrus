@@ -7,7 +7,7 @@ Release notes
 - core (driver):
 
     - Exposed the possibility to mask DVDD pulser interrupt, #M_OEM-198
-
+    - The return data type of ``arrus::devices::Us4OEM::getFPGAWallclock()`` was changed from seconds to clock ticks. #M_OEM-220.
 
 0.13.x
 ------

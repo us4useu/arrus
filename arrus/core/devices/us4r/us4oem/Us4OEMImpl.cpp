@@ -675,7 +675,7 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
     return currentSamplingFrequency;
 }
 
-float Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
+uint64_t Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
 
 void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {
     if (ddc.has_value()) {

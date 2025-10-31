@@ -102,7 +102,7 @@ public:
                      size_t nCoefficients, float gain) override;
     void disableAfeDemod() override { ius4oem->AfeDemodDisable(); }
     float getCurrentSamplingFrequency() const override;
-    float getFPGAWallclock() override;
+    uint64_t getFPGAWallclock() override;
     const char *getSerialNumber() override;
     const char *getRevision() override;
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &lengths) override;
