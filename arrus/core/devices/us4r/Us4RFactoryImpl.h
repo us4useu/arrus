@@ -108,7 +108,7 @@ public:
             return std::make_unique<Us4RImpl>(
                 id, std::move(us4oems), std::move(probeSettings), std::move(adapterSettings), std::move(hv), rxSettings,
                 settings.getChannelsMaskForAllProbes(), std::move(backplane), settings.getBitstreams(),
-                isBitstreamAddr, adapterSettings.getIOSettings(), isExternalTrigger);
+                isBitstreamAddr, adapterSettings.getIOSettings(), isExternalTrigger, settings.isDVDDInterruptMasked());
         } else {
             throw IllegalArgumentException("Custom OEM configuration is not available since 0.11.0.");
         }

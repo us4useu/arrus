@@ -45,7 +45,7 @@ public:
                                       const std::vector<TxTimeout> &txTimeouts = {}) = 0;
 
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
-    virtual void enableSequencer(uint16 startEntry) = 0;
+    virtual void enableSequencer(uint16 startEntry, bool dvddMask) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
     virtual void setRxSettings(const RxSettings& settings) = 0;
     virtual void setTestPattern(RxTestPattern pattern) = 0;
