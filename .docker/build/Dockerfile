@@ -18,11 +18,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 # Install requirements
 
-RUN apt-get update && apt install software-properties-common -y && add-apt-repository ppa:deadsnakes/ppa -y
+RUN apt-get update && apt install software-properties-common -y
 
 RUN apt-get update \
  && apt-get install -yq --no-install-recommends \
-    python${PYTHON_VERSION} python${PYTHON_VERSION}-dev \
     wget \
     git \
     vim \
@@ -35,6 +34,12 @@ RUN apt-get update \
     texlive-font-utils \
     ghostscript \
     curl
+
+# Install the given Python version via source build.
+COPY .docker/build/install_python_via_pyenv.sh /root/install_python_via_pyenv.sh
+RUN chmod +x /root/install_python_via_pyenv.sh
+RUN /root/install_python_via_pyenv.sh ${PYTHON_VERSION}
+ENV PATH="/root/.pyenv/shims:/root/.pyenv/bin:$PATH"
 
 # Python PIP
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}

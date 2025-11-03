@@ -386,6 +386,69 @@ INSTANTIATE_TEST_SUITE_P(
             Pulse(0.5e6f, 4, false, 1).toWaveform(),
             ////             HVP0 (128 cycles) -> HVP0 (2 cycles) -> HVM0 (128 cycles) -> HVM0 (2 cycles). 4-state repetition
             std::vector<uint32_t>{0b11'010'1111110'0000 | State::HVP1, 0b00000'0000000'0000 | State::HVP1, 0b00000'1111110'0000 | State::HVM1, 0b00000'0000000'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 22
+        // Exact number of samples (20 cycles of the TX sampling frequency).
+        TxWaveformConverterTestParams{
+            Pulse(6.5e6f, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0001000'0000 | State::HVP1, 0b00000'0001000'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 23
+        // Rounded period.
+        // Should be exactly the same number of samples as for 6.5 MHz (20 cycles).
+        TxWaveformConverterTestParams{
+            Pulse(6.4e6f, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0001000'0000 | State::HVP1, 0b00000'0001000'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 24
+        // Rounded period.
+        // This should be rounded to ~ 5.9e6 (22 cycles)
+        TxWaveformConverterTestParams{
+            Pulse(6.0e6f, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0001001'0000 | State::HVP1, 0b00000'0001001'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 25
+        // Rounded period.
+        // Almost exactly ~ 5.9 MHz.
+        TxWaveformConverterTestParams{
+            Pulse(SAMPLING_FREQUENCY/22, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0001001'0000 | State::HVP1, 0b00000'0001001'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 26
+        // Rounded period.
+        // Almost exact sampling frequency ~ 7.2 MHz.
+        TxWaveformConverterTestParams{
+            Pulse(SAMPLING_FREQUENCY/18, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0000111'0000 | State::HVP1, 0b00000'0000111'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 27
+        // Rounded period.
+        // Almost exact sampling frequency ~ 7.2 MHz + epsilon
+        TxWaveformConverterTestParams{
+            Pulse(SAMPLING_FREQUENCY/18+0.1e6, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0000111'0000 | State::HVP1, 0b00000'0000111'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 28
+        // Rounded period.
+        // Almost exact sampling frequency ~ 7.2 MHz - epsilon
+        TxWaveformConverterTestParams{
+            Pulse(SAMPLING_FREQUENCY/18-0.1e6, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0000111'0000 | State::HVP1, 0b00000'0000111'0000 | State::HVM1, ENDSTATE}
+        },
+
+        // 29
+        // Rounded period.
+        // Sampling frequency somewhere between 6.5 and 7.2 MHz, but closer to 7.2 -- round up
+        TxWaveformConverterTestParams{
+            Pulse(SAMPLING_FREQUENCY/19+0.1e6, 1, false, 1).toWaveform(),
+            std::vector<uint32_t>{0b00000'0000111'0000 | State::HVP1, 0b00000'0000111'0000 | State::HVM1, ENDSTATE}
         }
     )
 );

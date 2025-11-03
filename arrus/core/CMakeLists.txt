@@ -382,3 +382,8 @@ install(
 add_executable(pwi-example examples/PwiExample.cpp)
 target_link_libraries(pwi-example PRIVATE arrus-core)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
+
+add_executable(custom-tx-waveform-example examples/CustomTxWaveform.cpp)
+target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core)
+target_include_directories(custom-tx-waveform-example PRIVATE ${ARRUS_ROOT_DIR})
+
