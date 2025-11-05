@@ -170,7 +170,7 @@ public:
     MOCK_METHOD(void, AfeDisableAutoOffsetRemoval, (), (override));
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalCycles, (uint8_t), (override));
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalDelay, (uint8_t), (override));
-    MOCK_METHOD(float, GetFPGAWallclock, (), (override));
+    MOCK_METHOD(uint64_t, GetFPGAWallclock, (), (override));
     MOCK_METHOD(void, AfeEnableLnaHpf, (), (override));
     MOCK_METHOD(void, AfeDisableLnaHpf, (), (override));
     MOCK_METHOD(void, AfeSetLnaHpfCornerFrequency, (uint32_t), (override));
