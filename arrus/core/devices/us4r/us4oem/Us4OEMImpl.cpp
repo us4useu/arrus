@@ -162,7 +162,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     auto [bufferDef, rxTimeOffset] = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
     uploadTriggersIOBS(sequences, rxBufferSize, workMode);
     setAfeDemod(ddc);
-    if(workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP) {
+    if(Scheme::isWorkModeManual(workMode)) {
         setWaitForEventDone();
     }
     return Us4OEMUploadResult{bufferDef, rxMappingRegister.acquireFCMs(), rxTimeOffset};
@@ -485,8 +485,15 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                         }
                     }
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
+                    // syncReq (interrupt: 3) only when we are hitting the last TX/RX in the sequence,
+                    //  or we have the MANUAL_OP work mode (stop after each TX/RX)
+                    // syncMode (external trigger): only when we are hitting the last TX/Rx in the sequence,
+                    //  and the user configured the system to use "external trigger source"
+                    // irqDone (interrupt: 4): only when we have the MANUAL_OP (signal the IRQ after each TX/RX)
+                    //  or we have the MANUAL work mode, and we are hitting the last TX/RX in the TX/RX
+                    //  (the IRQ = 4 is used to implement the synchronous version of the Us4r::trigger(sync=true))
                     ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
-                                        triggerSyncPerTxRx);
+                                        triggerSyncPerTxRx || (isCheckpoint && workMode == ops::us4r::Scheme::WorkMode::MANUAL));
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
