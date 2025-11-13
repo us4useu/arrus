@@ -4,6 +4,17 @@ Release notes
 0.13.x
 ------
 
+0.13.4
+
+- core (driver)
+
+    - Fixed the 'device or resource busy' message error in case the measured HV voltage is outside an acceptable range, #M_US4R-57.
+    - Made it possible to use the synchronous session run (session.run(sync=True)) when the MANUAL work mode is used (currently MANUAL_OP work mode was supported only). #M_US4R-53.
+    - Improved HVPS PWM setting precision by increasing HVPS clock frequency in FPGA firmware #M_OEM-231.
+    - Exposed option to delete HVPS memory stored PWM factors in us4r-api console scripts #M_OEM-229.
+    - Improved HVPS PWM factor tuning procedure #M_OEM-229.
+
+
 0.13.3
 
 - core (driver)

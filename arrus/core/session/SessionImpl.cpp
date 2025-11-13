@@ -187,10 +187,13 @@ void SessionImpl::stopScheme() {
 void SessionImpl::run(bool sync, std::optional<long long> timeout) {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE_NOT(State::CLOSED);
-
     if (!currentScheme.has_value()) {
         throw IllegalStateException("Upload scheme before running.");
     }
+    if(sync && ! currentScheme.value().isWorkModeManual()) {
+        throw IllegalArgumentException("The run(sync=true) is only allowed for MANUAL or MANUAL_OP work mode.");
+    }
+
     if (state == State::STOPPED) {
         startScheme();
         if(sync) {

@@ -198,9 +198,13 @@ class Session(AbstractSession):
         - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
           The run function can be called only once (before the scheme is stopped).
 
+
         :param sync: whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
                      the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done. This parameter only
-                     matters when the work mode is set to MANUAL or MANUAL_OP.
+                     matters when the work mode is set to MANUAL or MANUAL_OP. NOTE: For the US4R device, this method ONLY waits
+                     for the completion of the TX/RX sequence. Currently, it DOES NOT WAIT for the data transfer to the host PC
+                     or for the processing to finish — to wait for these two events, either wait for the final data using
+                     buffer.get() / register your own callback function.
         :param timeout: timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
                         sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP.
         """
