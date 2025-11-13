@@ -141,8 +141,8 @@ classdef Us4R < handle
             % method is for controlling the overall gain curve.
             % 
             % Syntax:
-            % Us4RObj.create(time,gain,applyCharacteristic)
-            % Us4RObj.create(gain,applyCharacteristic)
+            % Us4RObj.setTgcCurve(time,gain,applyCharacteristic,clip)
+            % Us4RObj.setTgcCurve(gain,applyCharacteristic,clip)
             % 
             % :param time: sampling time with respect to the "sample 0" [s]. \
             %   Numerical vector. Optional, must be the same length as gain, \
@@ -150,6 +150,10 @@ classdef Us4R < handle
             % :param gain: gain samples [dB]. Numerical vector. Obligatory.
             % :param applyCharacteristic: If set to true, enables compensation \
             %   of nonlinear TGC characteristic. Logical scalar. Obligatory.
+            % :param clip: If set to true, enables TGC clipping to the allowed \
+            %   TGC gain range (resulting from LNA and PGA gain settings); \
+            %   otherwise, if gain exceeds the allowed range, an error will \
+            %   be raised. Logical scalar. Obligatory.
             % 
             % The actual TGC curve is a result of a linear interpolation \
             % of the provided curve to the hardware sampling points. If \
@@ -166,17 +170,23 @@ classdef Us4R < handle
             obj.us4r.setTgcCurve(varargin{2:end});
         end
 
-        function setVcatCurve(obj,time,attenuation,applyCharacteristic)
+        function setVcatCurve(obj,time,attenuation,applyCharacteristic,clip)
             % Sets analog VCAT (Voltage Controlled Attenuator) curve.
             % 
             % Syntax:
-            % Us4RObj.create(time,attenuation,applyCharacteristic)
+            % Us4RObj.setVcatCurve(time,attenuation,applyCharacteristic)
+            % Us4RObj.setVcatCurve(time,attenuation,applyCharacteristic,clip)
             % 
             % :param time: sampling time with respect to the "sample 0" [s]. \
-            %   Numerical vector. Must be the same length as attenuation.
-            % :param attenuation: attenuation samples [dB]. Numerical vector.
+            %   Numerical vector. Obligatory.
+            % :param attenuation: attenuation samples [dB]. Numerical vector. \
+            %   Obligatory. Must be the same length as time.
             % :param applyCharacteristic: If set to true, enables compensation \
-            %   of nonlinear VCAT characteristic. Logical scalar.
+            %   of nonlinear VCAT characteristic. Logical scalar. Obligatory.
+            % :param clip: If set to true, enables VCAT clipping to the allowed \
+            %   attenuation range; otherwise, if attenuation exceeds the allowed \
+            %   range, an error will be raised. Logical scalar. Optional, \
+            %   default = false.
             % 
             % The actual VCAT curve is a result of a linear interpolation \
             % of the provided curve to the hardware sampling points. If \
@@ -185,7 +195,11 @@ classdef Us4R < handle
             % 
             % Setting time and attenuation as empty vectors disables analog VCAT.
             
-            obj.us4r.setVcat(time, attenuation, applyCharacteristic);
+            if nargin<5
+                clip = false;
+            end
+            
+            obj.us4r.setVcat(time, attenuation, applyCharacteristic,clip);
             
         end
 
