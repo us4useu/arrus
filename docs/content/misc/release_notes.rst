@@ -23,6 +23,11 @@ Release notes
 
     - Extended C++ examples and user guide to include information how to use custom TX waveforms #ARRUS-509.
 
+
+**Known issues**:
+
+    - Due to HVPS PWM precision setting, when using memory stored PWM factors it may occur that some voltages fall outside +/- 1V tolerance range and the system does not start properly. To mitigate this issue user may: adjust voltage by 1-2 volts (up or down) or not use memory stored HVPS PWM factors.
+
 0.13.2
 
 - core (driver)
