@@ -959,7 +959,7 @@ classdef Us4R < handle
             end
 
             % Initialization
-            arrus.initialize("clogLevel", "INFO", "logFilePath", "C:/Temp/arrus.log", "logFileLevel", "TRACE");
+            arrus.initialize("clogLevel", "INFO", "logFilePath", Us4R.getLogPath(), "logFileLevel", "TRACE");
 
             obj.session = arrus.session.Session(configFile);
             obj.us4r = obj.session.getDevice("/Us4R:0");
@@ -2018,5 +2018,41 @@ classdef Us4R < handle
                                obj.subSeq.hwDdcEnable);
         end
         
+    end
+
+    methods(Static, Access = private)
+        
+        function logPath = getLogPath()
+            
+            if ispc
+                % Windows
+                baseDir = getenv('LOCALAPPDATA');
+                if ~isempty(baseDir)
+                    logDir = fullfile(baseDir, 'arrus', 'logs');
+                else
+                    logDir = fullfile(pwd, 'logs');
+                    warning(['Default log file location is not recognized, log file will be saved to ' logDir]);
+                end
+            elseif isunix && ~ismac
+                % Linux
+                baseDir = getenv('HOME');
+                if ~isempty(baseDir)
+                    logDir = fullfile(baseDir, '.arrus', 'logs');
+                else
+                    logDir = fullfile(pwd, 'logs');
+                    warning(['Default log file location is not recognized, log file will be saved to ' logDir]);
+                end
+            else
+                error('Unsupported OS');
+            end
+            
+            if ~exist(logDir, 'dir')
+                mkdir(logDir);
+            end
+            
+            logPath = fullfile(logDir, 'arrus.log');
+            
+        end
+
     end
 end
