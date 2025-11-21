@@ -242,7 +242,7 @@ private:
 
     /**
      * Sets voltage without stopping TX/RX sequence.
-     * Consider using this method only in case the performance is critical; in other cases, please use setVoltageUnsafe.
+     * Consider using this method only in case the performance is critical; in other cases, please use setVoltage.
      */
     void setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &voltages);
 
