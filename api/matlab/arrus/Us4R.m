@@ -1688,6 +1688,9 @@ classdef Us4R < handle
             
             if isempty(seqId)
                 % Copy 1st sequence to subsequence
+                % This option (seqId = []) is to support the LEGACY systems
+                % together with upload method without changing much in the
+                % upload/uploadSequence/selectSequence code.
                 obj.selSubSeqParams(1);
             else
                 % Copy selected part of sequence to subsequence
