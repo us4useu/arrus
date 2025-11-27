@@ -253,7 +253,12 @@ private:
     std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
     std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
 
-        std::mutex deviceStateMutex;
+    std::mutex deviceStateMutex;
+    /**
+     * This mutex was introduced in order to avoid potential issues do to simultaneous change of the TX delays (start/stop trigger)
+     * and the buffer overflow handling (i.e. SyncReceive and SyncTransfer).
+     * */
+    std::mutex triggerMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
     std::optional<DigitalBackplane::Handle> digitalBackplane;

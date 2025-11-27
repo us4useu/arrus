@@ -1121,9 +1121,12 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
     case Scheme::WorkMode::MANUAL_OP:
         return [this, startFiring, endFiring]() {
+            std::unique_lock<std::mutex> guard(triggerMutex);
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->SyncReceive();
+                us4oems[i]->getIUs4OEM()->SyncTransfer();
             }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1139,21 +1142,6 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
         return [this, outputBuffer, isMaster]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
-                size_t nElements = outputBuffer->getNumberOfElements();
-                // Wait for all elements to be released by the user.
-                while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                    std::this_thread::sleep_for(1ms);
-                    if (this->state != State::STARTED) {
-                        // Device is no longer running, exit gracefully.
-                        return;
-                    }
-                }
-                // Inform about free elements only once, in the master's callback.
-                if (isMaster) {
-                    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                        us4oems[i]->getIUs4OEM()->SyncReceive();
-                    }
-                }
                 outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
@@ -1190,21 +1178,6 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
         return [this, outputBuffer, isMaster]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
-                size_t nElements = outputBuffer->getNumberOfElements();
-                // Wait for all elements to be released by the user.
-                while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                    std::this_thread::sleep_for(1ms);
-                    if (this->state != State::STARTED) {
-                        // Device is no longer running, exit gracefully.
-                        return;
-                    }
-                }
-                // Inform about free elements only once, in the master's callback.
-                if (isMaster) {
-                    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                        us4oems[i]->getIUs4OEM()->SyncTransfer();
-                    }
-                }
                 outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
@@ -1283,7 +1256,19 @@ void Us4RImpl::setParameters(const Parameters &params) {
     }
 
     // Execute
+    std::unique_lock<std::mutex> guard(triggerMutex);
     this->us4oems[0]->getIUs4OEM()->TriggerStop();
+
+    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+        us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(0, 16384);
+        us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(0, 16384);
+    }
+
+    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+        us4oems[i]->getIUs4OEM()->SyncReceive();
+        us4oems[i]->getIUs4OEM()->SyncTransfer();
+    }
+
     try {
         for (auto &us4oem : us4oems) {
             us4oem->setTxDelaysProfiles(values);
