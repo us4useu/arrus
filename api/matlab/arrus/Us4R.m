@@ -356,7 +356,7 @@ classdef Us4R < handle
             % Program hardware
             if nargin<4 || enableHardwareProgramming
                 obj.programHW;
-                obj.selSubSeq(1, obj.seq.sri);
+                obj.selSubSeq([], obj.seq.sri);
                 obj.sys.isHardwareProgrammed = true;
             else
                 error('Support for enableHardwareProgramming=false is temporarily suspended');
@@ -1686,24 +1686,29 @@ classdef Us4R < handle
 
         function selSubSeq(obj, seqId, sri)
             
-            % Copy selected part of sequence to subsequence
-            obj.selSubSeqParams(seqId);
-
-            % Set the subsequence limits
-            [obj.buffer.data, ...
-             obj.buffer.framesOffset, ...
-             obj.buffer.framesNumber, ...
-             obj.buffer.oemId, ...
-             obj.buffer.frameId, ...
-             obj.buffer.channelId, ...
-             obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
-                                                                   obj.seq.seqLim(seqId,2)  , sri, 0);
-
-            obj.buffer.framesOffset = double(obj.buffer.framesOffset.');
-            obj.buffer.framesNumber = double(obj.buffer.framesNumber.');
-            obj.buffer.oemId        = double(obj.buffer.oemId);
-            obj.buffer.frameId      = double(obj.buffer.frameId);
-            obj.buffer.channelId    = double(obj.buffer.channelId);
+            if isempty(seqId)
+                % Copy 1st sequence to subsequence
+                obj.selSubSeqParams(1);
+            else
+                % Copy selected part of sequence to subsequence
+                obj.selSubSeqParams(seqId);
+                
+                % Set the subsequence limits
+                [obj.buffer.data, ...
+                 obj.buffer.framesOffset, ...
+                 obj.buffer.framesNumber, ...
+                 obj.buffer.oemId, ...
+                 obj.buffer.frameId, ...
+                 obj.buffer.channelId, ...
+                 obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
+                                                                       obj.seq.seqLim(seqId,2)  , sri, 0);
+                
+                obj.buffer.framesOffset = double(obj.buffer.framesOffset.');
+                obj.buffer.framesNumber = double(obj.buffer.framesNumber.');
+                obj.buffer.oemId        = double(obj.buffer.oemId);
+                obj.buffer.frameId      = double(obj.buffer.frameId);
+                obj.buffer.channelId    = double(obj.buffer.channelId);
+            end
             
             % Data reorganization addresses
             obj.calcReorgMap();
@@ -1712,7 +1717,7 @@ classdef Us4R < handle
             obj.buffer.iFrame = 0;
             obj.buffer.tFrame = uint64(0);
             obj.rec.enable = false;
-
+            
         end
 
         function [rf, metadata] = execSequence(obj)
