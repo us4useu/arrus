@@ -1681,30 +1681,7 @@ classdef Us4R < handle
         function selSubSeq(obj, seqId, sri)
             
             % Copy selected part of sequence to subsequence
-            seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
-                                'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
-                                'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
-                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent', 'txWaveform'};
-            for iFld=1:numel(seqFieldsToCopy)
-                obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
-            end
-
-            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
-                                'txFoc', 'txAng', 'txVoltageId', 'txFreq', 'txNPer', 'txInvert', ...
-                                'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
-                                'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
-                                'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
-                                'nSampOmit', 'initDel'};
-            for iFld=1:numel(seqFieldsToExtr)
-                if isempty(obj.seq.(seqFieldsToExtr{iFld})) || isscalar(obj.seq.(seqFieldsToExtr{iFld}))
-                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld});
-                else
-                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
-                                                                                         : obj.seq.seqLim(seqId,2));
-                end
-            end
-
-            obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
+            obj.selSubSeqParams(seqId);
 
             % Set the subsequence limits
             [obj.buffer.data, ...
@@ -1724,7 +1701,8 @@ classdef Us4R < handle
             
             % Data reorganization addresses
             obj.calcReorgMap();
-
+            
+            % Reset selected parameters
             obj.buffer.iFrame = 0;
             obj.buffer.tFrame = uint64(0);
             obj.rec.enable = false;
@@ -2019,6 +1997,39 @@ classdef Us4R < handle
                 end
             end
 
+        end
+
+        function selSubSeqParams(obj, seqId)
+            
+            seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
+                                'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
+                                'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
+                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent', 'txWaveform'};
+            
+            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
+                                'txFoc', 'txAng', 'txVoltageId', 'txFreq', 'txNPer', 'txInvert', ...
+                                'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
+                                'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
+                                'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
+                                'nSampOmit', 'initDel'};
+            
+            % Copy selected parameters from sequence to subsequence
+            for iFld=1:numel(seqFieldsToCopy)
+                obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
+            end
+            
+            % Extract selected parameters' values from sequence to subsequence
+            for iFld=1:numel(seqFieldsToExtr)
+                if isempty(obj.seq.(seqFieldsToExtr{iFld})) || isscalar(obj.seq.(seqFieldsToExtr{iFld}))
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld});
+                else
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:, obj.seq.seqLim(seqId,1) ...
+                                                                                          : obj.seq.seqLim(seqId,2));
+                end
+            end
+            
+            obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
+            
         end
 
     end
