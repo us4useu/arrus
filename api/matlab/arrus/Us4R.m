@@ -1041,8 +1041,8 @@ classdef Us4R < handle
 
         function seqOut = mergeSequences(obj,seqIn)
 
-            obj.seq.nSeq = numel(seqIn);
-            nSeq = obj.seq.nSeq;
+            nSeq = numel(seqIn);
+            obj.seq.nSeq = nSeq;
 
             if nSeq==1
                 seqOut = seqIn;
@@ -1669,6 +1669,12 @@ classdef Us4R < handle
              obj.buffer.frameId, ...
              obj.buffer.channelId, ...
              obj.buffer.rxTimeOffset] = obj.session.upload(scheme);
+
+            obj.buffer.framesOffset = double(obj.buffer.framesOffset.');
+            obj.buffer.framesNumber = double(obj.buffer.framesNumber.');
+            obj.buffer.oemId        = double(obj.buffer.oemId);
+            obj.buffer.frameId      = double(obj.buffer.frameId);
+            obj.buffer.channelId    = double(obj.buffer.channelId);
 
             % NOTE: the above outputs were used for calculation of data
             % reorganization addresses. Since subSequences are supported,
