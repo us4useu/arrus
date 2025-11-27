@@ -1716,42 +1716,14 @@ classdef Us4R < handle
              obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
                                                                    obj.seq.seqLim(seqId,2)  , sri, 0);
 
-            obj.buffer.framesOffset = obj.buffer.framesOffset.';
-            obj.buffer.framesNumber = obj.buffer.framesNumber.';
-            
-            % Data reorganization addresses
-            obj.buffer.framesOffset = double(obj.buffer.framesOffset);
-            obj.buffer.framesNumber = double(obj.buffer.framesNumber);
+            obj.buffer.framesOffset = double(obj.buffer.framesOffset.');
+            obj.buffer.framesNumber = double(obj.buffer.framesNumber.');
             obj.buffer.oemId        = double(obj.buffer.oemId);
             obj.buffer.frameId      = double(obj.buffer.frameId);
             obj.buffer.channelId    = double(obj.buffer.channelId);
-
-            nOem = numel(obj.buffer.framesNumber);
-            nChunk = sum(obj.buffer.framesNumber);
-            nChan = obj.sys.nChArius;
-            nRep = obj.subSeq.nRep;
-            nRx = obj.subSeq.rxApSize;
-            nTx = obj.subSeq.nTx;
-
-            obj.buffer.reorgMap = - ones(nChan, nChunk, 'int32');
             
-            for iOem=1:nOem
-                nFrame = obj.buffer.framesNumber(iOem) / nRep;
-                for iFrame=1:nFrame
-                    isSelect = obj.buffer.oemId == iOem-1 ...
-                             & obj.buffer.frameId == iFrame-1 ...
-                             & obj.buffer.channelId >= 0;
-                    iTx = find(any(isSelect));
-                    iRx = find(isSelect(:,iTx) & obj.buffer.channelId(:,iTx) >= 0);
-                    iChan = obj.buffer.channelId(iRx,iTx) + 1;
-                    for iRep=1:nRep
-                        iChunk = obj.buffer.framesOffset(iOem) ...
-                               + obj.buffer.framesNumber(iOem) / nRep * (iRep-1) ...
-                               + iFrame;
-                        obj.buffer.reorgMap(iChan,iChunk) = (iRep-1)*nTx*nRx + (iTx-1)*nRx + iRx-1; % 0-based indexing
-                    end
-                end
-            end
+            % Data reorganization addresses
+            obj.calcReorgMap();
 
             obj.buffer.iFrame = 0;
             obj.buffer.tFrame = uint64(0);
@@ -2018,6 +1990,37 @@ classdef Us4R < handle
                                obj.subSeq.hwDdcEnable);
         end
         
+        function calcReorgMap(obj)
+            
+            nOem = numel(obj.buffer.framesNumber);
+            nChunk = sum(obj.buffer.framesNumber);
+            nChan = obj.sys.nChArius;
+            nRep = obj.subSeq.nRep;
+            nRx = obj.subSeq.rxApSize;
+            nTx = obj.subSeq.nTx;
+            
+            obj.buffer.reorgMap = - ones(nChan, nChunk, 'int32');
+            
+            for iOem=1:nOem
+                nFrame = obj.buffer.framesNumber(iOem) / nRep;
+                for iFrame=1:nFrame
+                    isSelect = obj.buffer.oemId == iOem-1 ...
+                             & obj.buffer.frameId == iFrame-1 ...
+                             & obj.buffer.channelId >= 0;
+                    iTx = find(any(isSelect));
+                    iRx = find(isSelect(:,iTx) & obj.buffer.channelId(:,iTx) >= 0);
+                    iChan = obj.buffer.channelId(iRx,iTx) + 1;
+                    for iRep=1:nRep
+                        iChunk = obj.buffer.framesOffset(iOem) ...
+                               + obj.buffer.framesNumber(iOem) / nRep * (iRep-1) ...
+                               + iFrame;
+                        obj.buffer.reorgMap(iChan,iChunk) = (iRep-1)*nTx*nRx + (iTx-1)*nRx + iRx-1; % 0-based indexing
+                    end
+                end
+            end
+
+        end
+
     end
 
     methods(Static, Access = private)
