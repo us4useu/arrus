@@ -9,20 +9,21 @@ namespace arrus::devices::us4r {
 class BufferOverflowHandler {
 public:
 
-
-    void sync() {
+    void syncReceive(const uint16_t startIndex, const uint16_t endIndex) {
         if(pendingIndexReceive.has_value()) {
-            const auto value = pending.value();
-            if(startIndex >= value && endIndex <= value) {
-                syncReceive();
+            const auto value = pendingIndexReceive.value();
+            if(startIndex >= value && value >= endIndex) {
+                syncReceiveInternal();
             }
             pendingIndexReceive = std::nullopt;
         }
+    }
 
+    void syncTransfer(const uint16_t startIndex, const uint16_t endIndex) {
         if(pendingIndexTransfer.has_value()) {
-            const auto value = pending.value();
-            if(startIndex >= value && endIndex <= value) {
-                syncTransfer();
+            const auto value = pendingIndexTransfer.value();
+            if(startIndex >= value && value >= endIndex) {
+                syncTransferInternal();
             }
             pendingIndexTransfer = std::nullopt;
         }
@@ -31,48 +32,76 @@ public:
     /**
      * Clears buffer overflow entries in the us4OEM sequence table.
      */
-    void clearEntries(const uint16_t startIndex, const uint16_t endIndex) {
+    void clearEntriesReceive(const uint16_t startFiring, const uint16_t endFiring) {
         std::unique_lock<std::mutex> guard(stateMutex);
-        clearReceiveAndTransfer(startIndex, endIndex);
+        for (int i = (int) ius4oems.size() - 1; i >= 0; --i) {
+            ius4oems[i]->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+        }
+    }
+
+    void clearEntriesTransfer(const uint16_t startFiring, const uint16_t endFiring) {
+        std::unique_lock<std::mutex> guard(stateMutex);
+        for (int i = (int) ius4oems.size() - 1; i >= 0; --i) {
+            ius4oems[i]->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+        }
     }
 
     void onReceiveOverflow() {
         std::unique_lock<std::mutex> guard(stateMutex);
-        if(isEntryClean()) {
-            // we already have the entry clean (spurious IRQ?)
-            notify
+        const uint16_t currentIdx = getMasterOEM()->GetSequencerCurrentIndex();
+        // TODO consider double checking that the current index is exactly the same on all the OEMs.
+        // Check if this is spurious IRQ, i.e. if the flag of the entry at the current index is actually clean.
+        if(getMasterOEM()->IsEntryReadyForReceive(currentIdx)) {
+            return;
         }
-        registerReceiveOverflowEvent();
+        if(pendingIndexReceive.has_value()) {
+            // TODO shouldn't we stop the system in that situation?
+            logger->log(LogSeverity::ERROR,
+                        format("There is already some RX pending index: previous: {}, new: {}", pendingIndexReceive.value(), currentIdx));
+        }
+        pendingIndexReceive = currentIdx;
+    }
+
+    void onTransferOverflow() {
+        std::unique_lock<std::mutex> guard(stateMutex);
+        const uint16_t currentIdx = getMasterOEM()->GetSequencerCurrentIndex();
+        // TODO consider double checking that the current index is exactly the same on all the OEMs.
+        // Check if this is spurious IRQ, i.e. if the flag of the entry at the current index is actually clean.
+        if(getMasterOEM()->IsEntryReadyForTransfer(currentIdx)) {
+            // The entry is already ready for transfer, nothing to do more on that.
+            return;
+        }
+        if(pendingIndexTransfer.has_value()) {
+            // TODO shouldn't we stop the system in that situation?
+            logger->log(LogSeverity::ERROR,
+                        format("There is already some Transfer pending index: previous: {}, new: {}", pendingIndexTransfer.value(), currentIdx));
+        }
+        pendingIndexTransfer = currentIdx;
+    }
+
+    IUs4OEM* getMasterOEM() {
+        return ius4oems[0];
     }
 
 private:
-    void registerReceiveOverflowEvent(us4oem) {
-        const auto currentIndex = getCurrentIndex();
-        if(pendingIndexReceive.has_value()) {
-            logger->log(
-                ERROR,
-                format("There is already some RX pending index: previous: {}, new: {}", pendingIndexReceive.value(), currentIndex)
-            );
+
+    void syncReceiveInternal() {
+        for (int i = (int) ius4oems.size() - 1; i >= 0; --i) {
+            ius4oems[i]->SyncReceive();
         }
-        pendingIndexReceive = currentIndex;
     }
 
-    void registerTransferOverflowEvent() {
-        std::unique_lock<std::mutex> guard(stateMutex);
-
-        const auto currentIndex = getCurrentIndex();
-        if(pendingIndexTransfer.has_value()) {
-            logger->log(
-                ERROR,
-                format("There is already some PCIEDMA pending index: previous: {}, new: {}", pendingIndexTransfer.value(), currentIndex)
-            );
+    void syncTransferInternal() {
+        for (int i = (int) ius4oems.size() - 1; i >= 0; --i) {
+            ius4oems[i]->SyncTransfer();
         }
-        pendingIndexTransfer = currentIndex;
     }
 
     std::mutex stateMutex;
+    Logger::Handle logger;
     std::vector<IUs4OEM*> ius4oems;
-    std::function<uint16_t()> getCurrentIndex;
+    std::optional<uint16_t> pendingIndexReceive;
+    std::optional<uint16_t> pendingIndexTransfer;
 };
 
 }

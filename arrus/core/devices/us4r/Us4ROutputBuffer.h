@@ -78,6 +78,13 @@ public:
         this->state = State::FREE;
     }
 
+    /**
+     * Calls receive release function (e.g. clears RX flags in the sequencer table).
+     */
+    void releaseReceive() {
+        receiveReleaseFunction();
+    }
+
     int16 *getAddress(ArrayId id) {
         validateState();
         return arrays.getMutable(id).get<int16>();
@@ -108,6 +115,7 @@ public:
     size_t getPosition() override { return position; }
 
     void registerReleaseFunction(std::function<void()> &f) { releaseFunction = f; }
+    void registerReceiveReleaseFunction(std::function<void()> &f) { receiveReleaseFunction = f; }
 
     [[nodiscard]] bool isElementReady() {
         std::unique_lock<std::mutex> guard(mutex);
@@ -160,6 +168,8 @@ private:
     std::vector<int> elementReadyCounters;
     Accumulator accumulator;
     std::function<void()> releaseFunction;
+    /** The function that will be called when the data reception (to the us4OEMs DDR memory) already has ended. */
+    std::function<void()> receiveReleaseFunction;
     State state{State::FREE};
 };
 
@@ -285,6 +295,7 @@ public:
         }
         if (element->isElementReady()) {
             guard.unlock();
+            elements[elementNr]->releaseReceive();
             onNewDataCallback(elements[elementNr]);
         } else {
             guard.unlock();
@@ -325,6 +336,11 @@ public:
     void registerReleaseFunction(size_t element, std::function<void()> &releaseFunction) {
         this->elements[element]->registerReleaseFunction(releaseFunction);
     }
+
+    void registerReceiveReleaseFunction(size_t element, std::function<void()> &releaseFunction) {
+        this->elements[element]->registerReceiveReleaseFunction(releaseFunction);
+    }
+
 
     bool isStopOnOverflow() { return this->stopOnOverflow; }
 

@@ -1064,7 +1064,9 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
         uint16 endFiring = srcElement.getGlobalFiring();
         for (size_t j = 0; j < nRepeats; ++j) {
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
+            std::function<void()> receiveReleaseFunc = createReceiveReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);
+            bufferDst->registerReceiveReleaseFunction(j * nElementsSrc + i, receiveReleaseFunc);
         }
         startFiring = endFiring + 1;
     }
@@ -1104,12 +1106,10 @@ void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
 }
 
 std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
-
     switch (workMode) {
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
@@ -1119,15 +1119,36 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
-    case Scheme::WorkMode::MANUAL_OP:
+    case Scheme::WorkMode::MANUAL_OP: // Trigger generator: external (e.g. user)
         return [this, startFiring, endFiring]() {
             std::unique_lock<std::mutex> guard(triggerMutex);
+            this->bufferOverflowHandler->clearEntriesTransfer(startFiring, endFiring);
+            this->bufferOverflowHandler->syncTransfer(startFiring, endFiring);
+        };
+    default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
+    }
+}
+
+
+std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
+    switch (workMode) {
+    case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
+        return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-                us4oems[i]->getIUs4OEM()->SyncReceive();
-                us4oems[i]->getIUs4OEM()->SyncTransfer();
             }
+            if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
+                getMasterOEM()->syncTrigger();
+            }
+        };
+    case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
+    case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
+    case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
+    case Scheme::WorkMode::MANUAL_OP: // Trigger generator: external (e.g. user)
+        return [this, startFiring, endFiring]() {
+            std::unique_lock<std::mutex> guard(triggerMutex);
+            this->bufferOverflowHandler->clearEntriesReceive(startFiring, endFiring);
+            this->bufferOverflowHandler->syncReceive(startFiring, endFiring);
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
@@ -1142,6 +1163,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
         return [this, outputBuffer, isMaster]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
+                bufferOverflowHandler->onReceiveOverflow();
                 outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
@@ -1178,6 +1200,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
         return [this, outputBuffer, isMaster]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
+                bufferOverflowHandler->onTransferOverflow();
                 outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));

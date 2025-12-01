@@ -29,6 +29,7 @@
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/utils.h"
+#include "arrus/core/devices/us4r/BufferOverflowHandler.h"
 
 namespace arrus::devices {
 
@@ -256,7 +257,7 @@ private:
     std::mutex deviceStateMutex;
     /**
      * This mutex was introduced in order to avoid potential issues do to simultaneous change of the TX delays (start/stop trigger)
-     * and the buffer overflow handling (i.e. SyncReceive and SyncTransfer).
+     * and the buffer overflow handling (i.e. syncReceive and SyncTransfer).
      * */
     std::mutex triggerMutex;
     Logger::Handle logger;
@@ -296,6 +297,11 @@ private:
     std::unordered_map<std::string, SequenceId> sequenceNameToOrdinalMap;
     /** The number of TX delay profiles set for the sequence with the given name */
     std::unordered_map<std::string, size_t> sequenceNumberOfTxDelayProfiles;
+
+    // Buffer overflow handling
+    std::optional<us4r::BufferOverflowHandler> bufferOverflowHandler;
+    std::function<void()> createReceiveReleaseCallback(ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
+                                                       uint16 endFiring);
 };
 
 }// namespace arrus::devices
