@@ -306,9 +306,6 @@ private:
     std::unordered_map<std::string, SequenceId> sequenceNameToOrdinalMap;
     /** The number of TX delay profiles set for the sequence with the given name */
     std::unordered_map<std::string, size_t> sequenceNumberOfTxDelayProfiles;
-
-    // Buffer overflow handling
-    std::unique_ptr<us4r::BufferOverflowHandler> bufferOverflowHandler;
 };
 
 }// namespace arrus::devices

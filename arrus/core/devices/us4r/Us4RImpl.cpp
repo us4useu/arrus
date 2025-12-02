@@ -473,12 +473,6 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     sequenceNameToOrdinalMap = getSequenceNameToOrdinalMap(currentScheme.value());
     // Metadata
     std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
-    // Prepare buffer overflow handler.
-    std::vector<IUs4OEM*> ius4oems;
-    for(const auto &us4oem: us4oems) {
-        ius4oems.push_back(us4oem->getIUs4OEM());
-    }
-    bufferOverflowHandler = std::make_unique<us4r::BufferOverflowHandler>(ius4oems);
     return {this->buffer, metadatas};
 }
 
@@ -1351,22 +1345,29 @@ void Us4RImpl::setParameters(const Parameters &params) {
 
     // Execute
     std::unique_lock<std::mutex> guard(triggerMutex);
-    this->us4oems[0]->getIUs4OEM()->TriggerStop();
-
+    // We need that to not stop/start the system when the state is actually stopped
+    std::unique_lock<std::recursive_mutex> stateGuard(deviceStateMutex);
+    if(this->state == State::STARTED) {
+        this->us4oems[0]->getIUs4OEM()->TriggerStop();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     try {
         for (auto &us4oem : us4oems) {
             us4oem->setTxDelaysProfiles(values);
-
         }
         // Wait to make sure all the TX delays were correctly set.
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     } catch (...) {
         // Try resume.
-        this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        if(this->state == State::STARTED) {
+            this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        }
         throw;
     }
     // Everything OK, resume.
-    this->us4oems[0]->getIUs4OEM()->TriggerStart();
+    if(this->state == State::STARTED) {
+        this->us4oems[0]->getIUs4OEM()->TriggerStart();
+    }
 }
 
 BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {

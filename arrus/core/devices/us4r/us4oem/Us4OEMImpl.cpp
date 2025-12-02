@@ -171,7 +171,7 @@ void Us4OEMImpl::setTxTimeouts(const std::vector<TxTimeout> &txTimeouts) {
     if(!txTimeouts.empty()) {
         ius4oem->EnableTxTimeout();
         for(size_t n = 0; n < txTimeouts.size(); ++n) {
-            ius4oem->SetTxTimeout((uint8_t)n, txTimeouts[n]);
+            ius4oem->SetTxTimeout((uint8_t)n, 20);
         }
     }
 }
