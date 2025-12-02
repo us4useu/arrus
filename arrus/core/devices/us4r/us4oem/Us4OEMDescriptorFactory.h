@@ -14,8 +14,10 @@ public:
 
     static Us4OEMDescriptor getDescriptor(const IUs4OEMHandle &ius4oem, bool isMaster) {
         auto version = ius4oem->GetOemVersion();
-        auto minFrequency = ius4oem->GetMinTxFrequency();
-        auto maxFrequency = ius4oem->GetMaxTxFrequency();
+
+        auto minFrequencyLegacy = ius4oem->GetMinTxFrequency();
+        auto maxFrequencyLegacy = ius4oem->GetMaxTxFrequency();
+
         switch (version) {
         case 1:
             // Legacy us4OEM
@@ -35,14 +37,14 @@ public:
                         // amplitude 1 / rail 1
                         // UNAVAILABLE (voltages set to 0)
                         arrus::ops::us4r::TxLimits {
-                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{minFrequencyLegacy, maxFrequencyLegacy},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{0, 0} // UNAVAILABLE
                         },
                         // amplitude 2 / rail 0
                         arrus::ops::us4r::TxLimits {
-                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{minFrequencyLegacy, maxFrequencyLegacy},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
@@ -75,14 +77,14 @@ public:
                     arrus::ops::us4r::TxRxLimits {
                         // amplitude 1 / rail 1
                         arrus::ops::us4r::TxLimits {
-                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{100e3, 32.5e6},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
                         // amplitude 2 / rail 0
                         arrus::ops::us4r::TxLimits {
-                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{100e3, 32.5e6},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
@@ -115,14 +117,14 @@ public:
                     arrus::ops::us4r::TxRxLimits {
                         // amplitude 1 / rail 1
                         arrus::ops::us4r::TxLimits {
-                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{100e3, 32.5e6},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}
                         },
                         // amplitude 2 / rail 0
                         arrus::ops::us4r::TxLimits {
-                            Interval<float>{minFrequency, maxFrequency},  // Frequency
+                            Interval<float>{100e3, 32.5e6},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
                             Interval<Voltage>{5, 90}

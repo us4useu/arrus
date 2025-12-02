@@ -167,14 +167,17 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     std::vector<std::optional<HVVoltage>> newVoltages(voltages.size());
     std::transform(voltages.begin(), voltages.end(), newVoltages.begin(),
                    [](const auto v){return std::make_optional(v);});
+    setVoltage(newVoltages);
+}
 
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages) {
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     try {
         if(this->state == State::STARTED) {
             // pause the TX/RX sequence execution
             this->us4oems[0]->getIUs4OEM()->TriggerStop();
         }
-        setVoltage(newVoltages);
+        setVoltageUnsafe(voltages);
         if(this->state == State::STARTED) {
             // resume
             this->us4oems[0]->getIUs4OEM()->TriggerStart();
@@ -189,7 +192,7 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
     }
 }
 
-void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages) {
+void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &voltages) {
     const int N_RAILS = 2;
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     ARRUS_REQUIRES_TRUE(voltages.size() == N_RAILS, "Voltages for HV0 and HV1 should be provided.");
@@ -360,7 +363,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     }
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    float tolerance = 4.0f;// 4V tolerance
+    const float tolerance = isHVPS ? 1.0f : 4.0f;
     int retries = 5;
 
      if(isHV256) {
@@ -410,7 +413,7 @@ float Us4RImpl::getMeasuredHVMVoltage(uint8_t oemId) {
 }
 
 void Us4RImpl::disableHV() {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state == State::STARTED) {
         throw IllegalStateException("You cannot disable HV while the system is running.");
     }
@@ -445,7 +448,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
             format("The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
                    hostBufferSize, rxBufferSize)));
 
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
     auto [buffers,
@@ -507,7 +510,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
 }
 
 void Us4RImpl::start() {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     logger->log(LogSeverity::INFO, "Starting us4r.");
     if (this->buffer == nullptr) {
         throw ::arrus::IllegalArgumentException("Call upload function first.");
@@ -545,7 +548,7 @@ void Us4RImpl::start() {
 void Us4RImpl::stop() { this->stopDevice(); }
 
 void Us4RImpl::stopDevice() {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STARTED) {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
@@ -944,7 +947,7 @@ void Us4RImpl::checkState() const {
 }
 
 void Us4RImpl::setStopOnOverflow(bool value) {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STOPPED) {
         logger->log(LogSeverity::INFO,
                     "The StopOnOverflow property can be set "

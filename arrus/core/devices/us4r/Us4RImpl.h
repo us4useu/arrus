@@ -235,7 +235,17 @@ private:
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     std::vector<float> interpolateToSystemTGC(const std::vector<float> &t, const std::vector<float> &y) const;
     void handlePulserInterrupt();
+
+    /**
+     * Sets voltage in a safe way, i.e. stops TX/RX sequence before changing the voltage.
+     */
     void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
+
+    /**
+     * Sets voltage without stopping TX/RX sequence.
+     * Consider using this method only in case the performance is critical; in other cases, please use setVoltage.
+     */
+    void setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &voltages);
 
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
                            bool cleanupSequencerTransfers = false);
@@ -254,11 +264,7 @@ private:
     std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
     std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
 
-    std::mutex deviceStateMutex;
-    /**
-     * This mutex was introduced in order to avoid potential issues do to simultaneous change of the TX delays (start/stop trigger)
-     * and the buffer overflow handling (i.e. syncReceive and SyncTransfer).
-     * */
+    std::recursive_mutex deviceStateMutex;
     std::mutex triggerMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;

@@ -110,6 +110,9 @@ public:
 
     framework::NdArray &getData() override { return getData(0); }
 
+    /**
+     * Returns the size of the given element in bytes (equal to the size of all sub-arrays).
+     */
     size_t getSize() override { return size; }
 
     size_t getPosition() override { return position; }

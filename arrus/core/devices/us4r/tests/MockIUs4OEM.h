@@ -25,7 +25,7 @@ public:
         (unsigned char * dstAddress, size_t length, size_t srcAddress),
     (override));
     MOCK_METHOD(void, SetRxSettings, (const us4us::us4r::RxSettings &rxSettings, bool force), (override));
-    MOCK_METHOD(void, InitializeTX, (), (override));
+    MOCK_METHOD(void, InitializeTX, (bool ignoreHVPSCalibration), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));
     MOCK_METHOD(::us4us::us4r::Vector<float>, SetTxDelays, (const ::us4us::us4r::Span<float> &delays, const uint16_t firing, size_t profile, size_t sequenceId), (override));
@@ -67,7 +67,7 @@ public:
     MOCK_METHOD(void, SetTrigger,
             (unsigned int timeToNextTrigger, bool syncReq, unsigned short idx, bool syncMode, bool irqDone),
     (override));
-    MOCK_METHOD(void, UpdateFirmware, (const char * filename), (override));
+    MOCK_METHOD(void, UpdateFirmware, (const char * filename, bool eraseHVPS), (override));
     MOCK_METHOD(float, GetUpdateFirmwareProgress, (), (override));
     MOCK_METHOD(const char *, GetUpdateFirmwareStatus, (), (override));
     MOCK_METHOD(int, UpdateTxFirmware,
@@ -236,7 +236,7 @@ public:
     MOCK_METHOD(void, ResetDMACallbacks, (), (override));
     MOCK_METHOD(void, SetPulserInterruptCallback, (const std::function<void()> &), (override));
     MOCK_METHOD(void, EraseHVPSCalibration, (), (override));
-    MOCK_METHOD(void, CalibrateHVPS, (), (override));
+    MOCK_METHOD(void, CalibrateHVPS, (uint8_t limit), (override));
     MOCK_METHOD(bool, CheckHVPSCalibration, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
 };

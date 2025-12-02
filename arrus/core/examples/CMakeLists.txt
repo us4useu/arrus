@@ -21,3 +21,8 @@ add_executable(demod-example PwiDdcExample.cpp)
 target_link_directories(demod-example PRIVATE ${ARRUS_LIB_PATH})
 target_link_libraries(demod-example PRIVATE arrus-core)
 target_include_directories(demod-example PRIVATE ${ARRUS_INCLUDE_PATH} ${Boost_INCLUDE_DIRS})
+
+add_executable(custom-tx-waveform-example CustomTxWaveform.cpp)
+target_link_directories(custom-tx-waveform-example PRIVATE ${ARRUS_LIB_PATH})
+target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core)
+target_include_directories(custom-tx-waveform-example PRIVATE ${ARRUS_INCLUDE_PATH})
