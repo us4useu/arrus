@@ -7,6 +7,7 @@
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include "arrus/core/common/collections.h"
+#include "arrus/common/utils.h"
 #include "arrus/common/format.h"
 #include "us4r_api_version.h"
 #include <chrono>
@@ -472,6 +473,12 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     sequenceNameToOrdinalMap = getSequenceNameToOrdinalMap(currentScheme.value());
     // Metadata
     std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
+    // Prepare buffer overflow handler.
+    std::vector<IUs4OEM*> ius4oems;
+    for(const auto &us4oem: us4oems) {
+        ius4oems.push_back(us4oem->getIUs4OEM());
+    }
+    bufferOverflowHandler = std::make_unique<us4r::BufferOverflowHandler>(ius4oems);
     return {this->buffer, metadatas};
 }
 
@@ -1062,9 +1069,13 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterOEM()->getDeviceId().getOrdinal();
     size_t nRepeats = nElementsDst / nElementsSrc;
     uint16 startFiring = 0;
+    std::vector<std::pair<uint16, uint16>> firingRanges;
     for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getGlobalFiring();
+
+        firingRanges.push_back({startFiring, endFiring});
+
         for (size_t j = 0; j < nRepeats; ++j) {
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
             std::function<void()> receiveReleaseFunc = createReceiveReleaseCallback(workMode, startFiring, endFiring);
@@ -1074,8 +1085,8 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
         startFiring = endFiring + 1;
     }
     // Overflow handling
-    ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster));
-    ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster));
+    ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
+    ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
     // Work mode specific initialization
     if (workMode == ops::us4r::Scheme::WorkMode::SYNC) {
         ius4oem->EnableWaitOnReceiveOverflow();
@@ -1125,8 +1136,9 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::MANUAL_OP: // Trigger generator: external (e.g. user)
         return [this, startFiring, endFiring]() {
             std::unique_lock<std::mutex> guard(triggerMutex);
-            this->bufferOverflowHandler->clearEntriesTransfer(startFiring, endFiring);
-            this->bufferOverflowHandler->syncTransfer(startFiring, endFiring);
+            for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+            }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
@@ -1140,9 +1152,6 @@ std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode wo
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
             }
-            if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
-                getMasterOEM()->syncTrigger();
-            }
         };
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
@@ -1150,24 +1159,54 @@ std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode wo
     case Scheme::WorkMode::MANUAL_OP: // Trigger generator: external (e.g. user)
         return [this, startFiring, endFiring]() {
             std::unique_lock<std::mutex> guard(triggerMutex);
-            this->bufferOverflowHandler->clearEntriesReceive(startFiring, endFiring);
-            this->bufferOverflowHandler->syncReceive(startFiring, endFiring);
+            for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+            }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
 }
 
 std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode workMode,
-                                                                Us4ROutputBuffer *outputBuffer, bool isMaster) {
+                                                                Us4ROutputBuffer *outputBuffer, bool isMaster,
+                                                                const std::vector<std::pair<uint16, uint16>> &firings) {
 
     using namespace std::chrono_literals;
     switch (workMode) {
     case Scheme::WorkMode::SYNC:
-        return [this, outputBuffer, isMaster]() {
+        return [this, outputBuffer, isMaster, firings]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
-                bufferOverflowHandler->onReceiveOverflow();
                 outputBuffer->runOnOverflowCallback();
+                if(isMaster) {
+//                    std::unique_lock<std::mutex> guard(triggerMutex);
+                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
+                    this->logger->log(LogSeverity::TRACE, format("Detected RX data overflow, current sequencer index: {}.", currentIdx));
+                    // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
+                    std::optional<uint16> pendingFiring = std::nullopt;
+                    for(const auto [startFiring, endFiring]: firings) {
+                        if(startFiring <= currentIdx && currentIdx <= endFiring) {
+                            pendingFiring = endFiring;
+                            break;
+                        }
+                    }
+                    if(pendingFiring == std::nullopt) {
+                        throw IllegalStateException(format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                    }
+                    // Wait until the end of the [startFiring, endFiring] entries will be released.
+                    // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
+                    const std::chrono::milliseconds timeout{10000};
+                    ARRUS_ACTIVE_WAIT_TIMEOUT_P(
+                        getMasterOEM()->getIUs4OEM()->IsEntryReadyForReceive(pendingFiring.value()),
+                        timeout,
+                        IllegalStateException("Timeout while waiting for the buffer element ready for receive"),
+                        std::chrono::milliseconds{1}
+                    );
+                    // we are ready to call sync receive.
+                    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                        us4oems[i]->getIUs4OEM()->SyncReceive();
+                    }
+                }
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
@@ -1195,16 +1234,45 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
 }
 
 std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMode workMode,
-                                                                 Us4ROutputBuffer *outputBuffer, bool isMaster) {
+                                                                 Us4ROutputBuffer *outputBuffer, bool isMaster,
+                                                                 const std::vector<std::pair<uint16, uint16>> &firings) {
 
     using namespace std::chrono_literals;
     switch (workMode) {
     case Scheme::WorkMode::SYNC:
-        return [this, outputBuffer, isMaster]() {
+        return [this, outputBuffer, isMaster, firings]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
-                bufferOverflowHandler->onTransferOverflow();
                 outputBuffer->runOnOverflowCallback();
+                if(isMaster) {
+//                    std::unique_lock<std::mutex> guard(triggerMutex);
+                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
+                    this->logger->log(LogSeverity::TRACE, format("Detected transfer data overflow, current sequencer index: {}.", currentIdx));
+                    // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
+                    std::optional<uint16> pendingFiring = std::nullopt;
+                    for(const auto [startFiring, endFiring]: firings) {
+                        if(startFiring <= currentIdx && currentIdx <= endFiring) {
+                            pendingFiring = endFiring;
+                            break;
+                        }
+                    }
+                    if(pendingFiring == std::nullopt) {
+                        throw IllegalStateException(format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                    }
+                    // Wait until the end of the [startFiring, endFiring] entries will be released.
+                    // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
+                    const std::chrono::milliseconds timeout{10000};
+                    ARRUS_ACTIVE_WAIT_TIMEOUT_P(
+                        getMasterOEM()->getIUs4OEM()->IsEntryReadyForTransfer(pendingFiring.value()),
+                        timeout,
+                        IllegalStateException("Timeout while waiting for the buffer element ready for transfer"),
+                        std::chrono::milliseconds{1}
+                    );
+                    // we are ready to call the sync transfer.
+                    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                        us4oems[i]->getIUs4OEM()->SyncTransfer();
+                    }
+                }
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
@@ -1285,20 +1353,13 @@ void Us4RImpl::setParameters(const Parameters &params) {
     std::unique_lock<std::mutex> guard(triggerMutex);
     this->us4oems[0]->getIUs4OEM()->TriggerStop();
 
-    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-        us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(0, 16384);
-        us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(0, 16384);
-    }
-
-    for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-        us4oems[i]->getIUs4OEM()->SyncReceive();
-        us4oems[i]->getIUs4OEM()->SyncTransfer();
-    }
-
     try {
         for (auto &us4oem : us4oems) {
             us4oem->setTxDelaysProfiles(values);
+
         }
+        // Wait to make sure all the TX delays were correctly set.
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     } catch (...) {
         // Try resume.
         this->us4oems[0]->getIUs4OEM()->TriggerStart();

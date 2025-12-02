@@ -227,9 +227,11 @@ private:
     std::function<void()> createReleaseCallback(::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
                                                 uint16 stopFiring);
     std::function<void()> createOnReceiveOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
-                                                          Us4ROutputBuffer *buffer, bool isMaster);
+                                                          Us4ROutputBuffer *buffer, bool isMaster,
+                                                          const std::vector<std::pair<uint16, uint16>> &firings);
     std::function<void()> createOnTransferOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
-                                                           Us4ROutputBuffer *buffer, bool isMaster);
+                                                           Us4ROutputBuffer *buffer, bool isMaster,
+                                                           const std::vector<std::pair<uint16, uint16>> &firings);
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
@@ -263,6 +265,7 @@ private:
     std::tuple<std::string, std::string> parseTxDelaysParamName(const std::string &name) const;
     std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
     std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
+    std::function<void()> createReceiveReleaseCallback(ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring);
 
     std::recursive_mutex deviceStateMutex;
     std::mutex triggerMutex;
@@ -305,9 +308,7 @@ private:
     std::unordered_map<std::string, size_t> sequenceNumberOfTxDelayProfiles;
 
     // Buffer overflow handling
-    std::optional<us4r::BufferOverflowHandler> bufferOverflowHandler;
-    std::function<void()> createReceiveReleaseCallback(ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
-                                                       uint16 endFiring);
+    std::unique_ptr<us4r::BufferOverflowHandler> bufferOverflowHandler;
 };
 
 }// namespace arrus::devices
