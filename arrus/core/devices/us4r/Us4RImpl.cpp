@@ -618,6 +618,13 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         },
         rxDelays
     };
+    // Group TX delay profiles by sequence name. Also, validates NdArray names.
+    const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
+    sequenceNumberOfTxDelayProfiles.clear();
+    for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
+        sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
+    }
+
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
 
     // Convert API sequences to internal representation.
@@ -651,13 +658,6 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
     // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
     std::vector<std::vector<TxRxParametersSequence>> oemSequences;
-
-    // Group TX delay profiles by sequence name. Also, validates NdArray names.
-    const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
-    sequenceNumberOfTxDelayProfiles.clear();
-    for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
-        sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
-    }
 
     // Sequence ordinal number -> OEM -> profile id -> TX delays (2D array (n firings, n channels)).
     // NOTE: if for the given tx sequence and OEM there is no TX delays profile, an empty array should be stored.

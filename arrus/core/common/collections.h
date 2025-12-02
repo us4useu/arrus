@@ -81,9 +81,21 @@ mapContains(const std::unordered_map<T, U> &map, const T &key) {
     return map.find(key) != std::end(map);
 }
 
+/**
+ * Returns value that is assigned to given key or std::nullopt in case this map does not contain that key.
+ */
 template<typename T, typename U>
 inline std::optional<U>
 mapGetValueOrNone(const std::unordered_map<T, U> &map, const T &key) {
+    return mapGetValueOrNone<T, U, std::hash<T>>(map, key);
+}
+
+/**
+ * Returns value that is assigned to given key or std::nullopt in case this map does not contain that key.
+ */
+template<typename T, typename U, typename H>
+inline std::optional<U>
+mapGetValueOrNone(const std::unordered_map<T, U, H> &map, const T &key) {
     const auto res = map.find(key);
     if(res != std::end(map)) {
         return res->second;

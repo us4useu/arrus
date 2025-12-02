@@ -17,6 +17,12 @@
 namespace arrus::ops::us4r {
 
 /**
+ * An list of TX delay profiles; profiles.at(i) represents i-th TX delay profile.
+ * Each TX delay profile is a 2D array; you can access delays using profiles.at(i).get(row=TX/RX op number, column=channel).
+ */
+using DelayProfiles = std::vector<::arrus::framework::NdArray>;
+
+/**
  * A single tx/rx operation to perform.
  */
 class TxRx {
