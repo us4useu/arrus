@@ -29,7 +29,6 @@
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/utils.h"
-#include "arrus/core/devices/us4r/BufferOverflowHandler.h"
 
 namespace arrus::devices {
 
