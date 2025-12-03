@@ -1067,10 +1067,12 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getGlobalFiring();
-
-        firingRanges.push_back({startFiring, endFiring});
+        // We need the below to properly determine the end firing in the buffer overflow handing.
+        // The startFiring should not matter here.
+        firingRanges.push_back({startFiring, srcElement.getViewFiring()});
 
         for (size_t j = 0; j < nRepeats; ++j) {
+            // Cleaning up the WHOLE SEQUENCE entries (possible minor optimization: limit just to the current sub-sequence).
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
             std::function<void()> receiveReleaseFunc = createReceiveReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);

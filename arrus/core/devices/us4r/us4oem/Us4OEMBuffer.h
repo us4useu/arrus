@@ -31,9 +31,9 @@ public:
 
     uint16 getArrayId() const { return arrayId; }
 
-    /** Returns GLOBAL firing id (i.e. relative to the beginning of all seqeuncer entries for a given element)
-     * Global per sequence and number of repetitions. Local per element (i.e., calculated as for the first buffer
-     * element). */
+1G    /**
+     * NOTE: Global per sequence and number of repetitions (batch). Local per element (i.e., calculated as for the first buffer
+     * element). (entry = firing) */
     uint16 getEntryId() const { return entryId; }
 
     unsigned int getNSamples() const { return nSamples; }
@@ -87,7 +87,13 @@ private:
  */
 class Us4OEMBufferElement {
 public:
-    Us4OEMBufferElement(size_t address, size_t size, uint16 firing) : address(address), size(size), firing(firing) {}
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing, uint16 viewFiring)
+        : address(address), size(size), firing(firing), viewFiring(viewFiring) {}
+
+    /**
+     * Sets the global firing and the firing to the same value.
+     */
+    Us4OEMBufferElement(size_t address, size_t size, uint16 firing): Us4OEMBufferElement(address, size, firing, firing) {}
 
     [[nodiscard]] size_t getAddress() const { return address; }
 
@@ -95,15 +101,26 @@ public:
 
     /**
      * Returns the number of the last (sequencer) entry, that writes the data to this element.
-     * NOTE: this is a globa firing number! That is, in particular, it ignores the fact that this element
-     * can be only a view to the target element.
+     * NOTE: this is firing number for the whole TX/RX sequence! That is, in particular, it ignores the fact that this element
+     * can be only a view (e.g. for the sub-sequence) to the target element.
      */
     [[nodiscard]] uint16 getGlobalFiring() const { return firing; }
+
+
+    /**
+     * Returns the number of the last (sequencer) entry, that writes the data to this element.
+     * NOTE: this is the view firing number! In particular, it is the number of the last firing in the
+     * currently selected sub-sequence. NOTE: this is GLOBAL FIRING NUMBER (i.e. calculated in relation to the begining
+     * of the sequencer table).
+     * If this is not the buffer view (i.e. there are no sub-sequences in use), this value is equal to the getGlobalFiring().
+     */
+    [[nodiscard]] uint16 getViewFiring() const { return viewFiring; }
 
 private:
     size_t address;
     size_t size;
     uint16 firing;
+    uint16 viewFiring;
 };
 
 class Us4OEMBufferBuilder;
