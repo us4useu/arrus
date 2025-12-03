@@ -625,7 +625,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
     }
 
-    TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
+    TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences, txDelayProfilesBySequence);
 
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts, rxDelays);
