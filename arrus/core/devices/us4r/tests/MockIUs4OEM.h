@@ -239,6 +239,9 @@ public:
     MOCK_METHOD(void, CalibrateHVPS, (uint8_t limit), (override));
     MOCK_METHOD(bool, CheckHVPSCalibration, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
+    MOCK_METHOD(uint16_t, GetSequencerCurrentIndex, (), (override));
+    MOCK_METHOD(bool, IsEntryReadyForTransfer, (uint16_t), (override));
+    MOCK_METHOD(bool, IsEntryReadyForReceive, (uint16_t), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

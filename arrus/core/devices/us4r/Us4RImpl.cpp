@@ -1178,7 +1178,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     this->logger->log(LogSeverity::TRACE, format("Detected RX data overflow, current sequencer index: {}.", currentIdx));
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
-                    for(const auto [startFiring, endFiring]: firings) {
+                    for(const auto &[startFiring, endFiring]: firings) {
                         if(startFiring <= currentIdx && currentIdx <= endFiring) {
                             pendingFiring = endFiring;
                             break;
@@ -1244,7 +1244,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                     this->logger->log(LogSeverity::TRACE, format("Detected transfer data overflow, current sequencer index: {}.", currentIdx));
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
-                    for(const auto [startFiring, endFiring]: firings) {
+                    for(const auto &[startFiring, endFiring]: firings) {
                         if(startFiring <= currentIdx && currentIdx <= endFiring) {
                             pendingFiring = endFiring;
                             break;

@@ -9,6 +9,7 @@
 
 #include "TxWaveformConverter.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/framework/NdArray.h"
 
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/common/hash.h"
@@ -73,7 +74,9 @@ public:
         const std::vector<std::vector<float>> &rxDelays
         ): nTimeouts(nTimeouts), actualTxFunc(std::move(actualTxFunc)), rxDelays(rxDelays) {}
 
-
+    TxTimeoutRegister createFor(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences) {
+        return createFor(sequences, {});
+    }
 
     TxTimeoutRegister createFor(
         const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences,
@@ -137,7 +140,8 @@ public:
         for(const auto &s: sequences) {
             opId = 0;
             for(const auto &op: s.getOps()) {
-                TxTimeout txTime = getWaveformTime(op, rxDelays.at(sId).at(opId)) + EPSILON;
+                std::optional<float> maxDelay = mapGetValueOrNone(maxOpDelayFromProfile, std::make_pair(s.getName(), opId));
+                TxTimeout txTime = getWaveformTime(op, rxDelays.at(sId).at(opId), maxDelay) + EPSILON;
                 // Find the first timeout, that is greater or equal than the given tx time.
                 auto it = std::find_if(std::begin(timeouts), std::end(timeouts),
                              [txTime](auto t) {return t >= txTime; });
