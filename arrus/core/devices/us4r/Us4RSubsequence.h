@@ -195,7 +195,7 @@ public:
                     oldElement.getAddress(),
                     newElementSize,
                     oldElement.getGlobalFiring(),
-                    startFiring + elementLastFiringView // sub-sequence last firing number
+                    ARRUS_SAFE_CAST(startFiring + elementLastFiringView, uint16) // sub-sequence last firing number
                 );
                 startFiring = oldElement.getGlobalFiring() + 1;
             }
