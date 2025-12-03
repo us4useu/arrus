@@ -31,7 +31,7 @@ public:
 
     uint16 getArrayId() const { return arrayId; }
 
-1G    /**
+    /**
      * NOTE: Global per sequence and number of repetitions (batch). Local per element (i.e., calculated as for the first buffer
      * element). (entry = firing) */
     uint16 getEntryId() const { return entryId; }
