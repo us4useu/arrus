@@ -223,7 +223,7 @@ private:
                 }
             }
             // Calculate final max delays.
-            for(size_t opId = 0; opId < nOps; ++opId) {
+            for(OpId opId = 0; opId < nOps; ++opId) {
                 const auto &opDelays = maxDelayAllProfiles.at(opId);
                 const float maxDelay = *std::max_element(std::begin(opDelays), std::end(opDelays));
                 result.insert({{name, opId}, maxDelay});
