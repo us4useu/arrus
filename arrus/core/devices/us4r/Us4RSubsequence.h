@@ -159,7 +159,7 @@ public:
     std::vector<Us4OEMBuffer> recreateOEMBuffers(const std::vector<std::vector<Us4OEMBufferArrayDef>> &arrayDefs) {
         const auto nSequences = arrayDefs.size();
         const auto noems = oemBuffers.size();
-        // OEM -> TX/RX sequence -> OEM buffer array definition (transposed arrayDefs)
+        // OEM -> TX/RX sequence -> array definition (transposed arrayDefs)
         std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays(noems);
 
         for(size_t sequence = 0; sequence < nSequences; ++sequence) {
@@ -181,12 +181,23 @@ public:
                 }
             );
 
+            uint16 elementLastFiringView = 0;
+            // Find the maximum number of the element firings.
+            for(const auto &array: arrays) {
+                for(const auto &part: array.getParts()) {
+                    elementLastFiringView = std::max(elementLastFiringView, part.getEntryId());
+                }
+            }
+
+            uint16 startFiring = 0;
             for(const auto &oldElement: buffer.getElements()) {
                 newElements.emplace_back(
                     oldElement.getAddress(),
                     newElementSize,
-                    oldElement.getGlobalFiring()
+                    oldElement.getGlobalFiring(),
+                    ARRUS_SAFE_CAST(startFiring + elementLastFiringView, uint16) // sub-sequence last firing number
                 );
+                startFiring = oldElement.getGlobalFiring() + 1;
             }
             result.emplace_back(newElements, arrays);
         }
