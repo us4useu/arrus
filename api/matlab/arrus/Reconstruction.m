@@ -13,6 +13,7 @@ classdef Reconstruction
         xGrid
         zGrid
         sos
+        txApod = [1 1]
         rxApod = [1 1]
         bmodeEnable = true
         colorEnable = false
@@ -21,6 +22,7 @@ classdef Reconstruction
         colorFrames
         vector0Frames
         vector1Frames
+        bmodeTxAngLim = []
         bmodeRxTangLim = [-0.5 0.5]
         colorRxTangLim = [-0.5 0.5]
         vector0RxTangLim = [-0.5 0.5]
@@ -60,6 +62,9 @@ classdef Reconstruction
             % :param zGrid: Coordinate grid z [m]. Numerical vector, default = [].
             % :param sos: Speed of sound value used for reconstruction [m/s]. \
             %   Numerical scalar.
+            % :param txApod: Tx apodization window for coherent spatial \
+            %   compounding in grid-based reconstruction. Numerical vector, \
+            %   default = [1 1].
             % :param rxApod: Rx apodization window. Numerical vector, default = [1 1].
             % :param bmodeEnable: Enables B-Mode reconstruction. Logical \
             %   scalar, default = true.
@@ -75,6 +80,8 @@ classdef Reconstruction
             %   reconstruction as 1st projection. Numerical vector.
             % :param vector1Frames: Frame numbers to be used in Vector Doppler \
             %   reconstruction as 2nd projection.  Numerical vector.
+            % :param bmodeTxAngLim: Tx angle limits for B-Mode [rad]. \
+            %   Numerical array (K*, 2) or [], default = [].
             % :param bmodeRxTangLim: Rx tangent limits for B-Mode. \
             %   Numerical array (K*, 2), default = [-0.5 0.5].
             % :param colorRxTangLim: Rx tangent limits for Color Doppler. \
@@ -109,6 +116,7 @@ classdef Reconstruction
             for i = 1:2:nargin
                 obj.(varargin{i}) = varargin{i+1};
             end
+            
         end
     end
 end
