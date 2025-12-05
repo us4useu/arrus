@@ -1363,7 +1363,7 @@ classdef Us4R < handle
             if obj.rec.colorEnable && obj.rec.vectorEnable
                 error("setRecParams: simultaneous color & vector operation is not supported");
             end
-
+            
             %% Validate frames selection
             if obj.rec.bmodeEnable && any(obj.rec.bmodeFrames > obj.subSeq.nTx)
                 error("setRecParams: bmodeFrames refers to nonexistent transmission id");
@@ -1404,6 +1404,18 @@ classdef Us4R < handle
             if obj.rec.vectorEnable
                 % validation needed
                 obj.rec.vectorBatchesConsistent = true;
+            end
+            
+            %% Validate/adjust size of the TxAngLims
+            if ~isempty(obj.rec.bmodeTxAngLim)
+                obj.rec.bmodeTxAngLim = reshape(obj.rec.bmodeTxAngLim,[],2);
+                if obj.rec.bmodeEnable
+                    if size(obj.rec.bmodeTxAngLim,1) == 1
+                        obj.rec.bmodeTxAngLim = obj.rec.bmodeTxAngLim.*ones(numel(obj.rec.bmodeFrames),1);
+                    elseif size(obj.rec.bmodeTxAngLim,1) ~= numel(obj.rec.bmodeFrames)
+                        error("setRecParams: number of rows in bmodeTxAngLim must equal the length of bmodeFrames");
+                    end
+                end
             end
 
             %% Validate/adjust size of the RxTangLims
