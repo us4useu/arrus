@@ -1473,12 +1473,93 @@ classdef Us4R < handle
                                                              atan(mean(obj.rec.vect1RxTangLim(1,:))), 3);
             end
             
+            %% Compounding weights for Synthetic Transmit Aperture imaging
+            obj.rec.iqLriWgh = [];
+            
+            nTxBmode = numel(obj.rec.bmodeFrames);
+            
+            if obj.rec.gridModeEnable && nTxBmode > 0
+                txPixBeamMask = false(obj.rec.zSize, obj.rec.xSize, nTxBmode);
+                txPixAngMask  =  true(obj.rec.zSize, obj.rec.xSize, nTxBmode);
+                txPixWaveAng  = zeros(obj.rec.zSize, obj.rec.xSize, nTxBmode);
+                for iTx=1:nTxBmode
+                    jTx         = obj.rec.bmodeFrames(iTx);
+                    
+                    if ~isinf(obj.subSeq.txFoc(jTx))
+                        % STA
+                        
+                        zFoc	= obj.subSeq.txApCentZ(jTx) + obj.subSeq.txFoc(jTx) * cos(obj.subSeq.txAngZX(jTx));
+                        xFoc	= obj.subSeq.txApCentX(jTx) + obj.subSeq.txFoc(jTx) * sin(obj.subSeq.txAngZX(jTx));
+                        
+                        if obj.subSeq.txFoc(jTx) <= 0
+                            % Virtual Point Source BEHIND probe surface
+                            % Valid pixels are assumed to be always in front of the focal point (VSP)
+                            pixFocArrang = 1;
+                        else
+                            % Virtual Point Source IN FRONT OF probe surface
+                            % Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
+                            % to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
+                            pixFocArrang = ((obj.rec.zGrid(:)  - zFoc) * (zFoc - obj.subSeq.txApCentZ(jTx)) + ...
+                                            (obj.rec.xGrid(:).'- xFoc) * (xFoc - obj.subSeq.txApCentX(jTx))) >= 0;
+                            pixFocArrang = 2*pixFocArrang - 1;
+                        end
+                        
+                        % Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
+                        % to determine if the pixel is in the sonified area (dot product >= 0).
+                        % Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
+                        txPixBeamMask(:,:,iTx) = ( (-(obj.sys.xElem(obj.subSeq.txApFstElem(jTx)) - xFoc) * (obj.rec.zGrid(:)   - zFoc) + ...
+                                                     (obj.sys.zElem(obj.subSeq.txApFstElem(jTx)) - zFoc) * (obj.rec.xGrid(:).' - xFoc)) * pixFocArrang >= 0 ) && ...
+                                                 ( ( (obj.sys.xElem(obj.subSeq.txApLstElem(jTx)) - xFoc) * (obj.rec.zGrid(:)   - zFoc) - ...
+                                                     (obj.sys.zElem(obj.subSeq.txApLstElem(jTx)) - zFoc) * (obj.rec.xGrid(:).' - xFoc)) * pixFocArrang >= 0 );
+                        
+                        txPixWaveAng(:,:,iTx)  = mod(atan2(obj.rec.xGrid(:).' - xFoc, obj.rec.zGrid(:) - zFoc) + pi/2, pi) - pi/2;
+                    else
+                        % PWI
+                        
+                        % Projections of ApEdge-Pix vector on the rotated unit vector of tx direction (dot products) ...
+                        % to determine if the pixel is in the sonified area (dot product >= 0).
+                        % For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
+                        txPixBeamMask(:,:,iTx) = ( (-(obj.rec.zGrid(:)  - obj.sys.zElem(obj.subSeq.txApFstElem(jTx))) * sin(obj.subSeq.txAngZX(jTx)) + ...
+                                                     (obj.rec.xGrid(:).'- obj.sys.xElem(obj.subSeq.txApFstElem(jTx))) * cos(obj.subSeq.txAngZX(jTx))) >= 0 ) && ...
+                                                 ( ( (obj.rec.zGrid(:)  - obj.sys.zElem(obj.subSeq.txApLstElem(jTx))) * sin(obj.subSeq.txAngZX(jTx)) - ...
+                                                     (obj.rec.xGrid(:).'- obj.sys.xElem(obj.subSeq.txApLstElem(jTx))) * cos(obj.subSeq.txAngZX(jTx))) >= 0 );
+                        
+                        txPixWaveAng(:,:,iTx)  = obj.subSeq.txAngZX(jTx);
+                    end
+                    
+                    if ~isempty(obj.rec.bmodeTxAngLim)
+                        % Projections of ApEdge-Pix vector on the rotated unit vector of tx angle limit direction (dot products) ...
+                        % to determine if the pixel is in the tx angle-limited area (dot product >= 0).
+                        % For ApEdgeFst, the vector is rotated left, for ApEdgeLst the vector is rotated right.
+                        txPixAngMask(:,:,iTx)  = ( (-(obj.rec.zGrid(:)  - obj.sys.zElem(obj.subSeq.txApFstElem(jTx))) * sin(obj.sys.angElem(obj.subSeq.txApFstElem(jTx)) + obj.rec.bmodeTxAngLim(iTx,1)) + ...
+                                                     (obj.rec.xGrid(:).'- obj.sys.xElem(obj.subSeq.txApFstElem(jTx))) * cos(obj.sys.angElem(obj.subSeq.txApFstElem(jTx)) + obj.rec.bmodeTxAngLim(iTx,1))) >= 0 ) && ...
+                                                 ( ( (obj.rec.zGrid(:)  - obj.sys.zElem(obj.subSeq.txApLstElem(jTx))) * sin(obj.sys.angElem(obj.subSeq.txApLstElem(jTx)) + obj.rec.bmodeTxAngLim(iTx,2)) - ...
+                                                     (obj.rec.xGrid(:).'- obj.sys.xElem(obj.subSeq.txApLstElem(jTx))) * cos(obj.sys.angElem(obj.subSeq.txApLstElem(jTx)) + obj.rec.bmodeTxAngLim(iTx,2))) >= 0 );
+                    end
+                end
+                txPixMask = txPixBeamMask & txPixAngMask;
+                
+                if nTxBmode > 1
+                    txPixMaskNan = ones(obj.rec.zSize, obj.rec.xSize, nTxBmode);
+                    txPixMaskNan(~txPixMask) = nan;
+                    txPixAngMin = min(txPixWaveAng.*txPixMaskNan, [], 3);
+                    txPixAngMax = max(txPixWaveAng.*txPixMaskNan, [], 3);
+                    txPixAngNorm = (txPixWaveAng - txPixAngMin) ./ (txPixAngMax - txPixAngMin);
+                    
+                    obj.rec.iqLriWgh = interp1(linspace(0,1,numel(obj.rec.txApod)), obj.rec.txApod, txPixAngNorm, 'linear', 0);
+                    obj.rec.iqLriWgh = obj.rec.iqLriWgh ./ sum(obj.rec.iqLriWgh, 3) * nTxBmode;
+                else
+                    obj.rec.iqLriWgh = double(txPixMask);
+                end
+            end
+            
             %% Set data types and move data to GPU memory
             obj.sys.zElem          = gpuArray(single(obj.sys.zElem));
             obj.sys.xElem          = gpuArray(single(obj.sys.xElem));
             obj.sys.tangElem       = gpuArray(single(obj.sys.tangElem));
             obj.rec.zGrid          = gpuArray(single(obj.rec.zGrid));
             obj.rec.xGrid          = gpuArray(single(obj.rec.xGrid));
+            obj.rec.txApod         = gpuArray(single(obj.rec.txApod));
             obj.rec.rxApod         = gpuArray(single(obj.rec.rxApod));
             obj.subSeq.txFoc       = gpuArray(single(obj.subSeq.txFoc));
             obj.subSeq.txAngZX     = gpuArray(single(obj.subSeq.txAngZX));
@@ -1490,7 +1571,9 @@ classdef Us4R < handle
             obj.subSeq.txApLstElem = gpuArray( int32(obj.subSeq.txApLstElem - 1));
             obj.subSeq.rxApOrig    = gpuArray( int32(obj.subSeq.rxApOrig - 1));
             obj.subSeq.nSampOmit   = gpuArray( int32(obj.subSeq.nSampOmit));
+            obj.rec.bmodeTxAngLim  = gpuArray(single(obj.rec.bmodeTxAngLim));
             obj.rec.bmodeRxTangLim = gpuArray(single(obj.rec.bmodeRxTangLim));
+            obj.rec.iqLriWgh       = gpuArray(single(obj.rec.iqLriWgh));
             obj.rec.colorRxTangLim = gpuArray(single(obj.rec.colorRxTangLim));
             obj.rec.vect0RxTangLim = gpuArray(single(obj.rec.vect0RxTangLim));
             obj.rec.vect1RxTangLim = gpuArray(single(obj.rec.vect1RxTangLim));
@@ -1820,6 +1903,7 @@ classdef Us4R < handle
                     % Coherent/Incoherent compounding
                     if obj.rec.cohCompEnable
                         rfBfr = mean(rfBfr,3,'omitnan');
+                        rfBfr = sum(rfBfr.*obj.rec.iqLriWgh, 3);
                     else
                         rfBfr = mean(abs(rfBfr),3,'omitnan');
                     end
