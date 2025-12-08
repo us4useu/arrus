@@ -4,6 +4,14 @@ Release notes
 0.13.x
 ------
 
+0.13.5
+
+- core (driver)
+
+    - Added option to limit HVPS PWM calibration voltage range. Modify `calibrate_hvps` option in the ``Us4OEMStatus`` application to accept optional integer maximum calibration voltage value, default value: 90V. When setting voltages that fall within the range [5 V, the selected maximum voltage], the voltage will be set “quickly,” meaning the coefficients pre-computed in the FPGA will be used. For voltages higher than the selected maximum voltage, the voltage will be set “slowly,” i.e., with coefficients calculated dynamically. See also: https://us4useu.github.io/arrus-toolkit/content/utils.html#device-status #M_OEM-232.
+    - Fixed synchronization between the data callback, overflow callback and the dynamic delays change function (``Session::setParameters`` with "txFocus" or "txDelays" key). NOTE: this change introduces additional synchronization mechanisms between the data and overflow callbacks. Please let us know if you observe any performance degradation in the data callback handling. #M_US4R-37. 
+
+
 0.13.4
 
 - core (driver)
