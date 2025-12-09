@@ -166,10 +166,3 @@ class Us4OEM(Device):
         return _variant_enum_to_enum(core_variant)
 
 
-
-
-    def initialize_dsp_circuit(self, params):
-        """
-        Configures the HVPS realtime preoction.
-        """
-        return self._handle.InitializeDspCircuit(params)

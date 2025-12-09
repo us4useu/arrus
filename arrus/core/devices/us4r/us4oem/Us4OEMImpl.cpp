@@ -981,8 +981,4 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     }
 }
 
-void Us4OEMImpl::InitializeDspCircuit(HvpsDspParameters params) {
-    this->ius4oem->InitializeDspCircuit(params);
-}
-
 }// namespace arrus::devices

@@ -37,23 +37,12 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 
-from arrus.core import HvpsDspParameters
-
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
     with arrus.Session("us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(5)
-
-        params = HvpsDspParameters()
-        params.fs = 1;
-        params.DspWindowLen = 0;
-        # ..
-
-        for nr in range(us4r.n_us4oems):
-            us4r.get_us4oem(nr).initialize_dsp_circuit(params)
-        
 
         n_elements = us4r.get_probe_model().n_elements
         # Full transmit aperture, full receive aperture.

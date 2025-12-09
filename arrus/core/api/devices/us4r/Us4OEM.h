@@ -7,7 +7,6 @@
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/TriggerGenerator.h"
 #include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
-#include "hvpsMeasurements.h"
 
 namespace arrus::devices {
 
@@ -234,8 +233,6 @@ public:
      * Returns the variant of OEM.
      */
     virtual Variant getVariant() = 0;
-
-    virtual void InitializeDspCircuit(HvpsDspParameters params) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
