@@ -50,18 +50,9 @@ us4r: {
         }
     }
 
-    watchdog: {
-        enabled: true
-        oem_threshold0: 1.0
-        oem_threshold1: 2.0
-        host_threshold: 3.0
-    }
-
     hvps_fuse: {
-        level1_max_current_threshold: 1 # [A]
-        level1_max_power_threshold: 0.5 # [W]
-        level2_max_current_threshold: 1.5 # [A]
-        level2_max_power_threshold: 2.5 # [W]
+        level1_max_power_threshold: 1.35 # [W]
+        level2_max_current_threshold: 0.125 # [A]
     }
 }
 

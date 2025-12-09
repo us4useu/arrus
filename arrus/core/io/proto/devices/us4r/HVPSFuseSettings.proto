@@ -1,0 +1,18 @@
+syntax  = "proto3";
+
+package arrus.proto;
+
+message HVPSFuseSettings {
+  oneof optional_level1_current {
+    double level1_max_current_threshold = 1;
+  }
+  oneof optional_level1_power {
+    double level1_max_power_threshold = 2;
+  }
+  oneof optional_level2_current {
+    double level2_max_current_threshold = 3;
+  }
+  oneof optional_level2_power {
+    double level2_max_power_threshold = 4;
+  }
+}

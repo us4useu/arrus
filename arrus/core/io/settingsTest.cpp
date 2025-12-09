@@ -111,6 +111,11 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getFocus().value(), 2e-3);
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getThickness(), 0.1e-3f);
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getSpeedOfSound(), 2000);
+    ASSERT_TRUE(us4rSettings.getHVPSFuseSettings().has_value());
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel1MaxCurrentThreshold().value(), 1.0f);
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel1MaxPowerThreshold().value(), 0.5f);
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2MaxCurrentThreshold().value(), 1.5f);
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2MaxPowerThreshold().value(), 2.5f);
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithDisabledWatchdog) {
@@ -185,7 +190,22 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
     EXPECT_FALSE(us4rSettings.getProbeSettings()->getModel().getLens().value().getFocus().has_value());
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getThickness(), 0.3e-3f);
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getSpeedOfSound(), 3000);
+    // no specific HVPS fuse settings (default settings)
+    EXPECT_FALSE(us4rSettings.getHVPSFuseSettings().has_value());
 }
+
+TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithPartiallySeletedHVPSFuseSettings) {
+    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
+        boost::filesystem::path("us4r_partial_hvps_fuse_settings.prototxt");
+    ::arrus::session::SessionSettings settings = arrus::io::readSessionSettings(
+        filepath.string());
+    auto const &us4rSettings = settings.getUs4RSettings();
+    EXPECT_FALSE(us4rSettings.getHVPSFuseSettings()->getLevel1MaxCurrentThreshold().has_value());
+    EXPECT_FALSE(us4rSettings.getHVPSFuseSettings()->getLevel2MaxPowerThreshold().has_value());
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel1MaxPowerThreshold().value(), 1.35f);
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2MaxCurrentThreshold().value(), 0.125f);
+}
+
 
 TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {
     auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) / boost::filesystem::path("file.prototxt");

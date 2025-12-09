@@ -244,6 +244,11 @@ public:
     MOCK_METHOD(bool, IsEntryReadyForReceive, (uint16_t), (override));
     MOCK_METHOD(std::vector<uint16_t>, GetPulsersStatusRegister, (), (override));
     MOCK_METHOD(std::vector<std::string>, GetPulserStatusRegisterDescription, (uint16_t status), (override));
+    MOCK_METHOD(void, ConfigureCustomDspHV0CurrentThreshold, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, ConfigureCustomDspHV1CurrentThreshold, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, ConfigureCustomDspHV0PowerThreshold, (float overpowerLevel), (override));
+    MOCK_METHOD(void, ConfigureCustomDspHV1PowerThreshold, (float overpowerLevel), (override));
+    MOCK_METHOD(void, SetHVPSVoltage, (uint8_t voltage), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

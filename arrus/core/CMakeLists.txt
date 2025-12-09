@@ -26,6 +26,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/Bitstream.proto
     io/proto/devices/us4r/Us4RTxRxLimits.proto
     io/proto/devices/us4r/WatchdogSettings.proto
+    io/proto/devices/us4r/HVPSFuseSettings.proto
 )
 ################################################################################
 # Target
@@ -206,7 +207,8 @@ set(SRC_FILES
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
-   devices/us4r/TxWaveformSoftStartConverter.h
+    devices/us4r/TxWaveformSoftStartConverter.h
+    api/devices/us4r/HVPSFuseSettings.h
 )
 
 set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
