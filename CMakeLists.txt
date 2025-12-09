@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.17.0)
+cmake_minimum_required(VERSION 3.21.0)
 
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.13.0)
+set(PROJECT_VERSION 0.14.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
@@ -26,13 +26,14 @@ set(ARRUS_PYTHON_INSTALL_DIR python)
 set(Us4_LIB_DIR ${Us4_ROOT_DIR}/lib64)
 
 option(ARRUS_BUILD_PY "Build python API." OFF)
-set(ARRUS_PY_VERSION "3.8" CACHE STRING "Python version for which the ARRUS package should be built.")
+set(ARRUS_PY_VERSION "3.10" CACHE STRING "Python version for which the ARRUS package should be built.")
 option(ARRUS_BUILD_MATLAB "Build MATLAB API." OFF)
 option(ARRUS_BUILD_DOCS "Build documentation." OFF)
 option(ARRUS_RUN_TESTS "Run all tests builded packages." OFF)
 option(ARRUS_EMBED_DEPS "Embed dependencies (like us4r dlls) into the output package." OFF)
 option(ARRUS_APPEND_VERSION_SUFFIX_DATE "Append current timestamp to the ARRUS_PROJECT_VERSION." OFF)
 option(ARRUS_CUDA "Build with CUDA GPU support" ON)
+set(ARRUS_PY_VENV_TARGET "" CACHE STRING "The path where the Python venv should be created. By default, the CMAKE_CURRENT_BUILD_DIR will be used.")
 
 if(ARRUS_APPEND_VERSION_SUFFIX_DATE)
     string(TIMESTAMP ARRUS_PROJECT_VERSION_SUFFIX "%Y%m%d")
@@ -82,7 +83,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.14.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
+find_package(Us4 0.15.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)
@@ -122,6 +123,12 @@ add_subdirectory(installer)
 ################################################################################
 # General docs
 ################################################################################
+execute_process(
+        COMMAND git rev-parse HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE ARRUS_GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 configure_file(VERSION.rst.in VERSION.rst)
 install(
         FILES ${CMAKE_CURRENT_BINARY_DIR}/VERSION.rst

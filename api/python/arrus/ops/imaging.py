@@ -109,7 +109,7 @@ class SimpleTxRxSequence:
         """
         def _limit_if_iterable(value):
             if isinstance(value, Iterable):
-                return value[start:(end+1)]
+                return value[start:end]
             else:
                 return value
 

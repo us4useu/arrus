@@ -108,21 +108,24 @@ public:
     void setTgcCurveValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         std::vector<float> value = convertToCppVector<float>(inputs[0], "tgc values");
         bool applyCharacteristic = inputs[1][0];
-        get(obj)->setTgcCurve(value, applyCharacteristic);
+        bool clip = inputs[2][0];
+        get(obj)->setTgcCurve(value, applyCharacteristic, clip);
     }
 
     void setTgcCurveTimeValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         std::vector<float> time = convertToCppVector<float>(inputs[0], "tgc time");
         std::vector<float> value = convertToCppVector<float>(inputs[1], "tgc values");
         bool applyCharacteristic = inputs[2][0];
-        get(obj)->setTgcCurve(time, value, applyCharacteristic);
+        bool clip = inputs[3][0];
+        get(obj)->setTgcCurve(time, value, applyCharacteristic, clip);
     }
 
     void setVcatTimeValue(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         std::vector<float> time = convertToCppVector<float>(inputs[0], "tgc time");
         std::vector<float> value = convertToCppVector<float>(inputs[1], "attenuation values");
         bool applyCharacteristic = inputs[2][0];
-        get(obj)->setVcat(time, value, applyCharacteristic);
+        bool clip = inputs[3][0];
+        get(obj)->setVcat(time, value, applyCharacteristic, clip);
     }
 
     void setDtgcAttenuation(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
@@ -136,8 +139,13 @@ public:
     }
 
     void setActiveTermination(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
-        uint16 impedance = inputs[0][0];
-        get(obj)->setActiveTermination(impedance);
+        if(inputs[0].isEmpty()) {
+            get(obj)->setActiveTermination(std::nullopt);
+        }
+        else {
+            uint16 impedance = inputs[0][0];
+            get(obj)->setActiveTermination(impedance);
+        }
     }
 
     void setLnaGain(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {

@@ -7,7 +7,6 @@ set(DOC_FILES
     index.rst
     content/introduction.rst
     content/examples/bmode_imaging.matlab.rst
-    content/user_guide.python.rst
     content/definitions.rst
     content/examples/img/coordinate_system.jpeg
     content/examples/img/apertures.jpeg
@@ -27,6 +26,9 @@ set(DOC_FILES
     content/api.matlab.rst
     content/api.cpp.rst
     content/examples/check_probe.python.rst
+    content/user_guide.cpp.rst
+    content/user_guide.matlab.rst
+    content/user_guide.python.rst
 )
 list(TRANSFORM DOC_FILES PREPEND "${SPHINX_SOURCE}/")
 
@@ -125,14 +127,18 @@ endfunction()
 # Targets and installs.
 ################################################################################
 include(python)
-create_python_venv(docs_venv ${CMAKE_CURRENT_BINARY_DIR})
+set(ARRUS_DOCS_VENV_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs")
+if(ARRUS_PY_VENV_TARGET)
+    set(ARRUS_DOCS_VENV_TARGET_DIR "${ARRUS_PY_VENV_TARGET}/docs")
+endif()
+create_python_venv(docs_venv ${ARRUS_DOCS_VENV_TARGET_DIR})
 install_sphinx_package(sphinx_package docs_venv)
 
 # C++
 ## Generate doxygen xml files
 find_package(Doxygen)
 
-set(DOXYGEN_INPUT_DIR "${CMAKE_SOURCE_DIR}/arrus/core/api")
+set(DOXYGEN_INPUT_DIR "${CMAKE_SOURCE_DIR}/arrus/core/api ${Us4_ROOT_DIR}/include/Us4OEM/api")
 set(DOXYGEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cpp/doxy")
 set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml)
 
@@ -142,7 +148,6 @@ configure_file(${DOXYFILE_IN} ${DOXYFILE_OUT} @ONLY)
 
 file(MAKE_DIRECTORY ${DOXYGEN_OUTPUT_DIR})
 add_custom_command(OUTPUT ${DOXYGEN_INDEX_FILE}
-    DEPENDS ${DOXYGEN_INPUT_DIR}
     COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
     MAIN_DEPENDENCY ${DOXYFILE_OUT} ${DOXYFILE_IN}
     COMMENT "Generating Doxygen files.")

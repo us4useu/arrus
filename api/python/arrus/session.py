@@ -2,11 +2,13 @@ import abc
 import queue
 import copy
 import sys
+import re
 
 import numpy as np
 import importlib
 import importlib.util
 import dataclasses
+from collections import defaultdict
 
 import arrus.core
 import arrus.exceptions
@@ -25,7 +27,7 @@ import arrus.kernels.kernel
 import arrus.utils
 import arrus.utils.core
 import arrus.framework
-from typing import Sequence, Dict, Iterable
+from typing import Sequence, Dict, Iterable, List, Optional
 from numbers import Number
 
 from arrus.devices.ultrasound import Ultrasound
@@ -82,6 +84,7 @@ class Session(AbstractSession):
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing = None
+        self._current_scheme = None
         # Current metadata (for the full sequence)
         self.metadatas = None
         arrus.logging.log(arrus.logging.DEBUG, f"ARRUS Python API. Python version: {sys.version}")
@@ -105,31 +108,26 @@ class Session(AbstractSession):
         processing = scheme.processing
         constants = scheme.constants
 
-        if len(constants) > 0 and len(sequences) > 1:
-            raise ValueError(
-                "Currently session constants can only be provided for a "
-                "single-sequence schemes."
-            )
-
         raw_seqs = []
-        tx_delay_constants = ()
+        tx_delay_constants = []
         # TODO make sure all sequences have the same TGC (different TGCs are not supported)
         # Convert to raw sequences and upload.
         sequences = [dataclasses.replace(s, name=f"TxRxSequence:{i}")
                      if s.name is None else s
                      for i, s in enumerate(sequences)]
+        constants_by_sequence_name = self._group_constants_by_sequence_name(sequences, constants)
         for i, sequence in enumerate(sequences):
             kernel_context = self._create_kernel_context(
                 sequence,
                 us_device_dto,
                 medium,
                 scheme.digital_down_conversion,
-                constants
+                constants_by_sequence_name.get(sequence.name, [])
             )
             conversion_results = arrus.kernels.get_kernel(type(sequence))(kernel_context)
             raw_seq = conversion_results.sequence
             raw_seqs.append(raw_seq)
-            tx_delay_constants = conversion_results.constants
+            tx_delay_constants.extend(conversion_results.constants)
 
         actual_scheme = dataclasses.replace(
             scheme,
@@ -138,12 +136,12 @@ class Session(AbstractSession):
         )
         core_scheme = arrus.utils.core.convert_to_core_scheme(actual_scheme)
         upload_result = self._session_handle.upload(core_scheme)
+        self._current_scheme = actual_scheme
         # Update the DTO with the new data sampling frequency (determined by the scheme).
         us_device_dto = dataclasses.replace(
             us_device_dto,
             data_sampling_frequency=us_device.current_sampling_frequency
         )
-
         # Output buffer
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
@@ -189,9 +187,6 @@ class Session(AbstractSession):
         Stops execution of the scheme.
         """
         arrus.core.arrusSessionStopScheme(self._session_handle)
-        if self._current_processing is not None:
-            self._current_processing.close()
-            self._current_processing = None
 
     def run(self, sync: bool=False, timeout: int=None):
         """
@@ -203,9 +198,13 @@ class Session(AbstractSession):
         - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
           The run function can be called only once (before the scheme is stopped).
 
+
         :param sync: whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
                      the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done. This parameter only
-                     matters when the work mode is set to MANUAL or MANUAL_OP.
+                     matters when the work mode is set to MANUAL or MANUAL_OP. NOTE: For the US4R device, this method ONLY waits
+                     for the completion of the TX/RX sequence. Currently, it DOES NOT WAIT for the data transfer to the host PC
+                     or for the processing to finish — to wait for these two events, either wait for the final data using
+                     buffer.get() / register your own callback function.
         :param timeout: timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
                         sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP.
         """
@@ -307,44 +306,91 @@ class Session(AbstractSession):
         """
         self._context = SessionContext(medium=value)
 
+    def set_subsequences(self, slices: List[slice], processing=None, sris: List[Optional[float]] = None):
+        """
+        Selects [start, end) slices for each sub-sequence.
+
+        The `slices` array should have exactly n elements, where n is the number of currently uploaded sequences.
+        The element slice[i] sets the [start, end) range for the i-th sequence.
+
+        The `sris` should have exactly n elements, or should be empty (which means that no additional sri should be
+        applied).
+
+        To turn off the given sequence, just set start equal to end (e.g. Slice(0, 0)). For such sequences, the metadata
+        will
+
+        :param slices: slices to set to each Scheme sub-sequence
+        :param sris: sris to apply to each Scheme sub-sequence
+        :return returns: the buffer and metadata for the modified Scheme. The metadata array size is always equal to
+           the number of sequences in the original Scheme
+        """
+        us_device: Ultrasound = self.get_device("/Ultrasound:0")
+        sris = [] if sris is None else sris
+
+        arrus_slices = arrus.utils.core.convert_to_arrus_slices(slices)
+        arrus_sris = arrus.utils.core.convert_to_optional_vector(sris)
+
+        upload_result = self._session_handle.setSubsequences(arrus_slices, arrus_sris)
+
+        buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
+        self.buffer = arrus.framework.DataBuffer(buffer_handle)
+
+        # Create new metadata
+        result_metadatas = []
+        result_sequences = []
+        for array_id, (s, array, metadata) in enumerate(zip(slices, self.buffer.elements[0].arrays, self.metadatas)):
+            input_shape = array.shape
+            sequence = metadata.context.sequence.get_subsequence(s.start, s.stop)
+            raw_sequence = metadata.context.raw_sequence.get_subsequence(s.start, s.stop)
+            data_description = us_device.get_data_description_updated_for_subsequence(array_id, upload_result, sequence)
+            fac = dataclasses.replace(
+                metadata.context,
+                sequence=sequence,
+                raw_sequence=raw_sequence
+            )
+            metadata = metadata.copy(
+                input_shape=input_shape,
+                data_desc=data_description,
+                context=fac,
+            )
+            result_metadatas.append(metadata)
+        return self._set_processing(self.buffer, result_metadatas, processing, result_sequences)
+
     def set_subsequence(self, start, end, array_id=0, processing=None, sri=None):
         """
-        Sets the current TX/RX sequence to the [start, end] subsequence (both inclusive).
+        Turns on the sequence with the arrayId and sets the TX/RXs to the [start, end) range. This method turns off all
+        the uploaded TX/RX sequences except sequence pointed by `arrayId`.
 
         This method requires that:
 
-        - start <= end (when start= == end, the system will run a single TX/RX sequence),
+        - start < end (start == end would mean that the given sequence should bet turned off, and that would mean that all TX/RXs sequences should be turned off, which current does not make sense),
         - the scheme was uploaded,
         - the TX/RX sequence length is greater than the `end` value,
         - the scheme is stopped.
 
-        You can specify the new SRI with the sri parameter, if None, the total PRI will be used.
-
+        :param start: the TX/RX number which should now be the first TX/RX
+        :param end: the TX/RX number which should now be the last TX/RX
+        :param sri: the new SRI to apply
+        :param array_id: id array to select, default: array with id 0
+        :param processing: processing that should be used to process the output data for the given sub-sequence
         :return: the new data buffer and metadata
         """
-        metadata = self.metadatas[array_id]
-        upload_result = self._session_handle.setSubsequence(start, end, sri, array_id)
-        # Get the new buffer
-        buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
-        self.buffer = arrus.framework.DataBuffer(buffer_handle)
-        # Create new metadata
-        metadata = copy.deepcopy(metadata)
-        us_device: Ultrasound = self.get_device("/Ultrasound:0")
-        input_shape = self.buffer.elements[0].data.shape
-        sequence = metadata.context.sequence.get_subsequence(start, end)
-        raw_sequence = metadata.context.raw_sequence.get_subsequence(start, end)
-        data_description = us_device.get_data_description_updated_for_subsequence(array_id, upload_result, sequence)
-        fac = dataclasses.replace(
-            metadata.context,
-            sequence=sequence,
-            raw_sequence=raw_sequence
-        )
-        metadata = metadata.copy(
-            input_shape=input_shape,
-            data_desc=data_description,
-            context=fac,
-        )
-        return self._set_processing(self.buffer, [metadata], processing, [sequence])
+        if start >= end:
+            raise ValueError("The `set_subsequence` method requires start < end.")
+        if self._current_scheme is None:
+            raise ValueError("Please upload the scheme first")
+        sequences = self._current_scheme.tx_rx_sequence
+        if not isinstance(sequences, Iterable):
+            sequences = [sequences]
+        n_sequences = len(sequences)
+
+        slices = [slice(0, 0)]*n_sequences
+        sris = [None]*n_sequences
+
+        slices[array_id] = slice(start, end)
+        sris[array_id] = sri
+
+        return self.set_subsequences(slices=slices, sris=sris, processing=processing)
 
     def _set_processing(self, buffer, metadatas, processing, sequences):
         # setup processing
@@ -419,3 +465,27 @@ class Session(AbstractSession):
             medium=medium, custom_data={},
             constants=constants
         )
+
+    def _group_constants_by_sequence_name(self, sequences, constants):
+        # Validate constant names:
+        #
+        # - the sequence name should be in the collection of sequences,
+        # - the constant name is expected to be /{SequenceName}/txFocus (currently only TX focus is supported)
+        result = defaultdict(list)
+        # TODO NOTE: assuming Us4R:0 device here
+        pattern = re.compile(r"^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$")
+        sequence_names = {s.name.strip() for s in sequences}
+        for constant in constants:
+            r = pattern.match(constant.name)
+            if r:
+                sequence_name, parameter_name = r.groups()
+                if sequence_name not in sequence_names:
+                    raise ValueError(f"One of the constants is assigned to unknown sequence with name {sequence_name}")
+                if not parameter_name.startswith("txFocus"):
+                    raise ValueError(f"Currently only 'txFocus' parameter is supported (got: {parameter_name})")
+                result[sequence_name].append(constant)
+            else:
+                raise ValueError(f"The Constant name should follow the following pattern: {pattern.pattern}")
+        return result
+
+

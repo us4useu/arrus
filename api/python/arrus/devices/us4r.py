@@ -18,6 +18,8 @@ from arrus.devices.probe import ProbeDTO
 
 from arrus.kernels.simple_tx_rx_sequence import get_sample_range
 from arrus.kernels.tx_rx_sequence import get_tx_rx_sequence_sample_range
+import arrus.devices.us4oem
+from arrus.devices.us4oem import Variant
 
 DEVICE_TYPE = DeviceType("Us4R")
 
@@ -91,11 +93,18 @@ class Us4R(Device, Ultrasound):
     def get_device_id(self):
         return self._device_id
 
-    def set_tgc(self, tgc_curve):
+    def set_tgc(self, tgc_curve, apply_characteristic: bool = True, clip: bool = False):
         """
         Sets TGC samples for given TGC description.
 
-        :param samples: a given TGC to set.
+        :param tgc_curve: tgc curve to set; None value turns off analog TGC.
+        :param apply_characteristic: set it to true if you want to compensate response characteristic (pre-computed
+         by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise the
+         ValueError will be thrown.
+        :param clip: set it true if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+         a ValueError will be raised with message that the maximum possible gain value
+         (resulting from amplifier settings such as LNA and PGA) is exceeded.
+         This parameter is ignored when tgc_curve.clip is True, or tgc_curve is None.
         """
         if tgc_curve is None:
             self._handle.setTgcCurve([])
@@ -105,12 +114,11 @@ class Us4R(Device, Ultrasound):
                 raise ValueError("TGC context is currently not set. "
                                  "Make sure a TX/RX sequence is uploaded and "
                                  "a medium was specified. ")
+            clip = tgc_curve.clip
             tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
                 self._tgc_context,
                 self.current_sampling_frequency,
                 tgc_curve,
-                min_tgc_value=self.get_minimum_tgc_value(),
-                max_tgc_value=self.get_maximum_tgc_value()
             )
         elif not isinstance(tgc_curve, Iterable):
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
@@ -120,11 +128,11 @@ class Us4R(Device, Ultrasound):
                 isinstance(tgc_curve[0], Iterable)
                 and isinstance(tgc_curve[1], Iterable)):
             t, y = tgc_curve
-            self._handle.setTgcCurve(list(t), list(y), True)
+            self._handle.setTgcCurve(list(t), list(y), apply_characteristic, clip)
         else:
             # Otherwise, assume list of floats, use by default TGC sampling
             # points.
-            self._handle.setTgcCurve([float(v) for v in tgc_curve])
+            self._handle.setTgcCurve([float(v) for v in tgc_curve], apply_characteristic, clip)
 
     def set_vcat(self, samples):
         """
@@ -357,6 +365,18 @@ class Us4R(Device, Ultrasound):
         """
         self._handle.disableHpf()
 
+    def disable_lna_hpf(self):
+        """
+        Disables LNA analog high-pass filter.
+        """
+        self._handle.disableLnaHpf()
+
+    def disable_all_hpf(self):
+        """
+        Disables all (configurable) HPF filters on the device.
+        """
+        self._handle.disableAllHpf()
+
     def set_afe(self, addr, reg):
         """
         Writes AFE register
@@ -569,6 +589,13 @@ class Us4R(Device, Ultrasound):
     def get_maximum_tgc_value(self):
         return self._handle.getMaximumTGCValue()
 
+    def get_variant(self) -> Variant:
+        """
+        Returns variant of the device.
+        """
+        core_variant = self._handle.getVariant()
+        return arrus.devices.us4oem._variant_enum_to_enum(core_variant)
+
 
 # ------------------------------------------ LEGACY MOCK
 @dataclasses.dataclass(frozen=True)
@@ -593,7 +620,7 @@ class Us4RDTO:
         if not isinstance(probes, Iterable):
             probes = (probes, )
         # NOTE: the number of probes is expected to be relatively small (< 10)
-        probes = [p for p in self.probe if p.device_id == id]
+        probes = [p for p in probes if p.device_id == id]
         if len(probes) == 0:
             raise ValueError(f"There is no probe with id: {id}")
         if len(probes) > 1:

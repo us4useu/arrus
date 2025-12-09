@@ -202,12 +202,15 @@ set(SRC_FILES
     api/devices/probe/MatchingLayer.h
     api/version.h
     common/os.h
+    common/math.h
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
+   devices/us4r/TxWaveformSoftStartConverter.h
 )
 
-set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
+    api/common/Slice.h)
 
 # Generate version.cpp file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
@@ -327,6 +330,7 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
     create_core_test(devices/us4r/Us4RSubsequenceTest.cpp "devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp")
     create_core_test(devices/us4r/TxWaveformConverterTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/TxWaveformSoftStartConverterTest.cpp)
 endif ()
 
 ################################################################################
@@ -378,3 +382,8 @@ install(
 add_executable(pwi-example examples/PwiExample.cpp)
 target_link_libraries(pwi-example PRIVATE arrus-core)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
+
+add_executable(custom-tx-waveform-example examples/CustomTxWaveform.cpp)
+target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core)
+target_include_directories(custom-tx-waveform-example PRIVATE ${ARRUS_ROOT_DIR})
+

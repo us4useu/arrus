@@ -13,6 +13,7 @@
 // TODO(pjarosik) avoid using us4r specific objects here
 #include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/api/session/Metadata.h"
+#include "arrus/core/api/common/Slice.h"
 
 namespace arrus::devices {
 
@@ -82,8 +83,25 @@ public:
      */
     virtual int getNumberOfProbes() const = 0;
 
-    virtual std::pair<std::shared_ptr<framework::Buffer>, std::shared_ptr<session::Metadata>>
-    setSubsequence(SequenceId sequenceId, uint16 start, uint16 end, const std::optional<float> &sri) = 0;
+    /**
+     * Selects [start, end) slices for each sub-sequence.
+     *
+     * The `slices` array should have exactly n elements, where n is the number of currently uploaded sequences.
+     * The element slice[i] sets the [start, end) range for the i-th sequence.
+     *
+     * The `sris` should have eactly n elements, or should be empty (which means that no additional sri should be
+     * applied).
+     *
+     * To turn off the given sequence, just set start equal to end (e.g. Slice(0, 0)). For such sequences, the metadata
+     * will describe only empty data (dummy metadata).
+     *
+     * @param slices slices to set to each Scheme sub-sequence
+     * @param sris sris to apply to each Scheme sub-sequence
+     * @return returns the buffer and metadata for the modified Scheme. The metadata array size is always equal to
+     *   the number of seqeuences in the original Scheme
+     */
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;

@@ -77,29 +77,34 @@ classdef Us4R < handle
             % Vectors t and y should have exactly the same size. The input t and y values will be interpolated
             % into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
             % Linear interpolation will be performed, the TGC curve will be extrapolated with the first
-            % (left-side of the cure) and the last sample (right side of the curve).
+            % (left-side of the curve) and the last sample (right side of the curve).
             %
             % :param time: sampling time, relative to the "sample 0" (optional, hardware sampling time will be used
             % if not provided)
             % :param value: values to apply at given sampling time
-            % :param applyCharacteristic: set it to true if you want to compensate response characteristic
+            % :param applyCharacteristic: set it to 1 if you want to compensate response characteristic
             % (pre-computed by us4us).
+            % :param clip: set it 1 if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+            %  an ARRUS:IllegalArgument error will be raised with message that the maximum possible gain value
+            %  (resulting from amplifier settings such as LNA and PGA) is exceeded.
             obj = varargin{1};
-            if nargin == 4
+            if nargin == 5
                 time = varargin{2};
                 value = varargin{3};
                 applyCharacteristic = varargin{4};
-                obj.ptr.callMethod("setTgcCurveTimeValue", 0, time, value, logical(applyCharacteristic));
-            elseif nargin == 3
+                clip = varargin{5};
+                obj.ptr.callMethod("setTgcCurveTimeValue", 0, time, value, logical(applyCharacteristic), logical(clip));
+            elseif nargin == 4
                 value = varargin{2};
                 applyCharacteristic = varargin{3};
-                obj.ptr.callMethod("setTgcCurveValue", 0, value, logical(applyCharacteristic));
+                clip = varargin{4};
+                obj.ptr.callMethod("setTgcCurveValue", 0, value, logical(applyCharacteristic), logical(clip));
             else
                 error("Unsupported number of parameters.");
             end
         end
 
-        function setVcat(obj, t, v, applyCharacteristic)
+        function setVcat(obj, t, v, applyCharacteristic, clip)
             %
             % Sets VCAT time points asynchronously.
             %
@@ -108,7 +113,7 @@ classdef Us4R < handle
             %
             % Vectors t and y should have exactly the same size. The input t and y values will be interpolated
             % into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
-            % Linear interpolation will be performed, the TGC curve will be extrapolated with the first (left-side of the cure)
+            % Linear interpolation will be performed, the VCAT curve will be extrapolated with the first (left-side of the cure)
             % and the last sample (right side of the curve).
             %
             % NOTE: the curve can have up to 1022 samples.
@@ -118,7 +123,9 @@ classdef Us4R < handle
             % :param value: values to apply at given sampling time
             % :param applyCharacteristic: set it to true if you want to compensate response characteristic
             % (pre-computed by us4us).
-            obj.ptr.callMethod("setVcatTimeValue", 0, t, v, logical(applyCharacteristic));
+            % :param clip: set it 1 if you would like to get VCAT clipped to the min/max possible attenuation value; 
+            % otherwise, an ARRUS:IllegalArgument error will be raised.
+            obj.ptr.callMethod("setVcatTimeValue", 0, t, v, logical(applyCharacteristic), logical(clip));
         end
 
         function setDtgcAttenuation(obj, attenuation)

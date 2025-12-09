@@ -288,7 +288,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, DoesNothingWithAperturesWhenNoChannelMask) {
 
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0));
+    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0, 0));
     upload(seq);
 }
 
@@ -324,7 +324,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannel) {
 
     EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
     EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0));
+    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0, 0));
     auto result = upload(seq);
     auto fcm = result.getFCM(0);
 
@@ -699,11 +699,86 @@ TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParametersTurnsOffGainFor0
     us4oem->setAfeDemod(ddc);
 }
 
+
+// getVariant
+struct GetUs4OEMVariantParams {
+    std::string serialNumber;
+    Us4OEM::Variant expectedVariant;
+};
+
+class GetUs4OEMVariantTest: public testing::TestWithParam<GetUs4OEMVariantParams>{
+protected:
+    void SetUp() final {
+        ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
+        ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
+        // Default values returned by us4oem.
+        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2));
+
+        std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
+        us4oem = std::make_unique<Us4OEMImpl>(
+            DeviceId(DeviceType::Us4OEM, 0),
+            std::move(ius4oem),
+            channelMapping, defaultRxSettings,
+            Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
+            defaultDescriptor,
+            false,
+            false
+        );
+    }
+
+    std::unique_ptr<IUs4OEM> ius4oem;
+    MockIUs4OEM *ius4oemPtr;
+    Us4OEMImpl::Handle us4oem;
+    const Us4OEMDescriptor defaultDescriptor = DEFAULT_DESCRIPTOR;
+    const RxSettings defaultRxSettings = RxSettingsBuilder()
+                                             .setActiveTermination(std::nullopt)
+                                             .setPgaGain(DEFAULT_PGA_GAIN)
+                                             .setLnaGain(DEFAULT_LNA_GAIN)
+                                             .setTgcSamples({})
+                                             .setLpfCutoff(15'000'000)
+                                             .setDtgcAttenuation(std::nullopt)
+                                             .setApplyTgcCharacteristic(true)
+                                             .build();
+};
+
+
+TEST_P(GetUs4OEMVariantTest, CorrectSerialNumberParse) {
+    const auto sn = GetParam().serialNumber;
+    ON_CALL(*ius4oemPtr, GetSerialNumber).WillByDefault(testing::Return(sn));
+    Us4OEM::Variant variant = us4oem->getVariant();
+    EXPECT_EQ(variant, GetParam().expectedVariant);
+}
+
+INSTANTIATE_TEST_CASE_P
+    (BaseSerialNumbers, GetUs4OEMVariantTest,
+     testing::Values(
+         // Legacy
+         GetUs4OEMVariantParams{"", Us4OEM::Variant::LEGACY},
+         // Legacy OEM+ serial number
+         GetUs4OEMVariantParams{"ST0100252300", Us4OEM::Variant::PLUS_RX_32},
+         // OEM+ serial number variant 0
+         GetUs4OEMVariantParams{"S-2523001000", Us4OEM::Variant::PLUS_RX_32},
+         // OEM+ serial number variant 1
+         GetUs4OEMVariantParams{"S-2523001012", Us4OEM::Variant::PLUS_RX_64},
+         // OEM+ serial number variant 2
+         GetUs4OEMVariantParams{"S-2523001020", Us4OEM::Variant::PLUS_HF},
+         // OEM+ serial number variant 0 14 digits
+         GetUs4OEMVariantParams{"S-252300010000", Us4OEM::Variant::PLUS_RX_32},
+         // OEM+ serial number variant 1
+         GetUs4OEMVariantParams{"S-252300010010", Us4OEM::Variant::PLUS_RX_64},
+         // OEM+ serial number variant 2
+         GetUs4OEMVariantParams{"S-252300010021", Us4OEM::Variant::PLUS_HF}
+         ));
+
 }
 
 int main(int argc, char **argv) {
     std::cerr << "Starting" << std::endl;
     ARRUS_INIT_TEST_LOG(arrus::Logging);
     ::testing::InitGoogleTest(&argc, argv);
+    // Uncomment if you would like to catch exceptions e.g. using debugger.
+//    ::testing::GTEST_FLAG(catch_exceptions) = false;
     return RUN_ALL_TESTS();
 }

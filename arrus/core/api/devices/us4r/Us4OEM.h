@@ -16,6 +16,17 @@ public:
     using Handle = std::unique_ptr<Us4OEM>;
     using RawHandle = PtrHandle<Us4OEM>;
 
+    enum class Variant {
+        /** legacy us4OEM */
+        LEGACY,
+        /** OEM+ 32 RX, AFE JD18 */
+        PLUS_RX_32,
+        /** OEM+ 64 RX */
+        PLUS_RX_64,
+        /** OEM HF */
+        PLUS_HF
+    };
+
    /**
     * Us4OEM ADC test pattern state.
     */
@@ -146,9 +157,9 @@ public:
     /**
      * Returns current FPGA wall clock (time passed since Init function was called).
      *
-     * @return FPGA wall clock (seconds)
+     * @return FPGA wall clock (clock ticks)
      */
-    virtual float getFPGAWallclock() = 0;
+    virtual uint64_t getFPGAWallclock() = 0;
 
     /**
      * Enables LNA analog high-pass filter and sets a given corner frequency.
@@ -218,6 +229,11 @@ public:
      * @return the actual frequency that will be set
      */
     virtual float getActualTxFrequency(float frequency) = 0;
+
+    /**
+     * Returns the variant of OEM.
+     */
+    virtual Variant getVariant() = 0;
 
     virtual void InitializeDspCircuit(HvpsDspParameters params) = 0;
 

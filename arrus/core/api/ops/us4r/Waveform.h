@@ -1,7 +1,9 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_WAVEFORM_H
 #define ARRUS_CORE_API_OPS_US4R_WAVEFORM_H
 
+#include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/common/types.h"
+#include <ostream>
 
 namespace arrus::ops::us4r {
 
@@ -13,14 +15,19 @@ namespace arrus::ops::us4r {
  * The duration[i] is the duration of the i-th state, i.e. state[i].
  *
  * @param state: the sequence of of states, one of the following values: -2 (HVM0), -1 (HVM1), 0 (CLAMP), 1 (HVP1), 2 (HVP0)
- * @param duration: the duration of the i-th state
+ * @param duration: the duration of the i-th state [seconds]
  */
 class WaveformSegment {
 public:
     using State = int8_t;
 
     WaveformSegment(const std::vector<float> &duration, const std::vector<State> &state)
-        : duration(duration), state(state) {}
+        : duration(duration), state(state) {
+        if(duration.size() != state.size()) {
+            throw IllegalArgumentException("The list of segment states should have the same length as the list "
+                                           "of state durations.");
+        }
+    }
 
     const std::vector<float> &getDuration() const { return duration; }
     const std::vector<State> &getState() const { return state; }
@@ -35,11 +42,32 @@ public:
     bool operator==(const WaveformSegment &rhs) const { return duration == rhs.duration && state == rhs.state; }
     bool operator!=(const WaveformSegment &rhs) const { return !(rhs == *this); }
 
+    friend std::ostream &operator<<(std::ostream &os, const WaveformSegment &segment) {
+        os << "states: ";
+        for(size_t i = 0; i < segment.state.size(); ++i) {
+            os << (int32_t)segment.state.at(i) << ", ";
+        }
+        os << "duration: ";
+        for(size_t i = 0; i < segment.duration.size(); ++i) {
+            os << segment.duration.at(i) << ", ";
+        }
+        return os;
+    }
+
 private:
     std::vector<float> duration;
     std::vector<State> state;
 };
 
+
+/**
+ * A complete Tx waveform to be applied on the ultrasound pulsers.
+ *
+ * NOTE: please use WaveformBuilder class to create new TX Waveforms (avoid constructing objects of this class directly).
+ *
+ * @param segments subsequent segments of the waveform
+ * @param nRepetitions how many times the segments[i] should be repeated
+ */
 class Waveform {
 public:
     Waveform(const std::vector<WaveformSegment> &segments, const std::vector<size_t> &nRepetitions)
@@ -63,11 +91,22 @@ public:
     bool operator==(const Waveform &rhs) const { return segments == rhs.segments && nRepetitions == rhs.nRepetitions; }
     bool operator!=(const Waveform &rhs) const { return !(rhs == *this); }
 
+    friend std::ostream &operator<<(std::ostream &os, const Waveform &waveform) {
+        for(size_t i = 0; i < waveform.segments.size(); ++i) {
+            os << "segment #" << i << ": " << waveform.segments.at(i);
+            os <<"; repetitions: " << waveform.nRepetitions.at(i) << "; ";
+        }
+        return os;
+    }
+
 private:
     std::vector<WaveformSegment> segments;
     std::vector<size_t> nRepetitions;
 };
 
+/**
+ * Tx Waveform builder class.
+ */
 class WaveformBuilder {
 public:
     WaveformBuilder() = default;
@@ -75,6 +114,13 @@ public:
     WaveformBuilder& add(WaveformSegment segment, size_t nRepetitions = 1) {
         segments.emplace_back(std::move(segment));
         nReps.emplace_back(nRepetitions);
+        return *this;
+    }
+
+    WaveformBuilder& add(const Waveform &wf) {
+        for(size_t i = 0; i < wf.getSegments().size(); ++i) {
+            add(wf.getSegments().at(i), wf.getNRepetitions().at(i));
+        }
         return *this;
     }
 

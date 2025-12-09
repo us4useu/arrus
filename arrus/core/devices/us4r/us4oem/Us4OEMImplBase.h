@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPLBASE_H
 
 #include <vector>
+#include <utility>
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
@@ -32,14 +33,19 @@ public:
 
     virtual bool isMaster() = 0;
 
+    /**
+     * Uploads the given Scheme on this OEM.
+     *
+     * @param txDelays sequence ordinal number -> profile ordinal number -> TX delays array (nfirings, n channels)
+     */
     virtual Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
                                       ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                                      const std::vector<arrus::framework::NdArray> &txDelays,
+                                      const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                                       const std::vector<TxTimeout> &txTimeouts = {}) = 0;
 
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
-    virtual void enableSequencer(uint16 startEntry) = 0;
+    virtual void enableSequencer(uint16 startEntry, bool dvddMask) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
     virtual void setRxSettings(const RxSettings& settings) = 0;
     virtual void setTestPattern(RxTestPattern pattern) = 0;
@@ -75,19 +81,14 @@ public:
 
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
-    /**
-     * Sets a given sub-sequence.
-     *
-     * NOTE! start and end are the global firings numbers!
-     *
-     * @param timeToNextTrigger PRI to be applied to the end of the new sub-sequence
-     */
-    virtual void setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) = 0;
     virtual void clearDMACallbacks() = 0;
 
     virtual std::pair<float, float> getTGCValueRange() const = 0;
     virtual bool isAFEJD18() = 0;
     virtual bool isAFEJD48() = 0;
+
+    /** Sets the TX delay profiles to the given sequences */
+    virtual void setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

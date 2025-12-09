@@ -67,7 +67,7 @@ public:
 
     template<typename T> static DataType getDataType() { throw IllegalArgumentException("Unsupported data type."); }
 
-    template<typename T> NdArray asarray(const std::vector<T> &vector) {
+    template<typename T> static NdArray asarray(const std::vector<T> &vector) {
         Shape shape = {vector.size()};
         DataType dataType = getDataType<T>();
         devices::DeviceId placement{devices::DeviceType::CPU, 0};
@@ -75,6 +75,24 @@ public:
         if (!vector.empty()) {
             std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
         }
+        return std::move(result);
+    }
+
+    template<typename T> static NdArray asarray(const std::vector<T> &vector,
+                    const Shape &shape, const ::arrus::devices::DeviceId &placement, const std::string &name) {
+        DataType dataType = getDataType<T>();
+        NdArray result{shape, dataType, placement, name};
+        if (!vector.empty()) {
+            std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
+        }
+        return std::move(result);
+    }
+
+    template<typename T> static NdArray asarray(const T *data, const Shape &shape, const std::string &name) {
+        DataType dataType = getDataType<T>();
+        devices::DeviceId placement{devices::DeviceType::CPU, 0};
+        NdArray result{shape, dataType, placement, name};
+        std::memcpy(result.ptr, (char *) data, result.sizeBytes);
         return std::move(result);
     }
 
@@ -323,12 +341,12 @@ public:
         return ss.str();
     }
 
-    template<typename T> std::vector<T> toVector() {
+    template<typename T> std::vector<T> toVector() const {
         // TODO verify if this is the same data type
         if (shape.size() != 1) {
             throw IllegalArgumentException("toVector method works only for 1D arrays.");
         }
-        size_t n = shape.size();
+        size_t n = shape.get(0);
         std::vector<T> result(n);
         for (size_t i = 0; i < n; ++i) {
             result[i] = get<T>(i);

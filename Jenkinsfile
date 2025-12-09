@@ -4,15 +4,25 @@ pipeline {
     agent any
 
     parameters {
-        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Publish arrus docs on the documentation server. CHECKING THIS ONE WILL UPDATE ARRUS DOCS')
-        booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish arrus C++ API package.')
-        booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish arrus Python package.')
-        booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish arrus MATLAB package.')
-        choice(name: 'PY_VERSION', choices: ['3.8', '3.9', '3.10'], description: 'Python version to use.')
+        booleanParam(name: 'RELEASE', defaultValue: false, description: 'Is this release? When set to true, the VERSION parameter is required.')
+        string(name: 'VERSION', defaultValue: '', description: 'Release version number.')
+        choice(
+            name: 'ACTION',
+            choices: ["BUILD", "PUBLISH"],
+            description: "Action to perform. "+
+                         "Select BUILD to performed local build (i.e. the output files will be stored only in the pre-release directory on NAS). " +
+                         "Selection PUBLISH to publish artifacts on github servers. This action will publish the latest build of the given release or branch."
+        )
+        booleanParam(name: 'PUBLISH_PY', defaultValue: false, description: 'Publish Python package.')
+        booleanParam(name: 'PUBLISH_MATLAB', defaultValue: false, description: 'Publish Matlab package.')
+        booleanParam(name: 'PUBLISH_CPP', defaultValue: false, description: 'Publish Matlab package.')
+        booleanParam(name: 'PUBLISH_DOCS', defaultValue: false, description: 'Publish ARRUS documentation (web).')
+        choice(name: 'PY_VERSION', choices: ['3.10', '3.11', '3.12'], description: 'Python version to use.')
         booleanParam(name: 'SCM_ONLY', defaultValue: false, description: 'Perform SCM checkout only, in order to e.g. update parameters of the pipeline.')
      }
 
     environment {
+        PROJECT_NAME = "arrus"
         PLATFORM = us4us.getPlatformName(env)
         BUILD_ENV_ADDRESS = us4us.getUs4usJenkinsVariable(env, "BUILD_ENV_ADDRESS")
         DOCKER_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_DOCKER_OPTIONS") // Deprecated
@@ -20,24 +30,35 @@ pipeline {
         DOCKER_DIRS = us4us.getRemoteDirs(env, "docker", "DOCKER_BUILD_ROOT")
         SSH_DIRS = us4us.getRemoteDirs(env, "ssh", "SSH_BUILD_ROOT")
         TARGET_WORKSPACE_DIR = us4us.getTargetWorkspaceDir(env, "DOCKER_BUILD_ROOT", "SSH_BUILD_ROOT")
+
+        TARGET_PRERELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus", false)
+        TARGET_RELEASE_DIR = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus", false)
+
+        TARGET_PRERELEASE_DIR_JENKINS = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", false, "arrus", true)
+        TARGET_RELEASE_DIR_JENKINS = us4us.getTargetArtifactsDir(env, params, "${env.JOB_NAME}", true, "arrus", true)
+
         CONAN_HOME_DIR = us4us.getUs4usJenkinsVariable(env, "CONAN_HOME_DIR")
         CONAN_PROFILE_FILE = us4us.getConanProfileFile(env)
-        RELEASE_DIR = us4us.getUs4usJenkinsVariable(env, "RELEASE_DIR")
-        CPP_PACKAGE_NAME = us4us.getPackageName(env, "${env.JOB_NAME}", "cpp")
-        MATLAB_PACKAGE_NAME = us4us.getPackageName(env, "${env.JOB_NAME}", "matlab")
-        PACKAGE_DIR = us4us.getUs4usJenkinsVariable(env, "PACKAGE_DIR")
         BUILD_TYPE = us4us.getBuildType(env)
         MISC_OPTIONS = us4us.getUs4usJenkinsVariable(env, "ARRUS_MISC_OPTIONS")
-        US4R_API_RELEASE_DIR = us4us.getUs4rApiReleaseDir(env)
-        IS_ARRUS_WHL_SUFFIX = us4us.isArrusSuffixWhl(env)
         IS_SCM_ONLY = isSCMOnly(params)
+        INSTALL_DIR_PREFIX = "${TARGET_PRERELEASE_DIR}/unzipped"
+
+        INSTALL_DIR_PREFIX_JENKINS = "${TARGET_PRERELEASE_DIR_JENKINS}/unzipped"
     }
 
-     
     stages {
+        stage('Fetch tags') {
+            when{
+                expression { us4us.isReleaseBranch("${env.BRANCH_NAME}") }
+            }
+            steps {
+                sh 'git fetch --prune --tags --force'
+            }
+        }
         stage('Skip Build?') {
             when {
-                environment name: 'IS_SCM_ONLY', value: 'true'
+                environment name: 'SCM_ONLY', value: 'true'
             }
             steps {
                 script {
@@ -46,29 +67,65 @@ pipeline {
                 }
             }
         }
-        stage('Configure') {
+        stage("Validate parameters") {
             steps {
-                sh """
-                   pydevops --clean --stage cfg \
-                    --host '${env.BUILD_ENV_ADDRESS}' \
-                    ${getDockerOptionsForTemplate(env.DOCKER_OPTIONSv2)}  \
-                    --src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build' \
-                    ${env.DOCKER_DIRS} \
-                    ${env.SSH_DIRS} \
-                    --options \
-                    build_type='${env.BUILD_TYPE}' \
-                    us4r_api_release_dir='${env.US4R_API_RELEASE_DIR}' \
-                    /cfg/conan/conan_home='${env.CONAN_HOME_DIR}' \
-                    /cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}' \
-                    /install/prefix='${env.RELEASE_DIR}/${env.JOB_NAME}' \
-                    ${env.MISC_OPTIONS} \
-                    /cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${IS_ARRUS_WHL_SUFFIX} \
-                    /cfg/DARRUS_PY_VERSION=${params.PY_VERSION} \
-                    ${getPythonExecutableParameter(env, params.PY_VERSION)}
-                    """
+                script {
+                    us4us.validateParameters(env, params);
+                }
+            }
+        }
+
+        // ------------------------------------------ BUILD STAGES.
+
+        stage('Configure') {
+            // It is always required, even if it is just publishing -- just to handle properly the PublishGithub stages.
+            steps {
+                script {
+                    env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
+                    env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
+                    // Install dir.
+                    def installDir = "${INSTALL_DIR_PREFIX}/${RELEASE_NAME}";
+                    env.INSTALL_DIR = installDir;
+                    env.ARRUS_APPEND_VERSION_SUFFIX_DATE = params.RELEASE ? "OFF" : "ON";
+
+                    // Determine the path where the us4r-api is located.
+                    // TODO(US4R-594) this should be removed after splitting ARRUS and HAL.
+                    env.US4R_API_RELEASE_DIR = getUs4rApiReleaseDirV2(env);
+                }
+                sh "pydevops --clean --stage cfg " +
+                    "--host '${env.BUILD_ENV_ADDRESS}'  " +
+                    "${getDockerOptionsForTemplate(env.DOCKER_OPTIONSv2)}   " +
+                    "--src_dir '${env.WORKSPACE}' --build_dir '${env.WORKSPACE}/build'  " +
+                    "${env.DOCKER_DIRS}  " +
+                    "${env.SSH_DIRS}  " +
+                    "--options  " +
+                    "build_type='${env.BUILD_TYPE}'  " +
+                    "us4r_api_release_dir='${env.US4R_API_RELEASE_DIR}'  " +
+                    "/cfg/conan/conan_home='${env.CONAN_HOME_DIR}'  " +
+                    "/cfg/conan/profile='${env.TARGET_WORKSPACE_DIR}/.conan/${env.CONAN_PROFILE_FILE}'  " +
+                    "/install/prefix='${env.INSTALL_DIR}'  " +
+                    "/package_cpp/release_name='${RELEASE_NAME}'  " +
+                    "/package_cpp/src_artifact='${env.INSTALL_DIR}/VERSION.rst;${env.INSTALL_DIR}/LICENSE;${env.INSTALL_DIR}/THIRD_PARTY_LICENSES;${env.INSTALL_DIR}/lib64;${env.INSTALL_DIR}/include;${env.INSTALL_DIR}/docs/arrus-cpp.pdf;${env.INSTALL_DIR}/examples'  " +
+                    "/package_cpp/dst_dir='${env.TARGET_PRERELEASE_DIR}'   " +
+                    "/package_cpp/dst_artifact='${env.CPP_PACKAGE_NAME}'  " +
+                    "/package_matlab/release_name='${RELEASE_NAME}'  " +
+                    "/package_matlab/src_artifact='${env.INSTALL_DIR}/matlab;${env.INSTALL_DIR}/VERSION.rst'  " +
+                    "/package_matlab/dst_dir='${env.TARGET_PRERELEASE_DIR}'   " +
+                    "/package_matlab/dst_artifact='${env.MATLAB_PACKAGE_NAME}'  " +
+                    "/publish_docs/version='${env.RELEASE_NAME}'  " +
+                    "/publish_docs/install_dir='${env.INSTALL_DIR}/'  " +
+                    "/cfg/cmake/DARRUS_APPEND_VERSION_SUFFIX_DATE=${env.ARRUS_APPEND_VERSION_SUFFIX_DATE}  " +
+                    "/cfg/DARRUS_PY_VERSION=${params.PY_VERSION}  " +
+                    "${getPythonExecutableParameter(env, params.PY_VERSION)}  " +
+                    "${env.MISC_OPTIONS} "
             }
         }
         stage('Build') {
+            when {
+                expression { return params.ACTION == "BUILD" }
+            }
             steps {
                 sh """pydevops --stage build \
                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
@@ -78,8 +135,11 @@ pipeline {
             }
         }
         stage('Test') {
+            when {
+                expression { return params.ACTION == "BUILD" }
+            }
             steps {
-                sh """pydevops --stage test \
+                sh """pydevops --stage test I am running a few minutes late; my previous meeting is running over.
                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
                       ${env.DOCKER_DIRS} \
                       ${env.SSH_DIRS}
@@ -87,6 +147,9 @@ pipeline {
             }
         }
         stage('Install') {
+            when {
+                expression { return params.ACTION == "BUILD" }
+            }
             steps {
                 sh """pydevops --stage install \
                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
@@ -96,99 +159,209 @@ pipeline {
             }
         }
         stage('PackageCpp') {
+            when {
+                expression { return params.ACTION == "BUILD" }
+            }
             steps {
                 sh """pydevops --stage package_cpp \
                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
                       ${DOCKER_DIRS} \
-                      ${SSH_DIRS} \
-                      --options \
-                      release_name='${env.BRANCH_NAME}' \
-                      src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/LICENSE;${env.RELEASE_DIR}/${env.JOB_NAME}/THIRD_PARTY_LICENSES;${env.RELEASE_DIR}/${env.JOB_NAME}/lib64;${env.RELEASE_DIR}/${env.JOB_NAME}/include;${env.RELEASE_DIR}/${env.JOB_NAME}/docs/arrus-cpp.pdf;${env.RELEASE_DIR}/${env.JOB_NAME}/examples' \
-                      dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
-                      dst_artifact='${env.CPP_PACKAGE_NAME}'
+                      ${SSH_DIRS}
                    """
             }
         }
         stage('PackageMatlab') {
+             when {
+                expression { return params.ACTION == "BUILD" }
+             }
              steps {
                  sh """pydevops --stage package_matlab \
                        --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
                        ${DOCKER_DIRS} \
-                       ${SSH_DIRS} \
-                       --options \
-                       release_name='${env.BRANCH_NAME}' \
-                       src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/matlab' \
-                       dst_dir='${env.PACKAGE_DIR}/${env.JOB_NAME}'  \
-                       dst_artifact='${env.MATLAB_PACKAGE_NAME}'
+                       ${SSH_DIRS}
                     """
              }
-         }
-        stage('PublishCpp') {
+        }
+
+        // ------------------------------------------ PUBLISH STEPS.
+        stage('ValidateRelease') {
             when{
-                environment name: 'PUBLISH_CPP', value: 'true'
+                allOf {
+                    expression { params.ACTION == "PUBLISH" }
+                    expression { params.RELEASE }
+                }
             }
             steps {
-                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
-                  sh """pydevops --stage publish_cpp \
-                      --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                      ${DOCKER_DIRS} \
-                      ${SSH_DIRS} \
-                      --options \
-                      token='$token' \
-                      release_name='${env.BRANCH_NAME}' \
-                      src_artifact='${env.PACKAGE_DIR}/${env.JOB_NAME}/${env.CPP_PACKAGE_NAME}*' \
-                      dst_artifact='__same__' \
-                      repository_name='us4useu/arrus' \
-                      description='${getBuildName(currentBuild)} (C++)'
-                     """
+                script {
+                    // C++/MATLAB => unzip the packages and check if the VERRSION.rst has the correct git commit
+                    def packageNames = [];
+                    if(params.PUBLISH_CPP) {
+                        packageNames.add(env.CPP_PACKAGE_NAME);
+                    }
+                    if(params.PUBLISH_MATLAB) {
+                        packageNames.add(env.MATLAB_PACKAGE_NAME);
+                    }
+
+                    packageNames.each { packageName ->
+                        def packagePath = "${env.TARGET_PRERELEASE_DIR_JENKINS}/${packageName}.zip"
+                        def releasedPackage = "${env.TARGET_RELEASE_DIR_JENKINS}/${packageName}.zip"
+                        // Make sure that the package we publish was generated for the same commit as the current HEAD.
+                        // NOTE! It is still possible, that someone will commit something on that branch in between
+                        // the ValidateCommit and Publish to repository. However, it seems to be quite unlikely
+                        // and can be neglected.
+                        def versionFilePath = us4us.extractFileToTempDirectory(packagePath, "VERSION.rst")
+                        us4us.validateCommit(versionFilePath)
+                    }
+                    // Python and docs => check if the Version.rst in the INSTALL_DIR is correct
+                    def releaseName = us4us.getReleaseName(env, params);
+                    def installDir = "${INSTALL_DIR_PREFIX_JENKINS}/${releaseName}";
+                    us4us.validateCommit("${installDir}/VERSION.rst");
+                }
+            }
+        }
+
+        stage('PublishNAS') {
+            when {
+                allOf {
+                    expression { params.ACTION == "PUBLISH" }
+                    expression { params.RELEASE } // We don't need -dev packages in the `release` directory on NAS.
+                }
+            }
+            steps {
+                // copy the package from the pre-release directory to the release directory
+                // also, copy the docs directory
+                script {
+                    def targetFolder = "${env.TARGET_RELEASE_DIR_JENKINS}";
+                    sh "mkdir -p ${targetFolder}";
+                    sh "mkdir -p ${targetFolder}/docs";
+                    // C++/MATLAB => copy the .zip files to the release directory
+                    env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
+                    env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
+                    def packageNames = [];
+                    if(params.PUBLISH_CPP) {
+                        packageNames.add(env.CPP_PACKAGE_NAME);
+                    }
+                    if(params.PUBLISH_MATLAB) {
+                        packageNames.add(env.MATLAB_PACKAGE_NAME);
+                    }
+
+                    packageNames.each { packageName ->
+                        def sourceArtifacts = "${TARGET_PRERELEASE_DIR_JENKINS}/${packageName}*"
+                        sh "cp ${sourceArtifacts} ${targetFolder}"
+                        echo "The files ${sourceArtifacts} were copied to ${targetFolder}"
+                    };
+
+                    // TODO consider handling .whl in some other way...
+                    // Python and docs => copy the .whl files to the install directory.
+                    def releaseName = us4us.getReleaseName(env, params);
+                    def installDir = "${INSTALL_DIR_PREFIX_JENKINS}/${releaseName}";
+                    sh "cp ${installDir}/python/${getArrusWhlNamePattern(params, env.RELEASE_NAME)} ${targetFolder}";
+                    if(us4us.isFileOrDirExists("${installDir}/docs")) {
+                        // Copy the docs dir only when it is available.
+                        sh "cp -r ${installDir}/docs ${targetFolder}/docs/${releaseName}";
+                    }
+                }
+            }
+        }
+        stage('PublishCpp') {
+            when {
+                allOf {
+                    expression { params.ACTION == "PUBLISH" }
+                    expression { params.PUBLISH_CPP }
+                }
+            }
+            steps {
+                script {
+                    env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
+                    env.GITHUB_SOURCE_ARTIFACT_PATH = getSourceArtifactPath(env, params);
+                }
+                withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                  sh "pydevops --stage publish_cpp " +
+                      "--src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' " +
+                      "${DOCKER_DIRS}  " +
+                      "${SSH_DIRS}  " +
+                      "--options  " +
+                      "token='$token'  " +
+                      "/publish_cpp/release_name='${env.RELEASE_NAME}'  " +
+                      "/publish_cpp/target_commitish='${env.BRANCH_NAME}'  " +
+                      "/publish_cpp/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.CPP_PACKAGE_NAME}*'  " +
+                      "/publish_cpp/dst_artifact='__same__'  " +
+                      "/publish_cpp/repository_name='us4useu/arrus'  " +
+                      "/publish_cpp/description='${getBuildName(currentBuild)} (C++)'  "
                 }
             }
         }
         stage('PublishPython') {
-            when{
-                environment name: 'PUBLISH_PY', value: 'true'
+            when {
+                allOf {
+                    expression { params.ACTION == "PUBLISH" }
+                    expression { params.PUBLISH_PY }
+                }
             }
             steps {
-                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
-                  sh """pydevops --stage publish_py \
-                     --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                     ${DOCKER_DIRS} \
-                     ${SSH_DIRS} \
-                     --options \
-                     token='$token' \
-                     release_name='${env.BRANCH_NAME}' \
-                     src_artifact='${env.RELEASE_DIR}/${env.JOB_NAME}/python/${getArrusWhlNamePattern()}' \
-                     dst_artifact='__same__' \
-                     repository_name='us4useu/arrus' \
-                     description='${getBuildName(currentBuild)} (Python)'
-                     """
+                script {
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    def releaseName = us4us.getReleaseName(env, params);
+                    env.RELEASE_NAME = releaseName;
+                    env.GITHUB_SOURCE_ARTIFACT_PATH = getSourceArtifactPath(env, params);
+                    // This one is for Python and docs (the pre-release artifacts are in the .../pre-release/unzipped/{RELEASE_NAME} directory).
+                    def pyArtifactPath = us4us.isPrereleaseV2(params) ? "${TARGET_PRERELEASE_DIR}/unzipped/${releaseName}/python": "${TARGET_RELEASE_DIR}";
+                    env.GITHUB_PY_ARTIFACT_PATH = pyArtifactPath;
+                }
+                withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                  sh "pydevops --stage publish_py  " +
+                     "--src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build'  " +
+                     "${DOCKER_DIRS}  " +
+                     "${SSH_DIRS}  " +
+                     "--options  " +
+                     "token='$token'  " +
+                     "/publish_py/release_name='${env.RELEASE_NAME}'  " +
+                     "/publish_py/target_commitish='${env.BRANCH_NAME}'  " +
+                     "/publish_py/src_artifact='${env.GITHUB_PY_ARTIFACT_PATH}/${getArrusWhlNamePattern(params, env.RELEASE_NAME)}'  " +
+                     "/publish_py/dst_artifact='__same__'  " +
+                     "/publish_py/repository_name='us4useu/arrus'  " +
+                     "/publish_py/description='${getBuildName(currentBuild)} (Python)'  "
                 }
             }
         }
         stage('PublishMatlab') {
-            when{
-                environment name: 'PUBLISH_MATLAB', value: 'true'
+            when {
+                allOf {
+                    expression { params.ACTION == "PUBLISH" }
+                    expression { params.PUBLISH_MATLAB }
+                }
             }
             steps {
-                  withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
-                  sh """pydevops --stage publish_matlab \
-                     --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
-                     ${DOCKER_DIRS} \
-                     ${SSH_DIRS} \
-                     --options \
-                     token='$token' \
-                     release_name='${env.BRANCH_NAME}' \
-                     src_artifact='${env.PACKAGE_DIR}/${env.JOB_NAME}/${env.MATLAB_PACKAGE_NAME}*' \
-                     dst_artifact='__same__' \
-                     repository_name='us4useu/arrus' \
-                     description='${getBuildName(currentBuild)} (MATLAB)'
-                     """
+                script {
+                    env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
+                    // Release name: version number if this stable release, or pre-release if this is dev.
+                    env.RELEASE_NAME = us4us.getReleaseName(env, params);
+                    env.GITHUB_SOURCE_ARTIFACT_PATH = getSourceArtifactPath(env, params);
+                }
+                withCredentials([string(credentialsId: 'us4us-dev-github-token', variable: 'token')]){
+                sh "pydevops --stage publish_matlab  " +
+                    "--src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build'  " +
+                    "${DOCKER_DIRS}  " +
+                    "${SSH_DIRS}  " +
+                    "--options  " +
+                    "token='$token' " +
+                    "/publish_matlab/release_name='${env.RELEASE_NAME}'  " +
+                    "/publish_matlab/target_commitish='${env.BRANCH_NAME}'  " +
+                    "/publish_matlab/src_artifact='${env.GITHUB_SOURCE_ARTIFACT_PATH}/${env.MATLAB_PACKAGE_NAME}*'  " +
+                    "/publish_matlab/dst_artifact='__same__'  " +
+                    "/publish_matlab/repository_name='us4useu/arrus'  " +
+                    "/publish_matlab/description='${getBuildName(currentBuild)} (MATLAB)'  "
                 }
             }
         }
         stage('PublishDocs') {
-             when{
-                 environment name: 'PUBLISH_DOCS', value: 'true'
+            when {
+                allOf {
+                    expression { params.ACTION == "PUBLISH" }
+                    expression { params.PUBLISH_DOCS }
+                }
              }
              steps {
                    withCredentials([usernamePassword(credentialsId: 'us4us-dev-github-credentials', usernameVariable: 'username', passwordVariable: 'password')]){
@@ -197,8 +370,6 @@ pipeline {
                       ${DOCKER_DIRS} \
                       ${SSH_DIRS} \
                       --options \
-                      version='${env.BRANCH_NAME}' \
-                      install_dir='${env.RELEASE_DIR}/${env.JOB_NAME}/' \
                       repository='https://$username:$password@github.com/us4useu/arrus-docs.git' \
                       commit_msg='Updated docs, ${getBuildName(currentBuild)}'
                       """
@@ -209,45 +380,45 @@ pipeline {
      post {
          failure {
              script {
-                 if((env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) && !env.IS_SCM_ONLY) {
-                     emailext(body: "Check console output at $BUILD_URL to view the results.",
-                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
-                              recipientProviders: [developers(), requestor()],
-                              subject: "Build failed in Jenkins: $JOB_NAME")
-                 }
+                 emailext(body: "Check console output at $BUILD_URL to view the results.",
+                    from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                    recipientProviders: [developers(), requestor()],
+                    subject: "Build failed in Jenkins: $JOB_NAME")
              }
          }
          unstable {
              script {
-                 if((env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) && !env.IS_SCM_ONLY) {
-                     emailext(body: "Check console output at $BUILD_URL to view the results.",
-                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
-                              recipientProviders: [developers(), requestor()],
-                              subject: "Unstable build in Jenkins: $JOB_NAME")
-                 }
+                 emailext(body: "Check console output at $BUILD_URL to view the results.",
+                    from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                    recipientProviders: [developers(), requestor()],
+                    subject: "Unstable build in Jenkins: $JOB_NAME")
              }
          }
          changed {
              script {
-                 if((env.BRANCH_NAME == "master" || env.BRANCH_NAME ==~ /(.*)-dev$/) && !env.IS_SCM_ONLY) {
-                     emailext(body:    "Check console output at $BUILD_URL to view the results.",
-                              from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
-                              recipientProviders: [developers(), requestor()],
-                              subject: "Jenkins build is back to normal: $JOB_NAME")
-                 }
+                emailext(body:    "Check console output at $BUILD_URL to view the results.",
+                    from: 'us4usdevs@gmail.com', replyTo: 'dev@us4us.eu',
+                    recipientProviders: [developers(), requestor()],
+                    subject: "Jenkins build is back to normal: $JOB_NAME")
              }
          }
      }
 }
 
-def getArrusWhlNamePattern() {
+def getArrusWhlNamePattern(params, releaseName) {
     pythonVersion = "cp${params.PY_VERSION}".replace(".", "");
-    if(us4us.isPrerelease("${env.BRANCH_NAME}")) {
-
-        return "arrus*${us4us.getTimestamp()}*${pythonVersion}*.whl";
+    // releaseName can be e.g. v0.12.0-dev, but whl will be always v0.12.0.dev
+    def versionPattern = ~/^v\d+\.\d+\.\d+(-dev)?$/;
+    def whlReleaseName = releaseName;
+    if (whlReleaseName ==~ versionPattern) {
+        whlReleaseName = whlReleaseName.substring(1);
+        whlReleaseName = whlReleaseName.replace("-dev", ".dev");
+    }
+    if(us4us.isPrereleaseV2(params)) {
+        return "arrus*${whlReleaseName}*${us4us.getTimestamp()}*${pythonVersion}*.whl";
     }
     else {
-        return "arrus*${pythonVersion}*.whl";
+        return "arrus*${whlReleaseName}*${pythonVersion}*.whl";
     }
 }
 
@@ -276,5 +447,23 @@ def isSCMOnly(params) {
     // note: the fact that env.SCM_ONLY is null on the first call seems to be a bug 
     // . Currently this is a way to detect if this is the first build of the new branch
     // however in the future releases of Jenkins this may change.
-    return (env.SCM_ONLY == null || env.SCM_ONLY == 'true')
+    return (params.SCM_ONLY == null || params.SCM_ONLY == 'true')
+}
+
+/**
+ Returns the path to the unzipped us4r-api package.
+ Currently, it is basically the path to "unzipped" directory in the pre-release directory.
+ */
+def getUs4rApiReleaseDirV2(env) {
+    def nasDir = us4us.getUs4usJenkinsVariable(env, "NAS_DIR");
+    def platformName = us4us.getPlatformNameAndBuildType("${env.JOB_NAME}");
+    return "${nasDir}/us4r-hal/pre-release/${platformName}/unzipped/";
+}
+
+def getSourceArtifactPath(env, params) {
+    // In case we are not performing the official release
+    // e.g. we are building -dev package, publish the packages
+    // from the pre-release dir.
+    // This one is for C++ and MATLAB (the pre-release artifacts are in the .../pre-release/directory).
+    return us4us.isPrereleaseV2(params) ? "${env.TARGET_PRERELEASE_DIR}": "${env.TARGET_RELEASE_DIR}";
 }

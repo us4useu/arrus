@@ -75,24 +75,49 @@ Custom Tx/Rx sequences
 
 .. doxygentypedef:: arrus::ops::us4r::TGCCurve
 
+.. doxygenclass:: arrus::ops::us4r::Waveform
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::ops::us4r::WaveformSegment
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::ops::us4r::WaveformBuilder
+    :project: arrus
+    :members:
+
 Devices
 =======
 
 .. doxygenclass:: arrus::devices::Us4R
     :project: arrus
-    :members: setVoltage, disableHV, setTgcCurve, setPgaGain, setLnaGain, setLpfCutoff, setDtgcAttenuation, setActiveTermination, setRxSettings, setLnaHpfCornerFrequency, setAdcHpfCornerFrequency, getSerialNumber, getRevision, getUs4OEM, getBackplaneSerialNumber, getBackplaneRevision
-
-.. doxygenclass:: arrus::devices::HVVoltage
     :members:
 
-.. doxygenclass:: arrus::devices::RxSettings
+.. doxygenclass:: arrus::devices::Us4RSettings
     :members:
 
+.. doxygenclass:: arrus::devices::Us4RTxRxLimits
+    :members:
+
+.. doxygenclass:: us4us::us4r::RxSettings
+    :members:
+
+.. doxygenclass:: us4us::us4r::RxSettingsBuilder
+    :members:
+
+.. doxygenclass:: arrus::devices::WatchdogSettings
+    :members:
+
+.. doxygenclass:: arrus::devices::Us4OEMSettings
+    :members:
 
 .. doxygenclass:: arrus::devices::Us4OEM
     :project: arrus
-    :members: getSamplingFrequency, getFPGATemperature, getUCDTemperature, getUCDExternalTemperature, getUCDMeasuredVoltage, checkState, getFirmwareVersion, getTxFirmwareVersion, getFPGAWallclock, getSerialNumber, getRevision
+    :members:
 
+.. doxygenclass:: arrus::devices::HVVoltage
+    :members:
 
 Output data
 ===========

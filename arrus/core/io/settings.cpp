@@ -498,7 +498,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
+    bool maskDVDDInterrupt = false; // default value
     int txFrequencyRange = 1;
+    bool allowDuplicateOEMIds = true; // default values
 
     if (us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();
@@ -520,12 +522,16 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     if (us4r.optional_tx_frequency_range_case() != proto::Us4RSettings::OPTIONAL_TX_FREQUENCY_RANGE_NOT_SET) {
         txFrequencyRange = static_cast<int>(us4r.tx_frequency_range());
     }
+    if (us4r.optional_allow_duplicate_oem_ids_case() != proto::Us4RSettings::OPTIONAL_ALLOW_DUPLICATE_OEM_IDS_NOT_SET) {
+        allowDuplicateOEMIds = us4r.allow_duplicate_oem_ids();
+    }
     if (!us4r.adapter_to_us4r_module_nr().empty()) {
         auto &adapter2Us4RModule = us4r.adapter_to_us4r_module_nr();
         for (auto &nr: adapter2Us4RModule) {
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
+    maskDVDDInterrupt = us4r.mask_dvdd_failure_check();
     WatchdogSettings watchdog = WatchdogSettings::defaultSettings();
     if(us4r.has_watchdog()) {
         auto enabled = us4r.watchdog().enabled();
@@ -573,7 +579,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             digitalBackplaneSettings,
             bitstreams,
             limits,
-            watchdog
+            watchdog,
+            allowDuplicateOEMIds,
+            maskDVDDInterrupt
     };
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

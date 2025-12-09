@@ -57,13 +57,24 @@ public:
      * Returns an array with delays for active (i.e. aperture[i] = true) channels only.
      */
     std::vector<float> getDelaysApertureOnly() const {
-        std::vector<float> txDelays;
+        return limitToApertureOnly(getDelays());
+    }
+
+    /**
+     * Returns an array with delays for active (i.e. aperture[i] = true) channels only.
+     */
+    template<typename T>
+    std::vector<float> limitToApertureOnly(const std::vector<T> &values) const {
+        std::vector<float> output;
+        if(values.size() != getAperture().size()) {
+            throw std::runtime_error("The given array of values (e.g. delays) has a different size than the TX aperture array!");
+        }
         for(size_t i = 0; i < getAperture().size(); ++i) {
-            if(getAperture()[i]) {
-                txDelays.push_back(getDelays()[i]);
+            if(getAperture().at(i)) {
+                output.push_back(values.at(i));
             }
         }
-        return txDelays;
+        return output;
     }
 
     /**

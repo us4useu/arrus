@@ -4,6 +4,7 @@
 #include <cmath>
 #include <thread>
 #include <utility>
+#include <regex>
 
 #include "Us4OEMDescriptorFactory.h"
 #include "Us4OEMTxRxValidator.h"
@@ -21,6 +22,7 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
 #include "utils.h"
 #include "arrus/core/devices/us4r/TxWaveformConverter.h"
+#include "arrus/core/devices/us4r/TxWaveformSoftStartConverter.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -142,7 +144,7 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
                                       uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                                      const std::vector<arrus::framework::NdArray> &txDelays,
+                                      const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                                       const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
@@ -160,7 +162,7 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     auto [bufferDef, rxTimeOffset] = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
     uploadTriggersIOBS(sequences, rxBufferSize, workMode);
     setAfeDemod(ddc);
-    if(workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP) {
+    if(Scheme::isWorkModeManual(workMode)) {
         setWaitForEventDone();
     }
     return Us4OEMUploadResult{bufferDef, rxMappingRegister.acquireFCMs(), rxTimeOffset};
@@ -192,13 +194,16 @@ Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us
 
 void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                const std::optional<DigitalDownConversion> &ddc,
-                               const std::vector<arrus::framework::NdArray> &txDelays,
+                               const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                                const Us4OEMRxMappingRegister &rxMappingRegister) {
     using SequenceId = uint16;
     using OpId = uint16;
 
     bool isDDCOn = ddc.has_value();
     const Us4OEMChannelsGroupsMask emptyChannelGroups;
+
+    // Reset the currently selected profiles.
+    currentTxDelayProfileIds = std::vector<size_t>(sequences.size());
     // us4OEM sequencer firing/entry id (global).
     OpId firingId = 0;
     for (SequenceId sequenceId = 0; sequenceId < ARRUS_SAFE_CAST(sequences.size(), SequenceId); ++sequenceId) {
@@ -230,18 +235,32 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             ius4oem->SetRxAperture(filteredRxAperture, firingId);
             ius4oem->SetRxDelay(op.getRxDelay(), firingId);
             // Delays
-            // Set delay definition tables.
-            for (size_t delaysId = 0; delaysId < txDelays.size(); ++delaysId) {
-                auto delays = txDelays.at(delaysId).row(opId).toVector<float>();
-                setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx());
+            size_t nProfiles = 0;
+            if(!txDelays.empty()) {
+                // Set delay definition tables, specific for the given sequence.
+                const auto &sequenceDelays = txDelays.at(sequenceId);
+                nProfiles = sequenceDelays.size();
+                for (size_t delaysId = 0; delaysId < sequenceDelays.size(); ++delaysId) {
+                    auto delays = sequenceDelays.at(delaysId).row(opId).toVector<float>();
+
+                    setTxDelays(op.getTxAperture(), delays, firingId, delaysId, op.getMaskedChannelsTx(), sequenceId);
+                }
             }
             // Then set the profile from the input sequence (for backward-compatibility).
             // NOTE: this might look redundant and it is, however it simplifies the changes for v0.9.0 a lot
             // and reduces the risk of causing new bugs in the whole mapping implementation.
-            // This will be optimized in TODO(0.12.0).
-            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx());
+            setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, nProfiles, op.getMaskedChannelsTx(),sequenceId);
+            // Remember what is the currently selected TX delay profile.
+            currentTxDelayProfileIds.at(sequenceId) = nProfiles;
             if(isOEMPlus()) {
-                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(op.getTxWaveform()));
+                auto waveform = op.getTxWaveform();
+                // Waveform pre-processing.
+                if(softStartConverter.apply(op.getTxWaveform())) {
+                    waveform = softStartConverter.convert(waveform);
+                    this->logger->log(LogSeverity::INFO, "The given TX pulse has at least 128 cycles, applying reduced "
+                                                         "duty cycle for the first 5 us of the TX pulse (25%, 50%, 75%).");
+                }
+                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
             }
             else {
                 // Legacy OEM.
@@ -262,7 +281,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     }
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
-    ius4oem->SetTxDelays(txDelays.size());
+    ius4oem->SetTxDelays(currentTxDelayProfileIds);
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
@@ -466,8 +485,15 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                         }
                     }
                     auto priMs = static_cast<unsigned int>(std::round(pri * 1e6));
+                    // syncReq (interrupt: 3) only when we are hitting the last TX/RX in the sequence,
+                    //  or we have the MANUAL_OP work mode (stop after each TX/RX)
+                    // syncMode (external trigger): only when we are hitting the last TX/Rx in the sequence,
+                    //  and the user configured the system to use "external trigger source"
+                    // irqDone (interrupt: 4): only when we have the MANUAL_OP (signal the IRQ after each TX/RX)
+                    //  or we have the MANUAL work mode, and we are hitting the last TX/RX in the TX/RX
+                    //  (the IRQ = 4 is used to implement the synchronous version of the Us4r::trigger(sync=true))
                     ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
-                                        triggerSyncPerTxRx);
+                                        triggerSyncPerTxRx || (isCheckpoint && workMode == ops::us4r::Scheme::WorkMode::MANUAL));
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
@@ -568,13 +594,13 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer(uint16 startEntry) {
+void Us4OEMImpl::enableSequencer(uint16 startEntry, bool dvddMask) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry, dvddMask);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
@@ -656,7 +682,7 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
     return currentSamplingFrequency;
 }
 
-float Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
+uint64_t Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
 
 void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {
     if (ddc.has_value()) {
@@ -754,7 +780,8 @@ size_t Us4OEMImpl::getNumberOfFirings(const std::vector<TxRxParametersSequence> 
 }
 
 void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
-                             size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx) {
+                             size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx,
+                             SequenceId sequenceId) {
     ARRUS_REQUIRES_EQUAL_IAE(txAperture.size(), delays.size());
     std::vector<float> delaysToBeApplied(txAperture.size());
     for (uint8 ch = 0; ch < ARRUS_SAFE_CAST(txAperture.size(), uint8); ++ch) {
@@ -765,7 +792,7 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
         }
         delaysToBeApplied.at(ch) = delay;
     }
-    ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId);
+    ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId, ARRUS_SAFE_CAST(sequenceId, size_t));
 }
 
 void Us4OEMImpl::clearDMACallbacks() {
@@ -881,8 +908,77 @@ std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
     return ius4oem->GetTGCValueRange();
 }
 
-void Us4OEMImpl::setSubsequence(uint16 start, uint16 end, bool syncMode, uint32_t timeToNextTrigger) {
-    this->ius4oem->SetSubsequence(start, end, syncMode, timeToNextTrigger);
+void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) {
+    std::vector<size_t> newProfiles(currentTxDelayProfileIds.size());
+    for(const auto &[sequenceId, profileId] : profiles) {
+        if(sequenceId > currentTxDelayProfileIds.size()) {
+            throw IllegalArgumentException(format("The sequence with id {} is out of the scope of the "
+                                           "currently uploaded scheme (the number of uploaded sequences: {})",
+                                                  sequenceId, currentTxDelayProfileIds.size()));
+        }
+        newProfiles.at(sequenceId) = profileId;
+    }
+    ius4oem->SetTxDelays(newProfiles);
+    currentTxDelayProfileIds = newProfiles;
+}
+
+Us4OEM::Variant Us4OEMImpl::getVariant() {
+    const auto &sn = this->serialNumber.get();
+    auto variantStr = std::string();
+    // us4OEM+
+    const std::string pattern2OrdinalStr = "^([a-zA-Z][a-zA-Z\\-]?)([0-9]{10}).*";
+    std::regex pattern2OrdinalRegex(pattern2OrdinalStr);
+    const std::string pattern4OrdinalStr = "^([a-zA-Z][a-zA-Z\\-]?)([0-9]{12}).*";
+    std::regex pattern4OrdinalRegex(pattern4OrdinalStr);
+    const size_t OEM_PLUS_SN_2_ORDINAL_SIZE = 12;
+    const size_t OEM_PLUS_SN_4_ORDINAL_SIZE = 14;
+
+    std::smatch matches;
+
+    if (sn.empty()) {
+        // Legacy us4OEM
+        return Us4OEM::Variant::LEGACY;
+    }
+    else if(sn.size() == OEM_PLUS_SN_2_ORDINAL_SIZE) {
+        // us4OEM+
+        if(! std::regex_match(sn, matches, pattern2OrdinalRegex) ) {
+            throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should have the following pattern: {}.", pattern2OrdinalStr));
+        }
+        const auto mountingType = matches[1].str();
+        const auto number = matches[2].str();
+
+        if (mountingType == "ST" || mountingType == "RA") {
+            // Legacy us4OEM+ serial number pattern
+            variantStr = number.substr(0, 2);
+        } else {
+            // Current us4OEM+ serial number pattern
+            variantStr = number.substr(8, 2);
+        }
+    }
+    else if (sn.size() == OEM_PLUS_SN_4_ORDINAL_SIZE) {
+        if(! std::regex_match(sn, matches, pattern4OrdinalRegex) ) {
+            throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should have the following pattern: {}.", pattern4OrdinalStr));
+        }
+        const auto number = matches[2].str();
+        variantStr = number.substr(10, 2);
+    }
+    else {
+        throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn));
+    }
+
+    const auto variantSymbol = variantStr.at(0);
+    if(variantSymbol == '0')  {
+        return Us4OEM::Variant::PLUS_RX_32;
+    }
+    else if(variantSymbol == '1') {
+        return Us4OEM::Variant::PLUS_RX_64;
+    }
+    else if(variantSymbol == '2') {
+        return Us4OEM::Variant::PLUS_HF;
+    }
+    else {
+        throw IllegalStateException(format("Unknown variant for OEM with SN: {}", sn));
+    }
 }
 
 void Us4OEMImpl::InitializeDspCircuit(HvpsDspParameters params) {
