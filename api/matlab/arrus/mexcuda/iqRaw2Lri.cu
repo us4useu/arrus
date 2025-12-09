@@ -73,34 +73,45 @@ __global__ void iqRaw2Lri(  float2 * iqLri,
         
         if (!isinf(txFoc[iTx])) {
             /* STA */
-            float zFoc	= txApCentZ[iTx] + txFoc[iTx] * cosf(txAngZX[iTx]);
-            float xFoc	= txApCentX[iTx] + txFoc[iTx] * sinf(txAngZX[iTx]);
-            
-            float pixFocArrang;
-            
-            if (txFoc[iTx] <= 0.f) {
-                /* Virtual Point Source BEHIND probe surface */
-                // Valid pixels are assumed to be always in front of the focal point (VSP)
-                pixFocArrang = 1.f;
+            if (txFoc[iTx] == 0.f && txApFstElem[iTx] == txApLstElem[iTx]) {
+                txDist	= ownHypotf(zPix[z] - zElemConst[txApFstElem[iTx]], 
+                                    xPix[x] - xElemConst[txApFstElem[iTx]]);
+                
+                // Projections of Elem-Pix vector on the unit vector normal to the Elem surface (dot products) ...
+                // to determine if the pixel is in the sonified area (dot product >= 0).
+                txApod = ( ( (zPix[z] - zElemConst[txApFstElem[iTx]]) * cosf(atanf(tangElemConst[txApFstElem[iTx]])) + 
+                             (xPix[x] - xElemConst[txApFstElem[iTx]]) * sinf(atanf(tangElemConst[txApFstElem[iTx]]))) >= 0.f ) ? 1.f : 0.f;
             }
             else {
-                /* Virtual Point Source IN FRONT OF probe surface */
-                // Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
-                // to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
-                pixFocArrang = (((zPix[z]-zFoc)*(zFoc-txApCentZ[iTx]) + 
-                                 (xPix[x]-xFoc)*(xFoc-txApCentX[iTx])) >= 0.f) ? 1.f : -1.f;
+                float zFoc	= txApCentZ[iTx] + txFoc[iTx] * cosf(txAngZX[iTx]);
+                float xFoc	= txApCentX[iTx] + txFoc[iTx] * sinf(txAngZX[iTx]);
+
+                float pixFocArrang;
+                
+                if (txFoc[iTx] <= 0.f) {
+                    /* Virtual Point Source BEHIND probe surface */
+                    // Valid pixels are assumed to be always in front of the focal point (VSP)
+                    pixFocArrang = 1.f;
+                }
+                else {
+                    /* Virtual Point Source IN FRONT OF probe surface */
+                    // Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
+                    // to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
+                    pixFocArrang = (((zPix[z]-zFoc)*(zFoc-txApCentZ[iTx]) + 
+                                     (xPix[x]-xFoc)*(xFoc-txApCentX[iTx])) >= 0.f) ? 1.f : -1.f;
+                }
+                txDist	= ownHypotf(zPix[z] - zFoc, xPix[x] - xFoc);
+                txDist *= pixFocArrang; // Compensation for the Pix-Foc arrangement
+                txDist += txFoc[iTx]; // Compensation for the reference time being the moment when txApCent fires.
+                
+                // Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
+                // to determine if the pixel is in the sonified area (dot product >= 0).
+                // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
+                txApod = ( ( (-(zPix[z] - zFoc)*(xElemConst[txApFstElem[iTx]] - xFoc) + 
+                               (xPix[x] - xFoc)*(zElemConst[txApFstElem[iTx]] - zFoc))*pixFocArrang >= 0.f ) && 
+                           ( ( (zPix[z] - zFoc)*(xElemConst[txApLstElem[iTx]] - xFoc) - 
+                               (xPix[x] - xFoc)*(zElemConst[txApLstElem[iTx]] - zFoc))*pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
             }
-            txDist	= ownHypotf(zPix[z] - zFoc, xPix[x] - xFoc);
-            txDist *= pixFocArrang; // Compensation for the Pix-Foc arrangement
-            txDist += txFoc[iTx]; // Compensation for the reference time being the moment when txApCent fires.
-            
-            // Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
-            // to determine if the pixel is in the sonified area (dot product >= 0).
-            // Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
-            txApod = ( ( (-(xElemConst[txApFstElem[iTx]] - xFoc)*(zPix[z] - zFoc) + 
-                           (zElemConst[txApFstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) && 
-                       ( ( (xElemConst[txApLstElem[iTx]] - xFoc)*(zPix[z] - zFoc) - 
-                           (zElemConst[txApLstElem[iTx]] - zFoc)*(xPix[x] - xFoc))*pixFocArrang >= 0.f ) ) ? 1.f : 0.f;
         }
         else {
             /* PWI */
