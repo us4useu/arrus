@@ -1486,32 +1486,42 @@ classdef Us4R < handle
                     jTx         = obj.rec.bmodeFrames(iTx);
                     
                     if ~isinf(obj.subSeq.txFoc(jTx))
-                        % STA
-                        
+
                         zFoc	= obj.subSeq.txApCentZ(jTx) + obj.subSeq.txFoc(jTx) * cos(obj.subSeq.txAngZX(jTx));
                         xFoc	= obj.subSeq.txApCentX(jTx) + obj.subSeq.txFoc(jTx) * sin(obj.subSeq.txAngZX(jTx));
                         
-                        if obj.subSeq.txFoc(jTx) <= 0
-                            % Virtual Point Source BEHIND probe surface
-                            % Valid pixels are assumed to be always in front of the focal point (VSP)
-                            pixFocArrang = 1;
+                        if obj.subSeq.txFoc(jTx) == 0 && obj.subSeq.txApSize(jTx) == 1
+                            % SSTA
+
+                            % Projections of Elem-Pix vector on the unit vector normal to the Elem surface (dot products) ...
+                            % to determine if the pixel is in the sonified area (dot product >= 0).
+                            txPixBeamMask(:,:,iTx) = ( (obj.rec.zGrid(:)   - obj.sys.zElem(obj.subSeq.txApFstElem(jTx))) .* cos(obj.sys.angElem(obj.subSeq.txApFstElem(jTx))) + ...
+                                                       (obj.rec.xGrid(:).' - obj.sys.xElem(obj.subSeq.txApFstElem(jTx))) .* sin(obj.sys.angElem(obj.subSeq.txApFstElem(jTx))) ) >= 0;
                         else
-                            % Virtual Point Source IN FRONT OF probe surface
-                            % Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
-                            % to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
-                            pixFocArrang = ((obj.rec.zGrid(:)  - zFoc) * (zFoc - obj.subSeq.txApCentZ(jTx)) + ...
-                                            (obj.rec.xGrid(:).'- xFoc) * (xFoc - obj.subSeq.txApCentX(jTx))) >= 0;
-                            pixFocArrang = 2*pixFocArrang - 1;
+                            % STA
+                            
+                            if obj.subSeq.txFoc(jTx) <= 0
+                                % Virtual Point Source BEHIND probe surface
+                                % Valid pixels are assumed to be always in front of the focal point (VSP)
+                                pixFocArrang = 1;
+                            else
+                                % Virtual Point Source IN FRONT OF probe surface
+                                % Projection of the Foc-Pix vector on the ApCent-Foc vector (dot product) ...
+                                % to determine if the pixel is behind (-) or in front of (+) the focal point (VSP).
+                                pixFocArrang = ((obj.rec.zGrid(:)  - zFoc) * (zFoc - obj.subSeq.txApCentZ(jTx)) + ...
+                                                (obj.rec.xGrid(:).'- xFoc) * (xFoc - obj.subSeq.txApCentX(jTx))) >= 0;
+                                pixFocArrang = 2*pixFocArrang - 1;
+                            end
+                            
+                            % Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
+                            % to determine if the pixel is in the sonified area (dot product >= 0).
+                            % Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
+                            txPixBeamMask(:,:,iTx) = ( (-(obj.sys.xElem(obj.subSeq.txApFstElem(jTx)) - xFoc) * (obj.rec.zGrid(:)   - zFoc) + ...
+                                                         (obj.sys.zElem(obj.subSeq.txApFstElem(jTx)) - zFoc) * (obj.rec.xGrid(:).' - xFoc)) * pixFocArrang >= 0 ) & ...
+                                                     ( ( (obj.sys.xElem(obj.subSeq.txApLstElem(jTx)) - xFoc) * (obj.rec.zGrid(:)   - zFoc) - ...
+                                                         (obj.sys.zElem(obj.subSeq.txApLstElem(jTx)) - zFoc) * (obj.rec.xGrid(:).' - xFoc)) * pixFocArrang >= 0 );
                         end
-                        
-                        % Projections of Foc-Pix vector on the rotated Foc-ApEdge vectors (dot products) ...
-                        % to determine if the pixel is in the sonified area (dot product >= 0).
-                        % Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
-                        txPixBeamMask(:,:,iTx) = ( (-(obj.sys.xElem(obj.subSeq.txApFstElem(jTx)) - xFoc) * (obj.rec.zGrid(:)   - zFoc) + ...
-                                                     (obj.sys.zElem(obj.subSeq.txApFstElem(jTx)) - zFoc) * (obj.rec.xGrid(:).' - xFoc)) * pixFocArrang >= 0 ) & ...
-                                                 ( ( (obj.sys.xElem(obj.subSeq.txApLstElem(jTx)) - xFoc) * (obj.rec.zGrid(:)   - zFoc) - ...
-                                                     (obj.sys.zElem(obj.subSeq.txApLstElem(jTx)) - zFoc) * (obj.rec.xGrid(:).' - xFoc)) * pixFocArrang >= 0 );
-                        
+
                         txPixWaveAng(:,:,iTx)  = mod(atan2(obj.rec.xGrid(:).' - xFoc, obj.rec.zGrid(:) - zFoc) + pi/2, pi) - pi/2;
                     else
                         % PWI
