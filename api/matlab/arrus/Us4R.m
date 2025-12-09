@@ -1485,6 +1485,10 @@ classdef Us4R < handle
                 for iTx=1:nTxBmode
                     jTx         = obj.rec.bmodeFrames(iTx);
                     
+                    if isnan(obj.subSeq.txApFstElem(jTx))
+                        continue;
+                    end
+
                     if ~isinf(obj.subSeq.txFoc(jTx))
 
                         zFoc	= obj.subSeq.txApCentZ(jTx) + obj.subSeq.txFoc(jTx) * cos(obj.subSeq.txAngZX(jTx));
@@ -1517,9 +1521,9 @@ classdef Us4R < handle
                             % to determine if the pixel is in the sonified area (dot product >= 0).
                             % Foc-ApEdgeFst vector is rotated left, Foc-ApEdgeLst vector is rotated right.
                             txPixBeamMask(:,:,iTx) = ( (-(obj.rec.zGrid(:)   - zFoc) * (obj.sys.xElem(obj.subSeq.txApFstElem(jTx)) - xFoc) + ...
-                                                         (obj.rec.xGrid(:).' - xFoc) * (obj.sys.zElem(obj.subSeq.txApFstElem(jTx)) - zFoc)) * pixFocArrang >= 0 ) & ...
+                                                         (obj.rec.xGrid(:).' - xFoc) * (obj.sys.zElem(obj.subSeq.txApFstElem(jTx)) - zFoc)) .* pixFocArrang >= 0 ) & ...
                                                      ( ( (obj.rec.zGrid(:)   - zFoc) * (obj.sys.xElem(obj.subSeq.txApLstElem(jTx)) - xFoc) - ...
-                                                         (obj.rec.xGrid(:).' - xFoc) * (obj.sys.zElem(obj.subSeq.txApLstElem(jTx)) - zFoc)) * pixFocArrang >= 0 );
+                                                         (obj.rec.xGrid(:).' - xFoc) * (obj.sys.zElem(obj.subSeq.txApLstElem(jTx)) - zFoc)) .* pixFocArrang >= 0 );
                         end
 
                         txPixWaveAng(:,:,iTx)  = mod(atan2(obj.rec.xGrid(:).' - xFoc, obj.rec.zGrid(:) - zFoc) + pi/2, pi) - pi/2;
@@ -1616,8 +1620,13 @@ classdef Us4R < handle
             obj.seq.txApOrig = round(obj.seq.txCentElem - (obj.seq.txApSize-1)/2 + 1e-9);
             obj.seq.rxApOrig = round(obj.seq.rxCentElem - (obj.seq.rxApSize-1)/2 + 1e-9);
             
-            obj.seq.txApFstElem = max(1,     obj.seq.txApOrig);
-            obj.seq.txApLstElem = min(nElem, obj.seq.txApOrig + obj.seq.txApSize - 1);
+            obj.seq.txApFstElem = obj.seq.txApOrig;
+            obj.seq.txApLstElem = obj.seq.txApOrig + obj.seq.txApSize - 1;
+            txApIsNan = (obj.seq.txApLstElem < 1) | (obj.seq.txApFstElem > nElem);
+            obj.seq.txApFstElem(txApIsNan) = nan;
+            obj.seq.txApLstElem(txApIsNan) = nan;
+            obj.seq.txApFstElem = max(1,     obj.seq.txApFstElem, 'includenan');
+            obj.seq.txApLstElem = min(nElem, obj.seq.txApLstElem, 'includenan');
             
             obj.seq.txApMask = (iElem.' >= obj.seq.txApOrig) & (iElem.' <= obj.seq.txApOrig + obj.seq.txApSize - 1);
             obj.seq.rxApMask = (iElem.' >= obj.seq.rxApOrig) & (iElem.' <= obj.seq.rxApOrig + obj.seq.rxApSize - 1);
