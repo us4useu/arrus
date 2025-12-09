@@ -1921,8 +1921,7 @@ classdef Us4R < handle
 
                     % Coherent/Incoherent compounding
                     if obj.rec.cohCompEnable
-%                         rfBfr = mean(rfBfr,3,'omitnan');
-                        rfBfr = sum(rfBfr.*obj.rec.iqLriWgh, 3);
+                        rfBfr = obj.cudaLri2Hri(rfBfr);
                     else
                         rfBfr = mean(abs(rfBfr),3,'omitnan');
                     end
@@ -2102,6 +2101,12 @@ classdef Us4R < handle
                                obj.subSeq.hwDdcEnable);
         end
         
+        function iqHri = cudaLri2Hri(obj, iqLri)
+            
+            iqHri	= iqLri2Hri(iqLri, obj.rec.iqLriWgh);
+            
+        end
+
     end
 
     methods(Static, Access = private)
