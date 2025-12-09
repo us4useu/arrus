@@ -113,7 +113,7 @@ classdef Us4R < handle
             %
             % Vectors t and y should have exactly the same size. The input t and y values will be interpolated
             % into target hardware sampling points (according to getCurrentSamplingFrequency and getCurrentTgcPoints).
-            % Linear interpolation will be performed, the TGC curve will be extrapolated with the first (left-side of the cure)
+            % Linear interpolation will be performed, the VCAT curve will be extrapolated with the first (left-side of the cure)
             % and the last sample (right side of the curve).
             %
             % NOTE: the curve can have up to 1022 samples.
@@ -123,6 +123,8 @@ classdef Us4R < handle
             % :param value: values to apply at given sampling time
             % :param applyCharacteristic: set it to true if you want to compensate response characteristic
             % (pre-computed by us4us).
+            % :param clip: set it 1 if you would like to get VCAT clipped to the min/max possible attenuation value; 
+            % otherwise, an ARRUS:IllegalArgument error will be raised.
             obj.ptr.callMethod("setVcatTimeValue", 0, t, v, logical(applyCharacteristic), logical(clip));
         end
 

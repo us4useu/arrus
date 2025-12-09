@@ -58,4 +58,13 @@ V safeCast(const T &in, const std::string& paramName,
 
 }
 
+#define ARRUS_ACTIVE_WAIT_TIMEOUT_P(condition, timeout, timeoutException, pause) \
+do {                                                                       \
+    auto timeoutStart = std::chrono::high_resolution_clock::now();         \
+    while (!(condition)) {                                                 \
+        if (std::chrono::high_resolution_clock::now() - timeoutStart > (timeout)) { throw (timeoutException); } \
+        std::this_thread::sleep_for(std::chrono::milliseconds(pause));         \
+    }                                                                      \
+} while(0)
+
 #endif //ARRUS_COMMON_UTILS_H

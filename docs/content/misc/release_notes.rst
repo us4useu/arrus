@@ -12,6 +12,25 @@ Release notes
 0.13.x
 ------
 
+0.13.5
+
+- core (driver)
+
+    - Added option to limit HVPS PWM calibration voltage range. Modify `calibrate_hvps` option in the ``Us4OEMStatus`` application to accept optional integer maximum calibration voltage value, default value: 90V. When setting voltages that fall within the range [5 V, the selected maximum voltage], the voltage will be set “quickly,” meaning the coefficients pre-computed in the FPGA will be used. For voltages higher than the selected maximum voltage, the voltage will be set “slowly,” i.e., with coefficients calculated dynamically. See also: https://us4useu.github.io/arrus-toolkit/content/utils.html#device-status #M_OEM-232.
+    - Fixed synchronization between the data callback, overflow callback and the dynamic delays change function (``Session::setParameters`` with "txFocus" or "txDelays" key). NOTE: this change introduces additional synchronization mechanisms between the data and overflow callbacks. Please let us know if you observe any performance degradation in the data callback handling. #M_US4R-37. 
+
+
+0.13.4
+
+- core (driver)
+
+    - Fixed the 'device or resource busy' message error in case the measured HV voltage is outside an acceptable range, #M_US4R-57.
+    - Made it possible to use the synchronous session run (session.run(sync=True)) when the MANUAL work mode is used (currently MANUAL_OP work mode was supported only). #M_US4R-53.
+    - Improved HVPS PWM setting precision by increasing HVPS clock frequency in FPGA firmware #M_OEM-231.
+    - Exposed option to delete HVPS memory stored PWM factors in us4r-api console scripts #M_OEM-229.
+    - Improved HVPS PWM factor tuning procedure #M_OEM-229.
+
+
 0.13.3
 
 - core (driver)
@@ -30,6 +49,11 @@ Release notes
 - C++ API:
 
     - Extended C++ examples and user guide to include information how to use custom TX waveforms #ARRUS-509.
+
+
+**Known issues**:
+
+    - Due to HVPS PWM precision setting, when using memory stored PWM factors it may occur that some voltages fall outside +/- 1V tolerance range and the system does not start properly. To mitigate this issue user may: adjust voltage by 1-2 volts (up or down) or not use memory stored HVPS PWM factors.
 
 0.13.2
 

@@ -9,9 +9,11 @@
 
 #include "TxWaveformConverter.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/framework/NdArray.h"
 
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/common/hash.h"
+#include "arrus/core/common/collections.h"
 #include "arrus/common/format.h"
 #include "arrus/common/utils.h"
 
@@ -64,13 +66,23 @@ class TxTimeoutRegisterFactory {
 public:
     static constexpr uint16_t EPSILON = 2; // an additional margin for TX timeout [us]
 
+    using MaxOpDelayFromProfile = std::unordered_map<std::pair<std::string, OpId>, float, PairHash<std::string, OpId>>;
+
     explicit TxTimeoutRegisterFactory(
         size_t nTimeouts,
         std::function<float(float)> actualTxFunc,
         const std::vector<std::vector<float>> &rxDelays
         ): nTimeouts(nTimeouts), actualTxFunc(std::move(actualTxFunc)), rxDelays(rxDelays) {}
 
-    TxTimeoutRegister createFor(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences)  {
+    TxTimeoutRegister createFor(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences) {
+        return createFor(sequences, {});
+    }
+
+    TxTimeoutRegister createFor(
+        const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences,
+        const std::unordered_map<std::string, ops::us4r::DelayProfiles> &delayProfiles
+        )
+    {
         SequenceId sId = 0;
         OpId opId = 0;
 
@@ -83,10 +95,15 @@ public:
         std::vector<TxTimeout> waveformTimes; // [us]
 
         sId = 0;
+
+        const auto maxOpDelayFromProfile = getMaxOpDelayFromProfiles(delayProfiles);
+
         for(const auto &s: sequences) {
             opId = 0;
             for(const auto &op: s.getOps()) {
-                const auto waveformTime = getWaveformTime(op, rxDelays.at(sId).at(opId));
+                // nullopt means no TX delays profile was applied
+                std::optional<float> maxDelay = mapGetValueOrNone(maxOpDelayFromProfile, std::make_pair(s.getName(), opId));
+                const auto waveformTime = getWaveformTime(op, rxDelays.at(sId).at(opId), maxDelay);
                 waveformTimes.push_back(waveformTime);
                 ++opId;
             }
@@ -123,7 +140,8 @@ public:
         for(const auto &s: sequences) {
             opId = 0;
             for(const auto &op: s.getOps()) {
-                TxTimeout txTime = getWaveformTime(op, rxDelays.at(sId).at(opId)) + EPSILON;
+                std::optional<float> maxDelay = mapGetValueOrNone(maxOpDelayFromProfile, std::make_pair(s.getName(), opId));
+                TxTimeout txTime = getWaveformTime(op, rxDelays.at(sId).at(opId), maxDelay) + EPSILON;
                 // Find the first timeout, that is greater or equal than the given tx time.
                 auto it = std::find_if(std::begin(timeouts), std::end(timeouts),
                              [txTime](auto t) {return t >= txTime; });
@@ -147,13 +165,16 @@ private:
 
     /**
      * Returns TX time when the given op has non-empty TX aperture, or RX delay in case we have TX NOP.
+     *
+     * @param txDelayProfiles list of txDelay from different profiles and sequences that may be applied in the given op.
+     *      Can be empty, in that case, not dynamic TX delay profiles were provided.
      */
-    TxTimeout getWaveformTime(const ops::us4r::TxRx &op, float rxDelay) const {
+    TxTimeout getWaveformTime(const ops::us4r::TxRx &op, float rxDelay, std::optional<float> maxOpDelayProfile) const {
         if(op.getTx().isNOP()) {
             return TxTimeout (std::ceil(rxDelay*1e6f));
         }
         else {
-            TxTimeout txTime = getTxTimeUs(op);
+            TxTimeout txTime = getTxTimeUs(op, maxOpDelayProfile);
             if(txTime > MAX_TIMEOUT) {
                 throw IllegalArgumentException(
                     format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
@@ -162,14 +183,53 @@ private:
         }
     }
 
-    [[nodiscard]] TxTimeout getTxTimeUs(const ops::us4r::TxRx &op) const {
+    [[nodiscard]] TxTimeout getTxTimeUs(const ops::us4r::TxRx &op, std::optional<float> maxOpDelayProfile) const {
         const auto &delays = op.getTx().getDelaysApertureOnly();
+
         float maxDelay = *std::max_element(std::begin(delays), std::end(delays));
+        if(maxOpDelayProfile.has_value()) {
+            maxDelay = std::max(maxDelay, maxOpDelayProfile.value());
+        }
         // TODO avoid doing all the below conversion here, on the TX timeout calculations, and when setting the waveform.
         // This should be done only once, in the Us4R::upload method.
         float burstTime = TxWaveformConverter::getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
         auto txTimeUs = ARRUS_SAFE_CAST(std::roundf((maxDelay + burstTime)*1e6f), TxTimeout);
         return txTimeUs;
+    }
+
+
+    /**
+     * Finds maximum delay to be applied on every (sequence, op number). Maximum is calculated along all TX delay profiles and channels.
+     */
+    MaxOpDelayFromProfile getMaxOpDelayFromProfiles(const std::unordered_map<std::string, ops::us4r::DelayProfiles> &sequenceProfiles) {
+        if(sequenceProfiles.empty()) {
+            // Just return empty map.
+            return MaxOpDelayFromProfile{};
+        }
+        MaxOpDelayFromProfile result;
+        for(const auto &[name, profiles]: sequenceProfiles) {
+            // Number of TX/RXs in the given sequence.
+            const auto nOps = profiles.at(0).getShape()[0];
+            // op -> profile -> max delay
+            std::vector<std::vector<float>> maxDelayAllProfiles(nOps);
+            for(const auto &profile: profiles) {
+                for(size_t opId = 0; opId < nOps; ++opId) {
+                    const auto opDelays = profile.row(opId);
+                    const auto opDelaysVector = opDelays.toVector<float>();
+                    const auto it = std::max_element(std::begin(opDelaysVector), std::end(opDelaysVector));
+                    assert(it != std::end(opDelaysVector));
+                    const float profileMaxDelay = *it;
+                    maxDelayAllProfiles.at(opId).push_back(profileMaxDelay);
+                }
+            }
+            // Calculate final max delays.
+            for(OpId opId = 0; opId < nOps; ++opId) {
+                const auto &opDelays = maxDelayAllProfiles.at(opId);
+                const float maxDelay = *std::max_element(std::begin(opDelays), std::end(opDelays));
+                result.insert({{name, opId}, maxDelay});
+            }
+        }
+        return result;
     }
 
     size_t nTimeouts{0};

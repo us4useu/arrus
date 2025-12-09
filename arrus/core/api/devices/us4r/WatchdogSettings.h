@@ -9,7 +9,7 @@ namespace arrus::devices {
 /**
  * us4OEM+ watchdog settings.
  *
- * You can disable us4OEM watchdog settings using Watchdog::disabled().
+ * You can disable us4OEM watchdog settings using WatchdogSettings::disabled().
  *
  * @param oemThreshold0 How long can the host remain unresponsive before the OEM sends a warning interrupt [s]
  * @param oemThreshold1 How long can the host remain unresponsive before the OEM turns off [s]
