@@ -36,8 +36,9 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
                    bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger,
-                   bool maskDVDDInterrupt)
-    : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
+                   bool maskDVDDInterrupt, std::optional<HVPSFuseSettings> hvpsFuseSettings)
+    : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)),
+      hvpsFuseSettings(std::move(hvpsFuseSettings)) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
         channelsMask = std::vector{this->probeSettings.size(), std::unordered_set<ChannelIdx>{}};
@@ -391,6 +392,8 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
+    // Set the over-current / over-power settings if specified by the user
+    setHVPSFuseSettings(hvpsFuseSettings);
 }
 
 unsigned char Us4RImpl::getVoltage() {
@@ -1696,6 +1699,26 @@ Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
         result[sequences.at(i).getName()] = i;
     }
     return result;
+}
+
+void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
+    if(settings.has_value()) {
+        for(const auto &us4oem: us4oems) {
+            // NOTE: level 1 -> rail 1; level 2 -> rail 0.
+            if(settings->getLevel1MaxPowerThreshold().has_value()) {
+                us4oem->getIUs4OEM()->SetCustomDspHV1PowerThreshold(settings->getLevel1MaxPowerThreshold().value());
+            }
+            if(settings->getLevel1MaxCurrentThreshold().has_value()) {
+                us4oem->getIUs4OEM()->SetCustomDspHV1CurrentThreshold(settings->getLevel1MaxCurrentThreshold().value());
+            }
+            if(settings->getLevel2MaxPowerThreshold().has_value()) {
+                us4oem->getIUs4OEM()->SetCustomDspHV0PowerThreshold(settings->getLevel2MaxPowerThreshold().value());
+            }
+            if(settings->getLevel2MaxCurrentThreshold().has_value()) {
+                us4oem->getIUs4OEM()->SetCustomDspHV0CurrentThreshold(settings->getLevel2MaxCurrentThreshold().value());
+            }
+        }
+    }
 }
 
 }// namespace arrus::devices
