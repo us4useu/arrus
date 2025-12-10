@@ -1706,16 +1706,16 @@ void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
         for(const auto &us4oem: us4oems) {
             // NOTE: level 1 -> rail 1; level 2 -> rail 0.
             if(settings->getLevel1MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomDspHV1PowerThreshold(settings->getLevel1MaxPowerThreshold().value());
+                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1PowerThreshold(settings->getLevel1MaxPowerThreshold().value());
             }
             if(settings->getLevel1MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomDspHV1CurrentThreshold(settings->getLevel1MaxCurrentThreshold().value());
+                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1CurrentThreshold(settings->getLevel1MaxCurrentThreshold().value());
             }
             if(settings->getLevel2MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomDspHV0PowerThreshold(settings->getLevel2MaxPowerThreshold().value());
+                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0PowerThreshold(settings->getLevel2MaxPowerThreshold().value());
             }
             if(settings->getLevel2MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomDspHV0CurrentThreshold(settings->getLevel2MaxCurrentThreshold().value());
+                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0CurrentThreshold(settings->getLevel2MaxCurrentThreshold().value());
             }
         }
     }

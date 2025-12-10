@@ -244,10 +244,10 @@ public:
     MOCK_METHOD(bool, IsEntryReadyForReceive, (uint16_t), (override));
     MOCK_METHOD(std::vector<uint16_t>, GetPulsersStatusRegister, (), (override));
     MOCK_METHOD(std::vector<std::string>, GetPulserStatusRegisterDescription, (uint16_t status), (override));
-    MOCK_METHOD(void, SetCustomDspHV0CurrentThreshold, (float overcurrentLevel), (override));
-    MOCK_METHOD(void, SetCustomDspHV1CurrentThreshold, (float overcurrentLevel), (override));
-    MOCK_METHOD(void, SetCustomDspHV0PowerThreshold, (float overpowerLevel), (override));
-    MOCK_METHOD(void, SetCustomDspHV1PowerThreshold, (float overpowerLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV0CurrentThreshold, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV1CurrentThreshold, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV0PowerThreshold, (float overpowerLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV1PowerThreshold, (float overpowerLevel), (override));
     MOCK_METHOD(void, SetHVPSVoltage, (uint8_t voltage), (override));
 };
 
