@@ -242,7 +242,7 @@ public:
     MOCK_METHOD(uint16_t, GetSequencerCurrentIndex, (), (override));
     MOCK_METHOD(bool, IsEntryReadyForTransfer, (uint16_t), (override));
     MOCK_METHOD(bool, IsEntryReadyForReceive, (uint16_t), (override));
-    MOCK_METHOD(bool, WaitForSequencerIdle, (), (override));
+    MOCK_METHOD(void, WaitForSequencerIdle, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
