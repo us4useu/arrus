@@ -139,7 +139,7 @@ pipeline {
                 expression { return params.ACTION == "BUILD" }
             }
             steps {
-                sh """sh pydevops --stage test \
+                sh """pydevops --stage test \
                       --src_dir='${env.WORKSPACE}' --build_dir='${env.WORKSPACE}/build' \
                       ${env.DOCKER_DIRS} \
                       ${env.SSH_DIRS}
