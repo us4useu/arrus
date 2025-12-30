@@ -799,6 +799,18 @@ class Operation:
         """
         return dict()
 
+    @property
+    def n_outputs(self) -> int:
+        """
+        Returns the number of outputs of this operation.
+
+        I most cases this will be equal 1; since v0.14.0 we started supporting
+        multi-output operations. To implement multi-output operation correctly, you have
+        to override this method and return the actual number of arrays this Operation actually returns.
+        :return:
+        """
+        return 1
+
     def close(self):
         pass
 
@@ -1091,14 +1103,22 @@ class Pipeline:
 
     def _get_n_outputs(self):
         n_outputs = 0
+        prev_n_outputs = 1
         for step in self.steps:
             if isinstance(step, Pipeline):
                 n_outputs += step.n_outputs
             if isinstance(step, Output):
-                n_outputs += 1
+                n_outputs += prev_n_outputs
+
+            # Keep track what was the number of outputs in
+            # the previous operation, in case we spot Operation (the n_outputs for the Output
+            # is equal to the number of of outputs of the previous operation).
+            if not isinstance(step, Output):
+                prev_n_outputs = step.n_outputs
+
         last_step = self.steps[-1]
         if not isinstance(last_step, (Pipeline, Output)):
-            n_outputs += 1
+            n_outputs += last_step.n_outputs
         return n_outputs
 
 
