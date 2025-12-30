@@ -957,12 +957,15 @@ class Pipeline:
                 step_outputs = step.process(data)
                 # To keep the order of step_outputs, appendleft
                 # collection in reversed order.
-                for output in reversed(step_outputs):
-                    outputs.appendleft(output)
+                outputs.extendleft(reversed(step_outputs))
             else:
                 data = step.process(data)
         if not self._is_last_endpoint:
-            outputs.appendleft(data)
+            # Assume, that the Operation may return a tuple of arrays.
+            if not isinstance(data, tuple) and not isinstance(data, list):
+                data = (data, )
+            # Keep the order of arrays.
+            outputs.extendleft(reversed(data))
         return outputs
 
     def __initialize(self, const_metadata):
@@ -996,8 +999,7 @@ class Pipeline:
                     child_metadatas = (child_metadatas,)
                 # To keep the order of child_metadatas, appendleft
                 # collection in reversed order.
-                for metadata in reversed(child_metadatas):
-                    metadatas.appendleft(metadata)
+                metadatas.extendleft(reversed(child_metadatas))
                 step.endpoint = True
             else:
                 current_metadata = step.prepare(current_metadata)
@@ -1006,7 +1008,9 @@ class Pipeline:
         self.__initialize(const_metadata)
         last_step = self.steps[-1]
         if not isinstance(last_step, (Pipeline, Output)):
-            metadatas.appendleft(current_metadata)
+            if not isinstance(current_metadata, Iterable):
+                current_metadata = (current_metadata, )
+            metadatas.extendleft(reversed(current_metadata))
             self._is_last_endpoint = False
         else:
             self._is_last_endpoint = True
