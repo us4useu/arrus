@@ -1204,10 +1204,15 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     // we are ready to call sync receive.
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                         us4oems[i]->getIUs4OEM()->SyncReceive();
+
+                        if(i > 0) {
+                            us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
+                            logger->log(LogSeverity::TRACE, format("OEM:{} returned to IDLE state.", i));
+                        }
                     }
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
@@ -1225,7 +1230,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     outputBuffer->runOnOverflowCallback();
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1270,10 +1275,16 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                     // we are ready to call the sync transfer.
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                         us4oems[i]->getIUs4OEM()->SyncTransfer();
+                        // Wait for IDLE state for non-triggering OEMs, to make sure that the trigger OEM will
+                        // be released the last one.
+                        if(i > 0) {
+                            us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
+                            logger->log(LogSeverity::TRACE, format("OEM:{} returned to IDLE state.", i));
+                        }
                     }
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
+                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:

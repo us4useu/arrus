@@ -242,6 +242,7 @@ public:
     MOCK_METHOD(uint16_t, GetSequencerCurrentIndex, (), (override));
     MOCK_METHOD(bool, IsEntryReadyForTransfer, (uint16_t), (override));
     MOCK_METHOD(bool, IsEntryReadyForReceive, (uint16_t), (override));
+    MOCK_METHOD(void, WaitForSequencerIdle, (), (override));
     MOCK_METHOD(std::vector<uint16_t>, GetPulsersStatusRegister, (), (override));
     MOCK_METHOD(std::vector<std::string>, GetPulserStatusRegisterDescription, (uint16_t status), (override));
 };
