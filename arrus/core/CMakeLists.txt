@@ -280,6 +280,7 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/utilsTest.cpp)
     create_core_test(devices/us4r/us4oem/Us4OEMSettingsValidatorTest.cpp "${ARRUS_CORE_DEVICES_TESTS_SRCS}")
+    create_core_test(devices/us4r/validators/WatchdogSettingsValidatorTest.cpp "${ARRUS_CORE_DEVICES_TESTS_SRCS}")
     create_core_test(devices/us4r/probeadapter/ProbeAdapterSettingsValidatorTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/probe/ProbeSettingsValidatorTest.cpp devices/DeviceId.cpp)
     set(US4OEM_FACTORY_IMPL_TEST_DEPS devices/DeviceId.cpp common/logging.cpp devices/us4r/us4oem/Us4OEMImpl.cpp

@@ -12,6 +12,15 @@ Release notes
 0.13.x
 ------
 
+
+0.13.6
+
+- core (driver)
+
+    - Fixed an occasional hang of OEMs in USSS2 in SYNC mode when a buffer overflow occurred. An additional synchronization mechanism was added to prevent Interrupt 2 from being raised by the sequencer. #M_US4R-63
+    - Increased maximum watchdog threshold setting to 8 seconds. #M_OEM-236
+
+
 0.13.5
 
 - core (driver)
