@@ -186,10 +186,11 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     } catch(const std::exception &e) {
         this->logger->log(LogSeverity::ERROR, format("Exception while setting voltage, stopping the system: {}", e.what()));
         this->stop();
-        throw e;
+        throw;
     } catch(...) {
         this->logger->log(LogSeverity::ERROR, "Unknown exception while setting voltage, stopping the system.");
         this->stop();
+	throw;
     }
 }
 
