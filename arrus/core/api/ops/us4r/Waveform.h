@@ -15,7 +15,7 @@ namespace arrus::ops::us4r {
  * The duration[i] is the duration of the i-th state, i.e. state[i].
  *
  * @param state: the sequence of of states, one of the following values: -2 (HVM0), -1 (HVM1), 0 (CLAMP), 1 (HVP1), 2 (HVP0)
- * @param duration: the duration of the i-th state
+ * @param duration: the duration of the i-th state [seconds]
  */
 class WaveformSegment {
 public:
@@ -59,6 +59,15 @@ private:
     std::vector<State> state;
 };
 
+
+/**
+ * A complete Tx waveform to be applied on the ultrasound pulsers.
+ *
+ * NOTE: please use WaveformBuilder class to create new TX Waveforms (avoid constructing objects of this class directly).
+ *
+ * @param segments subsequent segments of the waveform
+ * @param nRepetitions how many times the segments[i] should be repeated
+ */
 class Waveform {
 public:
     Waveform(const std::vector<WaveformSegment> &segments, const std::vector<size_t> &nRepetitions)
@@ -95,6 +104,9 @@ private:
     std::vector<size_t> nRepetitions;
 };
 
+/**
+ * Tx Waveform builder class.
+ */
 class WaveformBuilder {
 public:
     WaveformBuilder() = default;

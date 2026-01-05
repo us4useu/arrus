@@ -341,7 +341,7 @@ public:
         return ss.str();
     }
 
-    template<typename T> std::vector<T> toVector() {
+    template<typename T> std::vector<T> toVector() const {
         // TODO verify if this is the same data type
         if (shape.size() != 1) {
             throw IllegalArgumentException("toVector method works only for 1D arrays.");

@@ -608,8 +608,11 @@ Currently, the default dictionary contains definitions of the following probes:
 
 .. _running_example:
 
+Running example programs
+========================
+
 Example
-=======
+-------
 
 .. code-block:: cpp
 
@@ -726,4 +729,91 @@ Example
         return 0;
     }
 
+Custom TX waveforms
+-------------------
+
+.. note::
+
+    Custom TX waveforms are available only for the OEM+ systems.
+
+It is possible to specify arbitrary waveforms using
+``arrus::ops::us4r::Waveform``, ``arrus::ops::us4r::WaveformSegment``
+``arrus.ops.us4r.WaveformBuilder``
+classes.  See also ``arrus/core/api/ops/us4r/Waveform.h`` header file.
+
+Conceptually, ``WaveformSegment`` is one particular fragment of a ``Waveform``:
+it is a sequence of states ``WaveformSegment.getState()`` along with their duration ``Waveform.getDuration()``.
+**Importantly, the entire segment can be repeated multiple times (using the ``Waveform.getNRepetitions`` value) without consuming the internal memory
+of TX pulsers (which is limited to 256 registers for the OEM+ rev 1).**
+
+``Waveform`` is a collection of segments to be set on the device ultrasound pulsers.
+
+``WaveformBuilder`` is a convenience class that allows to build the waveform as a sequence of states and duration. We recommend using it to build custom TX waveforms.
+
+**5-level Waveforms**
+
+In the us4OEM+ there are 2 positive HV **rails** (HVP0 and HVP1) and 2 negative rails (HVM0 and HVM1).
+
+In ARRUS, we translate the concept of the **rail** to the concepts of the **amplitude** and Waveform **states** in the following way:
+
+- The waveform **state** is a ``WaveformSegment`` attribute ``s``: it can be one of {-2, -1, 0, 1, 2} The value ``s`` is translated to HV rail in the following way:
+
+    - s = -2 corresponds to HVM0, s = +2 corresponds to HVP0,
+    - s = -1 corresponds to HVM1, s = +1 corresponds to HVP1,
+    - s = 0 corresponds to CLAMP state.
+
+- The ``amplitude`` is a ``Pulse`` attribute: it can be one of {1, 2}.
+  The ``Pulse`` object is translated to a periodic pulse (``Waveform``) (l, -l),
+  repeated a given number of times (``getNPeriods``), with the given transmitting
+  frequency (``getCenterFrequency``).
+
+
+You can set the voltage amplitudes -2, -1, +1, +2 using the ``arrus::devices::Us4R::setVoltage(const std::vector<HVVoltage> &voltages)`` method, e.g.:
+
+.. code-block::
+
+    us4r->setVoltage({HVVoltage(m1, p1), HVVoltage(m2, p2)})
+
+where:
+
+- ``m1`` is the HV voltage for the state -1 (**absolute value**),
+- ``p1`` is the voltage for the state +1,
+- ``m2`` is the voltage for the state -2 (**absolute value**),
+- ``p2`` is the voltage for the state +2.
+
+**NOTE: all of the set_hv_voltage values must be positive**.
+
+The following restrictions apply: ``m1 < m2`` and ``p1 < p2``.
+
+**Example**
+
+.. figure:: img/custom_waveform.png
+
+     Example custom TX waveform.
+
+Please also see the `CustomTxWaveform.cpp <https://github.com/us4useu/arrus/blob/v0.13.x/arrus/core/examples/CustomTxWaveform.cpp>`_ example.
+
+.. code-block:: cpp
+
+    us4r->setVoltage({HVVoltage(5, 6), HVVoltage(10, 11)});
+
+    WaveformBuilder waveformBuilder{};
+
+    // Set states -1 (0.2 us), 1 (0.5 us), -1 (1 us), and repeat that twice.
+    waveformBuilder.add(
+       WaveformSegment {
+           {0.2e-6f, 0.5e-6f, 1e-6f}, // durations
+           {-1,      1,       -1}     // states (levels)
+       },
+       2 // how many times to repeat this segment
+    );
+    // Set states 2 (1.5 us), 0 (2 us), 2 (3 us), run it only once (n repeats = 1).
+    waveformBuilder.add(
+       WaveformSegment {
+           {1.5e-6f, 2e-6f, 3e-6f}, // durations
+           {2,      0,   2}         // states (levels)
+       }
+    );
+    auto waveform = waveformBuilder.build();
+    Tx tx{aperture, delays, waveform};
 

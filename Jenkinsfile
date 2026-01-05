@@ -194,9 +194,13 @@ pipeline {
             steps {
                 script {
                     // C++/MATLAB => unzip the packages and check if the VERRSION.rst has the correct git commit
-                    env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
-                    env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
-                    def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
+                    def packageNames = [];
+                    if(params.PUBLISH_CPP) {
+                        packageNames.add(env.CPP_PACKAGE_NAME);
+                    }
+                    if(params.PUBLISH_MATLAB) {
+                        packageNames.add(env.MATLAB_PACKAGE_NAME);
+                    }
 
                     packageNames.each { packageName ->
                         def packagePath = "${env.TARGET_PRERELEASE_DIR_JENKINS}/${packageName}.zip"
@@ -233,7 +237,13 @@ pipeline {
                     // C++/MATLAB => copy the .zip files to the release directory
                     env.CPP_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "cpp");
                     env.MATLAB_PACKAGE_NAME = us4us.getPackageNameV2(env, params, "${env.JOB_NAME}", "matlab");
-                    def packageNames = [env.CPP_PACKAGE_NAME, env.MATLAB_PACKAGE_NAME];
+                    def packageNames = [];
+                    if(params.PUBLISH_CPP) {
+                        packageNames.add(env.CPP_PACKAGE_NAME);
+                    }
+                    if(params.PUBLISH_MATLAB) {
+                        packageNames.add(env.MATLAB_PACKAGE_NAME);
+                    }
 
                     packageNames.each { packageName ->
                         def sourceArtifacts = "${TARGET_PRERELEASE_DIR_JENKINS}/${packageName}*"

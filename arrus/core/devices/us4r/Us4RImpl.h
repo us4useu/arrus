@@ -226,15 +226,27 @@ private:
     std::function<void()> createReleaseCallback(::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
                                                 uint16 stopFiring);
     std::function<void()> createOnReceiveOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
-                                                          Us4ROutputBuffer *buffer, bool isMaster);
+                                                          Us4ROutputBuffer *buffer, bool isMaster,
+                                                          const std::vector<std::pair<uint16, uint16>> &firings);
     std::function<void()> createOnTransferOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
-                                                           Us4ROutputBuffer *buffer, bool isMaster);
+                                                           Us4ROutputBuffer *buffer, bool isMaster,
+                                                           const std::vector<std::pair<uint16, uint16>> &firings);
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     std::vector<float> interpolateToSystemTGC(const std::vector<float> &t, const std::vector<float> &y) const;
     void handlePulserInterrupt();
+
+    /**
+     * Sets voltage in a safe way, i.e. stops TX/RX sequence before changing the voltage.
+     */
     void setVoltage(const std::vector<std::optional<HVVoltage>> &voltages);
+
+    /**
+     * Sets voltage without stopping TX/RX sequence.
+     * Consider using this method only in case the performance is critical; in other cases, please use setVoltage.
+     */
+    void setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &voltages);
 
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
                            bool cleanupSequencerTransfers = false);
@@ -252,8 +264,10 @@ private:
     std::tuple<std::string, std::string> parseTxDelaysParamName(const std::string &name) const;
     std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
     std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
+    std::function<void()> createReceiveReleaseCallback(ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring);
 
-        std::mutex deviceStateMutex;
+    std::recursive_mutex deviceStateMutex;
+    std::mutex triggerMutex;
     Logger::Handle logger;
     Us4OEMs us4oems;
     std::optional<DigitalBackplane::Handle> digitalBackplane;
