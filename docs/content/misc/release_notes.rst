@@ -4,6 +4,14 @@ Release notes
 0.13.x
 ------
 
+0.13.7
+
+- core (driver)
+
+    - Added support for DBARLitePCIE firmware 1.3.0.0 #M_USSS2-192
+    - Improved exception handling in the setHVVoltage method (clarify the error messages that may appear when this method throws an exception) #M_US4R-70
+    - **The legacy us4OEM systems only**: Fixed sub-sequence handling in legacy us4OEM TX subsystem #US4R-748
+
 
 0.13.6
 
