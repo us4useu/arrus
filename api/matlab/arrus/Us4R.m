@@ -356,7 +356,7 @@ classdef Us4R < handle
             % Program hardware
             if nargin<4 || enableHardwareProgramming
                 obj.programHW;
-                obj.selSubSeq(1, obj.seq.sri);
+                obj.selSubSeq([], obj.seq.sri);
                 obj.sys.isHardwareProgrammed = true;
             else
                 error('Support for enableHardwareProgramming=false is temporarily suspended');
@@ -1041,8 +1041,8 @@ classdef Us4R < handle
 
         function seqOut = mergeSequences(obj,seqIn)
 
-            obj.seq.nSeq = numel(seqIn);
-            nSeq = obj.seq.nSeq;
+            nSeq = numel(seqIn);
+            obj.seq.nSeq = nSeq;
 
             if nSeq==1
                 seqOut = seqIn;
@@ -1670,6 +1670,12 @@ classdef Us4R < handle
              obj.buffer.channelId, ...
              obj.buffer.rxTimeOffset] = obj.session.upload(scheme);
 
+            obj.buffer.framesOffset = double(obj.buffer.framesOffset.');
+            obj.buffer.framesNumber = double(obj.buffer.framesNumber.');
+            obj.buffer.oemId        = double(obj.buffer.oemId);
+            obj.buffer.frameId      = double(obj.buffer.frameId);
+            obj.buffer.channelId    = double(obj.buffer.channelId);
+
             % NOTE: the above outputs were used for calculation of data
             % reorganization addresses. Since subSequences are supported,
             % the corresponding data is obtained during setSubsequence call.
@@ -1680,83 +1686,41 @@ classdef Us4R < handle
 
         function selSubSeq(obj, seqId, sri)
             
-            % Copy selected part of sequence to subsequence
-            seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
-                                'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
-                                'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
-                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent', 'txWaveform'};
-            for iFld=1:numel(seqFieldsToCopy)
-                obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
+            if isempty(seqId)
+                % Copy 1st sequence to subsequence
+                % This option (seqId = []) is to support the LEGACY systems
+                % together with upload method without changing much in the
+                % upload/uploadSequence/selectSequence code.
+                obj.selSubSeqParams(1);
+            else
+                % Copy selected part of sequence to subsequence
+                obj.selSubSeqParams(seqId);
+                
+                % Set the subsequence limits
+                [obj.buffer.data, ...
+                 obj.buffer.framesOffset, ...
+                 obj.buffer.framesNumber, ...
+                 obj.buffer.oemId, ...
+                 obj.buffer.frameId, ...
+                 obj.buffer.channelId, ...
+                 obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
+                                                                       obj.seq.seqLim(seqId,2)  , sri, 0);
+                
+                obj.buffer.framesOffset = double(obj.buffer.framesOffset.');
+                obj.buffer.framesNumber = double(obj.buffer.framesNumber.');
+                obj.buffer.oemId        = double(obj.buffer.oemId);
+                obj.buffer.frameId      = double(obj.buffer.frameId);
+                obj.buffer.channelId    = double(obj.buffer.channelId);
             end
-
-            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
-                                'txFoc', 'txAng', 'txVoltageId', 'txFreq', 'txNPer', 'txInvert', ...
-                                'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
-                                'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
-                                'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
-                                'nSampOmit', 'initDel'};
-            for iFld=1:numel(seqFieldsToExtr)
-                if isempty(obj.seq.(seqFieldsToExtr{iFld})) || isscalar(obj.seq.(seqFieldsToExtr{iFld}))
-                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld});
-                else
-                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:,obj.seq.seqLim(seqId,1) ...
-                                                                                         : obj.seq.seqLim(seqId,2));
-                end
-            end
-
-            obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
-
-            % Set the subsequence limits
-            [obj.buffer.data, ...
-             obj.buffer.framesOffset, ...
-             obj.buffer.framesNumber, ...
-             obj.buffer.oemId, ...
-             obj.buffer.frameId, ...
-             obj.buffer.channelId, ...
-             obj.buffer.rxTimeOffset] = obj.session.setSubsequence(obj.seq.seqLim(seqId,1)-1, ...
-                                                                   obj.seq.seqLim(seqId,2)  , sri, 0);
-
-            obj.buffer.framesOffset = obj.buffer.framesOffset.';
-            obj.buffer.framesNumber = obj.buffer.framesNumber.';
             
             % Data reorganization addresses
-            obj.buffer.framesOffset = double(obj.buffer.framesOffset);
-            obj.buffer.framesNumber = double(obj.buffer.framesNumber);
-            obj.buffer.oemId        = double(obj.buffer.oemId);
-            obj.buffer.frameId      = double(obj.buffer.frameId);
-            obj.buffer.channelId    = double(obj.buffer.channelId);
-
-            nOem = numel(obj.buffer.framesNumber);
-            nChunk = sum(obj.buffer.framesNumber);
-            nChan = obj.sys.nChArius;
-            nRep = obj.subSeq.nRep;
-            nRx = obj.subSeq.rxApSize;
-            nTx = obj.subSeq.nTx;
-
-            obj.buffer.reorgMap = - ones(nChan, nChunk, 'int32');
+            obj.calcReorgMap();
             
-            for iOem=1:nOem
-                nFrame = obj.buffer.framesNumber(iOem) / nRep;
-                for iFrame=1:nFrame
-                    isSelect = obj.buffer.oemId == iOem-1 ...
-                             & obj.buffer.frameId == iFrame-1 ...
-                             & obj.buffer.channelId >= 0;
-                    iTx = find(any(isSelect));
-                    iRx = find(isSelect(:,iTx) & obj.buffer.channelId(:,iTx) >= 0);
-                    iChan = obj.buffer.channelId(iRx,iTx) + 1;
-                    for iRep=1:nRep
-                        iChunk = obj.buffer.framesOffset(iOem) ...
-                               + obj.buffer.framesNumber(iOem) / nRep * (iRep-1) ...
-                               + iFrame;
-                        obj.buffer.reorgMap(iChan,iChunk) = (iRep-1)*nTx*nRx + (iTx-1)*nRx + iRx-1; % 0-based indexing
-                    end
-                end
-            end
-
+            % Reset selected parameters
             obj.buffer.iFrame = 0;
             obj.buffer.tFrame = uint64(0);
             obj.rec.enable = false;
-
+            
         end
 
         function [rf, metadata] = execSequence(obj)
@@ -2018,6 +1982,70 @@ classdef Us4R < handle
                                obj.subSeq.hwDdcEnable);
         end
         
+        function calcReorgMap(obj)
+            
+            nOem = numel(obj.buffer.framesNumber);
+            nChunk = sum(obj.buffer.framesNumber);
+            nChan = obj.sys.nChArius;
+            nRep = obj.subSeq.nRep;
+            nRx = obj.subSeq.rxApSize;
+            nTx = obj.subSeq.nTx;
+            
+            obj.buffer.reorgMap = - ones(nChan, nChunk, 'int32');
+            
+            for iOem=1:nOem
+                nFrame = obj.buffer.framesNumber(iOem) / nRep;
+                for iFrame=1:nFrame
+                    isSelect = obj.buffer.oemId == iOem-1 ...
+                             & obj.buffer.frameId == iFrame-1 ...
+                             & obj.buffer.channelId >= 0;
+                    iTx = find(any(isSelect));
+                    iRx = find(isSelect(:,iTx) & obj.buffer.channelId(:,iTx) >= 0);
+                    iChan = obj.buffer.channelId(iRx,iTx) + 1;
+                    for iRep=1:nRep
+                        iChunk = obj.buffer.framesOffset(iOem) ...
+                               + obj.buffer.framesNumber(iOem) / nRep * (iRep-1) ...
+                               + iFrame;
+                        obj.buffer.reorgMap(iChan,iChunk) = (iRep-1)*nTx*nRx + (iTx-1)*nRx + iRx-1; % 0-based indexing
+                    end
+                end
+            end
+
+        end
+
+        function selSubSeqParams(obj, seqId)
+            
+            seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
+                                'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
+                                'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
+                                'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent', 'txWaveform'};
+            
+            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
+                                'txFoc', 'txAng', 'txVoltageId', 'txFreq', 'txNPer', 'txInvert', ...
+                                'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
+                                'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
+                                'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
+                                'nSampOmit', 'initDel'};
+            
+            % Copy selected parameters from sequence to subsequence
+            for iFld=1:numel(seqFieldsToCopy)
+                obj.subSeq.(seqFieldsToCopy{iFld}) = obj.seq.(seqFieldsToCopy{iFld});
+            end
+            
+            % Extract selected parameters' values from sequence to subsequence
+            for iFld=1:numel(seqFieldsToExtr)
+                if isempty(obj.seq.(seqFieldsToExtr{iFld})) || isscalar(obj.seq.(seqFieldsToExtr{iFld}))
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld});
+                else
+                    obj.subSeq.(seqFieldsToExtr{iFld}) = obj.seq.(seqFieldsToExtr{iFld})(:, obj.seq.seqLim(seqId,1) ...
+                                                                                          : obj.seq.seqLim(seqId,2));
+                end
+            end
+            
+            obj.subSeq.nTx = obj.seq.seqLim(seqId,2) - obj.seq.seqLim(seqId,1) + 1;
+            
+        end
+
     end
 
     methods(Static, Access = private)

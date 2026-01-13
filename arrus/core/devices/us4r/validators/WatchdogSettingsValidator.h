@@ -14,10 +14,12 @@ public:
     void validate(const WatchdogSettings &settings) override {
         if(settings.isEnabled()) {
             float minimumThreshold = 1e-3f;
-            float maximumThreshold = 4.0f;
+            float maximumThreshold = 8.125f;
             ARRUS_VALIDATOR_EXPECT_IN_RANGE(settings.getOEMThreshold0(), minimumThreshold, maximumThreshold);
             ARRUS_VALIDATOR_EXPECT_IN_RANGE(settings.getOEMThreshold1(), minimumThreshold, maximumThreshold);
             ARRUS_VALIDATOR_EXPECT_IN_RANGE(settings.getHostThreshold(), minimumThreshold, maximumThreshold);
+            ARRUS_VALIDATOR_EXPECT_TRUE_M(settings.getOEMThreshold0() <= settings.getOEMThreshold1(),
+                                          "OEM watchdog threshold should be less or equal than OEM watchdog threshold 1");
         }
     }
 };
