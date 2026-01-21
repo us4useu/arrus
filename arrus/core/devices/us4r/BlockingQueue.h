@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_BLOCKINGQUEUE_H
 
 #include <queue>
+#include <optional>
 #include <condition_variable>
 
 namespace arrus::devices {

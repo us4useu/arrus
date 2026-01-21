@@ -5,7 +5,7 @@ from arrus.ops.operation import Operation
 from typing import Iterable
 from arrus.framework import Constant
 import dataclasses
-from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Set
+from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Set, Sized
 from arrus.devices.device import parse_device_id, DeviceId
 
 
@@ -25,6 +25,65 @@ class Pulse:
     n_periods: float
     inverse: bool
     amplitude_level: int = 2
+
+
+@dataclass(frozen=True)
+class WaveformSegment:
+    """
+    A single waveform segment.
+
+    :param duration: 1D vector of float values, each duration[i] defines how long the state[i] should last [seconds]
+    :param state: 1D vector of integer values, subsequent states to apply.
+    """
+    duration: Iterable[float]
+    state: Iterable[int]
+
+
+@dataclass(frozen=True)
+class Waveform:
+    """
+    A complete Tx waveform to be applied.
+
+    :param segments: subsequent segments of the waveform
+    :param n_repeats: how many times the segments[i] should be repeated
+    """
+    segments: Iterable[WaveformSegment]
+    n_repeats: np.ndarray
+
+    @classmethod
+    def create(cls, duration: Iterable[float], state: Iterable[int]):
+        return Waveform(
+            segments=[WaveformSegment(duration=duration, state=state)],
+            n_repeats=[1]
+        )
+
+    def __post_init__(self):
+        # Validate.
+        if len(self.segments) != len(self.n_repeats):
+            raise ValueError("The list segments should have the same length "
+                             "as the list of number of repeats")
+
+
+class WaveformBuilder:
+    """
+    TX waveform builder.
+    """
+
+    def __init__(self):
+        self.segments = []
+        self.n_repeats = []
+
+    def add(self, duration: Iterable[float], state: Iterable[int], n: int = 1):
+        self.segments.append(WaveformSegment(
+            duration=duration,
+            state=state
+        ))
+        self.n_repeats.append(n)
+        return self
+
+    def build(self) -> Waveform:
+        return Waveform(segments=self.segments, n_repeats=self.n_repeats)
+
 
 
 @dataclass(frozen=True)
@@ -156,13 +215,24 @@ class Rx(Operation):
     :param placement: id of the probe that should do this RX
     """
     aperture: Union[np.ndarray, Aperture]
-    sample_range: tuple
+    sample_range: tuple = None
     downsampling_factor: int = 1
     padding: tuple = (0, 0)
     init_delay: str = "tx_start"
     placement: str = "Probe:0"
+    depth_range: tuple = None
+    time_range: tuple = None
 
     def __post_init__(self):
+        is_range_available = [
+            self.depth_range is not None,
+            self.sample_range is not None,
+            self.time_range is not None
+        ]
+        if not np.sum(is_range_available) == 1:
+            raise ValueError("Exactly one of the following parameters "
+                             "should be provided: sample_range, depth_range "
+                             "or time_range.")
         if not isinstance(self.aperture, Aperture):
             object.__setattr__(self, "aperture", np.asarray(self.aperture))
 
@@ -260,17 +330,35 @@ class TxRxSequence:
 
     def get_subsequence(self, start, end):
         """
-        Limits the sequence to the given sub-sequence [start, end] both inclusive.
+        Limits the sequence to the given sub-sequence [start, end) (left-side inclusive).
         """
-        return dataclasses.replace(
-            self,
-            ops=self.ops[start:(end+1)])
+        return dataclasses.replace(self, ops=self.ops[start:end])
+
 
 @dataclass(frozen=True)
 class DigitalDownConversion:
+    """
+    Us4R Digital Down Conversion block.
+
+    Note: the decimation factor can also have a fractional part: 0.25, 0.5 or 0.75.
+
+    Note: the FIR filter order (i.e. total number of taps)depends on the decimation factor
+    and should be equal: decimationFactor*16 for integer decimation factor; decimationFactor*32 for
+    decimation factor with fractional part 0.5; decimationFactor*64 for decimation factor with
+    fractional part 0.25 or 0.75.
+
+    Note: only an upper half of the FIR filter coefficients should be provided.
+
+    :param demodulation_frequency: demodulation frequency to apply [Hz]
+    :param firCoefficients: FIR filter coefficients to apply
+    :param decimationFactor: decimation factor to apply, should be in range [2, 63]
+    :param gain: an extra digital gain to apply (after decimation filter), by default set to 12 dB.
+      Currently only 0 and 12 dB are supported [dB]
+    """
     demodulation_frequency: float
     fir_coefficients: Iterable[float]
     decimation_factor: float
+    gain: float = 12
 
 
 @dataclass(frozen=True)

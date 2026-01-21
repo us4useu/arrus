@@ -19,6 +19,27 @@
 
 namespace arrus::devices {
 
+/**
+ * Us4R device settings.
+ *
+ * @param probeAdapterSettings Probe adapter settings. Optional - when not set, at least one
+ * Us4OEMSettings must be set. When is set, the list of Us4OEM
+ * settings should be empty.
+ * @param probeSettings List of ProbeSettings to set. Optional - when is set, ProbeAdapterSettings also
+ * @param rxSettings initial RX (AFE) settings
+ * @param hvSettings high-voltage supplier settings, Optional (us4r devices may have externally controlled hv suppliers).
+ * @param channelsMask A set of channels that should be turned off in the us4r system. This is list of lists; each list represents what channels of the ultrasound interface (probe) should be turned off. channelsMask[i] is a channels mask for the i-th probe (Probe:i). Note that the **channel numbers start from 0
+ * @param reprogrammingMode reprogramming mode applied to all us4OEMs. See Us4OEMSettings::ReprogrammingMode docs for more information.
+ * @param nUs4OEMs number of us4OEMs in the us4R system. Optional, if is std::nullopt, the number of us4oems is determined based on the probe adapter mapping (equal to the maximum ordinal number of us4OEM). Optional, if set to std::nullopt, the number of us4OEMs will be determined based on the probe adapter mapping (as the maximum of us4OEM module ordinal numbers).
+ * @param adapterToUs4RModuleNumber The mapping from the us4OEM ordinal number in the probe adapter mapping and the actual ordinal number of us4OEM. Optional, empty vector means that no mapping should be applied (identity mapping).
+ * @param externalTrigger whether the external trigger (TRIG INPUT) should be enabled
+ * @param txFrequencyRange Transmit frequency range to set on us4OEM devices. Actually, TX frequency divider.
+ * @param digitalBackplaneSettings digital backplane ("DBAR") settings. If not provided, the software will try to determine DBAR model based on select HV supplier.
+ * @param bitstreams us4OEM I/O bitstream definitions
+ * @param limits TX/RX constraints to apply on the system (e.g. minimum/maximum voltage, etc.).
+ * @param watchdogSettings us4OEM+ watchdog settings.
+ * @param allowDuplicateOEMIds whether we should allow to run system with duplicate OEM ids (e.g. due to connectivity issues).
+ */
 class Us4RSettings {
 public:
     using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
@@ -38,6 +59,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
+        bool allowDuplicateOEMIds = true,
+        bool maskDVDDInterrupt = false,
         GpuSettings gpuSettings = GpuSettings::defaultSettings()
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
@@ -53,6 +76,8 @@ public:
           bitstreams(std::move(bitstreams)),
           limits(std::move(limits)),
           watchdogSettings(std::move(watchdogSettings)),
+          allowDuplicateOEMIds(allowDuplicateOEMIds),
+          maskDVDDInterrupt(maskDVDDInterrupt),
           gpuSettings(std::move(gpuSettings))
     {}
 
@@ -71,6 +96,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
+        bool allowDuplicateOEMIds = true,
+        bool maskDVDDInterrupt = false,
         GpuSettings gpuSettings = GpuSettings::defaultSettings()
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
@@ -87,6 +114,8 @@ public:
                 std::move(bitstreams),
                 std::move(limits),
                 std::move(watchdogSettings),
+                allowDuplicateOEMIds,
+                maskDVDDInterrupt,
                 std::move(gpuSettings)
         )
     {}
@@ -182,6 +211,10 @@ public:
 
     const WatchdogSettings &getWatchdogSettings() const { return watchdogSettings; }
 
+    bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
+
+    bool isDVDDInterruptMasked() const { return maskDVDDInterrupt; }
+
     const GpuSettings &getGpuSettings() const { return gpuSettings; }
 
 private:
@@ -236,6 +269,18 @@ private:
      std::optional<Us4RTxRxLimits> limits{std::nullopt};
      /** OEM watchdog settings */
      WatchdogSettings watchdogSettings{1.0f, 1.1f, 1.0f};
+     /**
+      * False value means that an error will raised in case the OEM id is non-unique. True value means that only
+      * a warning message will be logged.
+      * This parameter should be set to false in case your system has non-unique ID, but still you would like to run
+      * the software.
+      */
+     bool allowDuplicateOEMIds{true};
+
+     /**
+     * False value means that Pulser DVDD interrput is enabled and error will raised when it occurs
+     */
+     bool maskDVDDInterrupt{false};
      /** GPU settings */
      GpuSettings gpuSettings;
 };

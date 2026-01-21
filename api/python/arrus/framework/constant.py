@@ -15,7 +15,8 @@ class Constant:
         self.placement = placement
         self.name = name
 
-    def get_full_name(self):
+    @property
+    def full_name(self):
         return self.placement + "/" + self.name
 
 

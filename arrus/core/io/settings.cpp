@@ -269,7 +269,7 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
     auto pgaGain = static_cast<uint16>(proto.pga_gain());
     auto lnaGain = static_cast<uint16>(proto.lna_gain());
 
-    RxSettings::TGCCurve tgcSamples =
+    arrus::ops::us4r::TGCCurve tgcSamples =
         castTo<arrus::ops::us4r::TGCSampleValue>(std::begin(proto.tgc_samples()), std::end(proto.tgc_samples()));
 
     uint32 lpfCutoff = proto.lpf_cutoff();
@@ -279,7 +279,14 @@ RxSettings readRxSettings(const proto::RxSettings &proto) {
         activeTermination = static_cast<uint16>(proto.active_termination());
     }
     // TODO apply characteristic parameter
-    return RxSettings(dtgcAtt, pgaGain, lnaGain, tgcSamples, lpfCutoff, activeTermination);
+    return ::arrus::devices::RxSettingsBuilder()
+        .setDtgcAttenuation(dtgcAtt)
+        .setPgaGain(pgaGain)
+        .setLnaGain(lnaGain)
+        .setTgcSamples(tgcSamples)
+        .setLpfCutoff(lpfCutoff)
+        .setActiveTermination(activeTermination)
+        .build();
 }
 
 ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, const SettingsDictionary &dictionary) {
@@ -491,7 +498,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
+    bool maskDVDDInterrupt = false; // default value
     int txFrequencyRange = 1;
+    bool allowDuplicateOEMIds = true; // default values
 
     if (us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();
@@ -513,12 +522,16 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     if (us4r.optional_tx_frequency_range_case() != proto::Us4RSettings::OPTIONAL_TX_FREQUENCY_RANGE_NOT_SET) {
         txFrequencyRange = static_cast<int>(us4r.tx_frequency_range());
     }
+    if (us4r.optional_allow_duplicate_oem_ids_case() != proto::Us4RSettings::OPTIONAL_ALLOW_DUPLICATE_OEM_IDS_NOT_SET) {
+        allowDuplicateOEMIds = us4r.allow_duplicate_oem_ids();
+    }
     if (!us4r.adapter_to_us4r_module_nr().empty()) {
         auto &adapter2Us4RModule = us4r.adapter_to_us4r_module_nr();
         for (auto &nr: adapter2Us4RModule) {
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
+    maskDVDDInterrupt = us4r.mask_dvdd_failure_check();
     WatchdogSettings watchdog = WatchdogSettings::defaultSettings();
     if(us4r.has_watchdog()) {
         auto enabled = us4r.watchdog().enabled();
@@ -541,13 +554,13 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             watchdog = WatchdogSettings::disabled();
         }
     }
-    
-    GpuSettings gpu = GpuSettings::defaultSettings();    
+
+    GpuSettings gpu = GpuSettings::defaultSettings();
     if(us4r.gpu().memory_limit_percentage() > 0.0f) {
         gpu = GpuSettings(us4r.gpu().memory_limit_percentage(), us4r.gpu().use_memory_pool());
     } else {
         gpu = GpuSettings(std::nullopt, us4r.gpu().use_memory_pool());
-    }    
+    }
 
     ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
     std::vector<ProbeSettings> probeSettings =
@@ -573,6 +586,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             digitalBackplaneSettings,
             bitstreams,
             limits,
+            watchdog,
+            allowDuplicateOEMIds,
+            maskDVDDInterrupt
             watchdog,
             gpu
     };

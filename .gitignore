@@ -212,3 +212,6 @@ install
 
 # vim swap files
 *.swp
+
+# Numpy
+*.npy

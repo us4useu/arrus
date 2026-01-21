@@ -1,11 +1,11 @@
-% Example script for raw rf imaging when using plane waves and angular scanning
+% Example script for b-mode imaging using plane waves and angular scanning
 
 %% Initialize the system
 addpath('../');
 addpath('../arrus');
 
 % Make sure the configuration in the *.prototxt file is correct.
-us  = Us4R('configFile', 'us4r.prototxt');
+us  = Us4R.create('configFile', 'us4r.prototxt');
 
 %% Selected parameters
 % To program plane wave sequence, set 'txFocus' to infinity.
@@ -13,7 +13,7 @@ txFoc = inf;                    % Focal distance [m]
 
 % To program angular scanning/compounding, set 'txAngle' as a vector. 
 % It will also determine the number of transmissions in the sequence.
-txAng = (-15:15:15)*pi/180;      % Plane wave angles [rad]
+txAng = (-15:3:15)*pi/180;      % Plane wave angles [rad]
 nTx = numel(txAng);             % Number of transmissions in a sequence
 
 %% Program Tx/Rx sequence and reconstruction
@@ -36,29 +36,37 @@ seq = CustomTxRxSequence(... % Obligatory parameters
                         'speedOfSound',     1540, ...
                         'txFrequency',      6.5e6, ...
                         'txNPeriods',       2, ...
-                        'txVoltage',        5, ...
-                        'rxNSamples',       4*1024, ...
+                        'txVoltage',        20, ...
+                        'rxDepthRange',     50e-3, ...
+                        ... % Optional parameters
+                        'hwDdcEnable',      true, ... % set to false/true to obtain raw data as RF/decimated IQ (set false to bypass DDC)
+                        'decimation',       10, ... % recommended (and default) value is round(65e6/txFrequency)
+                        'nRepetitions',     1, ...
+                        'txPri',            400e-6, ... % time interval between physical transmissions
                         'tgcStart',         14, ...
                         'tgcSlope',         200, ...
-                        'hwDdcEnable',      false ... % set to false/true to obtain raw data as RF/decimated IQ
+                        'txInvert',         false ...
                         );
 
-us.upload(seq);
+% GPU/CPU reconstruction implemented in matlab.
+rec = Reconstruction(   ... % Obligatory parameters
+                        'xGrid',            (-20:0.10:20)*1e-3, ...
+                        'zGrid',            (  0:0.10:50)*1e-3, ...
+                        ... % Optional parameters
+                        'gridModeEnable',   true, ... % set to false to reconstruct image lines instead of the full grid for each transmission.
+                        'bmodeRxTangLim',   [-1.0 1.0], ...
+                        'rxApod',           hamming(21).', ...
+                        'bmodeFrames',      1:nTx ...
+                        );
+
+us.upload(seq, rec);
 
 %% Preview (continuous in-loop operation)
-% Warning: the raw rf display methods (imageRawRf and plotRawRf) require
-% the rf to be real, and thus the hwDdcEnable must be set to false.
-
-% Show image of all rf echoes in the sequence
-us.imageRawRf('amplitudeLim',1e3);
-
-% Plot a selected rf line (96 = 32nd line from 2nd TX)
-us.plotRawRf('selectedLines',96);
+display = BModeDisplay(rec, 'dynamicRange', [0 80]);
+us.runLoop(@display.isOpen, @display.updateImg);
 
 %% Collecting data (single execution of the sequence)
 [raw,img] = us.run;
 
-%% Close session
-us.closeSession;
 
 

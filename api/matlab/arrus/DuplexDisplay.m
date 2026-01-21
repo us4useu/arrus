@@ -1,40 +1,17 @@
 classdef DuplexDisplay < handle
-    % A Duplex display.
-    %
-    % Currently is implemented as a simple MATLAB figure with dynamically
+    % Duplex image display class.
+    % 
+    % Currently implemented as a simple MATLAB figure with dynamically \
     % updated content.
     % 
-    % :param reconstructionObject: object of class "Reconstruction" \
-    %   (obligatory input unless old syntax is used)
-    % :param dynamicRange: two-element vector [min, max], dynamic range \
-    %   limits to apply (optional name-value argument)
-    % :param powerThreshold: power limit [dB] below which the color data \
-    %   is not displayed (scalar) (optional name-value argument)
-    % :param turbuThreshold: turbulence limit over which the color data \
-    %   is not displayed (scalar) (optional name-value argument)
-    % :param stdevThreshold: limit of standard deviation of color data \
-    %   over which the color data is not displayed \
-    %   (scalar) (optional name-value argument)
-    % :param thresholdSmooth: size [pix] of the circular smoothing kernel 
-    %   applied to the images that are used for thresholding, e.g. power, 
-    %   turbu, stdev (scalar) (optional name-value argument)
-    % :param subplotEnable: enables separate display of Duplex, bmode, \
-    %   power, and turbulence (logical scalar) (optional name-value argument)
-    % :param cineLoopLength: positive scalar, number of frames stored in \
-    %   cineloop (optional name-value argument)
-    % :param persistence: persistence filtration weights (vector) or \
-    %   length (scalar) (optional name-value argument)
-    % :param bmodeTgc: applies linear TGC equal to bmodeTgc[dB]/depth \
-    %   (scalar) (optional name-value argument)
-    % :param bmodeAutoTgcResp: applies linear TGC that adapts in time to \
-    %   the imaging conditions, defines the responsiveness of the \
-    %   adaptation, <0,1> (scalar) (optional name-value argument)
+    % Includes a cineloop buffer. The content of the buffer can be \
+    % accessed through the getCineLoop method.
     
     properties(Access = private)
         hFig
         hAx
         hImg
-        hQvr
+        vector
         xGrid
         zGrid
         colorEnable
@@ -54,6 +31,53 @@ classdef DuplexDisplay < handle
     
     methods 
         function obj = DuplexDisplay(varargin)
+            % Creates a DuplexDisplay object.
+            % 
+            % Syntax:
+            % obj = DuplexDisplay(reconstructionObject, name, value, ..., name, value)
+            % 
+            % First input is obligatory, further inputs are optional \
+            % and are organized in name-value pairs.
+            % 
+            % :param reconstructionObject: Object of class "Reconstruction". \
+            %   Obligatory input.
+            % :param dynamicRange: Dynamic range limits [dB]. \
+            %   Two-element vector [min, max]. Optional name-value argument, \
+            %   default = [0 80].
+            % :param cineLoopLength: Cineloop buffer size (number of frames \
+            %   stored in the buffer). Positive scalar. Optional name-value \
+            %   argument, default = 1.
+            % :param persistence: If given, enables persistence. If scalar, \
+            %   it defines the persistence filter length. If vector, it \
+            %   defines the persistence filter coefficients. \
+            %   Optional name-value argument, default = 1 (no persistence).
+            % :param bmodeTgc: If given, enables linear TGC from 0 dB \
+            %   at the top to the given value [dB] at the bottom of the \
+            %   image. Scalar. Optional name-value argument, default = 0.
+            % :param bmodeAutoTgcResp: If given, enables linear TGC \
+            %   that adapts in time to the imaging conditions. The \
+            %   responsiveness of the adaptation: 0-no adaptation, \
+            %   1-instant adaptation. Scalar, in the range <0,1>. \
+            %   Optional name-value argument, default = 0.
+            % :param powerThreshold: Power limit [dB] BELOW which the color \
+            %   data is not displayed. Scalar. Optional name-value argument, \
+            %   default = -inf (no thresholding).
+            % :param turbuThreshold: Turbulence limit ABOVE which the color \
+            %   data is not displayed. Scalar. Optional name-value argument, \
+            %   default = 1 (no thresholding, as turbulence is limited to \
+            %   0-1 range by definition).
+            % :param stdevThreshold: Limit of standard deviation of color \
+            %   data ABOVE which the color data is not displayed. Scalar. \
+            %   Optional name-value argument, default = inf (no thresholding).
+            % :param thresholdSmooth: Size [pix] of the circular smoothing \
+            %   kernel applied to the data that are used for thresholding, \
+            %   i.e. power, turbulence, and st. deviation. Scalar. \
+            %   Optional name-value argument, default = 0 (no smoothing).
+            % :param subplotEnable: Enables separate display of Duplex, \
+            %   B-mode, power, and turbulence images. Logical scalar. \
+            %   Optional name-value argument, default = false.
+            % 
+            % :return: DuplexDisplay object.
             
             % Input parser
             dispParParser = inputParser;
@@ -65,26 +89,6 @@ classdef DuplexDisplay < handle
             addParameter(dispParParser, 'dynamicRange', [0 80], ...
                         @(x) assert(isnumeric(x) && all(size(x) == [1 2]), ...
                         "dynamicRange must be a 2-element numerical vector: [min max]."));
-            
-            addParameter(dispParParser, 'powerThreshold', -inf, ...
-                        @(x) assert(isnumeric(x) && isscalar(x), ...
-                        "powerThreshold must be a numerical scalar."));
-            
-            addParameter(dispParParser, 'turbuThreshold', 1, ...
-                        @(x) assert(isnumeric(x) && isscalar(x), ...
-                        "turbuThreshold must be a numerical scalar."));
-            
-            addParameter(dispParParser, 'stdevThreshold', 0, ...
-                        @(x) assert(isnumeric(x) && isscalar(x), ...
-                        "stdevThreshold must be a numerical scalar."));
-            
-            addParameter(dispParParser, 'thresholdSmooth', 0, ...
-                        @(x) assert(isnumeric(x) && isscalar(x), ...
-                        "thresholdSmooth must be a numerical scalar."));
-
-            addParameter(dispParParser, 'subplotEnable', false, ...
-                        @(x) assert(islogical(x) && isscalar(x), ...
-                        "subplotEnable must be a logical scalar."));
             
             addParameter(dispParParser, 'cineLoopLength', 1, ...
                         @(x) assert(isnumeric(x) && isscalar(x) && mod(x,1)==0 && x>=1, ...
@@ -103,19 +107,39 @@ classdef DuplexDisplay < handle
                         @(x) assert(isnumeric(x) && isscalar(x) && x>=0 && x<=1, ...
                         "bmodeAutoTgcResp must be a numerical scalar in <0,1> range."));
             
+            addParameter(dispParParser, 'powerThreshold', -inf, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "powerThreshold must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'turbuThreshold', 1, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "turbuThreshold must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'stdevThreshold', inf, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "stdevThreshold must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'thresholdSmooth', 0, ...
+                        @(x) assert(isnumeric(x) && isscalar(x), ...
+                        "thresholdSmooth must be a numerical scalar."));
+            
+            addParameter(dispParParser, 'subplotEnable', false, ...
+                        @(x) assert(islogical(x) && isscalar(x), ...
+                        "subplotEnable must be a logical scalar."));
+            
             parse(dispParParser, varargin{:});
             
             proc             = dispParParser.Results.reconstructionObject;
             dynamicRange     = dispParParser.Results.dynamicRange;
+            cineLoopLength   = dispParParser.Results.cineLoopLength;
+            persistence      = dispParParser.Results.persistence;
+            bmodeTgc         = dispParParser.Results.bmodeTgc;
+            bmodeAutoTgcResp = dispParParser.Results.bmodeAutoTgcResp;
             powerThreshold   = dispParParser.Results.powerThreshold;
             turbuThreshold   = dispParParser.Results.turbuThreshold;
             stdevThreshold   = dispParParser.Results.stdevThreshold;
             thresholdSmooth  = dispParParser.Results.thresholdSmooth;
             subplotEnable    = dispParParser.Results.subplotEnable;
-            cineLoopLength   = dispParParser.Results.cineLoopLength;
-            persistence      = dispParParser.Results.persistence;
-            bmodeTgc         = dispParParser.Results.bmodeTgc;
-            bmodeAutoTgcResp = dispParParser.Results.bmodeAutoTgcResp;
             
             if isscalar(persistence)
                 persistence = ones(1,persistence);
@@ -183,22 +207,40 @@ classdef DuplexDisplay < handle
                 set(gca, 'YLim', obj.zGrid([1 end])*1e3);
             end
             
-            obj.hQvr = nan;
+            if obj.vectorEnable
+                vecDec	= 10;
+
+                obj.vector.xSel = vecDec:vecDec:(numel(obj.xGrid)-vecDec+1);
+                obj.vector.zSel = vecDec:vecDec:(numel(obj.zGrid)-vecDec+1);
+                obj.vector.scale = vecDec*diff(obj.xGrid(1:2)*1e3)/pi/2;
+
+                axes(obj.hAx(1)), hold on;
+                set(gca,'YDir','reverse');
+                set(gca,'XLim',obj.xGrid([1 end])*1e3);
+                set(gca,'YLim',obj.zGrid([1 end])*1e3);
+                
+                obj.vector.hQvr = quiver(obj.xGrid(obj.vector.xSel)*1e3, ...
+                                         obj.zGrid(obj.vector.zSel)*1e3, ...
+                                         zeros(numel(obj.vector.zSel),numel(obj.vector.xSel)), ...
+                                         zeros(numel(obj.vector.zSel),numel(obj.vector.xSel)), 0, 'Color', 'm', 'LineWidth', 1.5);
+            end
             
         end
         
         function state = isOpen(obj)
-            % Checks if the window was not already closed.
+            % Checks if the display window is open.
             %
-            % :return: true when the windows with b-mode image was not closed,
-            %          false otherwise
+            % :return: True if the display window was not closed, \
+            %          false otherwise.
+
             state = ishghandle(obj.hFig);
         end
         
         function updateImg(obj, data)
             % Updates currently displayed image.
             %
-            % :param data: duplex data to display
+            % :param data: Duplex data to be displayed.
+
             try
                 [nZPix,nXPix,~,~] = size(data);
                 
@@ -296,25 +338,11 @@ classdef DuplexDisplay < handle
                 end
                 
                 if obj.vectorEnable
-                    vecDec	= 20;
-                    
-                    vXSel	= vecDec:vecDec:(nXPix-vecDec+1);
-                    vZSel	= vecDec:vecDec:(nZPix-vecDec+1);
-                    vMultip	= vecDec*diff(obj.xGrid(1:2)*1e3)/pi  /2;
-                    
                     colorX(~duplexMask) = nan;
                     colorZ(~duplexMask) = nan;
                     
-                    if ishandle(obj.hQvr)
-                        delete(obj.hQvr);
-                    end
-                    
-                    axes(obj.hAx), hold on;
-                    obj.hQvr = quiver(	obj.xGrid(vXSel)*1e3, ...
-                                        obj.zGrid(vZSel)*1e3, ...
-                                        vMultip*colorX(vZSel,vXSel), ...
-                                        vMultip*colorZ(vZSel,vXSel),0,'Color','k');
-                    obj.hQvr.Head.LineWidth = 1.5;
+                    obj.vector.hQvr.UData = obj.vector.scale*colorX(obj.vector.zSel,obj.vector.xSel);
+                    obj.vector.hQvr.VData = obj.vector.scale*colorZ(obj.vector.zSel,obj.vector.xSel);
                 end
                 
                 drawnow limitrate;
@@ -329,6 +357,10 @@ classdef DuplexDisplay < handle
         end
         
         function cineLoop = getCineLoop(obj)
+            % Returns the cineloop buffer.
+            % 
+            % :return: Cineloop buffer.
+            
             if obj.cineLoopLength > 0
                 cineLoop = circshift(obj.cineLoop, -obj.cineLoopIndex, 3);
             else

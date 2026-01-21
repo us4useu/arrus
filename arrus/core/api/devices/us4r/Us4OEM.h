@@ -15,6 +15,17 @@ public:
     using Handle = std::unique_ptr<Us4OEM>;
     using RawHandle = PtrHandle<Us4OEM>;
 
+    enum class Variant {
+        /** legacy us4OEM */
+        LEGACY,
+        /** OEM+ 32 RX, AFE JD18 */
+        PLUS_RX_32,
+        /** OEM+ 64 RX */
+        PLUS_RX_64,
+        /** OEM HF */
+        PLUS_HF
+    };
+
    /**
     * Us4OEM ADC test pattern state.
     */
@@ -97,10 +108,12 @@ public:
     * @param decimationFactor: Decimation factor
     * @param firCoefficients: Pointer to Low pass filter coefficients buffer
     * @param nCoefficients: Number of FIR coefficients
+    * @param gain: an extra digital gain to apply (after decimation filter), by default set to 12 dB.
+    *   Currently only 0 and 12 dB are supported [dB]
     * @throws arrus::IllegalStateException when invalid input parameters detected
     */
     virtual void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
-                             size_t nCoefficients) = 0;
+                             size_t nCoefficients, float gain = 12) = 0;
 
     /**
     * Disables AFE built-in demodulator
@@ -143,19 +156,33 @@ public:
     /**
      * Returns current FPGA wall clock (time passed since Init function was called).
      *
-     * @return FPGA wall clock (seconds)
+     * @return FPGA wall clock (clock ticks)
      */
-    virtual float getFPGAWallclock() = 0;
+    virtual uint64_t getFPGAWallclock() = 0;
 
     /**
-     * Enables High-Pass Filter and sets a given corner frequency.
+     * Enables LNA analog high-pass filter and sets a given corner frequency.
      *
-     * Available corner frequency values (Hz): 4520'000, 2420'000, 1200'000, 600'000, 300'000, 180'000,
-     * 80'000, 40'000, 20'000.
-     *
-     * @param frequency corner high-pass filter frequency to set
+     * @param frequency LNA high-pass filter corner frequency to set
      */
-    virtual void setHpfCornerFrequency(uint32_t frequency) = 0;
+    virtual void setLnaHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables LNA analog high-pass filter.
+     */
+    virtual void disableLnaHpf() = 0;
+
+    /**
+     * Enables ADC digital high-pass filter and sets a given corner frequency.
+     *
+     * @param frequency ADC high-pass filter corner frequency to set
+     */
+    virtual void setAdcHpfCornerFrequency(uint32_t frequency) = 0;
+
+    /**
+     * Disables ADC digital high-pass filter.
+     */
+    virtual void disableAdcHpf() = 0;
 
     /**
      * Returns serial number of this us4OEM (a null-terminated string).
@@ -166,11 +193,6 @@ public:
      * Returns revision number of this us4OEM (a null-terminated string).
      */
     virtual const char* getRevision() = 0;
-
-    /**
-     * Disables digital high-pass filter.
-     */
-    virtual void disableHpf() = 0;
 
     /**
      * Returns HVPS ADC measurements
@@ -206,6 +228,11 @@ public:
      * @return the actual frequency that will be set
      */
     virtual float getActualTxFrequency(float frequency) = 0;
+
+    /**
+     * Returns the variant of OEM.
+     */
+    virtual Variant getVariant() = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

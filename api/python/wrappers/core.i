@@ -49,6 +49,8 @@ namespace std {
 %template(VectorFloat) vector<float>;
 %template(VectorUInt16) vector<unsigned short>;
 %template(VectorUInt8) vector<unsigned char>;
+%template(VectorInt8) vector<int8_t>;
+%template(VectorSizet) vector<size_t>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
 %template(VectorHVVoltage) vector<arrus::devices::HVVoltage>;
@@ -254,6 +256,7 @@ using namespace ::arrus;
 %ignore arrus::Tuple::operator[];
 
 %include "arrus/core/api/common/Tuple.h"
+%include "arrus/core/api/common/Slice.h"
 %include "arrus/core/api/common/Interval.h"
 %include "arrus/core/api/common/Span.h"
 %include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
@@ -509,6 +512,7 @@ float arrusUs4OEMGetUCDExternalTemperature(::arrus::devices::Us4OEM *us4oem) {
 %{
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/core/api/ops/us4r/Waveform.h"
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
@@ -521,7 +525,9 @@ using namespace arrus::ops::us4r;
 
 %feature("valuewrapper") TxRx;
 %include "arrus/core/api/ops/us4r/tgc.h"
+%ignore arrus::ops::us4r::Pulse::toWaveform() const;
 %include "arrus/core/api/ops/us4r/Pulse.h"
+%include "arrus/core/api/ops/us4r/Waveform.h"
 %include "arrus/core/api/ops/us4r/Rx.h"
 %include "arrus/core/api/ops/us4r/Tx.h"
 %include "arrus/core/api/ops/us4r/TxRxSequence.h"
@@ -535,6 +541,8 @@ using namespace arrus::ops::us4r;
 namespace std {
 %template(TxRxVector) vector<arrus::ops::us4r::TxRx>;
 %template(ArrusNdArrayVector) vector<arrus::framework::NdArray>;
+%template(SliceVector) vector<arrus::Slice>;
+%template(OptionalFloatVector) vector<std::optional<float>>;
 };
 
 %inline %{
@@ -565,6 +573,14 @@ void Arrus2dArrayVectorPushBack(
     arrays.push_back(array);
 }
 
+void SlicePushBack(std::vector<arrus::Slice> &vector, arrus::Slice &slice) {
+    vector.push_back(slice);
+}
+
+void OptionalVectorFloatPushBack(std::vector<std::optional<float>> &vector, std::optional<float> value) {
+    vector.push_back(value);
+}
+
 %};
 
 
@@ -579,6 +595,7 @@ void Arrus2dArrayVectorPushBack(
 #include "arrus/core/api/devices/us4r/GpuSettings.h"
 #include "arrus/core/api/devices/us4r/WatchdogSettings.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "Us4OEM/api/RxSettings.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h"
@@ -591,11 +608,13 @@ void Arrus2dArrayVectorPushBack(
 #include "arrus/core/api/session/SessionSettings.h"
 
 using namespace ::arrus::devices;
+using namespace ::us4us::us4r;
 %};
 
 %include "arrus/core/api/devices/us4r/WatchdogSettings.h";
 %include "arrus/core/api/devices/us4r/GpuSettings.h";
 %include "arrus/core/api/devices/us4r/RxSettings.h";
+%include "Us4OEM/api/RxSettings.h"
 %include "arrus/core/api/devices/us4r/Us4OEMSettings.h";
 %ignore operator<<(std::ostream &os, const ProbeAdapterModelId &id);
 %include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h";

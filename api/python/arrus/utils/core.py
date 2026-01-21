@@ -3,7 +3,8 @@ import arrus.core
 import arrus.exceptions
 import arrus.devices.probe
 from arrus.devices.device import parse_device_id, DeviceId
-from typing import Dict, Any, Iterable, Tuple, Union, List
+from typing import Dict, Any, Iterable, Tuple, Union, List, Optional
+import arrus.ops.us4r
 
 _UINT16_MIN = 0
 _UINT16_MAX = 2**16-1
@@ -30,12 +31,24 @@ def convert_to_core_sequence(seq):
         # TX
         core_delays = np.zeros(tx.aperture.shape, dtype=np.float32)
         core_delays[tx.aperture] = tx.delays
-        core_excitation = arrus.core.Pulse(
-            centerFrequency=tx.excitation.center_frequency,
-            nPeriods=tx.excitation.n_periods,
-            inverse=tx.excitation.inverse,
-            amplitudeLevel=tx.excitation.amplitude_level
-        )
+        excitation = tx.excitation
+        if isinstance(excitation, arrus.ops.us4r.Pulse):
+            core_excitation = arrus.core.Pulse(
+                centerFrequency=excitation.center_frequency,
+                nPeriods=excitation.n_periods,
+                inverse=excitation.inverse,
+                amplitudeLevel=excitation.amplitude_level
+            )
+        elif isinstance(excitation, arrus.ops.us4r.Waveform):
+            waveformBuilder = arrus.core.WaveformBuilder()
+            for segment, n_repeats in zip(excitation.segments, excitation.n_repeats):
+                duration = arrus.core.VectorFloat(np.asarray(segment.duration).tolist())
+                state = arrus.core.VectorInt8(np.asarray(segment.state).tolist())
+                segment = arrus.core.WaveformSegment(duration, state)
+                waveformBuilder.add(segment, n_repeats)
+            core_excitation = waveformBuilder.build()
+        else:
+            raise ValueError(f"Unrecognized TX pulse type: {excitation}")
         tx_placement = parse_device_id(tx.placement)
         tx_placement = to_core_device_id(tx_placement)
         core_tx = arrus.core.Tx(
@@ -72,7 +85,7 @@ def convert_to_core_sequence(seq):
             f"[{_UINT16_MIN}, {_UINT16_MAX}]"
         )
     core_seq = arrus.core.TxRxSequence(core_seq, seq.tgc_curve.tolist(), sri,
-                                       seq.n_repeats)
+                                       seq.n_repeats, seq.name)
     return core_seq
 
 
@@ -157,6 +170,14 @@ def convert_array_to_vector_float(array):
 
 
 def convert_to_core_scheme(scheme):
+    """
+    Converts Python arrus.Scheme into the C++ API arrus::ops::us4r::Scheme.
+    
+    NOTE: the scheme.constants is expected to be a dictionary grouped by the sequence name.
+
+    :param scheme:
+    :return:
+    """
     builder = arrus.core.SchemeBuilder()
     seqs = scheme.tx_rx_sequence
     if not isinstance(seqs, Iterable):
@@ -177,6 +198,8 @@ def convert_to_core_scheme(scheme):
         core_seq = arrus.utils.core.convert_to_core_sequence(s)
         builder.addSequence(core_seq)
 
+    builder.setConstants(convert_constants_to_arrus_ndarray(scheme.constants))
+
     core_work_mode = {
         "ASYNC": arrus.core.Scheme.WorkMode_ASYNC,
         "SYNC": arrus.core.Scheme.WorkMode_SYNC,
@@ -186,12 +209,12 @@ def convert_to_core_scheme(scheme):
     }[scheme.work_mode]
     builder.withWorkMode(core_work_mode)
     ddc = scheme.digital_down_conversion
-    # TODO constants
-    if(scheme.digital_down_conversion is not None):
+    if scheme.digital_down_conversion is not None:
         ddc = arrus.core.DigitalDownConversion(
             ddc.demodulation_frequency,
             convert_array_to_vector_float(ddc.fir_coefficients),
-            ddc.decimation_factor
+            ddc.decimation_factor,
+            ddc.gain
         )
         builder.withDigitalDownConversion(ddc)
     return builder.build()
@@ -267,3 +290,18 @@ def assert_hv_voltage_correct(value):
     if not (min_v <= value <= max_v):
         raise ValueError("Voltages are expected to be values in range "
                          f"[{min_v}, {max_v}]")
+
+
+def convert_to_arrus_slices(slices: List[slice]):
+    vector = arrus.core.SliceVector()
+    for s in slices:
+        step = 1 if s.step is None else s.step
+        core_slice = arrus.core.Slice(s.start, s.stop, step)
+        arrus.core.SlicePushBack(vector, core_slice)
+    return vector
+
+def convert_to_optional_vector(values: List[Optional[float]]):
+    vector = arrus.core.OptionalFloatVector()
+    for v in values:
+        arrus.core.OptionalVectorFloatPushBack(vector, v)
+    return vector

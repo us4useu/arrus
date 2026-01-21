@@ -1,16 +1,20 @@
 #include "Us4RImpl.h"
-#include "arrus/core/devices/us4r/validators/RxSettingsValidator.h"
 
+#include "TxWaveformConverter.h"
 #include "TxTimeoutRegister.h"
 #include "arrus/core/common/interpolate.h"
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
+#include "arrus/core/common/collections.h"
+#include "arrus/common/utils.h"
+#include "arrus/common/format.h"
 #include "us4r_api_version.h"
 #include <chrono>
 #include <future>
 #include <memory>
 #include <thread>
+#include <regex>
 
 #define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
     if (!rxSettings.has_value()) {                                                                                     \
@@ -31,7 +35,8 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
                    const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
-                   bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger)
+                   bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger,
+                   bool maskDVDDInterrupt)
     : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
@@ -47,6 +52,8 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     this->bitstreams = std::move(bitstreams);
     this->hasIOBitstreamAdressing = hasIOBitstreamAddressing;
     this->isExternalTrigger = isExternalTrigger;
+    this->maskDVDDInterrupt = maskDVDDInterrupt;
+
     for (size_t i = 0; i < this->probeSettings.size(); ++i) {
         const auto &s = this->probeSettings.at(i).getModel();
         this->probes.push_back(std::make_unique<ProbeImpl>(DeviceId{DeviceType::Probe, Ordinal(i)}, s));
@@ -82,22 +89,21 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     }
 }
 
-std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
+std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(HVModelId hvModel, bool isOEMPlus) {
     std::vector<VoltageLogbook> voltages;
     float voltage;
     // Do not log the voltage measured by US4RPSC, as it may not be correct
     // for this hardware.
-    if (isHV256) {
+    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256") {
         //Measure voltages on HV
         voltage = this->getMeasuredPVoltage();
         voltages.push_back(VoltageLogbook{std::string("HVP on HV supply"), voltage, VoltageLogbook::Polarity::PLUS});
         voltage = this->getMeasuredMVoltage();
         voltages.push_back(VoltageLogbook{std::string("HVM on HV supply"), voltage, VoltageLogbook::Polarity::MINUS});
     }
-
-    //Verify measured voltages on OEMs
-    auto isUs4OEMPlus = this->isUs4OEMPlus();
-    if(!isUs4OEMPlus || (isUs4OEMPlus && !isHV256)) {
+    // Log voltages measured by us4oemplus only if hvps is used
+    // Log voltages measured by us4oem for any hv supply
+   if((hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4oemhvps") || (!isOEMPlus)) {
         for (uint8_t i = 0; i < getNumberOfUs4OEMs(); i++) {
             voltage = this->getMeasuredHVPVoltage(i);
             voltages.push_back(VoltageLogbook{std::string("HVP on OEM#" + std::to_string(i)), voltage,
@@ -110,12 +116,18 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(bool isHV256) {
     return voltages;
 }
 
-void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, bool isHV256) {
+void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isOEMPlus) {
+
+    if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc" && isOEMPlus) {
+        this->logger->log(LogSeverity::INFO, format("Voltage verification with US4RPSC is not supported with OEM+"));
+        return;
+    }
+
     std::vector<VoltageLogbook> voltages;
     bool fail = true;
     while (retries-- && fail) {
         fail = false;
-        voltages = logVoltages(isHV256);
+        voltages = logVoltages(hvModel, isOEMPlus);
         for (const auto &logbook: voltages) {
             const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
             if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
@@ -155,6 +167,7 @@ void Us4RImpl::setVoltage(Voltage voltage) {
 }
 
 void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
+    // Process the input voltages.
     std::vector<std::optional<HVVoltage>> newVoltages(voltages.size());
     std::transform(voltages.begin(), voltages.end(), newVoltages.begin(),
                    [](const auto v){return std::make_optional(v);});
@@ -162,10 +175,46 @@ void Us4RImpl::setVoltage(const std::vector<HVVoltage> &voltages) {
 }
 
 void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages) {
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
+    try {
+        if(this->state == State::STARTED) {
+            // pause the TX/RX sequence execution
+            this->us4oems[0]->getIUs4OEM()->TriggerStop();
+        }
+        setVoltageUnsafe(voltages);
+        if(this->state == State::STARTED) {
+            // resume
+            this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        }
+    } catch(const std::exception &e) {
+        this->logger->log(LogSeverity::ERROR, format("Exception while setting voltage, stopping the system: {}", e.what()));
+        this->stop();
+        throw e;
+    } catch(...) {
+        this->logger->log(LogSeverity::ERROR, "Unknown exception while setting voltage, stopping the system.");
+        this->stop();
+    }
+}
+
+void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &voltages) {
     const int N_RAILS = 2;
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     ARRUS_REQUIRES_TRUE(voltages.size() == N_RAILS, "Voltages for HV0 and HV1 should be provided.");
     ARRUS_REQUIRES_TRUE(voltages.at(1).has_value(), "HV voltage amplitude 2 (HV0) must be provided.");
+
+    //check if push pulse and limit voltage difference to 10V
+    for(auto &oem: us4oems) {
+        auto txCycles1 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx1().getPulseCycles();
+        auto txCycles2 = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx2().getPulseCycles();
+        if(txCycles1.end() > 32 || txCycles2.end() > 32) {
+            ARRUS_REQUIRES_TRUE(voltages.at(1).has_value() && voltages.at(0).has_value(),
+                        "When using push pulses (>32 cycles) both HV voltage amplitdes (HV0 & HV1) must be provided");
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltagePlus() - voltages.at(0)->getVoltagePlus()) <= 10,
+                        "When using push pulses (>32 cycles) voltage difference between HVP0 and HVP1 rails must be <= 10 V");
+            ARRUS_REQUIRES_TRUE(abs(voltages.at(1)->getVoltageMinus() - voltages.at(0)->getVoltageMinus()) <= 10,
+                        "When using push pulses (>32 cycles) voltage difference between HVM0 and HVM1 rails must be <= 10 V");
+        }
+    }
 
     auto &hvModel = this->hv[0]->getModelId();
     bool isHV256 = hvModel.getManufacturer() == "us4us" && hvModel.getName() == "hv256";
@@ -181,8 +230,8 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
             if(currentVoltageM.has_value() && currentVoltageP.has_value()) {
                 if (currentVoltageM >= voltage->getVoltageMinus() || currentVoltageP >= voltage->getVoltagePlus()) {
                     throw IllegalArgumentException("TX voltage amplitudes (for the TX level 1 and 2) should be in strictly "
-                                                   "increasing order, i.e. voltage[1].plus > voltage[0].plus and "
-                                                   "voltage[1].minus > voltage[1].minus.");
+                                                   "increasing order, i.e. 2nd Voltage+ > 1st Voltage+ and "
+                                                   "2nd Voltage- > 1st Voltage-.");
                 }
             }
             // otherwise, this is the first voltage in the vector -- just store the value.
@@ -228,28 +277,35 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
         }
     }
 
-    std::vector<Voltage> minVoltages(N_RAILS);
-    std::vector<Voltage> maxVoltages(N_RAILS);
+    // Verify consistency of the probe and us4OEM voltage limits, and determine the minimum min, max voltage ranges.
+    std::vector<Voltage> minVoltages(N_RAILS, 0);
+    std::vector<Voltage> maxVoltages(N_RAILS, 0);
     for(int amplitude = 1; amplitude <= N_RAILS; ++amplitude) {
+        // Determine min, max only if the given amplitude is available (otherwise min, max is 0, 0).
+        if(setContains(availableAmplitudes, amplitude)) {
+            const auto &min = voltageMin.at(amplitude-1);
+            const auto &max = voltageMax.at(amplitude-1);
 
-        const auto &min = voltageMin.at(amplitude-1);
-        const auto &max = voltageMax.at(amplitude-1);
-
-        auto minVoltage = *std::max_element(std::begin(min), std::end(min));
-        auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
-        if(minVoltage > maxVoltage) {
-            throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
-                                               "the actual minimum voltage {} is greater than the maximum: {}.",
-                                               minVoltage, maxVoltage));
+            auto minVoltage = *std::max_element(std::begin(min), std::end(min));
+            auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
+            if(minVoltage > maxVoltage) {
+                throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
+                                                   "the actual minimum voltage {} is greater than the maximum: {}.",
+                                                   minVoltage, maxVoltage));
+            }
+            minVoltages.at(amplitude-1) = minVoltage;
+            maxVoltages.at(amplitude-1) = maxVoltage;
         }
-        minVoltages.at(amplitude-1) = minVoltage;
-        maxVoltages.at(amplitude-1) = maxVoltage;
     }
 
     // Validate HV voltages.
     for(size_t i = 0; i < voltages.size(); ++i) {
         const auto& voltage = voltages[i];
         if(voltage.has_value()) {
+            // Make sure we are not verifying amplitude for an unavailable rail/level.
+            ARRUS_REQUIRES_TRUE(setContains(availableAmplitudes, int(i+1)),
+                                format("Verifying unavailable voltage amplitude level: {}!", i+1));
+
             auto voltageMinus = voltage->getVoltageMinus();
             auto voltagePlus = voltage->getVoltagePlus();
 
@@ -311,7 +367,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     }
     //Wait to stabilise voltage output
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    float tolerance = 4.0f;// 4V tolerance
+    const float tolerance = isHVPS ? 1.0f : 4.0f;
     int retries = 5;
 
      if(isHV256) {
@@ -329,9 +385,12 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
                           "Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
-    
+
+    bool isOEMPlus = false;
+    if(us4oems[0]->getOemVersion() >= 2) { isOEMPlus = true; }
+
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
-    checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, isHV256);
+    checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
 }
 
 unsigned char Us4RImpl::getVoltage() {
@@ -358,7 +417,7 @@ float Us4RImpl::getMeasuredHVMVoltage(uint8_t oemId) {
 }
 
 void Us4RImpl::disableHV() {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state == State::STARTED) {
         throw IllegalStateException("You cannot disable HV while the system is running.");
     }
@@ -385,7 +444,6 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     auto &outputBufferSpec = scheme.getOutputBuffer();
     auto rxBufferSize = scheme.getRxBufferSize();
     auto workMode = scheme.getWorkMode();
-
     unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
     ARRUS_REQUIRES_TRUE_E(
@@ -394,7 +452,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
             format("The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
                    hostBufferSize, rxBufferSize)));
 
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     ARRUS_REQUIRES_TRUE_E(this->state != State::STARTED,
                           IllegalStateException("The device is running, uploading sequence is forbidden."));
     auto [buffers,
@@ -415,6 +473,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
         buffers,
         fcms
     };
+    sequenceNameToOrdinalMap = getSequenceNameToOrdinalMap(currentScheme.value());
     // Metadata
     std::vector<Metadata::SharedHandle> metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     return {this->buffer, metadatas};
@@ -455,7 +514,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
 }
 
 void Us4RImpl::start() {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     logger->log(LogSeverity::INFO, "Starting us4r.");
     if (this->buffer == nullptr) {
         throw ::arrus::IllegalArgumentException("Call upload function first.");
@@ -479,8 +538,9 @@ void Us4RImpl::start() {
         // The sequencer pointer (the entry from which sequencer starts) should not be reset when
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
         // the sequencer pointers will appropriately set to the start param value.
-        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().getStart() : 0;
-        us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t));
+        // Set it to the current beginning of the array 0.
+        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().at(0).getStart() : 0;
+        us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t), maskDVDDInterrupt);
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
         this->digitalBackplane.value()->enableExternalTrigger();
@@ -492,7 +552,7 @@ void Us4RImpl::start() {
 void Us4RImpl::stop() { this->stopDevice(); }
 
 void Us4RImpl::stopDevice() {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STARTED) {
         logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
     } else {
@@ -561,7 +621,14 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         },
         rxDelays
     };
-    TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences);
+    // Group TX delay profiles by sequence name. Also, validates NdArray names.
+    const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
+    sequenceNumberOfTxDelayProfiles.clear();
+    for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
+        sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
+    }
+
+    TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences, txDelayProfilesBySequence);
 
     // Convert API sequences to internal representation.
     std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts, rxDelays);
@@ -588,17 +655,24 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
     // OEM -> list of sequences to upload on the OEM
     auto sequencesByOEM = std::vector{noems, OEMSequences{}};
-    // sequence -> op -> a range of physical TX/RXs [start, end]
+    // sequence -> op -> a range of physical TX/RXs [start, end)
     // NOTE: start and end are local per sequence, i.e. logicalToPhysicalMapping.at(i).at(0) is counted
-    // from te beginning of the i-th sequence.
+    // from the beginning of the i-th sequence.
     std::vector<LogicalToPhysicalOp> logicalToPhysicalMapping(nSequences);
     // The physical list of sequences applied on each OEM. Sequence id -> OEM -> sequence
     std::vector<std::vector<TxRxParametersSequence>> oemSequences;
-    // Convert probe sequence -> OEM Sequences
 
+    // Sequence ordinal number -> OEM -> profile id -> TX delays (2D array (n firings, n channels)).
+    // NOTE: if for the given tx sequence and OEM there is no TX delays profile, an empty array should be stored.
+    vector<vector<vector<NdArray>>> oemDelaysByOEMBySequence(noems);
+
+    // Convert probe sequence -> OEM
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
-        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, txDelayProfiles);
+        const auto &profiles = mapGetValueOrNone(txDelayProfilesBySequence, s.getName())
+                                  .value_or(vector<NdArray>{});
+
+        auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, profiles);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
 
         logicalToPhysicalMapping.at(sId) = adapter2OEM.at(sId).getLogicalToPhysicalOpMap();
@@ -606,6 +680,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
 
         for (Ordinal oem = 0; oem < noems; ++oem) {
             sequencesByOEM.at(oem).emplace_back(std::move(oemSeqs.at(oem)));
+            oemDelaysByOEMBySequence.at(oem).emplace_back(std::move(oemDelays.at(oem)));
         }
     }
     std::vector<Us4OEMBuffer> buffers;
@@ -613,12 +688,11 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<FrameChannelMappingImpl::Handle> fcms;
     // Sequence id, OEM -> FCM
     std::vector<std::vector<FrameChannelMapping::Handle>> oemsFCMs;
-    float rxTimeOffset;
+    float rxTimeOffset = 0.0f;
     for (SequenceId sId = 0; sId < nSequences; ++sId) { oemsFCMs.emplace_back(); }
     for (Ordinal oem = 0; oem < noems; ++oem) {
-        // TODO Consider implementing dynamic change of delay profiles
         auto uploadResult = us4oems.at(oem)->upload(sequencesByOEM.at(oem), bufferSize, workMode, ddc,
-                                                    std::vector<NdArray>{}, timeouts.getTimeouts());
+                                                    oemDelaysByOEMBySequence.at(oem), timeouts.getTimeouts());
         buffers.emplace_back(uploadResult.getBufferDescription());
         auto oemFCM = uploadResult.acquireFCMs();
         if (oem==0) { rxTimeOffset = uploadResult.getRxTimeOffset(); }
@@ -713,42 +787,79 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 }
 
 // AFE parameter setters.
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true); }
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true, false); }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setTgcSamples(tgcCurvePoints)
-                             ->setApplyTgcCharacteristic(applyCharacteristic)
-                             ->build();
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
+                             .build();
     setRxSettings(newRxSettings);
 }
 
-void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic) {
+void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
     if (y.empty()) {
         // Turn off TGC
-        setTgcCurve(y, applyCharacteristic);
+        setTgcCurve(y, applyCharacteristic, clip);
     } else {
-        auto timeStartIt = std::min_element(std::begin(t), std::end(t));
-        auto timeEndIt = std::max_element(std::begin(t), std::end(t));
-
-        auto timeEnd = *timeEndIt;
-
-        auto valueStart = y[std::distance(std::begin(t), timeStartIt)];
-        auto valueEnd = y[std::distance(std::begin(t), timeEndIt)];
-
-        std::vector<float> hardwareTgcSamplingPoints = getTgcCurvePoints(timeEnd);
-        auto tgcValues = ::arrus::interpolate1d<float>(t, y, hardwareTgcSamplingPoints, valueStart, valueEnd);
-        setTgcCurve(tgcValues, applyCharacteristic);
+        vector<float> tgcValues = interpolateToSystemTGC(t, y);
+        setTgcCurve(tgcValues, applyCharacteristic, clip);
     }
 }
 
+std::vector<float> Us4RImpl::interpolateToSystemTGC(const vector<float> &t, const vector<float> &y) const {
+    auto timeStartIt = min_element(std::begin(t), std::end(t));
+    auto timeEndIt = max_element(std::begin(t), std::end(t));
+
+    auto timeEnd = *timeEndIt;
+
+    auto valueStart = y[distance(std::begin(t), timeStartIt)];
+    auto valueEnd = y[distance(std::begin(t), timeEndIt)];
+
+    vector<float> hardwareTgcSamplingPoints = getTgcCurvePoints(timeEnd);
+    auto tgcValues = interpolate1d<float>(t, y, hardwareTgcSamplingPoints, valueStart, valueEnd);
+    return tgcValues;
+}
+
+void Us4RImpl::setVcat(const vector<float> &t, const vector<float> &y, bool applyCharacteristic, const bool clip) {
+    ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
+    if (y.empty()) {
+        // Turn off TGC
+        setVcat(y, applyCharacteristic, clip);
+    } else {
+        vector<float> tgcValues = interpolateToSystemTGC(t, y);
+        setVcat(tgcValues, applyCharacteristic, clip);
+    }
+}
+
+void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, true, false); }
+
+void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic, const bool clip) {
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
+                             .setVcat(attenuation)
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip)
+                             .build();
+    setRxSettings(newRxSettings);
+}
+
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
-    // TODO(jrozb91) To reconsider below.
     float nominalFs = getSamplingFrequency();
-    uint16 offset = 359;
-    uint16 tgcT = 153;
+    // TGC curve offset (relative to the first acquired sample), TGC time resolution
+    uint16_t offset = 0, tgcT = 0;
+    if(us4oems.at(0)->isAFEJD18()) {
+        offset = 359;
+        tgcT = 153;
+    }
+    else if (us4oems.at(0)->isAFEJD48()) {
+        offset = 359;
+        tgcT = 120;
+    }
+
     // TODO try avoid converting from samples to time then back to samples?
     uint16 maxNSamples = int16(roundf(maxT * nominalFs));
     // Note: the last TGC sample should be applied before the reception ends.
@@ -763,9 +874,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
 }
 
 void Us4RImpl::setRxSettings(const RxSettings &settings) {
-    RxSettingsValidator validator;
-    validator.validate(settings);
-    validator.throwOnErrors();
+    // TODO(ARRUS-179) enable (do the validation here, instead of the low-level OEM?)
+//    RxSettingsValidator validator;
+//    validator.validate(settings);
+//    validator.throwOnErrors();
 
     std::unique_lock<std::mutex> guard(afeParamsMutex);
     bool isStateInconsistent = false;
@@ -789,7 +901,7 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
 
 void Us4RImpl::setPgaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setPgaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getPgaGain() {
@@ -798,7 +910,7 @@ uint16 Us4RImpl::getPgaGain() {
 }
 void Us4RImpl::setLnaGain(uint16 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLnaGain(value).build();
     setRxSettings(newRxSettings);
 }
 uint16 Us4RImpl::getLnaGain() {
@@ -807,17 +919,17 @@ uint16 Us4RImpl::getLnaGain() {
 }
 void Us4RImpl::setLpfCutoff(uint32 value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setLpfCutoff(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setDtgcAttenuation(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setDtgcAttenuation(value).build();
     setRxSettings(newRxSettings);
 }
 void Us4RImpl::setActiveTermination(std::optional<uint16> value) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value)->build();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value()).setActiveTermination(value).build();
     setRxSettings(newRxSettings);
 }
 
@@ -839,7 +951,7 @@ void Us4RImpl::checkState() const {
 }
 
 void Us4RImpl::setStopOnOverflow(bool value) {
-    std::unique_lock<std::mutex> guard(deviceStateMutex);
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STOPPED) {
         logger->log(LogSeverity::INFO,
                     "The StopOnOverflow property can be set "
@@ -885,13 +997,26 @@ void Us4RImpl::disableAfeDemod() {
 
 float Us4RImpl::getCurrentSamplingFrequency() const { return us4oems[0]->getCurrentSamplingFrequency(); }
 
-void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
-    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setHpfCornerFrequency(frequency); },
-                       "setAfeHpfCornerFrequency");
+void Us4RImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setLnaHpfCornerFrequency(frequency); },
+                       "setLnaHpfCornerFrequency");
 }
 
-void Us4RImpl::disableHpf() {
-    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableHpf(); }, "disableHpf");
+void Us4RImpl::disableLnaHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableLnaHpf(); }, "disableLnaHpf");
+}
+
+void Us4RImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
+    applyForAllUs4OEMs([frequency](Us4OEM *us4oem) { us4oem->setAdcHpfCornerFrequency(frequency); },
+                       "setAdcHpfCornerFrequency");
+}
+
+void Us4RImpl::setHpfCornerFrequency(uint32_t frequency) {
+    setAdcHpfCornerFrequency(frequency);
+}
+
+void Us4RImpl::disableAdcHpf() {
+    applyForAllUs4OEMs([](Us4OEM *us4oem) { us4oem->disableAdcHpf(); }, "disableAdcHpf");
 }
 
 uint16_t Us4RImpl::getAfe(uint8_t reg) { return us4oems[0]->getAfe(reg); }
@@ -941,18 +1066,26 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterOEM()->getDeviceId().getOrdinal();
     size_t nRepeats = nElementsDst / nElementsSrc;
     uint16 startFiring = 0;
+    std::vector<std::pair<uint16, uint16>> firingRanges;
     for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
         auto &srcElement = bufferSrc.getElement(i);
         uint16 endFiring = srcElement.getGlobalFiring();
+        // We need the below to properly determine the end firing in the buffer overflow handing.
+        // The startFiring should not matter here.
+        firingRanges.push_back({startFiring, srcElement.getViewFiring()});
+
         for (size_t j = 0; j < nRepeats; ++j) {
+            // Cleaning up the WHOLE SEQUENCE entries (possible minor optimization: limit just to the current sub-sequence).
             std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
+            std::function<void()> receiveReleaseFunc = createReceiveReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);
+            bufferDst->registerReceiveReleaseFunction(j * nElementsSrc + i, receiveReleaseFunc);
         }
         startFiring = endFiring + 1;
     }
     // Overflow handling
-    ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster));
-    ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster));
+    ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
+    ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
     // Work mode specific initialization
     if (workMode == ops::us4r::Scheme::WorkMode::SYNC) {
         ius4oem->EnableWaitOnReceiveOverflow();
@@ -986,12 +1119,10 @@ void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
 }
 
 std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
-
     switch (workMode) {
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
@@ -1001,10 +1132,10 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
     case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
     case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
-    case Scheme::WorkMode::MANUAL_OP:
+    case Scheme::WorkMode::MANUAL_OP: // Trigger generator: external (e.g. user)
         return [this, startFiring, endFiring]() {
+            std::unique_lock<std::mutex> guard(triggerMutex);
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
         };
@@ -1012,33 +1143,76 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     }
 }
 
+
+std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
+    switch (workMode) {
+    case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
+        return [this, startFiring, endFiring]() {
+            for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+            }
+        };
+    case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
+    case Scheme::WorkMode::SYNC:  // Trigger generator: us4R
+    case Scheme::WorkMode::MANUAL:// Trigger generator: external (e.g. user)
+    case Scheme::WorkMode::MANUAL_OP: // Trigger generator: external (e.g. user)
+        return [this, startFiring, endFiring]() {
+            std::unique_lock<std::mutex> guard(triggerMutex);
+            for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+            }
+        };
+    default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
+    }
+}
+
 std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode workMode,
-                                                                Us4ROutputBuffer *outputBuffer, bool isMaster) {
+                                                                Us4ROutputBuffer *outputBuffer, bool isMaster,
+                                                                const std::vector<std::pair<uint16, uint16>> &firings) {
 
     using namespace std::chrono_literals;
     switch (workMode) {
     case Scheme::WorkMode::SYNC:
-        return [this, outputBuffer, isMaster]() {
+        return [this, outputBuffer, isMaster, firings]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
-                size_t nElements = outputBuffer->getNumberOfElements();
-                // Wait for all elements to be released by the user.
-                while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                    std::this_thread::sleep_for(1ms);
-                    if (this->state != State::STARTED) {
-                        // Device is no longer running, exit gracefully.
-                        return;
+                outputBuffer->runOnOverflowCallback();
+                if(isMaster) {
+//                    std::unique_lock<std::mutex> guard(triggerMutex);
+                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
+                    this->logger->log(LogSeverity::TRACE, format("Detected RX data overflow, current sequencer index: {}.", currentIdx));
+                    // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
+                    std::optional<uint16> pendingFiring = std::nullopt;
+                    for(const auto &[startFiring, endFiring]: firings) {
+                        if(startFiring <= currentIdx && currentIdx <= endFiring) {
+                            pendingFiring = endFiring;
+                            break;
+                        }
                     }
-                }
-                // Inform about free elements only once, in the master's callback.
-                if (isMaster) {
+                    if(pendingFiring == std::nullopt) {
+                        throw IllegalStateException(format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                    }
+                    // Wait until the end of the [startFiring, endFiring] entries will be released.
+                    // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
+                    const std::chrono::milliseconds timeout{10000};
+                    ARRUS_ACTIVE_WAIT_TIMEOUT_P(
+                        getMasterOEM()->getIUs4OEM()->IsEntryReadyForReceive(pendingFiring.value()),
+                        timeout,
+                        IllegalStateException("Timeout while waiting for the buffer element ready for receive"),
+                        std::chrono::milliseconds{1}
+                    );
+                    // we are ready to call sync receive.
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                         us4oems[i]->getIUs4OEM()->SyncReceive();
+
+                        if(i > 0) {
+                            us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
+                            logger->log(LogSeverity::TRACE, format("OEM:{} returned to IDLE state.", i));
+                        }
                     }
                 }
-                outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
@@ -1056,7 +1230,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     outputBuffer->runOnOverflowCallback();
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: ", e.what()));
+                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1064,32 +1238,53 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
 }
 
 std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMode workMode,
-                                                                 Us4ROutputBuffer *outputBuffer, bool isMaster) {
+                                                                 Us4ROutputBuffer *outputBuffer, bool isMaster,
+                                                                 const std::vector<std::pair<uint16, uint16>> &firings) {
 
     using namespace std::chrono_literals;
     switch (workMode) {
     case Scheme::WorkMode::SYNC:
-        return [this, outputBuffer, isMaster]() {
+        return [this, outputBuffer, isMaster, firings]() {
             try {
                 this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
-                size_t nElements = outputBuffer->getNumberOfElements();
-                // Wait for all elements to be released by the user.
-                while (nElements != outputBuffer->getNumberOfElementsInState(framework::BufferElement::State::FREE)) {
-                    std::this_thread::sleep_for(1ms);
-                    if (this->state != State::STARTED) {
-                        // Device is no longer running, exit gracefully.
-                        return;
+                outputBuffer->runOnOverflowCallback();
+                if(isMaster) {
+//                    std::unique_lock<std::mutex> guard(triggerMutex);
+                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
+                    this->logger->log(LogSeverity::TRACE, format("Detected transfer data overflow, current sequencer index: {}.", currentIdx));
+                    // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
+                    std::optional<uint16> pendingFiring = std::nullopt;
+                    for(const auto &[startFiring, endFiring]: firings) {
+                        if(startFiring <= currentIdx && currentIdx <= endFiring) {
+                            pendingFiring = endFiring;
+                            break;
+                        }
                     }
-                }
-                // Inform about free elements only once, in the master's callback.
-                if (isMaster) {
+                    if(pendingFiring == std::nullopt) {
+                        throw IllegalStateException(format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                    }
+                    // Wait until the end of the [startFiring, endFiring] entries will be released.
+                    // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
+                    const std::chrono::milliseconds timeout{10000};
+                    ARRUS_ACTIVE_WAIT_TIMEOUT_P(
+                        getMasterOEM()->getIUs4OEM()->IsEntryReadyForTransfer(pendingFiring.value()),
+                        timeout,
+                        IllegalStateException("Timeout while waiting for the buffer element ready for transfer"),
+                        std::chrono::milliseconds{1}
+                    );
+                    // we are ready to call the sync transfer.
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                         us4oems[i]->getIUs4OEM()->SyncTransfer();
+                        // Wait for IDLE state for non-triggering OEMs, to make sure that the trigger OEM will
+                        // be released the last one.
+                        if(i > 0) {
+                            us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
+                            logger->log(LogSeverity::TRACE, format("OEM:{} returned to IDLE state.", i));
+                        }
                     }
                 }
-                outputBuffer->runOnOverflowCallback();
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
+                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
@@ -1128,25 +1323,65 @@ const char *Us4RImpl::getBackplaneRevision() {
     return this->digitalBackplane->get()->getRevisionNumber();
 }
 
+const char *Us4RImpl::getBackplaneFirmwareVersion() {
+    if (!this->digitalBackplane.has_value()) {
+        throw arrus::IllegalArgumentException("No backplane defined.");
+    }
+    return this->digitalBackplane->get()->getFirmwareVersion();
+}
+
 void Us4RImpl::setParameters(const Parameters &params) {
+    logger->log(LogSeverity::INFO, format("Setting {}", params.toString()));
+    std::vector<std::pair<size_t, size_t>> values;
+    // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
+    // and just interpret the string as sequence ordinal number?
+    // Validate
     for (auto &item : params.items()) {
         auto &key = item.first;
-        auto value = item.second;
-        logger->log(LogSeverity::INFO, format("Setting value {} to {}", value, key));
-        if (key != "/sequence:0/txFocus") {
-            throw ::arrus::IllegalArgumentException("Currently Us4R supports only sequence:0/txFocus parameter.");
+        auto &value = item.second;
+        const auto [sequenceName, parameterName] = parseTxDelaysParamName(key);
+        const auto sequenceOrdinal = mapGetValueOrNone(sequenceNameToOrdinalMap, sequenceName);
+        if(!sequenceOrdinal.has_value()) {
+            throw IllegalArgumentException(format("Could not find TX/RX sequence with name: {}", sequenceName));
         }
+        // Wer accept txDelays and txFocus; as for the txFocus, this is basically a shortcut for now
+        // (Python API translates focus to delays during the programming).
+        if(parameterName != "txDelays" && parameterName != "txFocus") {
+            throw IllegalArgumentException("Only txDelays and tx focus parameters are supported");
+        }
+        auto nProfiles = mapGetValueOrNone(sequenceNumberOfTxDelayProfiles, sequenceName).value_or(0);
+        if(value < 0) {
+            throw IllegalArgumentException(format("The value {} should not be negative", value));
+        }
+        if(static_cast<size_t>(value) >= nProfiles) {
+            throw IllegalArgumentException(format("The value {} exceeds the number of currently uploaded TX delay profiles: {}", value, nProfiles));
+        }
+        values.emplace_back(std::make_pair(ARRUS_SAFE_CAST(sequenceOrdinal.value(), size_t), static_cast<size_t>(value)));
+    }
+
+    // Execute
+    std::unique_lock<std::mutex> guard(triggerMutex);
+    // We need that to not stop/start the system when the state is actually stopped
+    std::unique_lock<std::recursive_mutex> stateGuard(deviceStateMutex);
+    if(this->state == State::STARTED) {
         this->us4oems[0]->getIUs4OEM()->TriggerStop();
-        try {
-            for (auto &us4oem : us4oems) {
-                us4oem->getIUs4OEM()->SetTxDelays(value);
-            }
-        } catch (...) {
-            // Try resume.
-            this->us4oems[0]->getIUs4OEM()->TriggerStart();
-            throw;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    try {
+        for (auto &us4oem : us4oems) {
+            us4oem->setTxDelaysProfiles(values);
         }
-        // Everything OK, resume.
+        // Wait to make sure all the TX delays were correctly set.
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    } catch (...) {
+        // Try resume.
+        if(this->state == State::STARTED) {
+            this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        }
+        throw;
+    }
+    // Everything OK, resume.
+    if(this->state == State::STARTED) {
         this->us4oems[0]->getIUs4OEM()->TriggerStart();
     }
 }
@@ -1201,7 +1436,7 @@ int Us4RImpl::getNumberOfProbes() const {
  * @return rx delay [s]
  *
  */
-float Us4RImpl::getRxDelay(const TxRx &op, const std::function<float(float)> &actualTxFunc) {
+float Us4RImpl::getRxDelay(const TxRx &op) {
     float rxDelay = 0.0f; // default value.
     if(op.getRx().isNOP()) {
         return rxDelay;
@@ -1215,43 +1450,70 @@ float Us4RImpl::getRxDelay(const TxRx &op, const std::function<float(float)> &ac
     if(!txDelays.empty()) {
         float txDelay = *std::max_element(std::begin(txDelays), std::end(txDelays));
         // burst time
-        float frequency = actualTxFunc(op.getTx().getExcitation().getCenterFrequency());
-        float nPeriods = op.getTx().getExcitation().getNPeriods();
-        float burstTime = 1.0f/frequency*nPeriods;
+        // TODO avoid doing all the below conversion here, on the TX timeout calculations, and when setting the waveform.
+        // This should be done only once, in the Us4R::upload method.
+        float burstTime = TxWaveformConverter::getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
         // Total rx delay
         rxDelay = txDelay + burstTime;
     }
     return rxDelay;
 }
 
-float Us4RImpl::getRxDelay(const TxRx &op) {
-    return getRxDelay(op, [this](float frequency) {return this->getActualTxFrequency(frequency); });
-}
-
-std::pair<std::shared_ptr<Buffer>, std::shared_ptr<session::Metadata>>
-Us4RImpl::setSubsequence(SequenceId sequenceId, uint16_t start, uint16_t end, const std::optional<float> &sri) {
-    if(!subsequenceFactory.has_value() || !currentScheme.has_value()) {
-        throw ::arrus::IllegalStateException("Call upload method before setting a new sub-sequence.");
-    }
+std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
+    // Validation
+    // - all slices should have exactly step = 1
+    ARRUS_REQUIRES_TRUE_E(subsequenceFactory.has_value() && currentScheme.has_value(),
+                          ::arrus::IllegalStateException("Call upload method before setting a new subsequences."));
+    ARRUS_REQUIRES_TRUE_IAE(!slices.empty(), "At least one sub-sequence should be selected");
+    ARRUS_REQUIRES_TRUE_IAE(slices.size() == currentScheme->getTxRxSequences().size(),
+                            "You should provide the same number of slices as the number of currently uploaded TX/RX sequences.");
+    ARRUS_REQUIRES_TRUE_IAE(sris.empty() || slices.size() == sris.size(),
+                            "The list of SRIs should be empty or have the same length as the list of slices.");
+    // vars/consts
+    const SequenceId nSequences = ARRUS_SAFE_CAST(currentScheme->getTxRxSequences().size(), SequenceId);
+    const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    // Physical start/end, etc.
+    std::vector<Us4RSubsequence> params;
+    std::vector<uint16_t> starts, ends;
+    std::vector<uint32_t> timeToNextTriggers;
+    // TX/RX sequence -> OEM buffer -> array definition
+    std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays;
+    // Handle empty sris array.
+    std::vector<std::optional<float>> actualSris = sris.empty() ?
+                                                                getNTimes<std::optional<float>>(std::nullopt, nSequences):
+                                                                sris;
     // Clear callback (the new one will be registered later, in the prepareHostBuffer)
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
-    auto params = subsequenceFactory->get(sequenceId, start, end, sri);
-    bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    for(SequenceId i = 0; i < nSequences; ++i) {
+        auto p = subsequenceFactory->get(i, ARRUS_SAFE_CAST(slices.at(i).getStart(), uint16_t), ARRUS_SAFE_CAST(slices.at(i).getEnd(), uint16_t), sris.at(i));
+        params.push_back(p);
+        oemArrays.push_back(p.getArrayDefs());
+        if(!p.empty()) {
+            // Filter out empty sub-sequences
+            starts.push_back(p.getStart());
+            ends.push_back(p.getEnd());
+            timeToNextTriggers.push_back(p.getTimeToNextTrigger());
+        }
+    }
+
     for (auto &oem : us4oems) {
-        oem->setSubsequence(params.getStart(), params.getEnd(), isSyncMode, params.getTimeToNextTrigger());
+        oem->getIUs4OEM()->SetSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
     }
     currentSubsequenceParams = params;
-
+    const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
-                      currentScheme->getWorkMode(), params.getOemBuffers(), true);
+                      currentScheme->getWorkMode(), subsequenceBuffers, true);
     // Create metadata
     std::vector<FrameChannelMappingImpl::Handle> fcms;
-    fcms.emplace_back(params.buildFCM());
+    for(const auto &p: params) {
+        fcms.emplace_back(p.buildFCM());
+    }
     auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     // A single metadata is assumed here.
-    return {this->buffer, metadatas.at(0)};
+    return {this->buffer, metadatas};
 }
 
 void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {
@@ -1271,8 +1533,28 @@ void Us4RImpl::handlePulserInterrupt() {
         this->disableHV();
     }
     else {
-        this->stop();
-        this->disableHV();
+        //..
+        auto DVDDMasked = this->maskDVDDInterrupt;
+        bool nonDVDDFaultDetected = false;
+        
+        if(DVDDMasked) { //if DVDD interrput status is masked -> ignore if it occurs
+            for(auto &oem: this->us4oems) {
+                auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
+                for(size_t n = 0; n<status.size(); ++n) {
+                    if(status.at(n) & ~0b0000000000000100) { //bit 2 = DVDD interrupt
+                        nonDVDDFaultDetected = true;
+                    }
+                }
+            }
+            if(nonDVDDFaultDetected) {
+                this->stop();
+                this->disableHV();
+            }
+        }
+        else {
+            this->stop();
+            this->disableHV();
+        }
     }
     for(auto &oem: this->us4oems) {
         oem->getIUs4OEM()->LogPulsersInterruptRegister();
@@ -1306,6 +1588,125 @@ string Us4RImpl::getDescription() const {
         stream << probe.getModel().getModelId().toString() << "; ";
     }
     return stream.str();
+}
+
+float Us4RImpl::getMinimumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return minimum;
+}
+
+/**
+     * Returns maximum available TGC value, according to the currently set parameters.
+     */
+float Us4RImpl::getMaximumTGCValue() const {
+    auto [minimum, maximum] = getTGCValueRange();
+    return maximum;
+}
+
+std::pair<float, float> Us4RImpl::getTGCValueRange() const {
+    return us4oems.at(0)->getTGCValueRange();
+}
+
+void Us4RImpl::disableHpf() {
+    this->disableAdcHpf();
+}
+
+void Us4RImpl::disableAllHpf() {
+    this->disableAdcHpf();
+    this->disableLnaHpf();
+}
+
+Us4OEM::Variant Us4RImpl::getVariant() {
+    // There is no option, that we will have system with multiple OEM variants, right?...
+    // ... right ?
+    // ... right ?!
+    return us4oems.at(0)->getVariant();
+}
+
+// Dynamic TX delays setting.
+std::unordered_map<std::string, Us4RImpl::DelayProfiles>
+Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, const std::vector<NdArray> &txDelayProfiles) {
+    // sequence name -> (param ordinal number, NdArray); this structure will be used in order to sort and
+    // check if there are no gaps between constant ordinal numbers.
+    using OrderedArray = std::pair<size_t, NdArray>;
+    std::unordered_map<std::string, std::vector<OrderedArray>> arraysBySequence;
+    // Actual result map.
+    std::unordered_map<std::string, std::vector<NdArray>> result;
+
+    std::unordered_set<std::string> sequenceNames;
+    for (const auto& s : sequences) {
+        sequenceNames.insert(trim(s.getName()));
+        arraysBySequence[s.getName()] = std::vector<OrderedArray>();
+    }
+
+    for(const auto &profile: txDelayProfiles) {
+        const auto [sequenceName, paramName, paramOrdinal] = parseTxDelaysConstantName(profile.getName());
+        if(paramName != "txDelays") {
+            throw IllegalArgumentException("Us4R supports only `txDelays` dynamic parameter change");
+        }
+        arraysBySequence[sequenceName].push_back({paramOrdinal, profile});
+    }
+
+    // Sort each list of Sequence constants and check if there are no gaps in the constant numbering, copy the
+    // arrays to the result map.
+    for(const auto &name: sequenceNames) {
+        auto &arrays = arraysBySequence.at(name);
+        std::sort(std::begin(arrays), std::end(arrays),
+                  [](const auto& a, const auto& b) {
+                    return a.first < b.first;
+                  });
+        // Check if there are no gaps in numbering of the constants, and copy the arrays to the target map.
+        for(size_t i = 0; i < arrays.size(); ++i) {
+            const auto &a = arrays.at(i);
+            if(a.first != i) {
+                throw IllegalArgumentException(format("The Constants numbering should have no gaps, e.g. Delays:0, Delays:2 "
+                                                      "are not accepted (found: /{}/txDelays:{}, expected: {})", name, a.first, i));
+            }
+            result[name].push_back(a.second);
+        }
+    }
+    return result;
+}
+
+std::tuple<std::string, std::string, size_t> Us4RImpl::parseTxDelaysConstantName(const std::string &name) const {
+    std::smatch match;
+    if(std::regex_match(name, match, CONSTANT_NAME_PATTERN)) {
+        std::string sequenceName = match[1].str();
+        std::string parameterName = match[2].str();
+        size_t parameterOrdinal = stoi(match[3].str());
+        return {sequenceName, parameterName, parameterOrdinal};
+    } else {
+        throw IllegalArgumentException(
+            format("The constant name should follow the following pattern: "
+                   "^//([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$, "
+                   "got: {}", name)
+        );
+    }
+}
+
+std::tuple<std::string, std::string> Us4RImpl::parseTxDelaysParamName(const std::string &name) const {
+    std::smatch match;
+    if(std::regex_match(name, match, PARAMETER_NAME_PATTERN)) {
+        std::string sequenceName = match[1].str();
+        std::string parameterName = match[2].str();
+        return {sequenceName, parameterName};
+    } else {
+        throw IllegalArgumentException(
+            format("The constant name should follow the following pattern: "
+                   "/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$, "
+                   "got: {}", name)
+        );
+    }
+}
+
+std::unordered_map<std::string, SequenceId>
+Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
+    std::unordered_map<std::string, SequenceId> result;
+    const auto &sequences = scheme.getTxRxSequences();
+    for(SequenceId i = 0; i < sequences.size(); ++i) {
+        result[sequences.at(i).getName()] = i;
+    }
+    return result;
 }
 
 }// namespace arrus::devices

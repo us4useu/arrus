@@ -14,6 +14,7 @@ using namespace arrus;
 using namespace arrus::devices;
 using namespace arrus::devices::us4r;
 using namespace arrus::ops::us4r;
+using namespace arrus::framework;
 
 std::vector<std::vector<float>> getDefaultRxDelays(size_t nSeqs, size_t nOps) {
     std::vector<std::vector<float>> result(nSeqs);
@@ -63,8 +64,6 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyOnlyTxNop) {
     BitMask rxAperture(nChannels, true);
     ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
 
-    size_t nTimeouts = 0;
-
     std::vector<TxRx> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -89,7 +88,7 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyTxNopsWithTxOps) {
     constexpr ChannelIdx nChannels = 32;
     std::vector<float> delays0(nChannels, 0.0f);
     BitMask rxAperture(nChannels, true);
-    ops::us4r::Pulse pulse0{10.0e6f, 3000.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse0{1.0e6f, 300.0f, false}; // 500 us pulse
 
     std::vector<std::vector<float>> rxDelays = {{10e-6f, 20e-6f}};
     size_t nTimeouts = 3;
@@ -131,7 +130,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOp) {
     std::vector<float> delays0(nChannels, 0.0f);
     BitMask txAperture(nChannels, true);
     BitMask rxAperture(nChannels, true);
-    ops::us4r::Pulse pulse0{10.0e6f, 3000.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse0{1.0e6f, 300.0f, false}; // 300 us pulse
     size_t nTimeouts = 4;
 
     std::vector<TxRx> txrxs = {
@@ -142,6 +141,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOp) {
                 x.rxAperture = rxAperture,
                 x.txDelays = delays0,
                 x.pulse = pulse0
+                // TOTAL TX TIME: 300 us + 10 us
                 )
                 ).getTxRx(),
     };
@@ -193,8 +193,8 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly3Ops) {
     BitMask txAperture(nChannels, true);
     BitMask rxAperture(nChannels, true);
 
-    ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
-    ops::us4r::Pulse pulse1{3.0e6f, 3.0f, true}; // 1 us pulse
+    ops::us4r::Pulse pulse0{1e6f, 500.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse1{1e6f, 1.0f, true}; // 1 us pulse
 
     float delay0 = 10e-6f;
     float delay1 = 1e-6f;
@@ -261,10 +261,10 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly5Ops) {
     BitMask txAperture(nChannels, true);
     BitMask rxAperture(nChannels, true);
 
-    ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
-    ops::us4r::Pulse pulse1{10.0e6f, 3000.0f, false}; // 300 us pulse
-    ops::us4r::Pulse pulse2{10.0e6f, 2000.0f, true}; // 200 us
-    ops::us4r::Pulse pulse3{3.0e6f, 60.0f, true}; //  20 us
+    ops::us4r::Pulse pulse0{1.0e6f, 500.0f, false}; // 500 us pulse
+    ops::us4r::Pulse pulse1{1.0e6f, 300.0f, false}; // 300 us pulse
+    ops::us4r::Pulse pulse2{1.0e6f, 200.0f, true}; // 200 us
+    ops::us4r::Pulse pulse3{9e6f, 200.0f, true}; //  ~20 us
     ops::us4r::Pulse pulse4{3.0e6f, 1.0f, true}; // 0.3 us
 
     float delay0 = 10e-6f;
@@ -352,6 +352,115 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly5Ops) {
     EXPECT_EQ(1, reg.getTimeoutId({SequenceId{0}, OpId{3}}));
     EXPECT_EQ(0, reg.getTimeoutId({SequenceId{0}, OpId{4}}));
 }
+
+
+TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly30psWithDynamicDelayProfiles) {
+    constexpr ChannelIdx nChannels = 32;
+    std::vector<float> delays0(nChannels, 0.0f);
+    std::vector<float> delays1(nChannels, 0.0f);
+    BitMask txAperture(nChannels, true);
+    BitMask rxAperture(nChannels, true);
+
+    ops::us4r::Pulse pulse{1e6f, 1.0f, true}; // 1 us pulse
+
+    float delay0 = 10e-6f;
+    float delay1 = 1e-6f;
+    delays0.at(21) = delay0;
+    delays1.at(7) = delay1;
+
+    std::vector<TxRx> txrxs = {
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays0,
+                x.pulse = pulse
+                // TOTAL TX TIME: 100 us + 1 us
+                )
+                ).getTxRx(),
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays1,
+                x.pulse = pulse
+                // TOTAL TX TIME: 300 us + 1 us
+                )
+                ).getTxRx(),
+        ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays0,
+                x.pulse = pulse
+                // TOTAL TX TIME: 10us + 1 us
+                )
+                ).getTxRx()
+    };
+
+    TxRxSequence sequence{txrxs, {}};
+
+    // TX Delay profiles:
+
+    // max delay is set in the following manner:
+    // TX/RX 0: from the profile 0, max delay => 100 us
+    // Tx/RX 1: from the profile 1, max delay => 300 us
+    // TX/RX 2: from the TX/RX sequence, max delay 10 us
+
+    // profile 0, TX/RX 0
+    std::vector<float> delays00(nChannels, 0);
+    // profile 0, TX/RX 1
+    std::vector<float> delays01(nChannels, 0);
+    std::vector<float> delays02(nChannels, 0);
+
+    // profile 0, TX/RX 0, channel 22
+    delays00.at(22) = 100e-6f;
+
+    const auto delaysProfile0 = ::arrus::concat<float>({delays00, delays01, delays02});
+
+    // profile 1
+    std::vector<float> delays10(nChannels, 0);
+    std::vector<float> delays11(nChannels, 0);
+    std::vector<float> delays12(nChannels, 0);
+
+    // profile 1, TX/RX 1, channel 1
+    delays11.at(0) = 300e-6f;
+
+    const auto delaysProfile1 = ::arrus::concat<float>({delays10, delays11, delays12});
+
+    NdArray::Shape shape{txrxs.size(), nChannels};
+    DeviceId placement{DeviceType::Us4R, 0};
+
+    std::vector<NdArray> profiles = {
+        NdArray::asarray<float>(delaysProfile0, shape, placement, "delays0"),
+        NdArray::asarray<float>(delaysProfile1, shape, placement, "delays1")
+    };
+
+    std::unordered_map<std::string, ops::us4r::DelayProfiles> delayProfiles;
+
+    delayProfiles.insert({sequence.getName(), profiles});
+
+    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 3)};
+    auto reg = factory.createFor({sequence}, delayProfiles);
+
+    ASSERT_EQ(3, reg.getTimeouts().size());
+    EXPECT_EQ(301 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(2));
+    // upper limit: 11 us
+    // 301 / 2 -> 150
+    // + EPSILON
+    EXPECT_EQ(150 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(1));
+    // upper limit: 2 us
+    // 150 / 2 -> 75 / 2 -> 37 / 2 -> 18
+    // + EPSILON
+    EXPECT_EQ(18 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(0));
+    EXPECT_EQ(1, reg.getTimeoutId({SequenceId{0}, OpId{0}}));
+    EXPECT_EQ(2, reg.getTimeoutId({SequenceId{0}, OpId{1}}));
+    EXPECT_EQ(0, reg.getTimeoutId({SequenceId{0}, OpId{2}}));
+}
+
 }
 
 
