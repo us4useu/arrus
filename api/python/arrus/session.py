@@ -81,8 +81,6 @@ class Session(AbstractSession):
         super().__init__()
         import arrus.logging
         self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
-
-        self._gpu_settings = self._parse_gpu_settings(cfg_path)
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing = None
@@ -418,7 +416,7 @@ class Session(AbstractSession):
             use_memory_pool = True  # Default to True
             if self._session_handle.hasDevice("/GPU:0"):
                 # Read GPU specific settings
-                gpu = self._session_handle.getDevice("/GPU:0")
+                gpu = self.get_device("/GPU:0")
                 gpu_settings = gpu.get_settings()
                 gpu_memory_limit_percentage = gpu_settings.memory_limit_percentage
                 use_memory_pool = gpu_settings.use_memory_pool
@@ -460,12 +458,6 @@ class Session(AbstractSession):
         devices = {
             (arrus.core.DeviceType_CPU, 0) : arrus.devices.cpu.CPU(0)
         }
-        # Create CPU and GPU devices
-        cupy_spec = importlib.util.find_spec("cupy")
-        if cupy_spec is not None:
-            import cupy
-            cupy.cuda.device.Device(0).use()
-            devices[(arrus.core.DeviceType_GPU, 0)] = arrus.devices.gpu.GPU(0)
         return devices
 
     def _create_kernel_context(self, seq, device, medium, hardware_ddc,

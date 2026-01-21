@@ -20,7 +20,7 @@ class GpuSettings:
 
     @property
     def use_memory_pool(self) -> bool:
-        return self._handle.getUseMemoryPool()
+        return self._handle.isUseMemoryPool()
 
 
 class Gpu(Device):

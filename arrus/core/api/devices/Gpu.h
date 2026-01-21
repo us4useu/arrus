@@ -12,6 +12,8 @@ public:
     using Handle = std::unique_ptr<Gpu>;
     using RawHandle = PtrHandle<Gpu>;
 
+    using Device::getDeviceId;
+
     Gpu(const DeviceId &id, const GpuSettings &settings) : Device(id), settings(settings) {}
 
     virtual std::string getDescription() const {

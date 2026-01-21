@@ -382,7 +382,8 @@ class ProcessingRunner:
         READY = 1
         CLOSED = 2
 
-    def __init__(self, input_buffer, metadata, processing, use_memory_pool: bool = True, gpu_memory_limit_percentage: float = 0.95):
+    def __init__(self, input_buffer, metadata, processing, use_memory_pool: bool = True,
+                 gpu_memory_limit_percentage: float = 0.95):
         import cupy as cp
         self.cp = cp
         self._log_gpu_info()

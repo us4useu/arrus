@@ -83,25 +83,21 @@ SessionImpl::SessionImpl(
 }
 
 arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path) {
-    // sanitize
     std::string sanitizedPath = sanitizeDeviceId(path);
-    // parse path
-    auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
-
-    auto deviceId = DeviceId::parse(root);
+    auto deviceId = DeviceId::parse(sanitizedPath);
     arrus::devices::Device::RawHandle rootDevice = getDevice(deviceId);
-
-    if (tail.empty()) {
-        return rootDevice;
-    } else {
-        throw IllegalArgumentException(
-            arrus::format("Invalid path '{}', top-level devices can be accessed only.", path));
-    }
+    return rootDevice;
 }
 std::string SessionImpl::sanitizeDeviceId(const std::string &path) const {
     std::string sanitizedPath{path};
     boost::algorithm::trim(sanitizedPath);
-    return sanitizedPath;
+    // Get the root node (without the / ) and check if there is any tail
+    auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
+    if(! tail.empty()) {
+        throw IllegalArgumentException(
+            arrus::format("Invalid path '{}', top-level devices can be accessed only.", path));
+    }
+    return root;
 }
 
 arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
