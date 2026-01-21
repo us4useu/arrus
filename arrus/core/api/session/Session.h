@@ -161,6 +161,20 @@ public:
      */
     virtual UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
+    /**
+     * Returns true if this session has been configured to work with the given device, otherwise false.
+     *
+     * @param deviceId device identifier
+     */
+    virtual bool hasDevice(const std::string &deviceId) const = 0;
+
+    /**
+     * Returns true if this session has been configured to work with the given device, otherwise false.
+     *
+     * @param deviceId device identifier
+     */
+    virtual bool hasDevice(const arrus::devices::DeviceId &deviceId) const = 0;
+
     virtual ~Session() = default;
 
 };

@@ -470,6 +470,14 @@ arrus::devices::File *castToFile(arrus::devices::Device *device) {
     }
     return ptr;
 }
+
+arrus::devices::File *castToGpu(arrus::devices::Device *device) {
+    auto ptr = dynamic_cast<Gpu*>(device);
+    if(!ptr) {
+        throw std::runtime_error("Given device is not a GPU handle.");
+    }
+    return ptr;
+}
 // TODO(pjarosik) remove the bellow functions when possible
 
 unsigned short getNumberOfElements(const arrus::devices::ProbeModel &probe) {

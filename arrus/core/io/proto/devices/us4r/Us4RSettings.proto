@@ -12,7 +12,6 @@ import "io/proto/devices/us4r/DigitalBackplaneSettings.proto";
 import "io/proto/devices/us4r/Bitstream.proto";
 import "io/proto/devices/us4r/Us4RTxRxLimits.proto";
 import "io/proto/devices/us4r/WatchdogSettings.proto";
-import "io/proto/devices/us4r/GpuSettings.proto";
 
 message Us4RSettings {
   // Only one of the following is available: (probe, adapter, rxsettings)
@@ -53,5 +52,4 @@ message Us4RSettings {
     bool allow_duplicate_oem_ids = 19;
   }
   bool mask_dvdd_failure_check = 20;
-  GpuSettings gpu = 21;
 }

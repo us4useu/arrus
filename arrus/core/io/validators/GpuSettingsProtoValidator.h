@@ -7,7 +7,7 @@
 COMPILER_PUSH_DIAGNOSTIC_STATE
 COMPILER_DISABLE_MSVC_WARNINGS(4127)
 
-#include "io/proto/devices/us4r/GpuSettings.pb.h"
+#include "io/proto/devices/GpuSettings.pb.h"
 
 COMPILER_POP_DIAGNOSTIC_STATE
 

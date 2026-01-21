@@ -255,7 +255,10 @@ class Session(AbstractSession):
                     arrus.core.castToUs4r(handle)),
             arrus.core.DeviceType_File:
                 lambda handle: arrus.devices.file.File(
-                    arrus.core.castToFile(handle))
+                    arrus.core.castToFile(handle)),
+            arrus.core.DeviceType_GPU:
+                lambda handle: arrus.devices.gpu.Gpu(
+                    arrus.core.castToGpu(handle))
         }.get(device_type, None)
         if specific_device_cast is None:
             raise arrus.exceptions.DeviceNotFoundError(path)
@@ -409,15 +412,21 @@ class Session(AbstractSession):
                     graph=processing,
                     callback=None,
                 )
-            # Get GPU settings from stored settings
+
+            # GPU settings
             gpu_memory_limit_percentage = None
             use_memory_pool = True  # Default to True
-            if self._gpu_settings is not None:
-                gpu_memory_limit_percentage = self._gpu_settings.get('memory_limit_percentage')
-                use_memory_pool = self._gpu_settings.get('use_memory_pool', True)            
+            if self._session_handle.hasDevice("/GPU:0"):
+                # Read GPU specific settings
+                gpu = self._session_handle.getDevice("/GPU:0")
+                gpu_settings = gpu.get_settings()
+                gpu_memory_limit_percentage = gpu_settings.memory_limit_percentage
+                use_memory_pool = gpu_settings.use_memory_pool
+
             processing_runner = _imaging.ProcessingRunner(
                 input_buffer=buffer, metadata=metadatas, processing=processing,
-                use_memory_pool=use_memory_pool, gpu_memory_limit_percentage=gpu_memory_limit_percentage
+                use_memory_pool=use_memory_pool,
+                gpu_memory_limit_percentage=gpu_memory_limit_percentage
             )
             outputs = processing_runner.outputs
             self._current_processing = processing_runner
@@ -466,32 +475,6 @@ class Session(AbstractSession):
             hardware_ddc=hardware_ddc,
             constants=constants
         )
-
-    def _parse_gpu_settings(self, cfg_path: str):
-        """
-        Parse GPU settings from the configuration file.
-
-        :param cfg_path: Path to the configuration file
-        :return: Dictionary with GPU settings or None if not found
-        """
-        try:
-            import arrus.core
-            settings = arrus.core.readSessionSettings(cfg_path)
-            us4r_settings = settings.getUs4RSettings(0)
-            gpu_settings = us4r_settings.getGpuSettings()
-
-            memory_limit_percentage = gpu_settings.getMemoryLimitPercentage()
-            use_memory_pool = gpu_settings.getUseMemoryPool()
-
-            return {
-                'memory_limit_percentage': memory_limit_percentage,
-                'use_memory_pool': use_memory_pool
-            }
-        except Exception as e:
-            import arrus.logging
-            arrus.logging.log(arrus.logging.DEBUG, 
-                              f"Could not parse GPU settings from {cfg_path}: {e}")
-            return None
 
     def _create_frame_acquisition_context(self, seq, raw_seq, device, medium,
                                           constants):

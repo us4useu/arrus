@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_API_DEVICES_US4R_GPUSETTINGS_H
-#define ARRUS_CORE_API_DEVICES_US4R_GPUSETTINGS_H
+#ifndef ARRUS_CORE_API_DEVICES_GPUSETTINGS_H
+#define ARRUS_CORE_API_DEVICES_GPUSETTINGS_H
 
 #include <string>
 #include <optional>
@@ -24,7 +24,7 @@ public:
      * 
      * @return True if memory pool should be used, false otherwise
      */
-    bool getUseMemoryPool() const { return useMemoryPool; }
+    bool isUseMemoryPool() const { return useMemoryPool; }
 
     /**
      * Creates default GPU settings (no memory limit, memory pool enabled).
@@ -42,4 +42,4 @@ private:
 
 }
 
-#endif //ARRUS_CORE_API_DEVICES_US4R_GPUSETTINGS_H 
+#endif //ARRUS_CORE_API_DEVICES_GPUSETTINGS_H

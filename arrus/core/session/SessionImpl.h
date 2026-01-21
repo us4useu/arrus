@@ -6,6 +6,7 @@
 
 #include "arrus/core/devices/us4r/Us4RFactory.h"
 #include "arrus/core/devices/file/FileFactory.h"
+#include "arrus/core/devices/gpu/GpuFactory.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/common/hash.h"
 #include "arrus/core/devices/DeviceId.h"
@@ -18,7 +19,8 @@ public:
     SessionImpl(
         const SessionSettings &sessionSettings,
         arrus::devices::Us4RFactory::Handle us4RFactory,
-        arrus::devices::FileFactory::Handle fileFactory
+        arrus::devices::FileFactory::Handle fileFactory,
+        arrus::devices::GpuFactory::Handle gpuFactory
         );
     ~SessionImpl() override;
     arrus::devices::Device::RawHandle
@@ -38,6 +40,8 @@ public:
     State getCurrentState() override;
     UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) override;
     UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
+    bool hasDevice(const std::string &deviceId) const override;
+    bool hasDevice(const devices::DeviceId &deviceId) const override;
 
 private:
     ARRUS_DEFINE_ENUM_TO_STRING(
@@ -51,8 +55,7 @@ private:
             (CLOSED)
     );
     void verifyScheme(const ops::us4r::Scheme &scheme);
-
-
+    devices::DeviceId parseDeviceId(const std::string &path, std::string &tail, devices::DeviceId &deviceId) const;
 
     using DeviceMap = std::unordered_map<
         arrus::devices::DeviceId,
@@ -70,9 +73,11 @@ private:
     AliasMap aliases;
     arrus::devices::Us4RFactory::Handle us4rFactory;
     arrus::devices::FileFactory::Handle fileFactory;
+    arrus::devices::GpuFactory::Handle gpuFactory;
     std::recursive_mutex stateMutex;
     std::optional<ops::us4r::Scheme> currentScheme;
     State state{State::STOPPED};
+    std::string sanitizeDeviceId(const std::string &path) const;
 };
 
 
