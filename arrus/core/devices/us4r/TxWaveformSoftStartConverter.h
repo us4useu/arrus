@@ -92,7 +92,8 @@ private:
             uint32_t newNRepeats = 0;
             if(!durationFraction.has_value()) {
                 // Use all the rest of the number of repeats for the 100% duty cycle.
-                newNRepeats = nRepsLeft;
+                newNRepeats = nRepsLeft/2;
+                // newNRepeats = nRepsLeft;
             }
             else {
                 auto expectedNRepeatsForSegment = ARRUS_SAFE_CAST(std::roundf(ts*durationFraction.value()/period), uint32_t);
@@ -110,7 +111,21 @@ private:
 
     WaveformSegment getSegmentForDutyCycle(const WaveformSegment &sourceSegment, const float dutyCycle) {
         if(dutyCycle == 1.0f) {
-            return sourceSegment;
+            // return sourceSegment;
+            return WaveformSegment {
+                {
+                    sourceSegment.getDuration().at(0), // +/-
+                    sourceSegment.getDuration().at(1),  // -/+z
+                    sourceSegment.getDuration().at(0), // +/-
+                    sourceSegment.getDuration().at(1)  // -/+z
+                },
+                {
+                    sourceSegment.getState().at(0), // +/-
+                    sourceSegment.getState().at(1),  // -/+
+                    sourceSegment.getState().at(0), // +/-
+                    sourceSegment.getState().at(1)  // -/+
+                },
+            };  
         }
 
         const auto halfPulseDuration = sourceSegment.getDuration().at(0);

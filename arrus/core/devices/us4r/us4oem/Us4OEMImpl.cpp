@@ -243,14 +243,62 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             // This will be optimized in TODO(0.12.0).
             setTxDelays(op.getTxAperture(), op.getTxDelays(), firingId, txDelays.size(), op.getMaskedChannelsTx());
             if(isOEMPlus()) {
+                // PO NOWEMU
                 auto waveform = op.getTxWaveform();
                 // Waveform pre-processing.
                 if(softStartConverter.apply(op.getTxWaveform())) {
                     waveform = softStartConverter.convert(waveform);
                     this->logger->log(LogSeverity::INFO, "The given TX pulse has at least 128 cycles, applying reduced "
                                                          "duty cycle for the first 5 us of the TX pulse (25%, 50%, 75%).");
+
+                    // WaveformBuilder wb;
+                    // /*wb.add(WaveformSegment{
+                    //     {3/130e6f, 10/130e6f, 3/130e6f, 10/130e6f}, // Durations.
+                    //     {1, 0, -1, 0}                // States.
+                    // }, 34); 
+                    // wb.add(WaveformSegment{
+                    //     // 1. zmiana
+                    //     {7/130e6f, 7/130e6f, 7/130e6f, 7/130e6f}, // Durations.
+                    //     {1, 0, -1, 0}                // States.
+                    // }, 34); 
+                    // wb.add(WaveformSegment{
+                    //     {10/130e6f, 3/130e6f, 10/130e6f, 3/130e6f}, // Durations.
+                    //     {1, 0, -1, 0}                // States.
+                    // }, 16);*/ 
+                    // wb.add(WaveformSegment{
+                    //     {13/130e6f, 13/130e6f, 13/130e6f, 13/130e6f}, // Durations.
+                    //     {1, -1, 1, -1}                // States.
+                    // }, 125); 
+                    // std::cout << "!!!!!!!!!!!!!!!!! USING MANUAL TX WAVEFORM FOR FIRING " << firingId << " !!!!!!!!!!!!!!!!!!!" << std::endl;
+                    // ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(wb.build()));
+                    ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
                 }
-                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
+                else {
+                    ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
+                }
+                
+                // PO STAREMU
+                // auto pulse = Pulse::fromWaveform(op.getTxWaveform());
+                // ARRUS_REQUIRES_TRUE(
+                //     pulse.has_value(),
+                //     format("Couldn't get the correct TX pulse for the waveform declared in the firing {}", firingId));
+                // ius4oem->SetTxFreqency(pulse.value().getCenterFrequency(), firingId);
+                // auto nTxHalfPeriods = static_cast<uint32>(pulse.value().getNPeriods()*2);
+                // ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
+                // ius4oem->SetTxInvert(pulse.value().isInverse(), firingId);
+                // uint8_t ius4oemLevel;
+                // // We need to translate TX amplitude level 1, 2 (exposed to the user) to levels 1, 0 (exposed by us4r-api).
+                // switch(pulse.value().getAmplitudeLevel()) {
+                //     case 1:
+                //     ius4oemLevel = 1;
+                //     break;
+                // case 2:
+                //     ius4oemLevel = 0;
+                //     break;
+                // default:
+                //     throw IllegalArgumentException(format("Unsupported TX voltage level: {}", pulse.value().getAmplitudeLevel()));
+                // }
+                // ius4oem->SetTxVoltageLevel(ius4oemLevel, firingId);
             }
             else {
                 // Legacy OEM.
@@ -272,6 +320,10 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
     ius4oem->SetTxDelays(txDelays.size());
+    // PO STAREMU
+    // if(isOEMPlus()) {
+    //     ius4oem->BuildSequenceWaveforms(false);
+    // }
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
