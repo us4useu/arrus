@@ -33,14 +33,14 @@ from arrus.utils.gui import (
     Display2D
 )
 
-arrus.set_clog_level(arrus.logging.DEBUG)
+arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
-    with arrus.Session("/home/pjarosik/us4r.prototxt", medium=medium) as sess:
+    with arrus.Session("us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(5)
 
@@ -49,17 +49,28 @@ def main():
         seq = TxRxSequence(
             ops=[
                 TxRx(
-                    Tx(aperture=np.ones(n_elements).astype(bool),
-                       excitation=Pulse(center_frequency=5e6, n_periods=4,
+                    Tx(aperture=[True]*n_elements,
+                       excitation=Pulse(center_frequency=6e6, n_periods=2,
                                         inverse=False),
-                       # Custom delays 2.
+                       # Custom delays 1.
                        delays=[0]*n_elements),
-                    Rx(aperture=np.ones(n_elements).astype(bool), 
-                       sample_range=[420, 420+512],
+                    Rx(aperture=[True]*n_elements,
+                       sample_range=(0, 4096),
                        downsampling_factor=1),
                     pri=200e-6
-                )
-             for i in range(64)],
+                ),
+                TxRx(
+                    Tx(aperture=[True]*n_elements,
+                       excitation=Pulse(center_frequency=6e6, n_periods=2,
+                                        inverse=False),
+                       # Custom delays 2.
+                       delays=np.linspace(0, 1e-6, n_elements)),
+                    Rx(aperture=[True]*n_elements,
+                       sample_range=(0, 4096),
+                       downsampling_factor=1),
+                    pri=200e-6
+                ),
+            ],
             # Turn off TGC.
             tgc_curve=[],  # [dB]
             # Time between consecutive acquisitions, i.e. 1/frame rate.
