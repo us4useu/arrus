@@ -555,6 +555,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         }
     }
 
+
+
     ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
     std::vector<ProbeSettings> probeSettings =
         readOrGetProbeSettings(us4r, adapterSettings.getModelId(), dictionary);
@@ -589,6 +591,17 @@ Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettin
         case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL: return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
         case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL: return Us4OEMSettings::ReprogrammingMode::PARALLEL;
         default: throw std::runtime_error("Unknown reprogramming mode: " + std::to_string(mode));
+    }
+}
+
+GpuSettings readGpuSettings(const proto::GpuSettings &gpu) {
+    // Validate GPU settings if present
+    GpuSettingsProtoValidator gpuSettingsValidator("gpu");
+    gpuSettingsValidator.validate(gpu);
+    if(gpu.memory_limit_percentage() > 0.0f) {
+        return GpuSettings(gpu.memory_limit_percentage(), gpu.use_memory_pool());
+    } else {
+        return GpuSettings(std::nullopt, gpu.use_memory_pool());
     }
 }
 
@@ -676,6 +689,9 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     }
     if (s->has_file()) {
         settingsBuilder.addFile(readFileSettings(s->file(), dictionary));
+    }
+    if(s->has_gpu()) {
+        settingsBuilder.addGpu(readGpuSettings(s->gpu()));
     }
     SessionSettings settings = settingsBuilder.build();
     logger->log(LogSeverity::DEBUG, arrus::format("Read settings from '{}': {}", filepath, arrus::toString(settings)));

@@ -26,6 +26,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/Bitstream.proto
     io/proto/devices/us4r/Us4RTxRxLimits.proto
     io/proto/devices/us4r/WatchdogSettings.proto
+    io/proto/devices/GpuSettings.proto
 )
 ################################################################################
 # Target
@@ -196,8 +197,9 @@ set(SRC_FILES
     api/devices/us4r/Us4RTxRxLimits.h
     devices/us4r/TxTimeoutRegister.h
     devices/us4r/Us4RSubsequence.h
-    devices/us4r/types.h
+    devices/us4r/types.h    
     api/devices/us4r/WatchdogSettings.h
+    api/devices/GpuSettings.h
     api/devices/probe/Lens.h
     api/devices/probe/MatchingLayer.h
     api/version.h
@@ -206,11 +208,12 @@ set(SRC_FILES
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
-   devices/us4r/TxWaveformSoftStartConverter.h
+    devices/us4r/TxWaveformSoftStartConverter.h
+    devices/gpu/GpuFactory.h
+    api/common/Slice.h
 )
 
-set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
-    api/common/Slice.h)
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
 
 # Generate version.cpp file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
@@ -240,6 +243,18 @@ target_include_directories(${TARGET_NAME}
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+# Add CUDA include directories if CUDA is available
+if(CUDAToolkit_FOUND)
+    target_include_directories(${TARGET_NAME}
+        PRIVATE
+        ${CUDAToolkit_INCLUDE_DIRS}
+    )
+    target_compile_definitions(${TARGET_NAME}
+        PRIVATE
+        CUDA_AVAILABLE
+    )
+endif()
+
 ################################################################################
 # Dependencies
 ################################################################################
@@ -259,6 +274,14 @@ target_link_libraries(${TARGET_NAME}
     Microsoft.GSL::GSL
     ${ARRUS_OS_DEPS}
 )
+
+# Add CUDA libraries if CUDA is available
+if(CUDAToolkit_FOUND)
+    target_link_libraries(${TARGET_NAME}
+        PRIVATE
+        CUDA::cudart
+    )
+endif()
 ################################################################################
 # Target compile options
 ################################################################################

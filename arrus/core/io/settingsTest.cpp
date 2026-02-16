@@ -111,6 +111,10 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getLens().value().getFocus().value(), 2e-3);
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getThickness(), 0.1e-3f);
     EXPECT_FLOAT_EQ(us4rSettings.getProbeSettings()->getModel().getMatchingLayer().value().getSpeedOfSound(), 2000);
+
+    auto const &gpuSettings = settings.getGpuSettings(0);
+    EXPECT_FLOAT_EQ(gpuSettings.getMemoryLimitPercentage().value(), 0.5f);
+    EXPECT_TRUE(gpuSettings.isUseMemoryPool());
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithDisabledWatchdog) {

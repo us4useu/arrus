@@ -4,12 +4,14 @@ package arrus.proto;
 
 import "io/proto/devices/us4r/Us4RSettings.proto";
 import "io/proto/devices/file/FileSettings.proto";
+import "io/proto/devices/GpuSettings.proto";
 
 message SessionSettings {
   oneof one_of_device_representation {
     Us4RSettings us4r = 1;
     FileSettings file = 2;
   }
-  string dictionary_file = 3;
+  GpuSettings gpu = 3;
+  string dictionary_file = 4;
 }
 

@@ -76,7 +76,6 @@ public:
           watchdogSettings(std::move(watchdogSettings)),
           allowDuplicateOEMIds(allowDuplicateOEMIds),
           maskDVDDInterrupt(maskDVDDInterrupt)
-        
     {}
 
     Us4RSettings(
