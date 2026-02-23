@@ -22,7 +22,6 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
 #include "utils.h"
 #include "arrus/core/devices/us4r/TxWaveformConverter.h"
-#include "arrus/core/devices/us4r/TxWaveformSoftStartConverter.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -254,12 +253,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             currentTxDelayProfileIds.at(sequenceId) = nProfiles;
             if(isOEMPlus()) {
                 auto waveform = op.getTxWaveform();
-                // Waveform pre-processing.
-                if(softStartConverter.apply(op.getTxWaveform())) {
-                    waveform = softStartConverter.convert(waveform);
-                    this->logger->log(LogSeverity::INFO, "The given TX pulse has at least 128 cycles, applying reduced "
-                                                         "duty cycle for the first 5 us of the TX pulse (25%, 50%, 75%).");
-                }
                 ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
             }
             else {
