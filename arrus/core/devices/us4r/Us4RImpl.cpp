@@ -327,7 +327,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
         }
     }
     
-    setHVPSFuseSettings(hvpsFuseSettings);
+    
     // Convert to IHV voltages.
     // NOTE!
     // The voltages are expected to be in the order: amplitude level 1 (HV 1), amplitude level 2 (HV 0)
@@ -394,7 +394,9 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
+    
     // Set the over-current / over-power settings if specified by the user
+    setHVPSFuseSettings(hvpsFuseSettings);
 
 }
 
