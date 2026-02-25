@@ -65,4 +65,9 @@ us4r: {
     }
 }
 
+gpu: {
+    memory_limit_percentage: 0.5
+    use_memory_pool: true
+}
+
 

@@ -612,6 +612,17 @@ Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettin
     }
 }
 
+GpuSettings readGpuSettings(const proto::GpuSettings &gpu) {
+    // Validate GPU settings if present
+    GpuSettingsProtoValidator gpuSettingsValidator("gpu");
+    gpuSettingsValidator.validate(gpu);
+    if(gpu.memory_limit_percentage() > 0.0f) {
+        return GpuSettings(gpu.memory_limit_percentage(), gpu.use_memory_pool());
+    } else {
+        return GpuSettings(std::nullopt, gpu.use_memory_pool());
+    }
+}
+
 SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
     // Read ARRUS_PATH.
@@ -696,6 +707,9 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     }
     if (s->has_file()) {
         settingsBuilder.addFile(readFileSettings(s->file(), dictionary));
+    }
+    if(s->has_gpu()) {
+        settingsBuilder.addGpu(readGpuSettings(s->gpu()));
     }
     SessionSettings settings = settingsBuilder.build();
     logger->log(LogSeverity::DEBUG, arrus::format("Read settings from '{}': {}", filepath, arrus::toString(settings)));
