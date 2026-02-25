@@ -31,6 +31,8 @@ public:
     [[nodiscard]] const std::optional<float> &getLevel1MaxPowerThreshold() const { return level1MaxPowerThreshold; }
     [[nodiscard]] const std::optional<float> &getLevel2MaxCurrentThreshold() const { return level2MaxCurrentThreshold; }
     [[nodiscard]] const std::optional<float> &getLevel2MaxPowerThreshold() const { return level2MaxPowerThreshold; }
+    [[nodiscard]] const std::optional<float> &getLevel1StaticVoltageMargin() const { return level1StaticVoltageMargin; }
+    [[nodiscard]] const std::optional<float> &getLevel2StaticVoltageMargin() const { return level2StaticVoltageMargin; }
 
 private:
     friend class HVPSFuseSettingsBuilder;
@@ -39,8 +41,10 @@ private:
 
     std::optional<float> level1MaxCurrentThreshold{std::nullopt};
     std::optional<float> level1MaxPowerThreshold{std::nullopt};
+    std::optional<float> level1StaticVoltageMargin{std::nullopt};
     std::optional<float> level2MaxCurrentThreshold{std::nullopt};
     std::optional<float> level2MaxPowerThreshold{std::nullopt};
+    std::optional<float> level2StaticVoltageMargin{std::nullopt};
 };
 
 /**
@@ -68,6 +72,11 @@ public:
         return *this;
     }
 
+    HVPSFuseSettingsBuilder& setLevel1StaticVoltageMargin(const float value) {
+        settings.level1StaticVoltageMargin = value;
+        return *this;
+    }
+
     HVPSFuseSettingsBuilder& setLevel2MaxCurrentThreshold(const float value) {
         settings.level2MaxCurrentThreshold = value;
         return *this;
@@ -75,6 +84,11 @@ public:
 
     HVPSFuseSettingsBuilder& setLevel2MaxPowerThreshold(const float value) {
         settings.level2MaxPowerThreshold = value;
+        return *this;
+    }
+
+    HVPSFuseSettingsBuilder& setLevel2StaticVoltageMargin(const float value) {
+        settings.level2StaticVoltageMargin = value;
         return *this;
     }
 

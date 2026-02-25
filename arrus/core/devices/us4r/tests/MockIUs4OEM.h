@@ -248,9 +248,10 @@ public:
     MOCK_METHOD(void, SetHVPSVoltage, (uint8_t), (override));
     MOCK_METHOD(void, SetCustomHvpsFuseHV0CurrentThreshold, (float overcurrentLevel), (override));
     MOCK_METHOD(void, SetCustomHvpsFuseHV1CurrentThreshold, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV0StaticVoltageMargin, (float overcurrentLevel), (override));
     MOCK_METHOD(void, SetCustomHvpsFuseHV0PowerThreshold, (float overpowerLevel), (override));
     MOCK_METHOD(void, SetCustomHvpsFuseHV1PowerThreshold, (float overpowerLevel), (override));
-    MOCK_METHOD(void, SetHVPSVoltage, (uint8_t voltage), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV1StaticVoltageMargin, (float overcurrentLevel), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

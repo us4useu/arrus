@@ -118,8 +118,10 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     ASSERT_TRUE(us4rSettings.getHVPSFuseSettings().has_value());
     EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel1MaxCurrentThreshold().value(), 1.0f);
     EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel1MaxPowerThreshold().value(), 0.5f);
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel1StaticVoltageMargin().value(), 1.5f);
     EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2MaxCurrentThreshold().value(), 1.5f);
     EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2MaxPowerThreshold().value(), 2.5f);
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2StaticVoltageMargin().value(), 6.0f);
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithDisabledWatchdog) {
@@ -206,8 +208,10 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithPartiallySeleted
     auto const &us4rSettings = settings.getUs4RSettings();
     EXPECT_FALSE(us4rSettings.getHVPSFuseSettings()->getLevel1MaxCurrentThreshold().has_value());
     EXPECT_FALSE(us4rSettings.getHVPSFuseSettings()->getLevel2MaxPowerThreshold().has_value());
+    EXPECT_FALSE(us4rSettings.getHVPSFuseSettings()->getLevel1StaticVoltageMargin().has_value());
     EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel1MaxPowerThreshold().value(), 1.35f);
     EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2MaxCurrentThreshold().value(), 0.125f);
+    EXPECT_FLOAT_EQ(us4rSettings.getHVPSFuseSettings()->getLevel2StaticVoltageMargin().value(), 2.5f);
 }
 
 

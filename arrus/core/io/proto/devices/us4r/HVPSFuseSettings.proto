@@ -15,4 +15,10 @@ message HVPSFuseSettings {
   oneof optional_level2_power {
     double level2_max_power_threshold = 4;
   }
+  oneof optional_level1_static_voltage_margin {
+    double level1_static_voltage_margin = 5;
+  }
+  oneof optional_level2_static_voltage_margin {
+    double level2_static_voltage_margin = 6;
+  }
 }

@@ -1726,11 +1726,17 @@ void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
             if(settings->getLevel1MaxCurrentThreshold().has_value()) {
                 us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1CurrentThreshold(settings->getLevel1MaxCurrentThreshold().value());
             }
+            if(settings->getLevel1StaticVoltageMargin().has_value()) {
+                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1StaticVoltageMargin(settings->getLevel1StaticVoltageMargin().value());
+            }
             if(settings->getLevel2MaxPowerThreshold().has_value()) {
                 us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0PowerThreshold(settings->getLevel2MaxPowerThreshold().value());
             }
             if(settings->getLevel2MaxCurrentThreshold().has_value()) {
                 us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0CurrentThreshold(settings->getLevel2MaxCurrentThreshold().value());
+            }
+            if(settings->getLevel2StaticVoltageMargin().has_value()) {
+                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0StaticVoltageMargin(settings->getLevel2StaticVoltageMargin().value());
             }
         }
     }

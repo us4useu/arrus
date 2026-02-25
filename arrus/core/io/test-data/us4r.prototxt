@@ -60,8 +60,10 @@ us4r: {
     hvps_fuse: {
         level1_max_current_threshold: 1 # [A]
         level1_max_power_threshold: 0.5 # [W]
+        level1_static_voltage_margin: 1.5 # [V]
         level2_max_current_threshold: 1.5 # [A]
         level2_max_power_threshold: 2.5 # [W]
+        level2_static_voltage_margin: 6 # [V]
     }
 }
 

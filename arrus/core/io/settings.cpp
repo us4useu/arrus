@@ -571,6 +571,12 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         if(fuseSettings.optional_level2_power_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_POWER_NOT_SET) {
             fuseSettingsBuilder.setLevel2MaxPowerThreshold(static_cast<float>(fuseSettings.level2_max_power_threshold()));
         }
+        if(fuseSettings.optional_level1_static_voltage_margin_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL1_STATIC_VOLTAGE_MARGIN_NOT_SET) {
+            fuseSettingsBuilder.setLevel1StaticVoltageMargin(static_cast<float>(fuseSettings.level1_static_voltage_margin()));
+        }
+        if(fuseSettings.optional_level2_static_voltage_margin_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_STATIC_VOLTAGE_MARGIN_NOT_SET) {
+            fuseSettingsBuilder.setLevel2StaticVoltageMargin(static_cast<float>(fuseSettings.level2_static_voltage_margin()));
+        }
         hvpsFuseSettings = fuseSettingsBuilder.build();
     }
 
