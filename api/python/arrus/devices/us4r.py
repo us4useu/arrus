@@ -595,6 +595,13 @@ class Us4R(Device, Ultrasound):
         """
         core_variant = self._handle.getVariant()
         return arrus.devices.us4oem._variant_enum_to_enum(core_variant)
+    
+    def get_hvps_tuning_info(self) -> str:
+        """
+        Returns HVPS tuning info (timestamps for each OEM if previously tuned)
+        """
+        return self._handle.getHVPSTuningInfo()
+        return result
 
 
 # ------------------------------------------ LEGACY MOCK

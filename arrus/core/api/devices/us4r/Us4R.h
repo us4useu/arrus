@@ -461,6 +461,11 @@ public:
      */
     virtual Us4OEM::Variant getVariant() = 0;
 
+    /**
+     * Returns HVPS tuning info (timestamps for each OEM if previously tuned)
+     */
+    virtual std::string getHVPSTuningInfo() = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

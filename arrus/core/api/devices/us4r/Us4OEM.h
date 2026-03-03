@@ -230,6 +230,11 @@ public:
     virtual float getActualTxFrequency(float frequency) = 0;
 
     /**
+     * Returns HVPS tuning info (timestamp if previously tuned)
+     */
+    virtual std::string getHVPSTuningInfo() = 0;
+
+    /**
      * Returns the variant of OEM.
      */
     virtual Variant getVariant() = 0;

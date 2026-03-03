@@ -974,4 +974,9 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     }
 }
 
+std::string Us4OEMImpl::getHVPSTuningInfo() {
+    return ius4oem->GetHVPSTuningTimestamp();
+}
+
+
 }// namespace arrus::devices

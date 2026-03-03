@@ -1709,4 +1709,12 @@ Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
     return result;
 }
 
+std::string Us4RImpl::getHVPSTuningInfo() {
+    std::string result = "";
+    for(auto &us4oem: us4oems) {
+        result += format("{}: ", us4oem->getDeviceId().toString()) + us4oem->getHVPSTuningInfo() + "\n";
+    }
+    return result;
+}
+
 }// namespace arrus::devices
