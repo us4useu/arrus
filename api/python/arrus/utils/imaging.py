@@ -383,7 +383,7 @@ class ProcessingRunner:
         CLOSED = 2
 
     def __init__(self, input_buffer, metadata, processing, use_memory_pool: bool = True,
-                 gpu_memory_limit_percentage: float = 0.95):
+                 gpu_memory_limit_percentage: float = 0.95, use_p2p_dma: bool = False):
         import cupy as cp
         self.cp = cp
         self._log_gpu_info()
@@ -393,6 +393,7 @@ class ProcessingRunner:
         # Set GPU memory limit if provided
         if use_memory_pool and gpu_memory_limit_percentage:
             self._set_gpu_memory_limit_percentage(gpu_memory_limit_percentage)
+        self.use_p2p_dma = use_p2p_dma
 
         # Input buffer, stored in the host PC memory.
         self.host_input_buffer = input_buffer
@@ -422,7 +423,8 @@ class ProcessingRunner:
         self._ops, self._target_pos, self._inputs = self._sort_graph_nodes(
             self.graph, self.source_node_name
         )
-        self._register_buffer(self.host_input_buffer, lambda element: element.array)
+        if not use_p2p_dma:
+            self._register_buffer(self.host_input_buffer, lambda element: element.array)
         self._register_buffer(self.output_buffer, lambda element: element.data)
         self.host_input_buffer.append_on_new_data_callback(self.process)
         self._state = ProcessingRunner.State.READY
@@ -682,7 +684,8 @@ class ProcessingRunner:
             if self._state == ProcessingRunner.State.CLOSED:
                 # Already closed.
                 return
-            self._unregister_buffer(self.host_input_buffer, lambda element: element.array)
+            if not self.use_p2p_dma:
+                self._unregister_buffer(self.host_input_buffer, lambda element: element.array)
             if hasattr(self, "output_buffer") and self.output_buffer:
                 self._unregister_buffer(self.output_buffer, lambda element: element.data)
             for op in self._ops:

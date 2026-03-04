@@ -414,17 +414,20 @@ class Session(AbstractSession):
             # GPU settings
             gpu_memory_limit_percentage = None
             use_memory_pool = True  # Default to True
+            use_p2p_dma = False
             if self._session_handle.hasDevice("/GPU:0"):
                 # Read GPU specific settings
                 gpu = self.get_device("/GPU:0")
                 gpu_settings = gpu.get_settings()
                 gpu_memory_limit_percentage = gpu_settings.memory_limit_percentage
+                use_p2p_dma = gpu_settings.use_p2p_dma
                 use_memory_pool = gpu_settings.use_memory_pool
 
             processing_runner = _imaging.ProcessingRunner(
                 input_buffer=buffer, metadata=metadatas, processing=processing,
                 use_memory_pool=use_memory_pool,
-                gpu_memory_limit_percentage=gpu_memory_limit_percentage
+                gpu_memory_limit_percentage=gpu_memory_limit_percentage,
+                use_p2p_dma=use_p2p_dma
             )
             outputs = processing_runner.outputs
             self._current_processing = processing_runner

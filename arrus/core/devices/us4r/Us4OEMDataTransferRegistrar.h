@@ -179,7 +179,7 @@ public:
                     uint8 *dst = addressDst + transfer.destination;
                     size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
-                    ius4oem->PrepareHostBuffer(dst, size, src, false);
+                    ius4oem->PrepareHostBuffer(dst, size, src, dstBuffer->usesDmaBuf());
                 }
             }
         }
@@ -211,7 +211,7 @@ public:
                     uint8 *dst = addressDst + transfer.destination;
                     size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
-                    ius4oem->PrepareTransferRXBufferToHost(transferIdx, dst, size, src, false);
+                    ius4oem->PrepareTransferRXBufferToHost(transferIdx, dst, size, src, dstBuffer->usesDmaBuf());
                 }
             }
         }
@@ -240,7 +240,8 @@ public:
     uint16 nextElementIdx = (int16) ((currentDstIdx + srcNElements) % dstNElements);                                   \
     auto nextDstAddress = dstBuffer->getAddress(nextElementIdx);                                                       \
     nextDstAddress += transfer.destination;                                                                            \
-    ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src, false);
+    ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src,                      \
+                                           dstBuffer->usesDmaBuf());
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy)                                                                   \
     [=, currentDstIdx = srcIdx, currentTransferIdx = transferIdx]() mutable {                                          \

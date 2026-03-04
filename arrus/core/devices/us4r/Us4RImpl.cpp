@@ -36,8 +36,8 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
                    const RxSettings &rxSettings, std::vector<std::unordered_set<ChannelIdx>> channelsMask,
                    std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
                    bool hasIOBitstreamAddressing, const IOSettings &ioSettings, bool isExternalTrigger,
-                   bool maskDVDDInterrupt)
-    : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)) {
+                   bool maskDVDDInterrupt, bool p2pDmaSupported)
+    : Us4R(id), probeSettings(std::move(probeSettings)), probeAdapterSettings(std::move(probeAdapterSettings)), p2pDmaSupported(p2pDmaSupported) {
     // Accept empty list of channels masks (no channels masks).
     if(channelsMask.empty()) {
         channelsMask = std::vector{this->probeSettings.size(), std::unordered_set<ChannelIdx>{}};
@@ -507,6 +507,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
     buffer = builder.setStopOnOverflow(stopOnOverflow)
                           .setNumberOfElements(hostBufNElements)
                           .setLayoutTo(buffers)
+                          .setUseP2pDma(p2pDmaSupported)
                           .build();
     registerOutputBuffer(buffer.get(), buffers, workMode);
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.

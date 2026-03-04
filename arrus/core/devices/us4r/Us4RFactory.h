@@ -3,6 +3,7 @@
 
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
+#include "arrus/core/api/devices/GpuSettings.h"
 
 namespace arrus::devices {
 
@@ -10,7 +11,7 @@ class Us4RFactory {
 public:
     using Handle = std::unique_ptr<Us4RFactory>;
 
-    virtual Us4R::Handle getUs4R(Ordinal ordinal, const Us4RSettings &settings) = 0;
+    virtual Us4R::Handle getUs4R(Ordinal ordinal, const Us4RSettings &settings, bool p2pDmaSupported) = 0;
 
     virtual ~Us4RFactory() = default;
 };

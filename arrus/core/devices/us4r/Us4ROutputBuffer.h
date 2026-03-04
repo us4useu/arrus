@@ -15,6 +15,11 @@
 #include "arrus/core/common/logging.h"
 #include "us4oem/Us4OEMBuffer.h"
 
+#ifdef CUDA_AVAILABLE
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#endif
+
 namespace arrus::devices {
 
 using ::arrus::framework::Buffer;
@@ -81,9 +86,7 @@ public:
     /**
      * Calls receive release function (e.g. clears RX flags in the sequencer table).
      */
-    void releaseReceive() {
-        receiveReleaseFunction();
-    }
+    void releaseReceive() { receiveReleaseFunction(); }
 
     int16 *getAddress(ArrayId id) {
         validateState();
@@ -153,9 +156,7 @@ public:
 
     [[nodiscard]] State getState() const override { return this->state; }
 
-    uint16 getNumberOfArrays() const override {
-        return ARRUS_SAFE_CAST(arrays.size(), ArrayId);
-    }
+    uint16 getNumberOfArrays() const override { return ARRUS_SAFE_CAST(arrays.size(), ArrayId); }
 
 private:
     std::mutex mutex;
@@ -210,8 +211,8 @@ public:
      *
      */
     Us4ROutputBuffer(Tuple<Us4ROutputBufferArrayDef> arrays, const unsigned nElements, bool stopOnOverflow,
-                     size_t noems)
-        : elementSize(0), stopOnOverflow(stopOnOverflow), arrayDefs(std::move(arrays)) {
+                     size_t noems, bool useP2pDma)
+        : elementSize(0), stopOnOverflow(stopOnOverflow), arrayDefs(std::move(arrays)), useP2pDma(useP2pDma) {
 
         ARRUS_REQUIRES_TRUE(noems <= 16, "Currently Us4R data buffer supports up to 16 OEMs.");
 
@@ -219,21 +220,71 @@ public:
         elementSize = calculateElementSize(arrayDefs);
         try {
             size_t totalSize = elementSize * nElements;
-            getDefaultLogger()->log(
-                LogSeverity::DEBUG,
-                format("Allocating {} ({}, {}) bytes of memory", totalSize, elementSize, nElements));
-            dataBuffer = reinterpret_cast<DataType *>(operator new[](totalSize, std::align_val_t(ALIGNMENT)));
+            getDefaultLogger()->log(LogSeverity::DEBUG,
+                                    format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", totalSize,
+                                           elementSize, nElements, useP2pDma));
+
+            if (useP2pDma) {
+#ifdef CUDA_AVAILABLE
+                // Detect if we're dealing with an IGPU with unified memory, which does not require special handling for P2P DMA.
+                // For now assume that devices with more than 1 GPU do not use unified memory
+                int deviceCount = 0;
+                cudaGetDeviceCount(&deviceCount);
+                if (deviceCount == 0) {
+                    throw std::runtime_error("No CUDA devices found");
+                }
+                cudaDeviceProp deviceProp;
+                cudaGetDeviceProperties(&deviceProp, 0);
+                // NOTE: deviceProp.integrated seems to return 48 (???) on RTX 5000 (???), so check unifiedAddressing too.
+                usesUnifiedMemory = deviceCount == 1 && deviceProp.integrated && deviceProp.unifiedAddressing;
+
+                getDefaultLogger()->log(
+                    LogSeverity::DEBUG,
+                    format("CUDA device: {}, integrated: {}, unifiedAddressing: {}, unified memory: {}",
+                           deviceProp.name, deviceProp.integrated, deviceProp.unifiedAddressing, usesUnifiedMemory));
+
+                if (!usesUnifiedMemory) {
+                    if (cudaMalloc((void **) &dataBuffer, totalSize) != cudaSuccess) {
+                        getDefaultLogger()->log(LogSeverity::ERROR, "cudaMalloc failed");
+                        throw std::runtime_error("cudaMalloc failed");
+                    }
+                } else {
+                    // For integrated GPUs with unified memory, we use cudaHostAlloc
+                    if (cudaHostAlloc((void **) &dataBuffer, totalSize, cudaHostAllocDefault) != cudaSuccess) {
+                        getDefaultLogger()->log(LogSeverity::ERROR, "cudaHostAlloc failed");
+                        throw std::runtime_error("cudaHostAlloc failed");
+                    }
+                }
+#else
+                throw std::runtime_error("P2P DMA is not supported on this platform");
+#endif
+            } else {
+                dataBuffer = reinterpret_cast<DataType *>(operator new[](totalSize, std::align_val_t(ALIGNMENT)));
+            }
+
             getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
             createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
-            ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+            if (useP2pDma) {
+#ifdef CUDA_AVAILABLE
+                cudaFree(dataBuffer);
+#endif
+            } else {
+                operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+            }
             getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
         }
         this->initialize();
     }
 
     ~Us4ROutputBuffer() override {
-        ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+        if (useP2pDma) {
+#ifdef CUDA_AVAILABLE
+            cudaFree(dataBuffer);
+#endif
+        } else {
+            operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+        }
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
@@ -344,7 +395,6 @@ public:
         this->elements[element]->registerReceiveReleaseFunction(releaseFunction);
     }
 
-
     bool isStopOnOverflow() { return this->stopOnOverflow; }
 
     size_t getNumberOfElementsInState(BufferElement::State s) const override {
@@ -365,9 +415,13 @@ public:
         return arrayDefs.get(arrayId).getOEMAddress(oem);
     }
 
-    void runOnOverflowCallback() {
-        this->onOverflowCallback();
-    }
+    void runOnOverflowCallback() { this->onOverflowCallback(); }
+
+    bool usesP2pDma() const { return useP2pDma; }
+
+    // On unified memory system we can use regular DMA
+    // The only reason we don't return usesP2pDma==false is that because we shouldn't register this memory again
+    bool usesDmaBuf() const { return useP2pDma && !usesUnifiedMemory; }
 
 private:
     /**
@@ -457,6 +511,11 @@ private:
     State state{State::RUNNING};
     bool stopOnOverflow{true};
     Tuple<Us4ROutputBufferArrayDef> arrayDefs;
+
+    /** Whether to use P2P DMA. */
+    bool useP2pDma;
+    /** Whether the Nvidia GPU uses unified memory, i.e. the same memory space as the CPU. */
+    bool usesUnifiedMemory{false};
 };
 
 class Us4ROutputBufferBuilder {
@@ -468,6 +527,11 @@ public:
 
     Us4ROutputBufferBuilder &setNumberOfElements(unsigned n) {
         nElements = n;
+        return *this;
+    }
+
+    Us4ROutputBufferBuilder &setUseP2pDma(bool value) {
+        useP2pDma = value;
         return *this;
     }
 
@@ -520,7 +584,7 @@ public:
     }
 
     Us4ROutputBuffer::SharedHandle build() {
-        return std::make_shared<Us4ROutputBuffer>(arrayDefs, nElements, stopOnOverflow, noems);
+        return std::make_shared<Us4ROutputBuffer>(arrayDefs, nElements, stopOnOverflow, noems, useP2pDma);
     }
 
 private:
@@ -552,6 +616,7 @@ private:
     unsigned noems{0};
     unsigned nElements{0};
     bool stopOnOverflow{false};
+    bool useP2pDma{false};
 };
 
 }// namespace arrus::devices
