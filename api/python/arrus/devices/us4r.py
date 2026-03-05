@@ -13,7 +13,7 @@ import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
 from collections.abc import Iterable
-from typing import Optional, Union, Sequence
+from typing import Optional, Union, Sequence, List
 from arrus.devices.probe import ProbeDTO
 
 from arrus.kernels.simple_tx_rx_sequence import get_sample_range
@@ -596,12 +596,11 @@ class Us4R(Device, Ultrasound):
         core_variant = self._handle.getVariant()
         return arrus.devices.us4oem._variant_enum_to_enum(core_variant)
     
-    def get_hvps_tuning_info(self) -> str:
+    def get_hvps_tuning_info(self) -> List[int]:
         """
-        Returns HVPS tuning info (timestamps for each OEM if previously tuned)
+        Returns HVPS tuning info (unix format timestamps (number of seconds) for each OEM if previously tuned)
         """
         return self._handle.getHVPSTuningInfo()
-        return result
 
 
 # ------------------------------------------ LEGACY MOCK
