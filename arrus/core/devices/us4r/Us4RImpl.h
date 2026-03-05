@@ -48,7 +48,7 @@ public:
              const RxSettings &rxSettings, std::vector<std::unordered_set<unsigned short>> channelsMask,
              std::optional<DigitalBackplane::Handle> backplane, std::vector<Bitstream> bitstreams,
              bool hasIOBitstreamAddressing, const us4r::IOSettings &ioSettings, bool isExternalTrigger,
-             bool maskDVDDInterrupt);
+             bool maskDVDDInterrupt, std::optional<HVPSFuseSettings> hvpsFusetSettings);
 
     Us4RImpl(Us4RImpl const &) = delete;
 
@@ -267,6 +267,8 @@ private:
     std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
     std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
     std::function<void()> createReceiveReleaseCallback(ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring);
+    /** Sets fuse settings on all us4R OEMs. */
+    void setHVPSFuseSettings(const std::optional<HVPSFuseSettings> &settings);
 
     std::recursive_mutex deviceStateMutex;
     std::mutex triggerMutex;
@@ -308,6 +310,9 @@ private:
     std::unordered_map<std::string, SequenceId> sequenceNameToOrdinalMap;
     /** The number of TX delay profiles set for the sequence with the given name */
     std::unordered_map<std::string, size_t> sequenceNumberOfTxDelayProfiles;
+    /** HVPS fuse settings. Optional; std::nullopt means that the default HVPS fuse settings will be used
+     * (determined in the us4r-api/Us4OEM project */
+    std::optional<HVPSFuseSettings> hvpsFuseSettings;
 };
 
 }// namespace arrus::devices

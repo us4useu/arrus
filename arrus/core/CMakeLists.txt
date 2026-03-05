@@ -27,6 +27,7 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/Us4RTxRxLimits.proto
     io/proto/devices/us4r/WatchdogSettings.proto
     io/proto/devices/GpuSettings.proto
+    io/proto/devices/us4r/HVPSFuseSettings.proto
 )
 ################################################################################
 # Target
@@ -197,7 +198,7 @@ set(SRC_FILES
     api/devices/us4r/Us4RTxRxLimits.h
     devices/us4r/TxTimeoutRegister.h
     devices/us4r/Us4RSubsequence.h
-    devices/us4r/types.h    
+    devices/us4r/types.h
     api/devices/us4r/WatchdogSettings.h
     api/devices/GpuSettings.h
     api/devices/probe/Lens.h
@@ -210,6 +211,7 @@ set(SRC_FILES
     devices/us4r/TxWaveformConverter.h
     devices/gpu/GpuFactory.h
     api/common/Slice.h
+    api/devices/us4r/HVPSFuseSettings.h
 )
 
 set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
