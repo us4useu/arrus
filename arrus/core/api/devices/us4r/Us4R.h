@@ -462,7 +462,7 @@ public:
     virtual Us4OEM::Variant getVariant() = 0;
 
     /**
-     * Returns HVPS tuning info (timestamps for each OEM if previously tuned)
+     * Returns HVPS tuning info (unix format timestamps (number of seconds) for each OEM if previously tuned)
      */
     virtual std::vector<int64_t> getHVPSTuningInfo() = 0;
 
