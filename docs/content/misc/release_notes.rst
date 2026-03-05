@@ -11,6 +11,7 @@ Release notes
     - Enabled DDC for us4OEM+HF, increased demodulation frequency accuracy setting. #M_OEM-156.
     - Windows: implemented us4us us4OEM driver. Jungo Windriver is now deprecated and we recommend using us4us us4OEM driver. Support for the Jungo Windriver will be discontinued after August 1, 2026 #M_OEM-234.
     - Linux: created .deb package for Linux driver, added LKM signing, DKMS support #M_OEM-240.
+    - Exposed possibility to read HVPS tuning timestamp. #M_OEM-249
 
 0.13.x
 ------
