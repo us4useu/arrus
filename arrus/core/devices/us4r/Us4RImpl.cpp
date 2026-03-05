@@ -1709,10 +1709,10 @@ Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
     return result;
 }
 
-std::string Us4RImpl::getHVPSTuningInfo() {
-    std::string result = "";
+std::vector<int64_t> Us4RImpl::getHVPSTuningInfo() {
+    std::vector<int64_t> result;
     for(auto &us4oem: us4oems) {
-        result += format("{}: ", us4oem->getDeviceId().toString()) + us4oem->getHVPSTuningInfo() + "\n";
+        result.push_back(us4oem->getHVPSTuningInfo());
     }
     return result;
 }

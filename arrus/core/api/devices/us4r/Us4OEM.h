@@ -232,7 +232,7 @@ public:
     /**
      * Returns HVPS tuning info (timestamp if previously tuned)
      */
-    virtual std::string getHVPSTuningInfo() = 0;
+    virtual int64_t getHVPSTuningInfo() = 0;
 
     /**
      * Returns the variant of OEM.
