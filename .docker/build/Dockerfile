@@ -42,8 +42,9 @@ RUN /root/install_python_via_pyenv.sh ${PYTHON_VERSION}
 ENV PATH="/root/.pyenv/shims:/root/.pyenv/bin:$PATH"
 
 # Python PIP
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}
-
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+ && python${PYTHON_VERSION} get-pip.py \
+ && rm get-pip.py
 
 RUN echo "alias python=python3" >> /root/.bashrc
 
