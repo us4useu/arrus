@@ -49,7 +49,7 @@ RUN chmod +x install_cmake.sh && ./install_cmake.sh $TARGETPLATFORM
 
 # Swig
 RUN apt-get update && apt-get install -yq --no-install-recommends libpcre3-dev \
- && wget https://netcologne.dl.sourceforge.net/project/swig/swig/swig-4.0.2/swig-4.0.2.tar.gz \
+ && wget https://downloads.sourceforge.net/project/swig/swig/swig-4.0.2/swig-4.0.2.tar.gz \
  && tar -xvf swig-4.0.2.tar.gz && cd swig-4.0.2 \
  && ./configure && make && make install
 
