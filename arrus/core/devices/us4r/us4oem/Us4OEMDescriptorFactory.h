@@ -80,14 +80,14 @@ public:
                             Interval<float>{100e3, 32.5e6},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
-                            Interval<Voltage>{5, 90}
+                            Interval<Voltage>{0, 90}
                         },
                         // amplitude 2 / rail 0
                         arrus::ops::us4r::TxLimits {
                             Interval<float>{100e3, 32.5e6},  // Frequency
                             Interval<float>{0.0f, 16.96e-6f}, // delay
                             Interval<float>{0.5f, (float)(32.0f)}, // pulse length in cycles,
-                            Interval<Voltage>{5, 90}
+                            Interval<Voltage>{0, 90}
                         },
                         arrus::ops::us4r::RxLimits {
                             Interval<uint32>{64, 16384}
