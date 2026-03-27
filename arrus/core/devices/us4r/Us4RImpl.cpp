@@ -550,9 +550,14 @@ void Us4RImpl::start() {
         us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t), maskDVDDInterrupt);
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
+        // external trigger
         this->digitalBackplane.value()->enableExternalTrigger();
+        this->getMasterOEM()->syncTrigger();
     }
-    this->getMasterOEM()->start();
+    else {
+        // Internal trigger.
+        this->getMasterOEM()->start();
+    }
     this->state = State::STARTED;
 }
 
