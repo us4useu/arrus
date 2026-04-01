@@ -817,3 +817,36 @@ Please also see the `CustomTxWaveform.cpp <https://github.com/us4useu/arrus/blob
     auto waveform = waveformBuilder.build();
     Tx tx{aperture, delays, waveform};
 
+
+Frame metadata
+--------------
+
+Every RF frame acquired by the OEMs has its first collected sample replaced by
+**frame metadata**. Frame metadata consists of 64 bytes of data describing the
+details of the acquisition of that frame.
+
+Currently, frame metadata is composed of two parts:
+
+1. The first 32 bytes are the "common" part, which contains metadata as shown
+   in the figure below.
+
+.. figure:: img/frame_metadata.png
+
+   Frame metadata structure (common part).
+
+Where:
+
+- **trigger counter**: trigger counter, counted from the moment the system is
+  powered on.
+- **timestamp**: the acquisition time of the frame, counted from the moment
+  the system is started. Unit: number of system clock cycles
+  (see: ``Us4R::getSamplingFrequency``).
+- **Tx/Rx idx**: the index of the physical TX/RX that resulted in the
+  acquisition of this frame.
+- **prev. Tx/Rx idx**: the index of the physical TX/RX preceding the
+  execution of this frame.
+
+2. The next 32 bytes are reserved for user-specific needs. Depending on the user's
+   requirements, us4us can prepare a firmware variant containing the data that
+   the user would like to include in the frame metadata. 
+
