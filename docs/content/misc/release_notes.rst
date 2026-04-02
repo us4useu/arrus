@@ -12,6 +12,11 @@ Release notes
     - Windows: implemented us4us us4OEM driver. Jungo Windriver is now deprecated and we recommend using us4us us4OEM driver. Support for the Jungo Windriver will be discontinued after August 1, 2026 #M_OEM-234.
     - Linux: created .deb package for Linux driver, added LKM signing, DKMS support #M_OEM-240.
 
+- Python API:
+
+        - Fixed the processing graph in case some of the Tx/Rxs sequence outputs are not used #ARRUS-550.
+
+
 0.13.x
 ------
 
