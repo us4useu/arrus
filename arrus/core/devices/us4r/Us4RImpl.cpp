@@ -73,7 +73,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     for (size_t i = 0; i < this->channelsMask.size(); ++i) {
         const auto &mask = this->channelsMask.at(i);
         if (mask.empty()) {
-            this->logger->log(LogSeverity::INFO, format("No channel masking applied on Probe:{}", i));
+            this->logger->log(LogSeverity::DEBUG, format("No channel masking applied on Probe:{}", i));
         } else {
             this->logger->log(LogSeverity::INFO,
                               format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
@@ -142,9 +142,12 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
     }
 
     //log last measured voltages
-    for(size_t i = 0; i < voltages.size(); i++) {
-        logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].name + " = {} V", voltages[i].voltage));
+    std::string measurementLog = "Recently measured voltages: ";
+    for(size_t i = 0; i < voltages.size(); ++i) {
+        // the number of voltages is of voltages to be logged here is small
+        measurementLog += ::arrus::format(voltages[i].name + " = {} V; ", voltages[i].voltage);
     }
+    logger->log(LogSeverity::INFO, measurementLog);
 
     if (fail) {
         disableHV();
@@ -522,7 +525,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
 
 void Us4RImpl::start() {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
-    logger->log(LogSeverity::INFO, "Starting us4r.");
+    logger->log(LogSeverity::DEBUG, "Starting us4r.");
     if (this->buffer == nullptr) {
         throw ::arrus::IllegalArgumentException("Call upload function first.");
     }
@@ -566,7 +569,7 @@ void Us4RImpl::stop() { this->stopDevice(); }
 void Us4RImpl::stopDevice() {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STARTED) {
-        logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
+        logger->log(LogSeverity::DEBUG, "Device Us4R is already stopped.");
     } else {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
@@ -590,15 +593,15 @@ void Us4RImpl::stopDevice() {
     this->state = State::STOPPED;
 }
 
-Us4RImpl::~Us4RImpl() {
+Us4RImpl::~Us4RImpl() noexcept {
     try {
-        getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
+        logger->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
         this->stopDevice();
         // TODO: the below should be part of session handler
         if (this->buffer) {
             cleanupBuffers();
         }
-        getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
+        logger->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
     }
@@ -965,8 +968,8 @@ void Us4RImpl::checkState() const {
 void Us4RImpl::setStopOnOverflow(bool value) {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STOPPED) {
-        logger->log(LogSeverity::INFO,
-                    "The StopOnOverflow property can be set "
+        logger->log(LogSeverity::WARNING,
+                    "The StopOnOverflow property should be set "
                     "only when the device is stopped.");
     }
     this->stopOnOverflow = value;
@@ -1343,7 +1346,7 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    logger->log(LogSeverity::INFO, format("Setting {}", params.toString()));
+    logger->log(LogSeverity::DEBUG, format("Setting {}", params.toString()));
     std::vector<std::pair<size_t, size_t>> values;
     // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
     // and just interpret the string as sequence ordinal number?
@@ -1541,7 +1544,7 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 
 void Us4RImpl::handlePulserInterrupt() {
     if (this->state == State::STOPPED) {
-        logger->log(LogSeverity::INFO, format("System already stopped."));
+        logger->log(LogSeverity::DEBUG, format("System already stopped."));
         this->disableHV();
     }
     else {
