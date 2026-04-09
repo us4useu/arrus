@@ -156,9 +156,9 @@ public:
     /**
      * Returns current FPGA wall clock (time passed since Init function was called).
      *
-     * @return FPGA wall clock (seconds)
+     * @return FPGA wall clock (clock ticks)
      */
-    virtual float getFPGAWallclock() = 0;
+    virtual uint64_t getFPGAWallclock() = 0;
 
     /**
      * Enables LNA analog high-pass filter and sets a given corner frequency.

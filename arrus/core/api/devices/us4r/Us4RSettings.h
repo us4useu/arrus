@@ -15,6 +15,7 @@
 #include "arrus/core/api/devices/us4r/DigitalBackplaneSettings.h"
 #include "arrus/core/api/devices/us4r/Bitstream.h"
 #include "arrus/core/api/devices/us4r/WatchdogSettings.h"
+#include "arrus/core/api/devices/us4r/HVPSFuseSettings.h"
 
 namespace arrus::devices {
 
@@ -38,6 +39,7 @@ namespace arrus::devices {
  * @param limits TX/RX constraints to apply on the system (e.g. minimum/maximum voltage, etc.).
  * @param watchdogSettings us4OEM+ watchdog settings.
  * @param allowDuplicateOEMIds whether we should allow to run system with duplicate OEM ids (e.g. due to connectivity issues).
+ * @param hvpsFuseSettings HVPS fuse settings to use; nullopt means that the default settings should be used
  */
 class Us4RSettings {
 public:
@@ -58,7 +60,9 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        bool maskDVDDInterrupt = false,
+        std::optional<HVPSFuseSettings> hvpsFuseSettings = std::nullopt
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -73,7 +77,10 @@ public:
           bitstreams(std::move(bitstreams)),
           limits(std::move(limits)),
           watchdogSettings(std::move(watchdogSettings)),
-          allowDuplicateOEMIds(allowDuplicateOEMIds)
+          allowDuplicateOEMIds(allowDuplicateOEMIds),
+          maskDVDDInterrupt(maskDVDDInterrupt),
+          hvpsFuseSettings(std::move(hvpsFuseSettings))
+        
     {}
 
     Us4RSettings(
@@ -91,7 +98,9 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        bool maskDVDDInterrupt = false,
+        std::optional<HVPSFuseSettings> hvpsFuseSettings = std::nullopt
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -107,7 +116,9 @@ public:
                 std::move(bitstreams),
                 std::move(limits),
                 std::move(watchdogSettings),
-                allowDuplicateOEMIds
+                allowDuplicateOEMIds,
+                maskDVDDInterrupt,
+                std::move(hvpsFuseSettings)
         )
     {}
 
@@ -204,6 +215,10 @@ public:
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
+    bool isDVDDInterruptMasked() const { return maskDVDDInterrupt; }
+
+    const std::optional<HVPSFuseSettings> &getHVPSFuseSettings() const { return hvpsFuseSettings; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -263,6 +278,16 @@ private:
       * the software.
       */
      bool allowDuplicateOEMIds{true};
+
+     /**
+     * False value means that Pulser DVDD interrput is enabled and error will raised when it occurs
+     */
+     bool maskDVDDInterrupt{false};
+
+     /**
+      * HVPS fuse settings. Optional, nullopt means that the default HVPS fuse settings should be used.
+      */
+     std::optional<HVPSFuseSettings> hvpsFuseSettings;
 };
 
 }

@@ -253,7 +253,10 @@ class Session(AbstractSession):
                     arrus.core.castToUs4r(handle)),
             arrus.core.DeviceType_File:
                 lambda handle: arrus.devices.file.File(
-                    arrus.core.castToFile(handle))
+                    arrus.core.castToFile(handle)),
+            arrus.core.DeviceType_GPU:
+                lambda handle: arrus.devices.gpu.Gpu(
+                    arrus.core.castToGpu(handle))
         }.get(device_type, None)
         if specific_device_cast is None:
             raise arrus.exceptions.DeviceNotFoundError(path)
@@ -407,8 +410,21 @@ class Session(AbstractSession):
                     graph=processing,
                     callback=None,
                 )
+
+            # GPU settings
+            gpu_memory_limit_percentage = None
+            use_memory_pool = True  # Default to True
+            if self._session_handle.hasDevice("/GPU:0"):
+                # Read GPU specific settings
+                gpu = self.get_device("/GPU:0")
+                gpu_settings = gpu.get_settings()
+                gpu_memory_limit_percentage = gpu_settings.memory_limit_percentage
+                use_memory_pool = gpu_settings.use_memory_pool
+
             processing_runner = _imaging.ProcessingRunner(
                 input_buffer=buffer, metadata=metadatas, processing=processing,
+                use_memory_pool=use_memory_pool,
+                gpu_memory_limit_percentage=gpu_memory_limit_percentage
             )
             outputs = processing_runner.outputs
             self._current_processing = processing_runner
@@ -442,12 +458,6 @@ class Session(AbstractSession):
         devices = {
             (arrus.core.DeviceType_CPU, 0) : arrus.devices.cpu.CPU(0)
         }
-        # Create CPU and GPU devices
-        cupy_spec = importlib.util.find_spec("cupy")
-        if cupy_spec is not None:
-            import cupy
-            cupy.cuda.device.Device(0).use()
-            devices[(arrus.core.DeviceType_GPU, 0)] = arrus.devices.gpu.GPU(0)
         return devices
 
     def _create_kernel_context(self, seq, device, medium, hardware_ddc,

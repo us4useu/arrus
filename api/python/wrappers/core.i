@@ -5,6 +5,7 @@
 %include std_unordered_set.i
 %include std_vector.i
 %include std_pair.i
+%include std_optional.i
 
 %inline %{
 /**
@@ -36,14 +37,118 @@ private:
 using namespace ::arrus;
 %};
 
+%typemap(typecheck) std::optional<float> {
+    $1 = PyFloat_Check($input) || $input == Py_None;
+}
+
+%typemap(typecheck) std::optional<arrus::devices::Ordinal> {
+    $1 = PyInt_Check($input) || $input == Py_None;
+}
+
+// std typemaps
+// std::optional
+%typemap(in) std::optional<arrus::uint16> %{
+    if($input == Py_None) {
+        $1 = std::optional<arrus::uint16>();
+    }
+    else {
+        long value = PyLong_AsLong($input);
+        // TODO(refactor) extract safe cast macro
+        if(value > std::numeric_limits<arrus::uint16>::max() || value < std::numeric_limits<arrus::uint16>::min()) {
+            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
+                + std::to_string(std::numeric_limits<arrus::uint16>::min())
+                + ", " + std::to_string(std::numeric_limits<arrus::uint16>::max()) + "]";
+            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
+            return NULL;
+        }
+        $1 = std::optional<arrus::uint16>(value);
+    }
+    %}
+%typemap(out) boost::optional<arrus::uint16> %{
+    if($1) {
+        $result = PyLong_FromLong(*$1);
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+    %}
+
+%typemap(in) std::optional<float> %{
+    if($input == Py_None) {
+        $1 = std::optional<float>();
+    }
+    else {
+        float value = (float)(PyFloat_AsDouble($input));
+        $1 = std::optional<float>(value);
+    }
+    %}
+
+%typemap(out) std::optional<float> %{
+    if($1) {
+        $result = PyFloat_FromDouble((double)(*$1));
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+    %}
+
+%typemap(out) std::optional<float>* %{
+    if($1 && $1->has_value()) {
+        $result = PyFloat_FromDouble($1->value());
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+    %}
+
+%typemap(out) const std::optional<float>& %{
+    if($1 && $1->has_value()) {
+        $result = PyFloat_FromDouble($1->value());
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+    %}
+
+%typemap(in) std::optional<long long> %{
+    if($input == Py_None) {
+        $1 = std::optional<long long>();
+    }
+    else {
+        long long value = PyLong_AsLong($input);
+        if(value > std::numeric_limits<long long>::max() || value < std::numeric_limits<long long>::min()) {
+            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
+                + std::to_string(std::numeric_limits<long long>::min())
+                + ", " + std::to_string(std::numeric_limits<long long>::max()) + "]";
+            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
+            return NULL;
+        }
+        $1 = std::optional<long long>(value);
+    }
+    %}
+
+%typemap(out) std::optional<long long> %{
+    if($1) {
+        $result = PyLong_FromLong(*$1);
+    }
+    else {
+        $result = Py_None;
+        Py_INCREF(Py_None);
+    }
+    %}
+
 %include "arrus/core/api/common/types.h"
 
 %feature("valuewrapper", "1");
 %include "arrus/core/api/devices/us4r/HVVoltage.h"
 %include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
+%include "arrus/core/api/devices/GpuSettings.h";
 %feature("valuewrapper", "0");
 
-// TODO try not declaring explicitly the below types
 namespace std {
 %template(VectorBool) vector<bool>;
 %template(VectorFloat) vector<float>;
@@ -82,85 +187,6 @@ namespace std {
     }
 }
 
-
-// std typemaps
-// std::optional
-%typemap(in) std::optional<arrus::uint16> %{
-    if($input == Py_None) {
-        $1 = std::optional<arrus::uint16>();
-    }
-    else {
-        long value = PyLong_AsLong($input);
-        // TODO(refactor) extract safe cast macro
-        if(value > std::numeric_limits<arrus::uint16>::max() || value < std::numeric_limits<arrus::uint16>::min()) {
-            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
-                + std::to_string(std::numeric_limits<arrus::uint16>::min())
-                + ", " + std::to_string(std::numeric_limits<arrus::uint16>::max()) + "]";
-            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
-            return NULL;
-        }
-        $1 = std::optional<arrus::uint16>(value);
-    }
-%}
-%typemap(out) boost::optional<arrus::uint16> %{
-    if($1) {
-        $result = PyLong_FromLong(*$1);
-    }
-    else {
-        $result = Py_None;
-        Py_INCREF(Py_None);
-    }
-%}
-
-%typemap(in) std::optional<float> %{
-    if($input == Py_None) {
-        $1 = std::optional<float>();
-    }
-    else {
-        float value = (float)(PyFloat_AsDouble($input));
-        $1 = std::optional<float>(value);
-    }
-%}
-
-%typemap(out) std::optional<float> %{
-    if($1) {
-        $result = PyFloat_FromDouble((double)(*$1));
-    }
-    else {
-        $result = Py_None;
-        Py_INCREF(Py_None);
-    }
-%}
-
-%typemap(in) std::optional<long long> %{
-    if($input == Py_None) {
-        $1 = std::optional<long long>();
-    }
-    else {
-        long long value = PyLong_AsLong($input);
-        if(value > std::numeric_limits<long long>::max() || value < std::numeric_limits<long long>::min()) {
-            std::string errorMsg = "Value '" + std::to_string(value) + "' should be in range: ["
-                + std::to_string(std::numeric_limits<long long>::min())
-                + ", " + std::to_string(std::numeric_limits<long long>::max()) + "]";
-            PyErr_SetString(PyExc_ValueError, errorMsg.c_str());
-            return NULL;
-        }
-        $1 = std::optional<long long>(value);
-    }
-%}
-
-%typemap(out) std::optional<long long> %{
-    if($1) {
-        $result = PyLong_FromLong(*$1);
-    }
-    else {
-        $result = Py_None;
-        Py_INCREF(Py_None);
-    }
-%}
-
-
-
 %module(directors="1") core
 
 
@@ -177,6 +203,7 @@ namespace std {
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/devices/File.h"
+#include "arrus/core/api/devices/Gpu.h"
 
 using namespace ::arrus;
 %}
@@ -414,6 +441,7 @@ void arrusUs4OEMWaitForHVPSMeasuerementDone(arrus::devices::Us4OEM *us4oem, std:
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/File.h"
+#include  "arrus/core/api/devices/Gpu.h"
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/probe/Probe.h"
 #include "arrus/core/api/devices/probe/ProbeModel.h"
@@ -434,7 +462,7 @@ using namespace arrus::devices;
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/Probe.h"
-
+%include "arrus/core/api/devices/Gpu.h"
 
 %inline %{
 arrus::devices::Us4R *castToUs4r(arrus::devices::Device *device) {
@@ -449,6 +477,14 @@ arrus::devices::File *castToFile(arrus::devices::Device *device) {
     auto ptr = dynamic_cast<File*>(device);
     if(!ptr) {
         throw std::runtime_error("Given device is not a file handle.");
+    }
+    return ptr;
+}
+
+arrus::devices::Gpu *castToGpu(arrus::devices::Device *device) {
+    auto ptr = dynamic_cast<Gpu*>(device);
+    if(!ptr) {
+        throw std::runtime_error("Given device is not a GPU handle.");
     }
     return ptr;
 }
@@ -574,6 +610,7 @@ void OptionalVectorFloatPushBack(std::vector<std::optional<float>> &vector, std:
 // Turn on globally value wrappers
 %feature("valuewrapper");
 %{
+#include "arrus/core/api/devices/GpuSettings.h"
 #include "arrus/core/api/devices/us4r/WatchdogSettings.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
 #include "Us4OEM/api/RxSettings.h"

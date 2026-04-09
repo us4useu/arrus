@@ -33,6 +33,7 @@ Logger::SharedHandle defaultLogger;
 void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory) {
     loggerFactory = factory;
     defaultLogger = factory->getLogger();
+    ARRUS_INIT_COMPONENT_LOGGER(defaultLogger, "ARRUS");
 }
 
 Logging* useDefaultLoggerFactory() {
@@ -75,7 +76,7 @@ addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
         << "["
         << expr::format_date_time<boost::posix_time::ptime>(
                                           "TimeStamp",
-                                          "%Y-%m-%d %H:%M:%S")
+                                          "%Y-%m-%d %H:%M:%S,%f")
         << "]"
         << expr::if_(expr::has_attr(deviceIdLogAttr))
                [
@@ -85,7 +86,7 @@ addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
                [
                                           expr::stream << "[" << componentIdLogAttr << "]"
     ]
-        << " " << severity << ": "
+        << "[" << severity << "] "
         << expr::smessage;
     sink->set_formatter(formatter);
     boost::log::core::get()->add_sink(sink);

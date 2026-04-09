@@ -498,6 +498,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
     std::optional<Ordinal> nUs4OEMs;
     std::vector<Ordinal> adapterToUs4RModuleNr;
+    bool maskDVDDInterrupt = false; // default value
     int txFrequencyRange = 1;
     bool allowDuplicateOEMIds = true; // default values
 
@@ -530,6 +531,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
+    maskDVDDInterrupt = us4r.mask_dvdd_failure_check();
     WatchdogSettings watchdog = WatchdogSettings::defaultSettings();
     if(us4r.has_watchdog()) {
         auto enabled = us4r.watchdog().enabled();
@@ -551,6 +553,31 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         else {
             watchdog = WatchdogSettings::disabled();
         }
+    }
+
+    std::optional<HVPSFuseSettings> hvpsFuseSettings = std::nullopt;
+    if(us4r.has_hvps_fuse()) {
+        const auto &fuseSettings = us4r.hvps_fuse();
+        HVPSFuseSettingsBuilder fuseSettingsBuilder;
+        if(fuseSettings.optional_level1_current_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL1_CURRENT_NOT_SET) {
+            fuseSettingsBuilder.setLevel1MaxCurrentThreshold(static_cast<float>(fuseSettings.level1_max_current_threshold()));
+        }
+        if(fuseSettings.optional_level1_power_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL1_POWER_NOT_SET) {
+            fuseSettingsBuilder.setLevel1MaxPowerThreshold(static_cast<float>(fuseSettings.level1_max_power_threshold()));
+        }
+        if(fuseSettings.optional_level2_current_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_CURRENT_NOT_SET) {
+            fuseSettingsBuilder.setLevel2MaxCurrentThreshold(static_cast<float>(fuseSettings.level2_max_current_threshold()));
+        }
+        if(fuseSettings.optional_level2_power_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_POWER_NOT_SET) {
+            fuseSettingsBuilder.setLevel2MaxPowerThreshold(static_cast<float>(fuseSettings.level2_max_power_threshold()));
+        }
+        if(fuseSettings.optional_level1_static_voltage_margin_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL1_STATIC_VOLTAGE_MARGIN_NOT_SET) {
+            fuseSettingsBuilder.setLevel1StaticVoltageMargin(static_cast<float>(fuseSettings.level1_static_voltage_margin()));
+        }
+        if(fuseSettings.optional_level2_static_voltage_margin_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_STATIC_VOLTAGE_MARGIN_NOT_SET) {
+            fuseSettingsBuilder.setLevel2StaticVoltageMargin(static_cast<float>(fuseSettings.level2_static_voltage_margin()));
+        }
+        hvpsFuseSettings = fuseSettingsBuilder.build();
     }
 
     ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
@@ -578,7 +605,9 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             bitstreams,
             limits,
             watchdog,
-            allowDuplicateOEMIds
+            allowDuplicateOEMIds,
+            maskDVDDInterrupt,
+            hvpsFuseSettings
     };
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
@@ -586,6 +615,17 @@ Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettin
         case proto::Us4OEMSettings_ReprogrammingMode_SEQUENTIAL: return Us4OEMSettings::ReprogrammingMode::SEQUENTIAL;
         case proto::Us4OEMSettings_ReprogrammingMode_PARALLEL: return Us4OEMSettings::ReprogrammingMode::PARALLEL;
         default: throw std::runtime_error("Unknown reprogramming mode: " + std::to_string(mode));
+    }
+}
+
+GpuSettings readGpuSettings(const proto::GpuSettings &gpu) {
+    // Validate GPU settings if present
+    GpuSettingsProtoValidator gpuSettingsValidator("gpu");
+    gpuSettingsValidator.validate(gpu);
+    if(gpu.memory_limit_percentage() > 0.0f) {
+        return GpuSettings(gpu.memory_limit_percentage(), gpu.use_memory_pool());
+    } else {
+        return GpuSettings(std::nullopt, gpu.use_memory_pool());
     }
 }
 
@@ -650,7 +690,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::INFO, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::DEBUG, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
         try {
@@ -660,7 +700,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                                                            "dictionary. Message: {}",
                                                            e.what()));
         }
-        logger->log(LogSeverity::INFO, "Using default dictionary.");
+        logger->log(LogSeverity::DEBUG, "Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
     dictionaryValidator.validate(d);
@@ -673,6 +713,9 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     }
     if (s->has_file()) {
         settingsBuilder.addFile(readFileSettings(s->file(), dictionary));
+    }
+    if(s->has_gpu()) {
+        settingsBuilder.addGpu(readGpuSettings(s->gpu()));
     }
     SessionSettings settings = settingsBuilder.build();
     logger->log(LogSeverity::DEBUG, arrus::format("Read settings from '{}': {}", filepath, arrus::toString(settings)));

@@ -22,7 +22,6 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
 #include "utils.h"
 #include "arrus/core/devices/us4r/TxWaveformConverter.h"
-#include "arrus/core/devices/us4r/TxWaveformSoftStartConverter.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -254,12 +253,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             currentTxDelayProfileIds.at(sequenceId) = nProfiles;
             if(isOEMPlus()) {
                 auto waveform = op.getTxWaveform();
-                // Waveform pre-processing.
-                if(softStartConverter.apply(op.getTxWaveform())) {
-                    waveform = softStartConverter.convert(waveform);
-                    this->logger->log(LogSeverity::INFO, "The given TX pulse has at least 128 cycles, applying reduced "
-                                                         "duty cycle for the first 5 us of the TX pulse (25%, 50%, 75%).");
-                }
                 ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
             }
             else {
@@ -594,13 +587,13 @@ void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
 
-void Us4OEMImpl::enableSequencer(uint16 startEntry) {
+void Us4OEMImpl::enableSequencer(uint16 startEntry, bool dvddMask) {
     bool txConfOnTrigger = false;
     switch (reprogrammingMode) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry);
+    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry, dvddMask);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
@@ -682,7 +675,7 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
     return currentSamplingFrequency;
 }
 
-float Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
+uint64_t Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
 
 void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {
     if (ddc.has_value()) {

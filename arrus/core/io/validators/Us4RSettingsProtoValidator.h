@@ -8,6 +8,8 @@
 #include "arrus/core/io/validators/ProbeAdapterModelProtoValidator.h"
 #include "arrus/core/io/validators/ProbeToAdapterConnectionProtoValidator.h"
 #include "arrus/core/io/validators/RxSettingsProtoValidator.h"
+#include "arrus/core/io/validators/GpuSettingsProtoValidator.h"
+
 
 COMPILER_PUSH_DIAGNOSTIC_STATE
 COMPILER_DISABLE_MSVC_WARNINGS(4127)

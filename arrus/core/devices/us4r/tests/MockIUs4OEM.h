@@ -53,7 +53,7 @@ public:
     MOCK_METHOD(void, SetRxDelay,
             (const float delay, const unsigned short firing), (override));
     MOCK_METHOD(void, EnableTransmit, (), (override));
-    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, uint16_t startEntry), (override));
+    MOCK_METHOD(void, EnableSequencer, (bool txConfOnTrigger, uint16_t startEntry, bool maskDVDDInterrupt), (override));
     MOCK_METHOD(void, SetRxChannelMapping,
             ( const std::vector<uint8_t> & mapping, const uint16_t rxMapId),
     (override));
@@ -170,7 +170,7 @@ public:
     MOCK_METHOD(void, AfeDisableAutoOffsetRemoval, (), (override));
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalCycles, (uint8_t), (override));
     MOCK_METHOD(void, AfeSetAutoOffsetRemovalDelay, (uint8_t), (override));
-    MOCK_METHOD(float, GetFPGAWallclock, (), (override));
+    MOCK_METHOD(uint64_t, GetFPGAWallclock, (), (override));
     MOCK_METHOD(void, AfeEnableLnaHpf, (), (override));
     MOCK_METHOD(void, AfeDisableLnaHpf, (), (override));
     MOCK_METHOD(void, AfeSetLnaHpfCornerFrequency, (uint32_t), (override));
@@ -235,14 +235,24 @@ public:
     MOCK_METHOD(void, EnableSystemInterrupts, (const IUs4OEM::CallbacksMap&), (override));
     MOCK_METHOD(void, ResetDMACallbacks, (), (override));
     MOCK_METHOD(void, SetPulserInterruptCallback, (const std::function<void()> &), (override));
-    MOCK_METHOD(void, EraseHVPSCalibration, (), (override));
-    MOCK_METHOD(void, CalibrateHVPS, (uint8_t limit), (override));
-    MOCK_METHOD(bool, CheckHVPSCalibration, (), (override));
+    MOCK_METHOD(void, EraseHVPSTuningVector, (), (override));
+    MOCK_METHOD(void, TuneHVPS, (uint8_t limit), (override));
+    MOCK_METHOD(bool, IsHVPSTuned, (), (override));
     MOCK_METHOD(void, BuildSequenceWaveform, (const unsigned short), (override));
     MOCK_METHOD(uint16_t, GetSequencerCurrentIndex, (), (override));
     MOCK_METHOD(bool, IsEntryReadyForTransfer, (uint16_t), (override));
     MOCK_METHOD(bool, IsEntryReadyForReceive, (uint16_t), (override));
     MOCK_METHOD(void, WaitForSequencerIdle, (), (override));
+    MOCK_METHOD(std::vector<uint16_t>, GetPulsersStatusRegister, (), (override));
+    MOCK_METHOD(std::vector<std::string>, GetPulserStatusRegisterDescription, (uint16_t status), (override));
+    MOCK_METHOD(void, SetHVPSVoltage, (uint8_t), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV0CurrentThreshold, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV1CurrentThreshold, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV0StaticVoltageMargin, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV0PowerThreshold, (float overpowerLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV1PowerThreshold, (float overpowerLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseHV1StaticVoltageMargin, (float overcurrentLevel), (override));
+    MOCK_METHOD(int64_t, GetHVPSTuningTimestamp, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())

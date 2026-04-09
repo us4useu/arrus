@@ -382,10 +382,18 @@ class ProcessingRunner:
         READY = 1
         CLOSED = 2
 
-    def __init__(self, input_buffer, metadata, processing):
+    def __init__(self, input_buffer, metadata, processing, use_memory_pool: bool = True,
+                 gpu_memory_limit_percentage: float = 0.95):
         import cupy as cp
         self.cp = cp
         self._log_gpu_info()
+        if not use_memory_pool:
+            cp.cuda.set_allocator(None)
+
+        # Set GPU memory limit if provided
+        if use_memory_pool and gpu_memory_limit_percentage:
+            self._set_gpu_memory_limit_percentage(gpu_memory_limit_percentage)
+
         # Input buffer, stored in the host PC memory.
         self.host_input_buffer = input_buffer
         self.processing = processing
@@ -551,14 +559,16 @@ class ProcessingRunner:
             if t_name == "Output":
                 new_deps[(out_buffer_enqueue.name, t_input_nr)] = (s_name, s_input_nr)
             else:
-                # Determine if the target node is connected to some sequence
+                # Check if the source node is just the Tx/Rx sequence name.
+                # If so, replace the Tx/Rx sequence with the EnqueueToGPU operator
                 input_nr = metadata_nr_by_sequence_name.get(s_name, None)
                 if input_nr is not None:
                     # Target/Input:InputNr <- InputBufferEnqueue/Output:{input_nr}
                     new_deps[(t_name, t_input_nr)] = (in_buffer_enqueue.name, input_nr)
                     input_processing_op_names.append(t_name)
                 else:
-                    # pass through
+                    # if it's an ordinanry graph operator, just
+                    # copy it to the new graph.
                     new_deps[(t_name, t_input_nr)] = (s_name, s_input_nr)
         # TODO prepend the last Pipeline/ != Output with ReleaseBufferElement
         new_graph = Graph(new_op_by_name.values(), new_deps)
@@ -605,13 +615,10 @@ class ProcessingRunner:
         n_ops = len(sequence)
 
         # (source, output) -> *(target, input)
-        def get_n_outputs(op_name):
-            if op_name == "Outputs":
-                return 0
-            return len(output_nrs_by_op_name[op_name])
+        def get_n_outputs(op):
+            return op.n_outputs
 
-        target_pos = [[list() for _ in range(get_n_outputs(op.name))]
-                      for op in sequence]
+        target_pos = [[list() for _ in range(get_n_outputs(op))] for op in sequence]
         t_inputs = [0]*n_ops
         for (t_name, t_input_nr), (s_name, s_output_nr) in deps.items():
             t_pos = op_position[t_name]
@@ -697,11 +704,18 @@ class ProcessingRunner:
             cp.cuda.runtime.hostUnregister(data_getter(element).ctypes.data)
 
     def _log_gpu_info(self):
-        import arrus.logging
         ngpus = self.cp.cuda.runtime.getDeviceCount()
-        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
-        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
-        arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {ngpus}")
+        arrus.logging.log(arrus.logging.DEBUG, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
+        arrus.logging.log(arrus.logging.DEBUG, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
+        gpu_names = [self.cp.cuda.runtime.getDeviceProperties(i)["name"].decode("utf-8")
+                     for i in range(ngpus)]
+        if gpu_names:
+            gpu_names = ", ".join(gpu_names)
+            arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {gpu_names}. "
+                                               f"CUDA version: {self.cp.cuda.runtime.runtimeGetVersion()}")
+        else:
+            arrus.logging.log(arrus.logging.INFO, f"No NVIDIA GPU detected")
+
         for i in range(ngpus):
             props = self.cp.cuda.runtime.getDeviceProperties(i)
             free_mem, total_mem = self.cp.cuda.runtime.memGetInfo()
@@ -717,6 +731,28 @@ Compute capability:   {props['major']}.{props['minor']}
 Clock:                {props['clockRate'] / 1000} MHz
                 """
             )
+
+    def _set_gpu_memory_limit_percentage(self, gpu_memory_limit_percentage: float):
+        """
+        Set the GPU memory limit for the memory pool as a percentage of total GPU memory.
+
+        :param gpu_memory_limit_percentage: Percentage of total GPU memory to use (0.0 to 1.0)
+        """
+        import cupy as cp
+
+        # Get total GPU memory
+        free_mem, total_mem = cp.cuda.runtime.memGetInfo()
+        # Calculate memory limit in bytes
+        memory_limit = int(total_mem * gpu_memory_limit_percentage)
+        # Set the memory pool limit
+        mempool = cp.get_default_memory_pool()
+        mempool.set_limit(size=memory_limit)
+
+        arrus.logging.log(
+            arrus.logging.DEBUG,
+            f"GPU memory pool limit set to {gpu_memory_limit_percentage*100:.1f}% "
+            f"({memory_limit // (1024**2)} MiB out of {total_mem // (1024**2)} MiB total)"
+        )
 
 
 class Operation:
@@ -799,6 +835,18 @@ class Operation:
         """
         return dict()
 
+    @property
+    def n_outputs(self) -> int:
+        """
+        Returns the number of outputs of this operation.
+
+        In most cases this will be equal 1; since v0.14.0 we started supporting
+        multi-output operations. To implement multi-output operation correctly, you have
+        to override this method and return the actual number of arrays this Operation actually returns.
+        :return:
+        """
+        return 1
+
     def close(self):
         pass
 
@@ -828,6 +876,10 @@ class EnqueueToGPU(Operation):
 
     def _release_element_callback(self, element):
         element.release()
+
+    @property
+    def n_outputs(self):
+        return self.buffer.n_arrays
 
     def process(self, element):
         """
@@ -957,12 +1009,15 @@ class Pipeline:
                 step_outputs = step.process(data)
                 # To keep the order of step_outputs, appendleft
                 # collection in reversed order.
-                for output in reversed(step_outputs):
-                    outputs.appendleft(output)
+                outputs.extendleft(reversed(step_outputs))
             else:
                 data = step.process(data)
         if not self._is_last_endpoint:
-            outputs.appendleft(data)
+            # Assume, that the Operation may return a tuple of arrays.
+            if not isinstance(data, tuple) and not isinstance(data, list):
+                data = (data, )
+            # Keep the order of arrays.
+            outputs.extendleft(reversed(data))
         return outputs
 
     def __initialize(self, const_metadata):
@@ -996,8 +1051,7 @@ class Pipeline:
                     child_metadatas = (child_metadatas,)
                 # To keep the order of child_metadatas, appendleft
                 # collection in reversed order.
-                for metadata in reversed(child_metadatas):
-                    metadatas.appendleft(metadata)
+                metadatas.extendleft(reversed(child_metadatas))
                 step.endpoint = True
             else:
                 current_metadata = step.prepare(current_metadata)
@@ -1006,7 +1060,9 @@ class Pipeline:
         self.__initialize(const_metadata)
         last_step = self.steps[-1]
         if not isinstance(last_step, (Pipeline, Output)):
-            metadatas.appendleft(current_metadata)
+            if not isinstance(current_metadata, Iterable):
+                current_metadata = (current_metadata, )
+            metadatas.extendleft(reversed(current_metadata))
             self._is_last_endpoint = False
         else:
             self._is_last_endpoint = True
@@ -1087,14 +1143,22 @@ class Pipeline:
 
     def _get_n_outputs(self):
         n_outputs = 0
+        prev_n_outputs = 1
         for step in self.steps:
             if isinstance(step, Pipeline):
                 n_outputs += step.n_outputs
             if isinstance(step, Output):
-                n_outputs += 1
+                n_outputs += prev_n_outputs
+
+            # Keep track what was the number of outputs in
+            # the previous operation, in case we spot Operation (the n_outputs for the Output
+            # is equal to the number of of outputs of the previous operation).
+            if not isinstance(step, Output):
+                prev_n_outputs = step.n_outputs
+
         last_step = self.steps[-1]
         if not isinstance(last_step, (Pipeline, Output)):
-            n_outputs += 1
+            n_outputs += last_step.n_outputs
         return n_outputs
 
 

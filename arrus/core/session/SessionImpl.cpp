@@ -54,8 +54,8 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
             std::make_unique<HighVoltageSupplierFactoryImpl>(),
             std::make_unique<DigitalBackplaneFactoryImpl>()
             ),
-        std::make_unique<FileFactoryImpl>()
-        );
+        std::make_unique<FileFactoryImpl>(),
+        std::make_unique<GpuFactory>());
 }
 
 Session::Handle createSession(const std::string &filepath) {
@@ -66,12 +66,13 @@ Session::Handle createSession(const std::string &filepath) {
 SessionImpl::SessionImpl(
     const SessionSettings &sessionSettings,
     Us4RFactory::Handle us4RFactory,
-    FileFactory::Handle fileFactory
+    FileFactory::Handle fileFactory,
+    arrus::devices::GpuFactory::Handle gpuFactory
     )
-    : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)) {
+    : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)), gpuFactory(std::move(gpuFactory)) {
     getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
     getDefaultLogger()->log(
-        LogSeverity::INFO, arrus::format("ARRUS version: {}", ::arrus::version()));
+        LogSeverity::DEBUG, arrus::format("ARRUS version: {}", ::arrus::version()));
     // Debug info.
     getDefaultLogger()->log(
         LogSeverity::DEBUG, arrus::format("OS: {}", ::arrus::OS_NAME));
@@ -82,26 +83,21 @@ SessionImpl::SessionImpl(
 }
 
 arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path) {
-    // sanitize
+    std::string sanitizedPath = sanitizeDeviceId(path);
+    auto deviceId = DeviceId::parse(sanitizedPath);
+    arrus::devices::Device::RawHandle rootDevice = getDevice(deviceId);
+    return rootDevice;
+}
+std::string SessionImpl::sanitizeDeviceId(const std::string &path) const {
     std::string sanitizedPath{path};
     boost::algorithm::trim(sanitizedPath);
-
-    // parse path
+    // Get the root node (without the / ) and check if there is any tail
     auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
-
-    auto deviceId = DeviceId::parse(root);
-    arrus::devices::Device::RawHandle rootDevice = getDevice(deviceId);
-
-    if (tail.empty()) {
-        return rootDevice;
-    } else {
-        if (isInstanceOf<DeviceWithComponents>(rootDevice)) {
-            return ((DeviceWithComponents *) rootDevice)->getDevice(tail);
-        } else {
-            throw IllegalArgumentException(
-                arrus::format("Invalid path '{}', top-level devices can be accessed only.", path));
-        }
+    if(! tail.empty()) {
+        throw IllegalArgumentException(
+            arrus::format("Invalid path '{}', top-level devices can be accessed only.", path));
     }
+    return root;
 }
 
 arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceId) {
@@ -144,6 +140,18 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
         devices.emplace(file->getDeviceId(), std::move(file));
         ultrasoundOrdinal++;
     }
+
+    // Processing devices.
+    // NOTE: this limitation will be alleviated in ARRUS 0.15.0.
+    ARRUS_REQUIRES_TRUE(sessionSettings.getNumberOfGpus() <= 1,
+                        "Currently ARRUS support a single GPU configuration only.");
+
+    for(size_t i = 0; i < sessionSettings.getNumberOfGpus(); ++i) {
+        const GpuSettings &settings = sessionSettings.getGpuSettings(Ordinal(i));
+        Gpu::Handle gpu = gpuFactory->getGpu(Ordinal(i), settings);
+        aliases.emplace(DeviceId(DeviceType::GPU, Ordinal(i)), gpu.get());
+        devices.emplace(gpu->getDeviceId(), std::move(gpu));
+    }
 }
 
 SessionImpl::~SessionImpl() {
@@ -174,14 +182,17 @@ void SessionImpl::startScheme() {
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
     ultrasound->start();
     state = State::STARTED;
+    getDefaultLogger()->log(LogSeverity::INFO, "Scheme started.");
 }
 
 void SessionImpl::stopScheme() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
     ultrasound->stop();
-    state = State::STOPPED;
-    getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
+    if(state != State::STOPPED) {
+        state = State::STOPPED;
+        getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
+    }
 }
 
 void SessionImpl::run(bool sync, std::optional<long long> timeout) {
@@ -213,7 +224,6 @@ void SessionImpl::run(bool sync, std::optional<long long> timeout) {
 void SessionImpl::close() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     if (this->state == State::CLOSED) {
-        getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Session already closed."));
         return;
     }
     if (this->state == State::STARTED) {
@@ -222,6 +232,7 @@ void SessionImpl::close() {
     getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Closing session."));
     this->devices.clear();
     this->state = State::CLOSED;
+    getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Session closed."));
 }
 
 void SessionImpl::setParameters(const Parameters &params) {
@@ -282,5 +293,14 @@ UploadResult SessionImpl::setSubsequences(const std::vector<Slice> &slices, cons
     return UploadResult(buffer, {metadata});
 }
 
+bool SessionImpl::hasDevice(const std::string &deviceIdString) const {
+    std::string sanitizedId = sanitizeDeviceId(deviceIdString);
+    auto deviceId = DeviceId::parse(sanitizedId);
+    return hasDevice(deviceId);
+}
+
+bool SessionImpl::hasDevice(const DeviceId &deviceId) const {
+    return containsKey(devices, deviceId) || containsKey(aliases, deviceId);
+}
 
 }// namespace arrus::session
