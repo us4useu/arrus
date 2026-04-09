@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21.0)
 
-project(arrus LANGUAGES CXX)
+project(arrus LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
 set(PROJECT_VERSION 0.13.7)
