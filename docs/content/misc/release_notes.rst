@@ -4,6 +4,12 @@ Release notes
 0.13.x
 ------
 
+0.13.8
+
+- core (driver)
+
+    - Set the maximum number of RX samples to 2 ^ 16-64 #M_OEM-282.
+
 0.13.7
 
 - core (driver)
