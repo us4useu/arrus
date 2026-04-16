@@ -1,6 +1,8 @@
+#include <fstream>
 #include <iostream>
 
 #include <memory>
+#include <set>
 #include <string>
 
 #include <boost/core/null_deleter.hpp>
@@ -105,7 +107,20 @@ public:
         addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
     }
 
+    void addLogFile(const std::string &filepath, LogSeverity minSeverity) {
+        if (registeredFiles.count(filepath) > 0) {
+            return;
+        }
+        registeredFiles.insert(filepath);
+        std::shared_ptr<std::ostream> logFileStream =
+            std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
+        addTextSink(logFileStream, minSeverity, true);
+    }
+
     void addClog(LogSeverity level) {
+        if (this->clogSink != nullptr) {
+            return;
+        }
         boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
         this->clogSink = addTextSinkBoostPtr(stream, level, false);
     }
@@ -127,6 +142,7 @@ public:
     }
 private:
     boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>> clogSink;
+    std::set<std::string> registeredFiles;
 };
 
 // Logging.
@@ -150,6 +166,10 @@ void Logging::setClogLevel(::arrus::LogSeverity level) {
 
 void Logging::addOutputStream(std::shared_ptr<std::ostream> stream, LogSeverity level) {
     this->pImpl->addTextSink(std::move(stream), level, true);
+}
+
+void Logging::addLogFile(const std::string &filepath, LogSeverity level) {
+    this->pImpl->addLogFile(filepath, level);
 }
 
 void Logging::removeAllStreams() {

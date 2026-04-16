@@ -57,6 +57,16 @@ namespace arrus {
         void addOutputStream(std::shared_ptr<std::ostream> stream, LogSeverity level);
 
         /**
+         * Adds a log file to the default logging mechanism.
+         * If the file has already been added, the call is ignored.
+         *
+         * @param filepath path to the log file
+         * @param level minimum severity level to set for the log file
+         */
+        ARRUS_CPP_EXPORT
+        void addLogFile(const std::string &filepath, LogSeverity level);
+
+        /**
          * Remove all registered output streams from the logging mechanism.
          */
         ARRUS_CPP_EXPORT
