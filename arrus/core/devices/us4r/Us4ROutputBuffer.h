@@ -235,6 +235,7 @@ public:
             freeChunked(dataBuffer, dataBufferSize);
             dataBuffer = nullptr;
             getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
+            throw;
         }
         this->initialize();
     }
@@ -512,8 +513,6 @@ private:
             elements.push_back(std::make_shared<Us4ROutputBufferElement>(i, arrays, elementReadyPattern));
         }
     }
-
-
 
     std::mutex mutex;
     /** A size of a single element IN number of BYTES. */
