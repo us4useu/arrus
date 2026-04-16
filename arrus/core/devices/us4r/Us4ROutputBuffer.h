@@ -7,6 +7,12 @@
 #include <iostream>
 #include <mutex>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#endif
+
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -218,22 +224,23 @@ public:
         Accumulator elementReadyPattern = createElementReadyPattern(arrayDefs, noems);
         elementSize = calculateElementSize(arrayDefs);
         try {
-            size_t totalSize = elementSize * nElements;
+            dataBufferSize = elementSize * nElements;
             getDefaultLogger()->log(
                 LogSeverity::DEBUG,
-                format("Allocating {} ({}, {}) bytes of memory", totalSize, elementSize, nElements));
-            dataBuffer = reinterpret_cast<DataType *>(operator new[](totalSize, std::align_val_t(ALIGNMENT)));
+                format("Allocating {} ({}, {}) bytes of memory", dataBufferSize, elementSize, nElements));
+            dataBuffer = reinterpret_cast<DataType *>(allocateChunked(dataBufferSize, ALLOC_CHUNK_SIZE));
             getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
             createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
-            ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+            freeChunked(dataBuffer, dataBufferSize);
+            dataBuffer = nullptr;
             getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
         }
         this->initialize();
     }
 
     ~Us4ROutputBuffer() override {
-        ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+        freeChunked(dataBuffer, dataBufferSize);
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
@@ -436,11 +443,73 @@ private:
         }
     }
 
+    static constexpr size_t ALLOC_CHUNK_SIZE = 512 * 1024 * 1024; // 512 MB
+
+    /**
+     * Allocates a contiguous virtual memory region of the given totalSize,
+     * committing it in smaller chunks to avoid holding the kernel's mmap_lock
+     * (Linux) or address space lock (Windows) for too long.
+     */
+    static void *allocateChunked(size_t totalSize, size_t chunkSize) {
+        // mmap (Linux) and VirtualAlloc (Windows) return page-aligned addresses
+        // (>= 4096 bytes). Static assert ensures ALIGNMENT doesn't exceed this guarantee.
+        static_assert(ALIGNMENT <= 4096,
+                      "ALIGNMENT exceeds page size; mmap/VirtualAlloc may not satisfy it");
+#ifdef _WIN32
+        // Reserve contiguous virtual address space (no physical pages committed).
+        void *base = VirtualAlloc(nullptr, totalSize, MEM_RESERVE, PAGE_NOACCESS);
+        if (!base) {
+            throw std::bad_alloc();
+        }
+        // Commit in chunks.
+        for (size_t offset = 0; offset < totalSize; offset += chunkSize) {
+            size_t thisChunk = std::min(chunkSize, totalSize - offset);
+            void *committed = VirtualAlloc(static_cast<char *>(base) + offset, thisChunk, MEM_COMMIT, PAGE_READWRITE);
+            if (!committed) {
+                VirtualFree(base, 0, MEM_RELEASE);
+                throw std::bad_alloc();
+            }
+        }
+        return base;
+#else
+        // Reserve contiguous virtual address space (PROT_NONE = no access, no physical pages).
+        void *base = ::mmap(nullptr, totalSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (base == MAP_FAILED) {
+            throw std::bad_alloc();
+        }
+        // Commit in chunks by remapping with read/write permissions.
+        for (size_t offset = 0; offset < totalSize; offset += chunkSize) {
+            size_t thisChunk = std::min(chunkSize, totalSize - offset);
+            void *committed = ::mmap(static_cast<char *>(base) + offset, thisChunk, PROT_READ | PROT_WRITE,
+                                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+            if (committed == MAP_FAILED) {
+                ::munmap(base, totalSize);
+                throw std::bad_alloc();
+            }
+        }
+        return base;
+#endif
+    }
+
+    static void freeChunked(void *base, size_t totalSize) {
+        if (!base) {
+            return;
+        }
+#ifdef _WIN32
+        (void)totalSize;
+        VirtualFree(base, 0, MEM_RELEASE);
+#else
+        ::munmap(base, totalSize);
+#endif
+    }
+
     std::mutex mutex;
     /** A size of a single element IN number of BYTES. */
     size_t elementSize;
+    /** Total size of dataBuffer in bytes. */
+    size_t dataBufferSize{0};
     /**  Total size in the number of elements. */
-    int16 *dataBuffer;
+    int16 *dataBuffer{nullptr};
     /** Host buffer elements */
     std::vector<Us4ROutputBufferElement::SharedHandle> elements;
     /** Array offsets, in bytes. The is an offset relative to the beginning of each element. */
