@@ -228,6 +228,8 @@ add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS} ${GENE
 target_compile_definitions(${TARGET_NAME}
     PRIVATE
     "BOOST_ALL_NO_LIB"
+    $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>
+    $<$<PLATFORM_ID:Windows>:NOMINMAX>
     )
 
 ################################################################################

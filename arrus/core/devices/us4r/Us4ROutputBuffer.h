@@ -9,6 +9,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#undef ERROR // conflicts with LogSeverity::ERROR
 #else
 #include <sys/mman.h>
 #endif
