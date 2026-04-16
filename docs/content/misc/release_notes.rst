@@ -4,6 +4,14 @@ Release notes
 0.13.x
 ------
 
+0.13.8
+
+- core (driver)
+
+    - Reduced the likelihood of watchdog errors when programming long sequences or many buffer elements. We still recommend increasing
+      thresholds 0 and 1 (see User Guide -> Watchdog) for longer sequences # M_US4R-95.
+
+
 0.13.7
 
 - core (driver)
