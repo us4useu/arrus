@@ -599,9 +599,9 @@ GpuSettings readGpuSettings(const proto::GpuSettings &gpu) {
     GpuSettingsProtoValidator gpuSettingsValidator("gpu");
     gpuSettingsValidator.validate(gpu);
     if(gpu.memory_limit_percentage() > 0.0f) {
-        return GpuSettings(gpu.memory_limit_percentage(), gpu.use_memory_pool(), gpu.use_p2p_dma());
+        return GpuSettings(gpu.memory_limit_percentage(), gpu.use_memory_pool());
     } else {
-        return GpuSettings(std::nullopt, gpu.use_memory_pool(), gpu.use_p2p_dma());
+        return GpuSettings(std::nullopt, gpu.use_memory_pool());
     }
 }
 

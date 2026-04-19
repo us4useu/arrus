@@ -35,7 +35,7 @@ public:
           us4oemFactory(std::move(us4oemFactory)), us4RSettingsConverter(std::move(us4RSettingsConverter)),
           hvFactory(std::move(hvFactory)), backplaneFactory(std::move(backplaneFactory)) {}
 
-    Us4R::Handle getUs4R(Ordinal ordinal, const Us4RSettings &settings, bool p2pDmaSupported) override {
+    Us4R::Handle getUs4R(Ordinal ordinal, const Us4RSettings &settings) override {
         DeviceId id(DeviceType::Us4R, ordinal);
 
         // Validate us4r settings (general).
@@ -108,7 +108,7 @@ public:
             return std::make_unique<Us4RImpl>(
                 id, std::move(us4oems), std::move(probeSettings), std::move(adapterSettings), std::move(hv), rxSettings,
                 settings.getChannelsMaskForAllProbes(), std::move(backplane), settings.getBitstreams(),
-                isBitstreamAddr, adapterSettings.getIOSettings(), isExternalTrigger, settings.isDVDDInterruptMasked(), p2pDmaSupported);
+                isBitstreamAddr, adapterSettings.getIOSettings(), isExternalTrigger, settings.isDVDDInterruptMasked());
         } else {
             throw IllegalArgumentException("Custom OEM configuration is not available since 0.11.0.");
         }

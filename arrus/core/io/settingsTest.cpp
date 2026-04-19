@@ -115,7 +115,6 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
     auto const &gpuSettings = settings.getGpuSettings(0);
     EXPECT_FLOAT_EQ(gpuSettings.getMemoryLimitPercentage().value(), 0.5f);
     EXPECT_TRUE(gpuSettings.isUseMemoryPool());
-    EXPECT_FALSE(gpuSettings.usesP2pDma());
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithDisabledWatchdog) {

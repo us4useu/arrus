@@ -122,12 +122,8 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     ARRUS_REQUIRES_TRUE(sessionSettings.getNumberOfGpus() <= 1,
                         "Currently ARRUS support a single GPU configuration only.");
 
-    // P2P DMA supported if there's a GPU present and all GPUs enable it.
-    bool p2pDmaSupported = sessionSettings.getNumberOfGpus() > 0;
-
     for(size_t i = 0; i < sessionSettings.getNumberOfGpus(); ++i) {
         const GpuSettings &settings = sessionSettings.getGpuSettings(Ordinal(i));
-        p2pDmaSupported = p2pDmaSupported && settings.usesP2pDma();
         Gpu::Handle gpu = gpuFactory->getGpu(Ordinal(i), settings);
         aliases.emplace(DeviceId(DeviceType::GPU, Ordinal(i)), gpu.get());
         devices.emplace(gpu->getDeviceId(), std::move(gpu));
@@ -136,7 +132,7 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     // - Us4R:
     for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs(); ++i) {
         const Us4RSettings &settings = sessionSettings.getUs4RSettings(Ordinal(i));
-        Us4R::Handle us4r = us4rFactory->getUs4R(Ordinal(i), settings, p2pDmaSupported);
+        Us4R::Handle us4r = us4rFactory->getUs4R(Ordinal(i), settings);
         getDefaultLogger()->log(
             LogSeverity::INFO,
             format("Connected with device: {}, details: {}", us4r->getDeviceId().toString(), us4r->getDescription())

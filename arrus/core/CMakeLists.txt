@@ -242,15 +242,15 @@ target_include_directories(${TARGET_NAME}
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-# Add CUDA include directories if CUDA is available
-if(CUDAToolkit_FOUND)
+# Add CUDA include directories if CUDA support is enabled
+if(ARRUS_CUDA)
     target_include_directories(${TARGET_NAME}
         PRIVATE
         ${CUDAToolkit_INCLUDE_DIRS}
     )
     target_compile_definitions(${TARGET_NAME}
         PRIVATE
-        CUDA_AVAILABLE
+        ARRUS_CUDA
     )
 endif()
 
@@ -351,6 +351,11 @@ if (ARRUS_RUN_TESTS)
         "-DARRUS_TEST_DATA_PATH=\"${ARRUS_CORE_IO_TEST_DATA}\"")
     create_core_test(devices/us4r/us4oem/IRQEventTest.cpp common/logging.cpp)
     create_core_test(devices/us4r/TxTimeoutRegisterFactoryTest.cpp common/logging.cpp)
+    if(ARRUS_CUDA)
+        create_core_test(devices/us4r/Us4ROutputBufferTest.cpp common/logging.cpp CUDA::cudart ARRUS_CUDA)
+    else()
+        create_core_test(devices/us4r/Us4ROutputBufferTest.cpp common/logging.cpp)
+    endif()
     create_core_test(devices/us4r/Us4RSubsequenceTest.cpp "devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp")
     create_core_test(devices/us4r/TxWaveformConverterTest.cpp common/logging.cpp)
 endif ()

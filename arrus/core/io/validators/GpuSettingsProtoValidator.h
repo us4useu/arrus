@@ -26,10 +26,6 @@ public:
         // Validate use_memory_pool field (boolean validation is implicit)
         // The field is optional and defaults to false in protobuf
         // No additional validation needed for boolean fields
-
-        // Validate use_p2p_dma field (boolean validation is implicit)
-        // The field is optional and defaults to false in protobuf
-        // No additional validation needed for boolean fields
     }
 
 private:

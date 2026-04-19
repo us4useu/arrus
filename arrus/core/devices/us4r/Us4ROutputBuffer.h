@@ -15,7 +15,7 @@
 #include "arrus/core/common/logging.h"
 #include "us4oem/Us4OEMBuffer.h"
 
-#ifdef CUDA_AVAILABLE
+#ifdef ARRUS_CUDA
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #endif
@@ -225,7 +225,7 @@ public:
                                            elementSize, nElements, useP2pDma));
 
             if (useP2pDma) {
-#ifdef CUDA_AVAILABLE
+#ifdef ARRUS_CUDA
                 // Detect if we're dealing with an IGPU with unified memory, which does not require special handling for P2P DMA.
                 // For now assume that devices with more than 1 GPU do not use unified memory
                 int deviceCount = 0;
@@ -266,7 +266,7 @@ public:
             createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
             if (useP2pDma) {
-#ifdef CUDA_AVAILABLE
+#ifdef ARRUS_CUDA
                 cudaFree(dataBuffer);
 #endif
             } else {
@@ -279,7 +279,7 @@ public:
 
     ~Us4ROutputBuffer() override {
         if (useP2pDma) {
-#ifdef CUDA_AVAILABLE
+#ifdef ARRUS_CUDA
             cudaFree(dataBuffer);
 #endif
         } else {

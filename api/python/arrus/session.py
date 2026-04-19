@@ -18,6 +18,7 @@ import arrus.medium
 import arrus.metadata
 import arrus.params
 import arrus.devices.cpu
+import arrus.devices.device
 import arrus.devices.gpu
 import arrus.ops.us4r
 import arrus.ops.imaging
@@ -414,13 +415,20 @@ class Session(AbstractSession):
             # GPU settings
             gpu_memory_limit_percentage = None
             use_memory_pool = True  # Default to True
-            use_p2p_dma = False
+            # Whether to use P2P DMA is now derived from the output buffer placement
+            # (set via Scheme.output_buffer.placement); P2P DMA is enabled when the
+            # buffer is placed on the GPU.
+            placement = getattr(scheme.output_buffer, "placement", None)
+            use_p2p_dma = (
+                placement is not None
+                and arrus.devices.device.parse_device_id(placement).device_type
+                    == arrus.devices.device.DeviceType("GPU")
+            )
             if self._session_handle.hasDevice("/GPU:0"):
                 # Read GPU specific settings
                 gpu = self.get_device("/GPU:0")
                 gpu_settings = gpu.get_settings()
                 gpu_memory_limit_percentage = gpu_settings.memory_limit_percentage
-                use_p2p_dma = gpu_settings.use_p2p_dma
                 use_memory_pool = gpu_settings.use_memory_pool
 
             processing_runner = _imaging.ProcessingRunner(

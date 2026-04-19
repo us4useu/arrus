@@ -7,6 +7,4 @@ message GpuSettings {
   float memory_limit_percentage = 1;
   // Whether to use GPU memory pool for memory management
   bool use_memory_pool = 2;
-  // Whether to use peer-to-peer DMA for data transfers (experimental)
-  bool use_p2p_dma = 3;
-} 
+}

@@ -481,7 +481,6 @@ class Us4R(Device, Ultrasound):
         This property is set by default to true.
         """
         return self._handle.setStopOnOverflow(is_stop)
-
     def set_maximum_pulse_length(self, max_length):
         """
         Sets maximum pulse length that can be set during the TX/RX sequence programming.
@@ -490,8 +489,6 @@ class Us4R(Device, Ultrasound):
         :param max_length: maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
         """
         self._handle.setMaximumPulseLength(max_length)
-
-
     def _get_fcm(self, array_id, upload_result, sequence):
         """
         Returns frame channel mapping (FCM) extracted from the given upload result, assuming
@@ -512,7 +509,6 @@ class Us4R(Device, Ultrasound):
             frame_offsets=frame_offsets,
             n_frames=n_frames,
             batch_size=sequence.n_repeats)
-
     def _get_unique_tgc_context_and_tgc(self, sequences, medium):
         # Make sure that every sequence gives us the same TGC curve.
         # For that:
@@ -582,13 +578,10 @@ class Us4R(Device, Ultrasound):
         if isinstance(tgc, Iterable):
             tgc = np.array(tgc)
         return next(iter(tgc_contexts)), tgc
-
     def get_minimum_tgc_value(self):
         return self._handle.getMinimumTGCValue()
-
     def get_maximum_tgc_value(self):
         return self._handle.getMaximumTGCValue()
-
     def get_variant(self) -> Variant:
         """
         Returns variant of the device.

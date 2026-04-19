@@ -22,10 +22,6 @@ class GpuSettings:
     def use_memory_pool(self) -> bool:
         return self._handle.isUseMemoryPool()
 
-    @property
-    def use_p2p_dma(self) -> bool:
-        return self._handle.usesP2pDma()
-
 
 class Gpu(Device):
     """
