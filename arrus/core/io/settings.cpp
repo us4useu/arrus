@@ -690,7 +690,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::INFO, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::DEBUG, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
         try {
@@ -700,7 +700,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                                                            "dictionary. Message: {}",
                                                            e.what()));
         }
-        logger->log(LogSeverity::INFO, "Using default dictionary.");
+        logger->log(LogSeverity::DEBUG, "Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
     dictionaryValidator.validate(d);
