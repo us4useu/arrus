@@ -600,7 +600,7 @@ class Us4R(Device, Ultrasound):
         """
         Returns HVPS tuning info (unix format timestamps (number of seconds) for each OEM if previously tuned)
         """
-        return self._handle.getHVPSTuningInfo()
+        return list(self._handle.getHVPSTuningInfo())
 
 
 # ------------------------------------------ LEGACY MOCK

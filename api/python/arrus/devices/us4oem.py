@@ -165,4 +165,10 @@ class Us4OEM(Device):
         core_variant = self._handle.getVariant()
         return _variant_enum_to_enum(core_variant)
 
+    def get_hvps_tuning_info(self) -> int:
+        """
+        Returns HVPS tuning info (unix format timestamp, i.e. number of seconds, if previously tuned).
+        """
+        return self._handle.getHVPSTuningInfo()
+
 

@@ -155,6 +155,7 @@ namespace std {
 %template(VectorUInt16) vector<unsigned short>;
 %template(VectorUInt8) vector<unsigned char>;
 %template(VectorInt8) vector<int8_t>;
+%template(VectorInt64) vector<int64_t>;
 %template(VectorSizet) vector<size_t>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
