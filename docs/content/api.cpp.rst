@@ -162,3 +162,15 @@ Data buffers consists of multiple elements.
     :members:
 
 
+Logging
+=======
+
+.. doxygenclass:: arrus::Logging
+    :project: arrus
+    :members:
+
+.. doxygenfunction:: setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory);
+    :project: arrus
+    
+.. doxygenfunction:: useDefaultLoggerFactory()
+    :project: arrus
