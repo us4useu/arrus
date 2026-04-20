@@ -368,9 +368,14 @@ class DataBufferSpec:
 
     :param n_elements: number of elements the buffer should consists of
     :param type: type of a buffer, available values: "FIFO"
+    :param placement: device on which the buffer should be allocated.
+        Allowed values: "/CPU:0" (default) and "/GPU:0". Setting the
+        placement to "/GPU:0" enables P2P DMA between the us4R and the GPU,
+        and the buffer data is exposed as cupy arrays.
     """
     n_elements: int
     type: str
+    placement: str = "/CPU:0"
 
 
 @dataclass(frozen=True)

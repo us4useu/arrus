@@ -481,7 +481,12 @@ private:
                 size_t arrayOffset = elementOffset + arrayDef.getAddress();
                 auto arrayAddress = reinterpret_cast<DataType *>(reinterpret_cast<int8 *>(dataBuffer) + arrayOffset);
                 auto def = arrayDef.getDefinition();
-                DeviceId deviceId(DeviceType::Us4R, 0);
+                // The data pointer lives in GPU memory when P2P DMA is used (and the
+                // GPU does not use unified memory); otherwise it is plain host memory.
+                DeviceType placementType = (useP2pDma && !usesUnifiedMemory)
+                                               ? DeviceType::GPU
+                                               : DeviceType::CPU;
+                DeviceId deviceId(placementType, 0);
                 framework::NdArray array{arrayAddress, def.getShape(), def.getDataType(), deviceId};
                 arraysVector.emplace_back(std::move(array));
             }

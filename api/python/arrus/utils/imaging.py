@@ -543,6 +543,7 @@ class ProcessingRunner:
             gpu_input_buffer,
             data_stream=self.data_stream,
             processing_stream=self.processing_stream,
+            source_buffer_placement="/GPU:0" if self.use_p2p_dma else "/CPU:0",
             name=f"{gpu_input_buffer.name}Enqueue",
         )
         out_buffer_enqueue = EnqueueGPUtoCPU(
@@ -860,12 +861,23 @@ def _get_op_context_param_name(op_name: str, param_name: str):
 
 class EnqueueToGPU(Operation):
 
-    def __init__(self, buffer, data_stream, processing_stream, name=None):
+    def __init__(self, buffer, data_stream, processing_stream,
+                 source_buffer_placement, name=None):
         super().__init__(name)
         self.buffer = buffer
         self.data_stream = data_stream
         self.processing_stream = processing_stream
         self._current_pos = 0
+        placement = arrus.devices.device.parse_device_id(source_buffer_placement)
+        if placement.device_type == arrus.devices.gpu.DEVICE_TYPE:
+            import cupy as cp
+            self._cp = cp
+            self._copy = self._copy_device_to_device
+        elif placement.device_type == arrus.devices.cpu.DEVICE_TYPE:
+            self._copy = self._copy_host_to_device
+        else:
+            raise ValueError(
+                f"Unsupported source buffer placement: {source_buffer_placement}")
 
     def prepare(self, const_metadata):
         return const_metadata
@@ -873,14 +885,20 @@ class EnqueueToGPU(Operation):
     def _release_element_callback(self, element):
         element.release()
 
+    def _copy_device_to_device(self, gpu_array, src_array):
+        with self.data_stream:
+            self._cp.copyto(gpu_array, src_array)
+
+    def _copy_host_to_device(self, gpu_array, src_array):
+        gpu_array.set(src_array, stream=self.data_stream)
+
     def process(self, element):
         """
         :param element: input host buffer element
         """
         element = element[0]
         gpu_element = self.buffer.acquire(self._current_pos)
-        gpu_array = gpu_element.data
-        gpu_array.set(element.array, stream=self.data_stream)
+        self._copy(gpu_element.data, element.array)
         data_ready_event = self.data_stream.record()
         self.data_stream.launch_host_func(self._release_element_callback, element)
         self._current_pos = (self._current_pos+1) % self.buffer.n_elements
