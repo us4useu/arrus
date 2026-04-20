@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 
@@ -6,6 +7,7 @@
 #include <string>
 
 #include <boost/core/null_deleter.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/sinks/sync_frontend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
@@ -62,6 +64,26 @@ Logger::SharedHandle getDefaultLogger() {
 
 // Internal.
 
+namespace {
+
+/**
+ * Resolves the given path to the canonical/absolute path.
+ *
+ * NOTE: this method intentionally DOES NOT EXPAND the '~' (home) directory,
+ * as it is currently not explicitly supported by ARRUS logging.
+ * This may, however, be supported in the future.
+ */
+boost::filesystem::path resolveLogFilePath(const std::string &filepath) {
+    boost::filesystem::path p(filepath);
+    try {
+        return boost::filesystem::weakly_canonical(boost::filesystem::absolute(p));
+    } catch (const boost::filesystem::filesystem_error &) {
+        return boost::filesystem::absolute(p);
+    }
+}
+
+}
+
 // LoggingImpl.
 typedef boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend> textSink;
 
@@ -108,12 +130,12 @@ public:
     }
 
     void addLogFile(const std::string &filepath, LogSeverity minSeverity) {
-        if (registeredFiles.count(filepath) > 0) {
+        boost::filesystem::path resolved = resolveLogFilePath(filepath);
+        if (!registeredFiles.insert(resolved).second) { // .second == inserted: bool?
             return;
         }
-        registeredFiles.insert(filepath);
         std::shared_ptr<std::ostream> logFileStream =
-            std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
+            std::make_shared<std::ofstream>(resolved.string().c_str(), std::ios_base::app);
         addTextSink(logFileStream, minSeverity, true);
     }
 
@@ -142,7 +164,7 @@ public:
     }
 private:
     boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>> clogSink;
-    std::set<std::string> registeredFiles;
+    std::set<boost::filesystem::path> registeredFiles;
 };
 
 // Logging.

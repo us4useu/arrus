@@ -60,6 +60,15 @@ namespace arrus {
          * Adds a log file to the default logging mechanism.
          * If the file has already been added, the call is ignored.
          *
+         * NOTE:
+         *
+         * - This method does not allow to change the logging level of already added log file.
+         * This method willy simply ignore the level parameter for any sub-sequent calls of this method for the given
+         * file.
+         * - This method intentionally DOES NOT EXPAND the '~' (home) directory,
+         * as it is currently not explicitly supported by ARRUS logging.
+         * This may, however, be supported in the future.
+         *
          * @param filepath path to the log file
          * @param level minimum severity level to set for the log file
          */
