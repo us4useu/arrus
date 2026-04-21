@@ -424,7 +424,7 @@ private:
         for (size_t offset = 0; offset < totalSize; offset += chunkSize) {
             size_t thisChunk = std::min(chunkSize, totalSize - offset);
             void *committed = ::mmap(static_cast<char *>(base) + offset, thisChunk, PROT_READ | PROT_WRITE,
-                                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+                                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_POPULATE, -1, 0);
             if (committed == MAP_FAILED) {
                 ::munmap(base, totalSize);
                 throw std::bad_alloc();
