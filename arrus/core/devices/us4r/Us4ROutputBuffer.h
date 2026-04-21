@@ -442,7 +442,7 @@ private:
             return;
         }
 #ifdef _WIN32
-        (void)totalSize;
+        UNREFERENCED_PARAMETER(totalSize);
         VirtualFree(base, 0, MEM_RELEASE);
 #else
         ::munmap(base, totalSize);
