@@ -206,7 +206,6 @@ set(SRC_FILES
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
-   devices/us4r/TxWaveformSoftStartConverter.h
 )
 
 set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
