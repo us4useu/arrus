@@ -4,6 +4,7 @@
 #include "Us4OEMRxMappingRegisterBuilder.h"
 
 #include <iostream>
+#include <thread>
 #include <unordered_set>
 #include <utility>
 
@@ -29,7 +30,22 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
-#include "arrus/core/devices/us4r/TxWaveformSoftStartConverter.h"
+
+#ifndef US4US_US4R_PROGRAMMING_CHUNK_SIZE
+#define US4US_US4R_PROGRAMMING_CHUNK_SIZE 1024
+#endif
+
+#ifndef US4US_US4R_PROGRAMMING_CHUNK_SLEEP
+#define US4US_US4R_PROGRAMMING_CHUNK_SLEEP 10
+#endif
+
+#define US4US_US4R_PROGRAMMING_CHUNK_PAUSE(idx)                                \
+    do {                                                                       \
+        if (((idx) % US4US_US4R_PROGRAMMING_CHUNK_SIZE) == 0 && (idx) != 0) {  \
+            std::this_thread::sleep_for(                                       \
+                std::chrono::milliseconds(US4US_US4R_PROGRAMMING_CHUNK_SLEEP));\
+        }                                                                      \
+    } while (0)
 
 namespace arrus::devices {
 
@@ -228,8 +244,6 @@ private:
     std::vector<IRQEvent> irqEvents = std::vector<IRQEvent>(Us4OEMDescriptor::MAX_IRQ_NR+1);
     /** Max TX pulse length [s]; nullopt means to use up to 32 periods (OEM legacy constraint) */
     std::optional<float> maxPulseLength = std::nullopt;
-    /** Converts TX waveform to a waveform with soft-start applied */
-    TxWaveformSoftStartConverter softStartConverter{128, 5e-6f, {0.25f, 0.5f, 0.75f}, {1.0f/3.0f, 1.0f/3.0f, 1.0f/3.0f}};
     /** DDC extra gain to apply, Currently, simply translates to the boolean value 'gain is off/on'.*/
     const ValueMap<float, bool> DDC_GAIN_MAP{{
         {0.0f, false},

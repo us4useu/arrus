@@ -22,7 +22,6 @@
 #include "arrus/core/devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilder.h"
 #include "utils.h"
 #include "arrus/core/devices/us4r/TxWaveformConverter.h"
-#include "arrus/core/devices/us4r/TxWaveformSoftStartConverter.h"
 
 namespace arrus::devices {
 // TODO migrate this source to us4r subspace
@@ -254,12 +253,6 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             currentTxDelayProfileIds.at(sequenceId) = nProfiles;
             if(isOEMPlus()) {
                 auto waveform = op.getTxWaveform();
-                // Waveform pre-processing.
-                if(softStartConverter.apply(op.getTxWaveform())) {
-                    waveform = softStartConverter.convert(waveform);
-                    this->logger->log(LogSeverity::INFO, "The given TX pulse has at least 128 cycles, applying reduced "
-                                                         "duty cycle for the first 5 us of the TX pulse (25%, 50%, 75%).");
-                }
                 ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
             }
             else {
@@ -322,6 +315,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
 
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
+    US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
     ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
 
@@ -338,6 +332,7 @@ size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, u
     const size_t nBytes = nSamples * descriptor.getNRxChannels() * sampleSize;
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
+    US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
     ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
     return nBytes;
@@ -492,6 +487,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                     // irqDone (interrupt: 4): only when we have the MANUAL_OP (signal the IRQ after each TX/RX)
                     //  or we have the MANUAL work mode, and we are hitting the last TX/RX in the TX/RX
                     //  (the IRQ = 4 is used to implement the synchronous version of the Us4r::trigger(sync=true))
+                    US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
                     ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
                                         triggerSyncPerTxRx || (isCheckpoint && workMode == ops::us4r::Scheme::WorkMode::MANUAL));
                     if (op.getBitstreamId().has_value() && isMaster()) {

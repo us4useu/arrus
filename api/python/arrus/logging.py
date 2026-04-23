@@ -32,6 +32,15 @@ def add_log_file(filepath, level):
     """
     Adds message logging to given file.
 
+    NOTE:
+
+    - This method does not allow to change the logging level of already added log file.
+      This method willy simply ignore the level parameter for any subsequent calls of this method for the given
+      file.
+    - This method intentionally DOES NOT EXPAND the '~' (home) directory,
+      as it is currently not explicitly supported by ARRUS logging.
+      This may, however, be supported in the future.
+
     :param filepath: path to output log file
     :param level: severity level
     """

@@ -290,6 +290,7 @@ public:
                         default: throw std::runtime_error("Unknown us4R buffer registrar strategy");
                         }
                     }
+                    US4US_US4R_PROGRAMMING_CHUNK_PAUSE(transferIdx);
                     ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
                     ++localIdx; ++transferIdx;
                 }
