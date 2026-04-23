@@ -4,6 +4,17 @@ Release notes
 0.13.x
 ------
 
+0.13.8
+
+- core (driver)
+
+    - Reduced the likelihood of watchdog errors when programming long sequences or many buffer elements. We still recommend increasing thresholds 0 and 1 (see User Guide -> Watchdog) for longer sequences # M_US4R-95.
+    - Set the maximum number of RX samples to 2 ^ 16-64 #M_OEM-282.
+
+- C++, Python and MATLAB API:
+
+    - Fixed duplicate entries in the logger file when the function that sets the log file is called multiple times for the same file. For more information, for C++ also refer to the API Reference: arrus::Logging::addLogFile (C++) / arrus.logging.add_log_file #ARRUS-552.
+
 0.13.7
 
 - core (driver)
