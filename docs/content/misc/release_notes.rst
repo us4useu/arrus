@@ -10,6 +10,7 @@ Release notes
 
     - Reduced the likelihood of watchdog errors when programming long sequences or many buffer elements. We still recommend increasing thresholds 0 and 1 (see User Guide -> Watchdog) for longer sequences # M_US4R-95.
     - Set the maximum number of RX samples to 2 ^ 16-64 #M_OEM-282.
+    - Removed the soft-start feature for generating the long transmit bursts (>32 cycles).  The soft-start was enabled only when explicitly allowing pulses longer than 32 cycles in the session configuration (e.g., a .prototxt file), which is a configuration intended for research applications only. The soft-start functionality set the duty cycle in steps of 25% instead of immediately setting it to 100% at the beginning (25% duty cycle was applied for 1.66 µs, then 50% for 1.66 µs, followed by 75% for 1.66 µs, and finally 100%). After introducing this change, for pulses longer than 32 cycles, the duty cycle will remain at 100% throughout. #M_US4R-98.
 
 - C++, Python and MATLAB API:
 
