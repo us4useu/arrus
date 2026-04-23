@@ -8,8 +8,8 @@ Release notes
 
 - core (driver)
 
-    - Reduced the likelihood of watchdog errors when programming long sequences or many buffer elements. We still recommend increasing
-      thresholds 0 and 1 (see User Guide -> Watchdog) for longer sequences # M_US4R-95.
+    - Reduced the likelihood of watchdog errors when programming long sequences or many buffer elements. We still recommend increasing thresholds 0 and 1 (see User Guide -> Watchdog) for longer sequences # M_US4R-95.
+    - Set the maximum number of RX samples to 2 ^ 16-64 #M_OEM-282.
 
 - C++, Python and MATLAB API:
 
