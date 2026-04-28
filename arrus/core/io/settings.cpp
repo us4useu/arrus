@@ -555,7 +555,30 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
         }
     }
 
-
+    std::optional<HVPSFuseSettings> hvpsFuseSettings = std::nullopt;
+    if(us4r.has_hvps_fuse()) {
+        const auto &fuseSettings = us4r.hvps_fuse();
+        HVPSFuseSettingsBuilder fuseSettingsBuilder;
+        if(fuseSettings.optional_level1_current_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL1_CURRENT_NOT_SET) {
+            fuseSettingsBuilder.setLevel1MaxCurrentThreshold(static_cast<float>(fuseSettings.level1_max_current_threshold()));
+        }
+        if(fuseSettings.optional_level1_power_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL1_POWER_NOT_SET) {
+            fuseSettingsBuilder.setLevel1MaxPowerThreshold(static_cast<float>(fuseSettings.level1_max_power_threshold()));
+        }
+        if(fuseSettings.optional_level2_current_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_CURRENT_NOT_SET) {
+            fuseSettingsBuilder.setLevel2MaxCurrentThreshold(static_cast<float>(fuseSettings.level2_max_current_threshold()));
+        }
+        if(fuseSettings.optional_level2_power_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_POWER_NOT_SET) {
+            fuseSettingsBuilder.setLevel2MaxPowerThreshold(static_cast<float>(fuseSettings.level2_max_power_threshold()));
+        }
+        if(fuseSettings.optional_level1_static_voltage_margin_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL1_STATIC_VOLTAGE_MARGIN_NOT_SET) {
+            fuseSettingsBuilder.setLevel1StaticVoltageMargin(static_cast<float>(fuseSettings.level1_static_voltage_margin()));
+        }
+        if(fuseSettings.optional_level2_static_voltage_margin_case() != proto::HVPSFuseSettings::OPTIONAL_LEVEL2_STATIC_VOLTAGE_MARGIN_NOT_SET) {
+            fuseSettingsBuilder.setLevel2StaticVoltageMargin(static_cast<float>(fuseSettings.level2_static_voltage_margin()));
+        }
+        hvpsFuseSettings = fuseSettingsBuilder.build();
+    }
 
     ProbeAdapterSettings adapterSettings = readOrGetAdapterSettings(us4r, dictionary);
     std::vector<ProbeSettings> probeSettings =
@@ -583,7 +606,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             limits,
             watchdog,
             allowDuplicateOEMIds,
-            maskDVDDInterrupt
+            maskDVDDInterrupt,
+            hvpsFuseSettings
     };
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {
@@ -666,7 +690,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::INFO, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::DEBUG, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
         try {
@@ -676,7 +700,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                                                            "dictionary. Message: {}",
                                                            e.what()));
         }
-        logger->log(LogSeverity::INFO, "Using default dictionary.");
+        logger->log(LogSeverity::DEBUG, "Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
     dictionaryValidator.validate(d);

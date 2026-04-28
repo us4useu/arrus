@@ -215,3 +215,11 @@ install
 
 # Numpy
 *.npy
+
+# CLion-generated build directories
+cmake-build-debug/
+cmake-build-release/
+
+# Merge conflict markers
+*.orig
+*.bkp
