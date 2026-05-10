@@ -7,6 +7,13 @@
 #include <iostream>
 #include <mutex>
 
+#ifdef _WIN32
+#include <windows.h>
+#undef ERROR // conflicts with LogSeverity::ERROR
+#else
+#include <sys/mman.h>
+#endif
+
 #include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -218,22 +225,24 @@ public:
         Accumulator elementReadyPattern = createElementReadyPattern(arrayDefs, noems);
         elementSize = calculateElementSize(arrayDefs);
         try {
-            size_t totalSize = elementSize * nElements;
+            dataBufferSize = elementSize * nElements;
             getDefaultLogger()->log(
                 LogSeverity::DEBUG,
-                format("Allocating {} ({}, {}) bytes of memory", totalSize, elementSize, nElements));
-            dataBuffer = reinterpret_cast<DataType *>(operator new[](totalSize, std::align_val_t(ALIGNMENT)));
+                format("Allocating {} ({}, {}) bytes of memory", dataBufferSize, elementSize, nElements));
+            dataBuffer = reinterpret_cast<DataType *>(mallocChunked(dataBufferSize, ALLOC_CHUNK_SIZE));
             getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
             createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
-            ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+            freeChunked(dataBuffer, dataBufferSize);
+            dataBuffer = nullptr;
             getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
+            throw;
         }
         this->initialize();
     }
 
     ~Us4ROutputBuffer() override {
-        ::operator delete[](dataBuffer, std::align_val_t(ALIGNMENT));
+        freeChunked(dataBuffer, dataBufferSize);
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
@@ -370,6 +379,76 @@ public:
     }
 
 private:
+    // How many bytes will be allocated in a single kernel call.
+    // The value was determined heuristically in a way so to avoid allocation time overhead and to make sure
+    // that the watchdog thread is possibly not blocked by the address space lock too long.
+    static constexpr size_t ALLOC_CHUNK_SIZE = 512 * 1024 * 1024; // 512 MiB
+
+    /**
+     * Allocates a contiguous virtual memory region of the given totalSize,
+     * committing it in smaller chunks to avoid holding the kernel's mmap_lock
+     * (Linux) or address space lock (Windows) for too long.
+     *
+     * The intention of this function is to avoid any time-critical (e.g. watchdog) to be blocked during
+     * the allocation stage, i.e. give the possibility to wake up between (chunk) allocations.
+     *
+     * NOTE: mmap (Linux) and VirtualAlloc (Windows) return page-aligned addresses
+     * (>= 4096 bytes). Static assert ensures ALIGNMENT doesn't exceed this guarantee.
+     */
+    static void *mallocChunked(size_t totalSize, size_t chunkSize) {
+        static_assert(ALIGNMENT <= 4096,
+                      "ALIGNMENT exceeds page size; mmap/VirtualAlloc may not satisfy it");
+#ifdef _WIN32
+        // Reserve contiguous VIRTUAL address space.
+        void *base = VirtualAlloc(nullptr, totalSize, MEM_RESERVE, PAGE_NOACCESS);
+        if (!base) {
+            throw std::bad_alloc();
+        }
+        // Allocate chunks.
+        for (size_t offset = 0; offset < totalSize; offset += chunkSize) {
+            size_t thisChunk = std::min(chunkSize, totalSize - offset);
+            void *committed = VirtualAlloc(static_cast<char *>(base) + offset, thisChunk, MEM_COMMIT, PAGE_READWRITE);
+            if (!committed) {
+                VirtualFree(base, 0, MEM_RELEASE);
+                throw std::bad_alloc();
+            }
+        }
+        return base;
+#else
+        // Reserve contiguous VIRTUAL address space (PROT_NONE = no access, no physical pages).
+        void *base = ::mmap(nullptr, totalSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (base == MAP_FAILED) {
+            throw std::bad_alloc();
+        }
+        // Allocate chunks (== remapping with read/write permissions).
+        for (size_t offset = 0; offset < totalSize; offset += chunkSize) {
+            size_t thisChunk = std::min(chunkSize, totalSize - offset);
+            void *committed = ::mmap(static_cast<char *>(base) + offset, thisChunk, PROT_READ | PROT_WRITE,
+                                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_POPULATE, -1, 0);
+            if (committed == MAP_FAILED) {
+                ::munmap(base, totalSize);
+                throw std::bad_alloc();
+            }
+        }
+        return base;
+#endif
+    }
+
+    /**
+     * Frees memory allocated with the mallocChunked.
+     */
+    static void freeChunked(void *base, size_t totalSize) {
+        if (!base) {
+            return;
+        }
+#ifdef _WIN32
+        UNREFERENCED_PARAMETER(totalSize);
+        VirtualFree(base, 0, MEM_RELEASE);
+#else
+        ::munmap(base, totalSize);
+#endif
+    }
+
     /**
      * Throws IllegalStateException when the buffer is in invalid state.
      *
@@ -439,8 +518,10 @@ private:
     std::mutex mutex;
     /** A size of a single element IN number of BYTES. */
     size_t elementSize;
+    /** Total size of dataBuffer in bytes. */
+    size_t dataBufferSize{0};
     /**  Total size in the number of elements. */
-    int16 *dataBuffer;
+    int16 *dataBuffer{nullptr};
     /** Host buffer elements */
     std::vector<Us4ROutputBufferElement::SharedHandle> elements;
     /** Array offsets, in bytes. The is an offset relative to the beginning of each element. */

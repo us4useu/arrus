@@ -329,8 +329,8 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
                                       minVoltage, maxVoltage)));
         }
     }
-    
-    
+
+
     // Convert to IHV voltages.
     // NOTE!
     // The voltages are expected to be in the order: amplitude level 1 (HV 1), amplitude level 2 (HV 0)
@@ -397,7 +397,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
-    
+
     // Set the over-current / over-power settings if specified by the user
     setHVPSFuseSettings(hvpsFuseSettings);
 
@@ -876,10 +876,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     }
 
     // TODO try avoid converting from samples to time then back to samples?
-    uint16 maxNSamples = int16(roundf(maxT * nominalFs));
+    auto maxNSamples = uint32(roundf(maxT * nominalFs));
     // Note: the last TGC sample should be applied before the reception ends.
     // This is to avoid using the same TGC curve between triggers.
-    auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
+    auto values = ::arrus::getRange<uint32>(offset, maxNSamples, tgcT);
     values.push_back(maxNSamples);// TODO(jrozb91) To reconsider (not a full TGC sampling time)
     std::vector<float> time;
     for (auto v : values) {
@@ -1551,7 +1551,7 @@ void Us4RImpl::handlePulserInterrupt() {
         //..
         auto DVDDMasked = this->maskDVDDInterrupt;
         bool nonDVDDFaultDetected = false;
-        
+
         if(DVDDMasked) { //if DVDD interrput status is masked -> ignore if it occurs
             for(auto &oem: this->us4oems) {
                 auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
