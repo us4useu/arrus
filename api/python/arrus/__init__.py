@@ -25,7 +25,7 @@ if arrus_core_module_exists:
         add_log_file
     )
     # Session
-    from arrus.session import Session
+    from arrus.session import Session, create_session_settings_from
 
 else:
     print("Warning: running without arrus.core module.")

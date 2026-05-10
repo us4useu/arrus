@@ -432,6 +432,17 @@ void arrusUs4OEMWaitForHVPSMeasuerementDone(arrus::devices::Us4OEM *us4oem, std:
     us4oem->waitForHVPSMeasurementDone(timeout);
 }
 
+void arrusUs4RSetVoltage(arrus::devices::Us4R *us4r, unsigned char voltage) {
+    ArrusPythonGILUnlock unlock;
+    us4r->setVoltage(voltage);
+}
+
+void arrusUs4RSetVoltageMulti(arrus::devices::Us4R *us4r,
+                              const std::vector<arrus::devices::HVVoltage> &voltages) {
+    ArrusPythonGILUnlock unlock;
+    us4r->setVoltage(voltages);
+}
+
 
 %};
 // ------------------------------------------ DEVICES
