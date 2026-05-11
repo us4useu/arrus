@@ -729,6 +729,111 @@ Example
         return 0;
     }
 
+Registering user-defined system interrupt callbacks
+---------------------------------------------------
+
+In addition to the data-buffer callbacks shown above (``OnNewDataCallback``,
+``OnOverflowCallback``), ARRUS lets you register callbacks for **us4OEM
+system interrupts** — events such as probe disconnect, watchdog,
+TX timeout, pulser interrupt and HVPS fuse. The set of supported
+interrupts is defined by the ``arrus::devices::Us4OEMInterrupt`` enum
+declared in ``arrus/core/api/devices/us4r/Us4OEMInterrupt.h``:
+
+- ``Us4OEMInterrupt::PROBE_NOT_CONNECTED``
+- ``Us4OEMInterrupt::PULSER_INTERRUPT``
+- ``Us4OEMInterrupt::TX_TIMEOUT``
+- ``Us4OEMInterrupt::WATCHDOG_IRQ0``
+- ``Us4OEMInterrupt::WATCHDOG_IRQ1``
+- ``Us4OEMInterrupt::HVPS_FUSE``
+
+System callbacks must be supplied **at session construction time** — they
+are passed to the Us4R device constructor through ``Us4RSettings``. The
+callback type is ``arrus::devices::Us4OEMInterruptCallback``
+(``std::function<void(arrus::devices::Ordinal oem)>``) and they are stored
+in an ``arrus::devices::Us4OEMInterruptCallbacksMap`` keyed by the
+``Us4OEMInterrupt`` value.
+
+The recommended way to attach callbacks to a ``Us4RSettings`` loaded from
+a ``.prototxt`` file is to use ``arrus::devices::Us4RSettingsBuilder``:
+initialize the builder with the loaded settings, call
+``setInterruptCallback(interrupt, callback)`` for every interrupt you want
+to handle, then call ``build()``.
+
+.. code-block:: cpp
+
+    #include <arrus/core/api/arrus.h>
+    #include <arrus/core/api/devices/us4r/Us4OEMInterrupt.h>
+    #include <arrus/core/api/devices/us4r/Us4RSettings.h>
+    #include <iostream>
+
+    using namespace ::arrus::devices;
+    using namespace ::arrus::session;
+
+    // Load the settings from prototxt, attach the system callbacks via the
+    // builder, and rebuild a SessionSettings holding the modified Us4RSettings.
+    SessionSettings makeSettings(const std::string &cfgPath) {
+        auto loaded = ::arrus::io::readSessionSettings(cfgPath);
+
+        Us4OEMInterruptCallback onWatchdog0 = [](Ordinal oem) {
+            std::cout << "WATCHDOG_IRQ0 raised on OEM " << oem << std::endl;
+        };
+        Us4OEMInterruptCallback onHvpsFuse = [](Ordinal oem) {
+            std::cout << "HVPS_FUSE raised on OEM " << oem
+                      << " -- entering safe state" << std::endl;
+        };
+
+        Us4RSettings modifiedUs4r = Us4RSettingsBuilder(loaded.getUs4RSettings())
+            .setInterruptCallback(Us4OEMInterrupt::WATCHDOG_IRQ0, onWatchdog0)
+            .setInterruptCallback(Us4OEMInterrupt::HVPS_FUSE,     onHvpsFuse)
+            .build();
+
+        return SessionSettings(modifiedUs4r);
+    }
+
+    int main() {
+        auto session = createSession(makeSettings(R"(C:\Users\Public\us4r.prototxt)"));
+        // ... upload scheme, start scheme, etc.
+        return 0;
+    }
+
+If you want a single function to handle every supported interrupt, the
+builder offers a convenience method:
+
+.. code-block:: cpp
+
+    auto onAny = [](Us4OEMInterrupt irq, Ordinal oem) {
+        std::cout << "Interrupt " << static_cast<int>(irq)
+                  << " raised on OEM " << oem << std::endl;
+    };
+
+    auto us4r = Us4RSettingsBuilder(loaded.getUs4RSettings())
+        .setInterruptCallbackForAll(onAny)
+        .build();
+
+You can also iterate over ``arrus::devices::SAFE_STATE_INTERRUPTS``
+(``std::array`` of every supported interrupt except ``WATCHDOG_IRQ0`` —
+i.e. the ones that mean "stop now"):
+
+.. code-block:: cpp
+
+    Us4OEMInterruptCallback onSafeState = [](Ordinal oem) {
+        // bring your application into a safe state...
+    };
+    Us4RSettingsBuilder builder(loaded.getUs4RSettings());
+    for (auto irq : SAFE_STATE_INTERRUPTS) {
+        builder.setInterruptCallback(irq, onSafeState);
+    }
+    auto us4r = builder.build();
+
+.. note::
+
+    User callbacks are dispatched **asynchronously** from a dedicated
+    worker thread inside the us4r-api runtime, so a slow callback does not
+    block the underlying us4OEM interrupt dispatcher. Default callbacks
+    (e.g. the watchdog reset) always run first and synchronously, so
+    housekeeping is never delayed by user code. Pending callbacks are
+    discarded on session shutdown.
+
 Custom TX waveforms
 -------------------
 

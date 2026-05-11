@@ -60,6 +60,80 @@ class SessionContext:
     medium: arrus.medium.Medium
 
 
+class _DictInterruptListener(arrus.core.Us4OEMInterruptListener):
+    """
+    Internal Us4OEMInterruptListener that dispatches every fired interrupt
+    to a user-supplied callback looked up in a Us4OEMInterrupt -> callable map.
+    """
+
+    def __init__(self, callbacks):
+        super().__init__()
+        self._callbacks = dict(callbacks)
+
+    def on_any_interrupt(self, interrupt, oem):
+        cb = self._callbacks.get(interrupt)
+        if cb is not None:
+            cb(oem)
+
+
+_SUPPORTED_PARAM_KEYS = frozenset({"us4r:0/system_callbacks"})
+
+
+def create_session_settings_from(filepath, params=None):
+    """
+    Loads SessionSettings from a prototxt configuration file and (optionally)
+    attaches per-device parameters that are not encoded in the prototxt.
+
+    The ``params`` argument is a ``dict`` from string keys to arbitrary
+    Python values. Currently a single key is supported:
+
+    - ``"us4r:0/system_callbacks"``: a mapping from
+      :class:`arrus.devices.us4oem.Us4OEMInterrupt` to a callable
+      ``f(oem_ordinal)`` invoked when that interrupt fires on the
+      corresponding us4OEM. Interrupts not present in the mapping are ignored.
+
+    Example::
+
+        from arrus.devices.us4oem import Us4OEMInterrupt
+
+        def on_watchdog0(oem):
+            print(f"WATCHDOG_IRQ0 on OEM {oem}")
+
+        settings = arrus.create_session_settings_from(
+            "us4r.prototxt",
+            params={
+                "us4r:0/system_callbacks": {
+                    Us4OEMInterrupt.WATCHDOG_IRQ0: on_watchdog0,
+                },
+            },
+        )
+        sess = arrus.Session(session_settings=settings)
+
+    :param filepath: path to the prototxt configuration file.
+    :param params: optional mapping from string parameter keys to their values.
+        Unknown keys raise ``ValueError``.
+    :return: an opaque SessionSettings handle that can be passed as
+        ``session_settings`` to :class:`Session`. The returned object also
+        owns the underlying interrupt listener, so it must remain alive for
+        as long as the Session built from it.
+    """
+    if params is None:
+        params = {}
+    unknown = set(params.keys()) - _SUPPORTED_PARAM_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unsupported keys in params: {sorted(unknown)}. "
+            f"Supported keys: {sorted(_SUPPORTED_PARAM_KEYS)}.")
+
+    system_callbacks = params.get("us4r:0/system_callbacks", {})
+    listener = _DictInterruptListener(system_callbacks)
+    settings = arrus.core.createSessionSettingsFrom(filepath, listener)
+    # The C++ adapter holds a raw pointer to the listener; tie its lifetime
+    # to the settings handle so callers don't need to keep it themselves.
+    settings._arrus_interrupt_listener = listener
+    return settings
+
+
 class Session(AbstractSession):
     """
     A communication session with the ultrasound system.
@@ -70,17 +144,38 @@ class Session(AbstractSession):
     on the devices should be done withing the session context.
     """
 
-    def __init__(self, cfg_path: str = "us4r.prototxt",
-                 medium: arrus.medium.Medium = None):
+    def __init__(self, cfg_path: str = None,
+                 medium: arrus.medium.Medium = None,
+                 session_settings=None):
         """
         Session constructor.
 
-        :param cfg_path: a path to configuration file
+        :param cfg_path: a path to configuration file. Ignored when
+            ``session_settings`` is provided. If neither ``cfg_path`` nor
+            ``session_settings`` is given, ``"us4r.prototxt"`` is used.
         :param medium: medium description to set in context
+        :param session_settings: an opaque SessionSettings handle obtained from
+            ``arrus.core.createSessionSettingsFrom(cfg_path, listener)``. When
+            given, the session is built from this handle (e.g. with a system
+            interrupt listener attached) instead of loading ``cfg_path`` here.
         """
         super().__init__()
         import arrus.logging
-        self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
+        if session_settings is not None:
+            if cfg_path is not None:
+                raise ValueError(
+                    "Provide either cfg_path or session_settings, not both.")
+            self._session_handle = arrus.core.createSessionSharedHandleFromSettings(
+                session_settings)
+            # Keep the settings handle alive for the lifetime of the session
+            # so that any owned objects (e.g. an interrupt listener attached
+            # by create_session_settings_from) outlive the C++ Session.
+            self._session_settings = session_settings
+        else:
+            if cfg_path is None:
+                cfg_path = "us4r.prototxt"
+            self._session_handle = arrus.core.createSessionSharedHandle(cfg_path)
+            self._session_settings = None
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing = None

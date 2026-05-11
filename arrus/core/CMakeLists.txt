@@ -49,6 +49,7 @@ set(SRC_FILES
     api/devices/us4r/ProbeAdapterModelId.h
     api/devices/us4r/ProbeAdapterSettings.h
     api/devices/us4r/Us4OEM.h
+    api/devices/us4r/Us4OEMInterrupt.h
     api/devices/us4r/Us4OEMSettings.h
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
