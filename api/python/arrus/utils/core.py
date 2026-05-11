@@ -189,7 +189,7 @@ def convert_to_core_scheme(scheme):
     core_buffer_type = {
         "FIFO": arrus.core.DataBufferSpec.Type_FIFO
     }[output_buffer.type]
-    placement_str = getattr(output_buffer, "placement", None) or "/CPU:0"
+    placement_str = getattr(output_buffer, "placement", None) or "CPU:0"
     placement = to_core_device_id(parse_device_id(placement_str))
     data_buffer_spec = arrus.core.DataBufferSpec(core_buffer_type,
                                                  output_buffer.n_elements,
