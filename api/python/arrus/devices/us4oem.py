@@ -2,10 +2,35 @@ import ctypes
 from arrus.devices.device import Device, DeviceId, DeviceType
 import arrus.core
 import numpy as np
-from enum import Enum
+from enum import Enum, IntEnum
 
 
 DEVICE_TYPE = DeviceType("Us4OEM")
+
+
+class Us4OEMInterrupt(IntEnum):
+    """
+    The set of us4OEM system interrupts a user callback can be registered for
+    via :func:`arrus.create_session_settings_from`.
+    """
+    PROBE_NOT_CONNECTED = arrus.core.Us4OEMInterrupt_PROBE_NOT_CONNECTED
+    PULSER_INTERRUPT = arrus.core.Us4OEMInterrupt_PULSER_INTERRUPT
+    TX_TIMEOUT = arrus.core.Us4OEMInterrupt_TX_TIMEOUT
+    WATCHDOG_IRQ0 = arrus.core.Us4OEMInterrupt_WATCHDOG_IRQ0
+    WATCHDOG_IRQ1 = arrus.core.Us4OEMInterrupt_WATCHDOG_IRQ1
+    HVPS_FUSE = arrus.core.Us4OEMInterrupt_HVPS_FUSE
+
+
+#: Interrupts that, when raised, indicate the system has entered (or should
+#: enter) a safe state. Includes every supported us4OEM interrupt except
+#: WATCHDOG_IRQ0, which is only an early warning.
+SAFE_STATE_INTERRUPTS = frozenset({
+    Us4OEMInterrupt.PROBE_NOT_CONNECTED,
+    Us4OEMInterrupt.PULSER_INTERRUPT,
+    Us4OEMInterrupt.TX_TIMEOUT,
+    Us4OEMInterrupt.WATCHDOG_IRQ1,
+    Us4OEMInterrupt.HVPS_FUSE,
+})
 
 
 class HVPSMeasurement:
@@ -173,5 +198,11 @@ class Us4OEM(Device):
         seconds.
         """
         return self._handle.getFPGAWallclock()
+
+    def get_hvps_tuning_info(self) -> int:
+        """
+        Returns HVPS tuning info (unix format timestamp, i.e. number of seconds, if previously tuned).
+        """
+        return self._handle.getHVPSTuningInfo()
 
 

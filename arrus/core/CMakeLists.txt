@@ -49,6 +49,7 @@ set(SRC_FILES
     api/devices/us4r/ProbeAdapterModelId.h
     api/devices/us4r/ProbeAdapterSettings.h
     api/devices/us4r/Us4OEM.h
+    api/devices/us4r/Us4OEMInterrupt.h
     api/devices/us4r/Us4OEMSettings.h
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
@@ -210,6 +211,8 @@ set(SRC_FILES
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
     devices/gpu/GpuFactory.h
+    devices/gpu/CudaRuntime.h
+    devices/gpu/CudaRuntime.cpp
     api/common/Slice.h
     api/devices/us4r/HVPSFuseSettings.h
 )
@@ -246,17 +249,6 @@ target_include_directories(${TARGET_NAME}
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-# Add CUDA include directories if CUDA is available
-if(CUDAToolkit_FOUND)
-    target_include_directories(${TARGET_NAME}
-        PRIVATE
-        ${CUDAToolkit_INCLUDE_DIRS}
-    )
-    target_compile_definitions(${TARGET_NAME}
-        PRIVATE
-        CUDA_AVAILABLE
-    )
-endif()
 
 ################################################################################
 # Dependencies
@@ -276,15 +268,8 @@ target_link_libraries(${TARGET_NAME}
     Eigen3::Eigen3
     Microsoft.GSL::GSL
     ${ARRUS_OS_DEPS}
+    ${CMAKE_DL_LIBS}
 )
-
-# Add CUDA libraries if CUDA is available
-if(CUDAToolkit_FOUND)
-    target_link_libraries(${TARGET_NAME}
-        PRIVATE
-        CUDA::cudart
-    )
-endif()
 ################################################################################
 # Target compile options
 ################################################################################
@@ -332,7 +317,7 @@ if (ARRUS_RUN_TESTS)
         common/logging.cpp
     )
 
-    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
+    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp "common/logging.cpp;devices/gpu/CudaRuntime.cpp")
     create_core_test(devices/us4r/mapping/ProbeToAdapterMappingConverterTest.cpp
          "devices/us4r/mapping/ProbeToAdapterMappingConverter.h;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     create_core_test(devices/us4r/mapping/AdapterToUs4OEMMappingConverterTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
@@ -345,6 +330,7 @@ if (ARRUS_RUN_TESTS)
         devices/us4r/Us4RImpl.cpp
         ops/us4r/Scheme.cpp
         ops/us4r/DigitalDownConversion.cpp
+        devices/gpu/CudaRuntime.cpp
     )
     create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}" Us4::US4OEM)
     # core::io tests
