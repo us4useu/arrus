@@ -512,11 +512,22 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
         us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
         us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
     }
+    // Derive host buffer placement (CPU or GPU) from the scheme's DataBufferSpec.
+    const auto &placement = currentScheme->getOutputBuffer().getPlacement();
+    const auto placementType = placement.getDeviceType();
+    const auto placementOrdinal = placement.getOrdinal();
+    if (!((placementType == DeviceType::CPU || placementType == DeviceType::GPU) && placementOrdinal == 0)) {
+        throw IllegalArgumentException(
+            format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
+                   placement.toString()));
+    }
+    const bool useP2pDma = (placementType == DeviceType::GPU);
     // Create output buffer.
     Us4ROutputBufferBuilder builder;
     buffer = builder.setStopOnOverflow(stopOnOverflow)
                           .setNumberOfElements(hostBufNElements)
                           .setLayoutTo(buffers)
+                          .setUseP2pDma(useP2pDma)
                           .build();
     registerOutputBuffer(buffer.get(), buffers, workMode);
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
