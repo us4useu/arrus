@@ -20,12 +20,8 @@
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/framework/DataBuffer.h"
 #include "arrus/core/common/logging.h"
+#include "arrus/core/devices/gpu/CudaRuntime.h"
 #include "us4oem/Us4OEMBuffer.h"
-
-#ifdef ARRUS_CUDA
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#endif
 
 namespace arrus::devices {
 
@@ -232,52 +228,48 @@ public:
                 format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize, nElements, useP2pDma));
 
             if (useP2pDma) {
-#ifdef ARRUS_CUDA
+                auto &cuda = CudaRuntime::instance();
+                if (!cuda.isAvailable()) {
+                    throw std::runtime_error(
+                        "P2P DMA was requested, but the CUDA Runtime library could not be loaded");
+                }
                 // Detect if we're dealing with an IGPU with unified memory, which does not require special handling for P2P DMA.
                 // For now assume that devices with more than 1 GPU do not use unified memory
-                int deviceCount = 0;
-                cudaGetDeviceCount(&deviceCount);
+                int deviceCount = cuda.getDeviceCount();
                 if (deviceCount == 0) {
                     throw std::runtime_error("No CUDA devices found");
                 }
-                cudaDeviceProp deviceProp;
-                cudaGetDeviceProperties(&deviceProp, 0);
-                // NOTE: deviceProp.integrated seems to return 48 (???) on RTX 5000 (???), so check unifiedAddressing too.
-                usesUnifiedMemory = deviceCount == 1 && deviceProp.integrated && deviceProp.unifiedAddressing;
+                // NOTE: integrated seems to return 48 (???) on RTX 5000 (???), so check unifiedAddressing too.
+                bool integrated = cuda.getDeviceIntegrated(0);
+                bool unifiedAddressing = cuda.getDeviceUnifiedAddressing(0);
+                usesUnifiedMemory = deviceCount == 1 && integrated && unifiedAddressing;
 
                 getDefaultLogger()->log(
                     LogSeverity::DEBUG,
-                    format("CUDA device: {}, integrated: {}, unifiedAddressing: {}, unified memory: {}",
-                           deviceProp.name, deviceProp.integrated, deviceProp.unifiedAddressing, usesUnifiedMemory));
+                    format("CUDA device 0, integrated: {}, unifiedAddressing: {}, unified memory: {}",
+                           integrated, unifiedAddressing, usesUnifiedMemory));
 
                 if (!usesUnifiedMemory) {
-                    if (cudaMalloc((void **) &dataBuffer, dataBufferSize) != cudaSuccess) {
+                    dataBuffer = reinterpret_cast<DataType *>(cuda.malloc(dataBufferSize));
+                    if (dataBuffer == nullptr) {
                         getDefaultLogger()->log(LogSeverity::ERROR, "cudaMalloc failed");
                         throw std::runtime_error("cudaMalloc failed");
                     }
                 } else {
                     // For integrated GPUs with unified memory, we use cudaHostAlloc
-                    if (cudaHostAlloc((void **) &dataBuffer, dataBufferSize, cudaHostAllocDefault) != cudaSuccess) {
+                    dataBuffer = reinterpret_cast<DataType *>(cuda.hostAllocDefault(dataBufferSize));
+                    if (dataBuffer == nullptr) {
                         getDefaultLogger()->log(LogSeverity::ERROR, "cudaHostAlloc failed");
                         throw std::runtime_error("cudaHostAlloc failed");
                     }
                 }
-#else
-                throw std::runtime_error("P2P DMA is not supported on this platform");
-#endif
             } else {
                 dataBuffer = reinterpret_cast<DataType *>(mallocChunked(dataBufferSize, ALLOC_CHUNK_SIZE));
             }
             getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
             createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
-            if (useP2pDma) {
-#ifdef ARRUS_CUDA
-                cudaFree(dataBuffer);
-#endif
-            } else {
-                freeChunked(dataBuffer, dataBufferSize);
-            }
+            releaseDataBuffer();
             dataBuffer = nullptr;
             getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
             throw;
@@ -286,13 +278,7 @@ public:
     }
 
     ~Us4ROutputBuffer() override {
-        if (useP2pDma) {
-#ifdef ARRUS_CUDA
-            cudaFree(dataBuffer);
-#endif
-        } else {
-            freeChunked(dataBuffer, dataBufferSize);
-        }
+        releaseDataBuffer();
         getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
     }
 
@@ -436,6 +422,22 @@ private:
     // The value was determined heuristically in a way so to avoid allocation time overhead and to make sure
     // that the watchdog thread is possibly not blocked by the address space lock too long.
     static constexpr size_t ALLOC_CHUNK_SIZE = 512 * 1024 * 1024; // 512 MiB
+
+    void releaseDataBuffer() {
+        if (dataBuffer == nullptr) {
+            return;
+        }
+        if (useP2pDma) {
+            auto &cuda = CudaRuntime::instance();
+            if (usesUnifiedMemory) {
+                cuda.freeHost(dataBuffer);
+            } else {
+                cuda.free(dataBuffer);
+            }
+        } else {
+            freeChunked(dataBuffer, dataBufferSize);
+        }
+    }
 
     /**
      * Allocates a contiguous virtual memory region of the given totalSize,
