@@ -243,10 +243,7 @@ using namespace ::arrus;
     }
 
     void addLogFile(const std::string &filepath, const ::arrus::LogSeverity level) {
-        std::shared_ptr<std::ostream> logFileStream =
-            // append to the end of the file
-            std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
-        LOGGING_FACTORY->addOutputStream(logFileStream, level);
+        LOGGING_FACTORY->addLogFile(filepath, level);
     }
 
     void setClogLevel(const ::arrus::LogSeverity level) {

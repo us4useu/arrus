@@ -27,6 +27,28 @@ Release notes
 0.13.x
 ------
 
+0.13.8
+
+- core (driver)
+
+    - Reduced the likelihood of watchdog errors when programming long sequences or many buffer elements, increased the priority of the watchdog-related threads. We still recommend increasing thresholds 0 and 1 (see User Guide -> Watchdog) for longer sequences # M_US4R-95.
+    - Set the maximum number of RX samples to 2 ^ 16-64 #M_OEM-282.
+    - Removed the soft-start feature for generating the long transmit bursts (>32 cycles).  The soft-start was enabled only when explicitly allowing pulses longer than 32 cycles in the session configuration (e.g., a .prototxt file), which is a configuration intended for research applications only. The soft-start functionality set the duty cycle in steps of 25% instead of immediately setting it to 100% at the beginning (25% duty cycle was applied for 1.66 µs, then 50% for 1.66 µs, followed by 75% for 1.66 µs, and finally 100%). After introducing this change, for pulses longer than 32 cycles, the duty cycle will remain at 100% throughout. #M_US4R-98.
+    - Limited the number of unique TX apertures ("wave configs") to 512. #M_OEM-251. 
+    - Fixed random TGC curve sampling offset for us4OEM+ HF variant. #M_US4R-84. 
+
+- C++, Python and MATLAB API:
+
+    - Fixed duplicate entries in the logger file when the function that sets the log file is called multiple times for the same file. For more information, for C++ also refer to the API Reference: arrus::Logging::addLogFile (C++) / arrus.logging.add_log_file #ARRUS-552.
+
+0.13.7
+
+- core (driver)
+
+    - Added support for DBARLitePCIE firmware 1.3.0.0 #M_USSS2-192
+    - Improved exception handling in the setHVVoltage method (clarify the error messages that may appear when this method throws an exception) #M_US4R-70
+    - **The legacy us4OEM systems only**: Fixed sub-sequence handling in legacy us4OEM TX subsystem #US4R-748
+
 
 0.13.6
 
