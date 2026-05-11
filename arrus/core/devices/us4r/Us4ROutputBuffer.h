@@ -413,8 +413,9 @@ public:
 
     bool usesP2pDma() const { return useP2pDma; }
 
-    // On unified memory system we can use regular DMA
-    // The only reason we don't return usesP2pDma==false is that because we shouldn't register this memory again
+    // On systems with unified memory (where GPU and CPU share the same memory, i.e. Nvidia Orin) P2P DMA is
+    // functionally equivalent to regular DMA, only to memory regions which are owned by the GPU.
+    // The only reason we don't return usesP2pDma==false is that because we shouldn't register this memory again.
     bool usesDmaBuf() const { return useP2pDma && !usesUnifiedMemory; }
 
 private:
