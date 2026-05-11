@@ -1724,6 +1724,14 @@ Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
     return result;
 }
 
+std::vector<int64_t> Us4RImpl::getHVPSTuningInfo() {
+    std::vector<int64_t> result;
+    for(auto &us4oem: us4oems) {
+        result.push_back(us4oem->getHVPSTuningInfo());
+    }
+    return result;
+}
+
 void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
     if(settings.has_value()) {
         for(const auto &us4oem: us4oems) {

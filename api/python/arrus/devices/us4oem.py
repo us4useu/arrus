@@ -174,4 +174,10 @@ class Us4OEM(Device):
         """
         return self._handle.getFPGAWallclock()
 
+    def get_hvps_tuning_info(self) -> int:
+        """
+        Returns HVPS tuning info (unix format timestamp, i.e. number of seconds, if previously tuned).
+        """
+        return self._handle.getHVPSTuningInfo()
+
 
