@@ -229,7 +229,7 @@ public:
             dataBufferSize = elementSize * nElements;
             getDefaultLogger()->log(
                 LogSeverity::DEBUG,
-                format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize, nElements));
+                format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize, nElements, useP2pDma));
 
             if (useP2pDma) {
 #ifdef ARRUS_CUDA
