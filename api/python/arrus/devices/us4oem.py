@@ -165,4 +165,13 @@ class Us4OEM(Device):
         core_variant = self._handle.getVariant()
         return _variant_enum_to_enum(core_variant)
 
+    def get_fpga_wallclock(self) -> int:
+        """
+        Returns the current FPGA wallclock value, expressed in number of
+        FPGA clock periods. Divide by ``Us4R.sampling_frequency`` (or, in the
+        vandv wrapper, ``device.get_sampling_frequency()``) to convert to
+        seconds.
+        """
+        return self._handle.getFPGAWallclock()
+
 
