@@ -1041,6 +1041,101 @@ In order to do that, use ``buffer.append_on_new_data_callback(callback)``:
         time.sleep(10)
 
 
+Registering user-defined system interrupt callbacks
+---------------------------------------------------
+
+In addition to the data-buffer callback described above, you can register
+your own Python functions to be invoked when a us4OEM **system interrupt**
+fires (e.g. probe disconnect, watchdog, HVPS fuse). The set of supported
+interrupts is exposed by the :py:class:`arrus.devices.us4oem.Us4OEMInterrupt`
+enum:
+
+- ``PROBE_NOT_CONNECTED``
+- ``PULSER_INTERRUPT``
+- ``TX_TIMEOUT``
+- ``WATCHDOG_IRQ0``
+- ``WATCHDOG_IRQ1``
+- ``HVPS_FUSE``
+
+System callbacks are registered up-front: instead of passing a configuration
+file path directly to ``arrus.Session``, build a ``SessionSettings`` handle
+with :py:func:`arrus.create_session_settings_from` and pass it to the
+session constructor via the ``session_settings`` argument. The second
+argument to ``create_session_settings_from`` is a ``params`` ``dict`` that
+maps string keys to arbitrary values. Currently a single key is supported:
+
+- ``"us4r:0/system_callbacks"`` — a ``dict`` from
+  :py:class:`Us4OEMInterrupt` to a callable ``f(oem_ordinal: int)``.
+  Interrupts not present in the dict are ignored.
+
+The callback receives the ordinal number of the us4OEM that raised the
+interrupt; if you want the same handler to cover several interrupts, list
+each as a separate entry in the dict.
+
+Example: print a message whenever the host watchdog warning fires.
+
+.. code-block:: python
+
+    import arrus
+    from arrus.devices.us4oem import Us4OEMInterrupt
+
+    def on_watchdog0(oem):
+        print(f"WATCHDOG_IRQ0 raised on OEM {oem}")
+
+    def on_hvps_fuse(oem):
+        print(f"HVPS_FUSE raised on OEM {oem} -- entering safe state")
+
+    settings = arrus.create_session_settings_from(
+        r"C:\Users\Public\us4r.prototxt",
+        params={
+            "us4r:0/system_callbacks": {
+                Us4OEMInterrupt.WATCHDOG_IRQ0: on_watchdog0,
+                Us4OEMInterrupt.HVPS_FUSE:     on_hvps_fuse,
+            },
+        },
+    )
+
+    with arrus.Session(session_settings=settings) as sess:
+        us4r = sess.get_device("/Us4R:0")
+        us4r.set_hv_voltage(10)
+        # ... upload scheme, start, etc.
+
+You can also retrieve the set of "safe-state" interrupts (every supported
+interrupt **except** ``WATCHDOG_IRQ0``) via
+:py:data:`arrus.devices.us4oem.SAFE_STATE_INTERRUPTS` and register the same
+callback for all of them in one step:
+
+.. code-block:: python
+
+    from arrus.devices.us4oem import SAFE_STATE_INTERRUPTS
+
+    def on_safe_state(oem):
+        print(f"Safe-state interrupt on OEM {oem}")
+
+    settings = arrus.create_session_settings_from(
+        r"C:\Users\Public\us4r.prototxt",
+        params={
+            "us4r:0/system_callbacks": {
+                irq: on_safe_state for irq in SAFE_STATE_INTERRUPTS
+            },
+        },
+    )
+
+.. note::
+
+    User callbacks are dispatched **asynchronously** from a dedicated
+    worker thread inside ``arrus``, so a slow callback does not block the
+    underlying us4OEM interrupt dispatcher. Default callbacks (e.g. the
+    watchdog reset) always run first and synchronously, so housekeeping is
+    never delayed by user code. Pending callbacks are discarded on session
+    shutdown.
+
+.. note::
+
+    Provide either ``cfg_path`` or ``session_settings`` to
+    ``arrus.Session(...)``, not both — passing both raises ``ValueError``.
+
+
 Implementing custom ``arrus.utils.imaging`` operations
 ------------------------------------------------------
 

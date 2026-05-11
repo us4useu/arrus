@@ -13,7 +13,7 @@ import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
 from collections.abc import Iterable
-from typing import Optional, Union, Sequence
+from typing import Optional, Union, Sequence, List
 from arrus.devices.probe import ProbeDTO
 
 from arrus.kernels.simple_tx_rx_sequence import get_sample_range
@@ -183,10 +183,13 @@ class Us4R(Device, Ultrasound):
         """
         if len(args) == 1:
             arrus.utils.core.assert_hv_voltage_correct(args[0])
-            self._handle.setVoltage(args[0])
+            # Use the GIL-releasing wrapper: setVoltage can block for >1s and
+            # we must let the interrupt-dispatcher thread acquire the GIL to
+            # invoke any user-registered system interrupt callbacks.
+            arrus.core.arrusUs4RSetVoltage(self._handle, args[0])
         else:
             voltages = arrus.utils.core.convert_to_hv_voltages(args)
-            self._handle.setVoltage(voltages)
+            arrus.core.arrusUs4RSetVoltageMulti(self._handle, voltages)
 
     def disable_hv(self):
         """
@@ -588,6 +591,12 @@ class Us4R(Device, Ultrasound):
         """
         core_variant = self._handle.getVariant()
         return arrus.devices.us4oem._variant_enum_to_enum(core_variant)
+    
+    def get_hvps_tuning_info(self) -> List[int]:
+        """
+        Returns HVPS tuning info (unix format timestamps (number of seconds) for each OEM if previously tuned)
+        """
+        return list(self._handle.getHVPSTuningInfo())
 
 
 # ------------------------------------------ LEGACY MOCK
