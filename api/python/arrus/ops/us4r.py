@@ -375,7 +375,7 @@ class DataBufferSpec:
     """
     n_elements: int
     type: str
-    placement: str = "/CPU:0"
+    placement: str = "CPU:0"
 
 
 @dataclass(frozen=True)

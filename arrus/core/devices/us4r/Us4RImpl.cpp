@@ -1745,26 +1745,20 @@ std::vector<int64_t> Us4RImpl::getHVPSTuningInfo() {
 
 void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
     if(settings.has_value()) {
+        // NOTE: level 1 -> rail 1; level 2 -> rail 0.
+        auto thresholdsRail0 = ::us4us::us4r::HvpsFuseCustomThresholds{
+            settings->getLevel2StaticVoltageMargin(),
+            settings->getLevel2MaxCurrentThreshold(),
+            settings->getLevel2MaxPowerThreshold()
+        };
+        auto thresholdsRail1 = ::us4us::us4r::HvpsFuseCustomThresholds{
+            settings->getLevel1StaticVoltageMargin(),
+            settings->getLevel1MaxCurrentThreshold(),
+            settings->getLevel1MaxPowerThreshold()
+        };
         for(const auto &us4oem: us4oems) {
-            // NOTE: level 1 -> rail 1; level 2 -> rail 0.
-            if(settings->getLevel1MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1PowerThreshold(settings->getLevel1MaxPowerThreshold().value());
-            }
-            if(settings->getLevel1MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1CurrentThreshold(settings->getLevel1MaxCurrentThreshold().value());
-            }
-            if(settings->getLevel1StaticVoltageMargin().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1StaticVoltageMargin(settings->getLevel1StaticVoltageMargin().value());
-            }
-            if(settings->getLevel2MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0PowerThreshold(settings->getLevel2MaxPowerThreshold().value());
-            }
-            if(settings->getLevel2MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0CurrentThreshold(settings->getLevel2MaxCurrentThreshold().value());
-            }
-            if(settings->getLevel2StaticVoltageMargin().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0StaticVoltageMargin(settings->getLevel2StaticVoltageMargin().value());
-            }
+            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV0, thresholdsRail0);
+            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV1, thresholdsRail1);
         }
     }
 }

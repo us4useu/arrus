@@ -513,7 +513,7 @@ class Session(AbstractSession):
             # Whether to use P2P DMA is now derived from the output buffer placement
             # (set via Scheme.output_buffer.placement); P2P DMA is enabled when the
             # buffer is placed on the GPU.
-            placement = getattr(scheme.output_buffer, "placement", None)
+            placement = getattr(self._current_scheme.output_buffer, "placement", None)
             use_p2p_dma = (
                 placement is not None
                 and arrus.devices.device.parse_device_id(placement).device_type

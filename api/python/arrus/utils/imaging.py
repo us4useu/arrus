@@ -543,7 +543,7 @@ class ProcessingRunner:
             gpu_input_buffer,
             data_stream=self.data_stream,
             processing_stream=self.processing_stream,
-            source_buffer_placement="/GPU:0" if self.use_p2p_dma else "/CPU:0",
+            source_buffer_placement="GPU:0" if self.use_p2p_dma else "CPU:0",
             name=f"{gpu_input_buffer.name}Enqueue",
         )
         out_buffer_enqueue = EnqueueGPUtoCPU(
