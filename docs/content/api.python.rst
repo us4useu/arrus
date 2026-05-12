@@ -10,6 +10,8 @@ Session
 .. autoclass:: arrus.Session
     :members:
 
+.. autofunction:: arrus.session.create_session_settings_from
+
 Operations
 ==========
 
