@@ -11,7 +11,6 @@ Release notes
     - Implemented the HVPS fuse mechanism with over-current, over-power and over-voltage protection via real-time HVPS-based monitoring (2.2.0.0 firmware only). #M_OEM-179, #M_OEM-189, #M_OEM-181, #M_OEM-271.
     - Windows: implemented the us4us us4OEM driver. Jungo Windriver is now deprecated and we recommend using the us4us us4OEM driver. Support for the Jungo Windriver will be discontinued after August 1, 2026 #M_OEM-234.
     - Windows: updated Jungo Driver to 1450-12052026. Please update driver before running firmware update or ARRUS (ask us4us for the access), otherwise you may get `wdapi1450.dll missing` error #M_US4R-66.
-    - Linux: rewrote the Linux kernel driver, implemented safe, managed PCI DMA, created the .deb package for the Linux driver, added LKM signing (secure boot) and DKMS support. Updated minimum required Linux kernel version to 5.15. Please update driver to `us4r-lkm-v0.15.0.run` before running firmware update or ARRUS. #M_OEM-240, #M_OEM-241.
     - Exposed the possibility to mask DVDD pulser interrupt, #M_OEM-198.
     - The return data type of ``arrus::devices::Us4OEM::getFPGAWallclock()`` was changed from seconds to clock ticks. #M_OEM-220.
     - Enabled DDC for us4OEM+HF, increased the demodulation-frequency-accuracy setting. #M_OEM-156.
@@ -25,7 +24,6 @@ Release notes
     - Modified DBARLitePCIe firmware verification to check only the major version. #M_US4R-68.
     - Removed unnecessary component initialization during us4OEM firmware updates. #M_OEM-294.
     - Removed the soft-start feature for long TX pulses (>32 cycles). #M_US4R-85.
-    - *Experimental: enabled GPUDirect RDMA via Linux DMA BUF mechanism #M_OEM-241*.
 
 - core (ARRUS):
 
@@ -44,6 +42,18 @@ Release notes
     - Enabled user-defined system-level callbacks via the ``arrus.create_session_settings_from`` function. #M_OEM-286.
     - Added a GPU ``.prototxt`` setting to enable customisation of MemoryPool usage and RAM limit for ``ProcessingRunner``. #ARRUS-543.
     - Added the possibility to output multiple arrays in a single Pipeline operation. #ARRUS-538.
+
+- Features not yet implemented:
+
+    .. note::
+
+        The features listed below were planned for the 0.14.0 release, but
+        we did not manage to finalize them in time for the stable release.
+        They are expected to land in an upcoming bug-fix release.
+
+    - Linux: rewrite of the Linux kernel driver, safe managed PCI DMA, ``.deb`` package for the Linux driver, LKM signing (secure boot) and DKMS support, with the minimum required Linux kernel version bumped to 5.15. #M_OEM-240, #M_OEM-241.
+    - *Experimental: GPUDirect RDMA via the Linux DMA-BUF mechanism. #M_OEM-241.*
+
 
 
 0.13.x
