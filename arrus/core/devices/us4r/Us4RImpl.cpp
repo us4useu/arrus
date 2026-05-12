@@ -354,6 +354,10 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     // Set voltages.
     if (isHVPS) {
+        // Set the over-current / over-power settings if specified by the user
+        //
+        setHVPSFuseSettings(hvpsFuseSettings);
+
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
             futures.push_back(std::async(
@@ -398,9 +402,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
 
-    // Set the over-current / over-power settings if specified by the user
-    setHVPSFuseSettings(hvpsFuseSettings);
-
+    
 }
 
 unsigned char Us4RImpl::getVoltage() {
