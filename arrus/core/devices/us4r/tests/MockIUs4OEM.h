@@ -225,6 +225,11 @@ public:
     MOCK_METHOD(void, SetCustomSequenceWaveform, (const unsigned short firing, const std::vector<uint32_t>&), (override));
     MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVP0Voltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVP1Voltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVM0Voltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVM1Voltage, (), (override));
+    MOCK_METHOD(std::vector<float>, GetMeasuredVoltages, (), (override));
     MOCK_METHOD((std::pair<float, float>), GetTGCValueRange, (), (const, override));
     MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
     MOCK_METHOD(::us4us::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
