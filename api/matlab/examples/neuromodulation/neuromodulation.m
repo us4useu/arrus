@@ -1,10 +1,7 @@
 % Neuromodulation function
-function [sri] = neuromodulation(volt,prf,nRep,tStim,tPause)
+function [sri] = neuromodulation(volt,prf,nRep,tInit,tStim,tPause)
     
     %% Predefined parameters
-    % tStim = 60;
-    % tPause = 60;
-    
     txFreq = 6.5e6;
     txFoc = 20e-3;
     dutyCycle = 0.5;
@@ -21,7 +18,7 @@ function [sri] = neuromodulation(volt,prf,nRep,tStim,tPause)
     end
 
     if ~isscalar(volt) && ~isscalar(prf) && numel(volt) ~= numel(prf)
-        error("Incompatible length of volt and pri");
+        error("Incompatible length of volt and prf");
     end
 
     if nargin<3
@@ -99,10 +96,15 @@ function [sri] = neuromodulation(volt,prf,nRep,tStim,tPause)
             disp(['Reload time: ' num2str(reloadTime) 's']);
     
             %% Wait
-            if reloadTime > tPause
+            if iRep==1 && iSeq==1
+                tWait = tInit;
+            else
+                tWait = tPause;
+            end
+            if reloadTime > tWait
                 error("Failed to load the parameters on time");
             end
-            pause(tPause-reloadTime);
+            pause(tWait - reloadTime);
             
             %% Stimulate
             beep();
