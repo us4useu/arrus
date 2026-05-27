@@ -1,5 +1,5 @@
 % Neuromodulation function
-function [sri] = neuromodulation2(volt,prf,nRep,tStim,tPause)
+function [sri] = neuromodulation(volt,prf,nRep,tStim,tPause)
     
     %% Predefined parameters
     % tStim = 60;

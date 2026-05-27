@@ -1,0 +1,69 @@
+us4r: {
+    probe_id: {
+        manufacturer: "ultrasonix"
+        name: "l9-4/38"
+    }
+
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "pau_rev1.0"
+    }
+
+    # Default initial values.
+    rx_settings: {
+        lna_gain: 24
+        pga_gain: 30
+        lpf_cutoff: 10000000
+        active_termination: 200
+	# dtgc_attenuation: 12
+    }
+
+	digital_backplane: {
+	  model_id {
+		manufacturer: "us4us"
+		name: "dbarlite"
+	  }
+	}
+
+    hv: {
+        model_id {
+            manufacturer: "us4us"
+            name: "us4oemhvps"
+        }
+    }
+
+    tx_rx_limits: {
+        pulse_length: {begin: 0, end: 1050e-6} # [s]
+        voltage: {begin: 0, end: 71} # [V]
+    }
+
+    watchdog: {
+        enabled: true
+        oem_threshold0: 1.0
+        oem_threshold1: 2.0
+        host_threshold: 1.0
+    }
+
+    channels_mask: {}
+    #channels_mask: {channels: [63, 95]}
+    #channels_mask: {channels: [2, 182]}
+
+    us4oem_channels_mask: [
+        {},{}
+    ]
+
+    #mask_dvdd_failure_check: true
+
+    #hvps_fuse: {
+        #level1_max_power_threshold: 72.0 # [W]. Range: 0 - 11000 W
+        #level1_max_current_threshold: 10.0 # [A]. Range: 0-110 A
+        #level1_static_voltage_margin: 5.0
+        
+        #level2_max_power_threshold: 3.1 # [W]. Range: 0 - 820 W
+        #level2_max_current_threshold: 2.0 # [A]. Range: 0-8 A
+        #level2_static_voltage_margin: 5.0
+    #}
+
+}
+
+
