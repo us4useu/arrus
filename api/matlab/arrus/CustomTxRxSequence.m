@@ -8,7 +8,7 @@ classdef CustomTxRxSequence
         txApertureSize (1,:) {mustBeFinite, mustBeInteger, mustBeNonnegative}
         rxCenterElement (1,:) {mustBeFinite, mustBeReal}
         rxApertureCenter (1,:) {mustBeFinite, mustBeReal}
-        rxApertureSize (1,1) {mustBeFinite, mustBeInteger, mustBeNonnegative}
+        rxApertureSize (1,:) {mustBeFinite, mustBeInteger, mustBeNonnegative}
         txFocus (1,:) {mustBeNonNan, mustBeReal}
         txAngle (1,:) {mustBeFinite, mustBeReal}
         speedOfSound (1,1) {mustBeProperNumber}
@@ -50,8 +50,8 @@ classdef CustomTxRxSequence
             %   Numerical vector.
             % :param rxApertureCenter: Center positions of the Rx apertures [m]. \
             %   Numerical vector.
-            % :param rxApertureSize: Size of the Rx apertures [elem]. \
-            %   Numerical scalar.
+            % :param rxApertureSize: Sizes of the Rx apertures [elem]. \
+            %   Numerical vector.
             % :param txFocus: Tx focal distances [m]. Numerical vector.
             % :param txAngle: Tx angles [rad]. Numerical vector.
             % :param speedOfSound: Speed of sound determining the Tx delay \
@@ -80,7 +80,7 @@ classdef CustomTxRxSequence
             %   scalar, positive integer.
             % :param nRepetitions: Number of repetitions of the sequence. \
             %   Numerical scalar, positive integer.
-            % :param txPri: Tx pulse repetition interval [s]. Numerical scalar.
+            % :param txPri: Tx pulse repetition interval [s]. Numerical vector.
             % :param tgcStart: TGC starting gain [dB]. Numerical scalar.
             % :param tgcSlope: TGC gain slope [dB/m]. Numerical scalar.
             % :param txInvert: Tx pulse polarity inversion. Logical vector.
@@ -134,8 +134,10 @@ classdef CustomTxRxSequence
                         length(obj.rxCenterElement) ...
                         length(obj.rxApertureCenter) ...
                         length(obj.txApertureSize) ...
+                        length(obj.rxApertureSize) ...
                         length(obj.txFocus) ...
-                        length(obj.txAngle)]);
+                        length(obj.txAngle) ...
+                        length(obj.txPri)]);
 
             if isempty(obj.txWaveform)
                 nTx = max([nTx length(obj.txFrequency) length(obj.txNPeriods) length(obj.txInvert)]);
@@ -146,9 +148,11 @@ classdef CustomTxRxSequence
             obj.txApertureSize      = mustBeProperLength(obj.txApertureSize,nTx);
             obj.rxCenterElement     = mustBeProperLength(obj.rxCenterElement,nTx);
             obj.rxApertureCenter    = mustBeProperLength(obj.rxApertureCenter,nTx);
+            obj.rxApertureSize      = mustBeProperLength(obj.rxApertureSize,nTx);
             obj.txFocus             = mustBeProperLength(obj.txFocus,nTx);
             obj.txAngle             = mustBeProperLength(obj.txAngle,nTx);
             obj.txVoltageId         = mustBeProperLength(obj.txVoltageId,nTx);
+            obj.txPri               = mustBeProperLength(obj.txPri,nTx);
 
             %% txVoltage & txVoltageId validation
             mustBeProperNumber(obj.txVoltage);

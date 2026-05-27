@@ -86,6 +86,18 @@ classdef Us4R < handle
             state = obj.session.getCurrentState();
         end
 
+        function setVoltage(obj,txVoltage)
+            
+            import arrus.ops.us4r.*;
+            
+            if isscalar(txVoltage) && txVoltage == 0
+                obj.us4r.disableHV();
+            else
+                obj.us4r.setVoltage(txVoltage);
+            end
+
+        end
+
         function stopScheme(obj)
             % Stops running scheme
 
@@ -104,7 +116,7 @@ classdef Us4R < handle
             %   Numerical scalar.
 
             warning('Functionality temporarily suspended.');
-%             obj.us4r.setMaximumPulseLength(maxPulseLength);
+            obj.us4r.setMaximumPulseLength(maxPulseLength);
         end
 
         function nProbeElem = getNProbeElem(obj)
@@ -552,7 +564,7 @@ classdef Us4R < handle
             
             [raw, metadata] = obj.execSequence;
             obj.stopScheme;
-
+            
             raw = obj.rawDataReorganization(raw);
 
             if obj.rec.enable
@@ -626,6 +638,7 @@ classdef Us4R < handle
             end
 
             if rawBufferEnable
+                error('Functionality temporarily suspended (due to varying "rxApSize" support)');
                 rawBuffer = zeros(obj.subSeq.nSamp, obj.subSeq.rxApSize, obj.subSeq.nTx, obj.subSeq.nRep, bufferSize, 'single');
                 if obj.subSeq.hwDdcEnable
                     rawBuffer = complex(rawBuffer,0);   % other, less time consuming solution?
@@ -651,10 +664,11 @@ classdef Us4R < handle
                 acqTime = toc;
                 
                 tic;
-                rf = obj.rawDataReorganization(rf);
+                % rf = obj.rawDataReorganization(rf); % this is not supported for varying rxApSize
                 reorgTime = toc;
 
                 if obj.rec.enable
+                    error('Functionality temporarily suspended (due to varying "rxApSize" support)');
                     tic;
                     img = obj.execReconstr(rf(:,:,:,1));
                     recTime = toc;
@@ -752,6 +766,7 @@ classdef Us4R < handle
             %% Input parser
             dispParParser = inputParser;
             
+            error('Functionality temporarily suspended (due to varying "rxApSize" support)');
             nLine = obj.subSeq.rxApSize * obj.subSeq.nTx * obj.subSeq.nRep;
             addParameter(dispParParser, 'selectedLines', 1:nLine, ...
                 @(x) assert(isvector(x) && isnumeric(x) && all(x>0), ...
@@ -861,6 +876,7 @@ classdef Us4R < handle
             %% Input parser
             dispParParser = inputParser;
             
+            error('Functionality temporarily suspended (due to varying "rxApSize" support)');
             nLine = obj.subSeq.rxApSize * obj.subSeq.nTx * obj.subSeq.nRep;
             addParameter(dispParParser, 'selectedLines', 1:nLine, ...
                 @(x) assert(isvector(x) && isnumeric(x) && all(x>0), ...
@@ -1052,9 +1068,9 @@ classdef Us4R < handle
 
             %% Validate sequences
             % Some parameters must be equal (those that have to be scalars or 2-elem vectors or 2x2 arrays)
-            selFieldNames = {'rxApertureSize','speedOfSound','txVoltage', ...
+            selFieldNames = {'speedOfSound','txVoltage', ...
                              'rxDepthRange','rxNSamples', 'hwDdcEnable', ...
-                             'decimation','nRepetitions','txPri', ...
+                             'decimation','nRepetitions', ...
                              'tgcStart','tgcSlope','workMode', ...
                              'sri','bufferSize'};
             for iFld=1:numel(selFieldNames)
@@ -1106,12 +1122,14 @@ classdef Us4R < handle
                 seqOut.txApertureSize    = [seqOut.txApertureSize,   seqIn(iSeq).txApertureSize];
                 seqOut.rxCenterElement   = [seqOut.rxCenterElement,  seqIn(iSeq).rxCenterElement];
                 seqOut.rxApertureCenter  = [seqOut.rxApertureCenter, seqIn(iSeq).rxApertureCenter];
+                seqOut.rxApertureSize    = [seqOut.rxApertureSize,   seqIn(iSeq).rxApertureSize];
                 seqOut.txFocus           = [seqOut.txFocus,          seqIn(iSeq).txFocus];
                 seqOut.txAngle           = [seqOut.txAngle,          seqIn(iSeq).txAngle];
                 seqOut.txVoltageId       = [seqOut.txVoltageId,      seqIn(iSeq).txVoltageId];
                 seqOut.txFrequency       = [seqOut.txFrequency,      seqIn(iSeq).txFrequency];
                 seqOut.txNPeriods        = [seqOut.txNPeriods,       seqIn(iSeq).txNPeriods];
                 seqOut.txInvert          = [seqOut.txInvert,         seqIn(iSeq).txInvert];
+                seqOut.txPri             = [seqOut.txPri,            seqIn(iSeq).txPri];
             end
 
             %% Frame limits
@@ -1230,13 +1248,13 @@ classdef Us4R < handle
             end
             
             %% txPri
-            txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + obj.sys.reloadTime;
-            if isempty(obj.seq.txPri)
-                obj.seq.txPri = txPriMin;
-            elseif obj.seq.txPri < txPriMin
-                warning(['txPri value is too low. It is increased to ' num2str(txPriMin)]);
-                obj.seq.txPri = txPriMin;
-            end
+            % txPriMin = (obj.seq.startSample + obj.seq.nSamp) / obj.seq.rxSampFreq + obj.sys.reloadTime;
+            % if isempty(obj.seq.txPri)
+            %     obj.seq.txPri = txPriMin;
+            % elseif obj.seq.txPri < txPriMin
+            %     warning(['txPri value is too low. It is increased to ' num2str(txPriMin)]);
+            %     obj.seq.txPri = txPriMin;
+            % end
             
             %% TGC
             % Default TGC start level
@@ -1631,7 +1649,7 @@ classdef Us4R < handle
                 end
                 txObj = Tx("aperture", obj.seq.txApMask(:,iTx).', 'delays', obj.seq.txDel(:,iTx).', "pulse", pulse);
                 rxObj = Rx("aperture", obj.seq.rxApMask(:,iTx).', "padding", obj.seq.rxApPadding(:,iTx).', "sampleRange", obj.seq.startSample + [0, obj.seq.nSamp], "downsamplingFactor", obj.seq.fpgaDec);
-                txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri);
+                txrxList(iTx) = TxRx("tx", txObj, "rx", rxObj, "pri", obj.seq.txPri(iTx));
             end
             txrxSeq = TxRxSequence("ops", txrxList, "nRepeats", obj.seq.nRep, "tgcCurve", [], "sri", obj.seq.sri, "name", "TxRxSequence");
             
@@ -1714,7 +1732,7 @@ classdef Us4R < handle
             end
             
             % Data reorganization addresses
-            obj.calcReorgMap();
+            % obj.calcReorgMap();
             
             % Reset selected parameters
             obj.buffer.iFrame = 0;
@@ -1756,11 +1774,11 @@ classdef Us4R < handle
 
             % The below condition on sri is valid for simple Tx/Rx sequences,
             % it may not work properly for a messed up sequence.
-            obj.buffer.seqLagDetected = abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 10e-9;
+            obj.buffer.seqLagDetected = false; % abs(obj.buffer.sri - max(obj.buffer.framesNumber)*obj.subSeq.txPri) > 10e-9;
 
-            if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
-                warning('SYNC mode: sequence lag detected');
-            end
+            % if strcmp(obj.subSeq.workMode,'SYNC') && obj.buffer.seqLagDetected
+            %     warning('SYNC mode: sequence lag detected');
+            % end
         end
         
         function img = execReconstr(obj,rfRaw)
@@ -1971,6 +1989,7 @@ classdef Us4R < handle
         end
 
         function [dataOut] = rawDataReorganization(obj, dataIn)
+            error('Functionality temporarily suspended (due to varying "rxApSize" support)');
 
             dataIn  = gpuArray(dataIn);
 
@@ -2015,17 +2034,17 @@ classdef Us4R < handle
 
         function selSubSeqParams(obj, seqId)
             
-            seqFieldsToCopy = { 'rxApSize', 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
-                                'hwDdcEnable', 'dec', 'nRep', 'txPri', 'tgcStart', 'tgcSlope', ...
+            seqFieldsToCopy = { 'c', 'txVoltage', 'dRange', 'startSample', 'nSamp', ...
+                                'hwDdcEnable', 'dec', 'nRep', 'tgcStart', 'tgcSlope', ...
                                 'workMode', 'sri', 'bufferSize', 'fpgaDec', 'ddcFirCoeff', ...
                                 'rxSampFreq', 'tgcPoints', 'tgcCurve', 'txDelCent', 'txWaveform'};
             
-            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', ...
+            seqFieldsToExtr = { 'txCentElem', 'txApCent', 'txApSize', 'rxCentElem', 'rxApCent', 'rxApSize', ...
                                 'txFoc', 'txAng', 'txVoltageId', 'txFreq', 'txNPer', 'txInvert', ...
                                 'txApCentZ', 'txApCentX', 'txApCentAng', 'txAngZX', ...
                                 'txApOrig', 'rxApOrig', 'txApFstElem', 'txApLstElem', ...
                                 'txApMask', 'rxApMask', 'rxApPadding', 'txDel', ...
-                                'nSampOmit', 'initDel'};
+                                'nSampOmit', 'initDel', 'txPri'};
             
             % Copy selected parameters from sequence to subsequence
             for iFld=1:numel(seqFieldsToCopy)
