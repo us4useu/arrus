@@ -1,21 +1,28 @@
 #ifndef ARRUS_CORE_API_DEVICES_PROBE_PROBEMODEL_H
 #define ARRUS_CORE_API_DEVICES_PROBE_PROBEMODEL_H
 
-#include <utility>
+#include <optional>
 #include <ostream>
+#include <utility>
 
-#include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/Interval.h"
-#include "arrus/core/api/common/types.h"
+#include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/core/api/devices/probe/ProbeModelId.h"
+#include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/probe/Lens.h"
 #include "arrus/core/api/devices/probe/MatchingLayer.h"
+#include "arrus/core/api/devices/probe/ProbeModelId.h"
+#include "std4us/Optional.hpp"
+#include "std4us/StdInterop.hpp"
 
 namespace arrus::devices {
 
 /**
  * A specification of the probe model.
+ *
+ * lens and matchingLayer storage uses std4us::Optional for ABI stability;
+ * std::optional-typed constructors and accessors are kept as inline
+ * header-only backward-compatibility shims.
  */
 class ProbeModel {
 public:
@@ -32,6 +39,17 @@ public:
                std::optional<Lens> lens = std::nullopt,
                std::optional<MatchingLayer> matchingLayer = std::nullopt
                )
+        : ProbeModel(std::move(modelId), numberOfElements, pitch, txFrequencyRange, voltageRange,
+                     curvatureRadius, std4us::fromStd(lens), std4us::fromStd(matchingLayer)) {}
+
+    ProbeModel(ProbeModelId modelId,
+               const Tuple<ElementIdxType> &numberOfElements,
+               const Tuple<double> &pitch,
+               const Interval<float> &txFrequencyRange,
+               const Interval<Voltage> &voltageRange,
+               const double curvatureRadius,
+               std4us::Optional<Lens> lens,
+               std4us::Optional<MatchingLayer> matchingLayer)
         : modelId(std::move(modelId)), numberOfElements(numberOfElements),
           pitch(pitch), txFrequencyRange(txFrequencyRange), voltageRange(voltageRange),
           curvatureRadius(curvatureRadius),
@@ -72,17 +90,19 @@ public:
         return curvatureRadius;
     }
 
-    const std::optional<Lens> &getLens() const { return lens; }
+    std::optional<Lens> getLens() const { return std4us::toStd(lens); }
+    const std4us::Optional<Lens> &getLensNative() const { return lens; }
     /** Returns true when the lens is defined for this probe model, otherwise false. */
-    bool isLensDefined() const {return lens.has_value(); }
+    bool isLensDefined() const { return lens.hasValue(); }
     /** Returns lens definition. If the lens is not defined for this probe, exception will be raised. */
-    const Lens &getLensOrRaiseException() {return lens.value(); }
+    const Lens &getLensOrRaiseException() { return lens.value(); }
 
-    const std::optional<MatchingLayer> &getMatchingLayer() const { return matchingLayer; }
+    std::optional<MatchingLayer> getMatchingLayer() const { return std4us::toStd(matchingLayer); }
+    const std4us::Optional<MatchingLayer> &getMatchingLayerNative() const { return matchingLayer; }
     /** Returns true when the matching layer is defined for this probe model, otherwise false. */
-    bool isMatchingLayerDefined() const {return matchingLayer.has_value(); }
+    bool isMatchingLayerDefined() const { return matchingLayer.hasValue(); }
     /** Returns matching layer definition. If the matching layer is not defined for this probe, exception will be raised. */
-    const MatchingLayer &getMatchingLayerOrRaiseException() {return matchingLayer.value(); }
+    const MatchingLayer &getMatchingLayerOrRaiseException() { return matchingLayer.value(); }
 
 
 private:
@@ -92,10 +112,10 @@ private:
     Interval<float> txFrequencyRange;
     Interval<Voltage> voltageRange;
     double curvatureRadius;
-    std::optional<Lens> lens;
-    std::optional<MatchingLayer> matchingLayer;
+    std4us::Optional<Lens> lens;
+    std4us::Optional<MatchingLayer> matchingLayer;
 };
 
-}
+}// namespace arrus::devices
 
-#endif //ARRUS_CORE_API_DEVICES_PROBE_PROBEMODEL_H
+#endif//ARRUS_CORE_API_DEVICES_PROBE_PROBEMODEL_H

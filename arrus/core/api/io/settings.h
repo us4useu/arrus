@@ -4,6 +4,8 @@
 #include <string>
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/session/SessionSettings.h"
+#include "std4us/StdInterop.hpp"
+#include "std4us/String.hpp"
 
 namespace arrus::io {
 
@@ -32,8 +34,13 @@ namespace arrus::io {
  * 4. if 3. fails, use default dictionary.
  */
 ARRUS_CPP_EXPORT
-arrus::session::SessionSettings readSessionSettings(const std::string &file);
+arrus::session::SessionSettings readSessionSettingsNative(const std4us::String &file);
 
+/** Backward-compatibility shim accepting std::string (inline). */
+inline arrus::session::SessionSettings readSessionSettings(const std::string &file) {
+    return readSessionSettingsNative(std4us::fromStd(file));
 }
+
+}// namespace arrus::io
 
 #endif //ARRUS_CORE_API_IO_SETTINGS_H

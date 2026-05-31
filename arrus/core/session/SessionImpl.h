@@ -23,14 +23,15 @@ public:
         arrus::devices::GpuFactory::Handle gpuFactory
         );
     ~SessionImpl() override;
+    using Session::getDevice;  // unhide the std::string shim from the base
     arrus::devices::Device::RawHandle
-    getDevice(const std::string &deviceId) override;
+    getDeviceNative(const std4us::String &deviceId) override;
     arrus::devices::Device::RawHandle
     getDevice(const arrus::devices::DeviceId &deviceId) override;
     UploadResult upload(const ops::us4r::Scheme &scheme) override;
     void startScheme() override;
     void stopScheme() override;
-    void run(bool async, std::optional<long long> timeout) override;
+    void runNative(bool async, std4us::Optional<long long> timeout) override;
     SessionImpl(SessionImpl const &) = delete;
     void operator=(SessionImpl const &) = delete;
     SessionImpl(SessionImpl const &&) = delete;
@@ -38,9 +39,10 @@ public:
     void close() override;
     void setParameters(const Parameters &params) override;
     State getCurrentState() override;
-    UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) override;
+    UploadResult setSubsequenceNative(uint16 start, uint16 end, std4us::Optional<float> sri, uint16 arrayId) override;
     UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
-    bool hasDevice(const std::string &deviceId) const override;
+    using Session::hasDevice;  // unhide the std::string shim from the base
+    bool hasDeviceNative(const std4us::String &deviceId) const override;
     bool hasDevice(const devices::DeviceId &deviceId) const override;
 
 private:

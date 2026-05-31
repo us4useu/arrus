@@ -1,11 +1,14 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_H
 #define ARRUS_CORE_API_OPS_US4R_H
 
+#include <optional>
 #include <utility>
 
 #include "DigitalDownConversion.h"
 #include "TxRxSequence.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
+#include "std4us/Optional.hpp"
+#include "std4us/StdInterop.hpp"
 
 namespace arrus::ops::us4r {
 
@@ -53,53 +56,52 @@ public:
     }
 
     /**
+     * Native constructor (ABI surface uses std4us::Optional for stability
+     * across MSVC Debug/Release). Defined in Scheme.cpp.
+     *
      * TODO(0.12.0) Deprecated: please use Scheme::create instead
      */
     ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
-           WorkMode workMode, std::optional<DigitalDownConversion> ddc,
+           WorkMode workMode, std4us::Optional<DigitalDownConversion> ddc,
            const std::vector<arrus::framework::NdArray> &constants);
+
+    /**
+     * Backward-compatibility shim accepting std::optional. Inline — converts
+     * to std4us::Optional in the caller's TU before crossing the boundary.
+     */
+    Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
+           WorkMode workMode, std::optional<DigitalDownConversion> ddc,
+           const std::vector<arrus::framework::NdArray> &constants)
+        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode,
+                 std4us::fromStd(ddc), constants) {}
 
     /**
      * Scheme constructor. This scheme turns off hardware IQ demodulator.
      * TODO(0.12.0) Deprecated: please use Scheme::create instead
-     *
-     * @param txRxSequence tx/rx sequence to perform
-     * @param rxBufferSize the size of the data acquisition buffer in the memory of the Us4R device
-     *   (a single element of the buffer is an output of a single tx/rx sequence execution)
-     * @param outputBuffer output buffer specification
-     * @param workMode scheme work mode
      */
-    ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode)
-        :Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, {}) {}
+        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode,
+                 std4us::Optional<DigitalDownConversion>{}, {}) {}
 
     /**
-     * Scheme constructor. This scheme turns on hardware IQ demodulator (sees digital down conversion parameter).
-     *
+     * Scheme constructor. This scheme turns on hardware IQ demodulator.
      * TODO(0.12.0) Deprecated: please use Scheme::create instead
-     *
-     * @param txRxSequence tx/rx sequence to perform
-     * @param rxBufferSize the size of the data acquisition buffer in the memory of the Us4R device
-     *   (a single element of the buffer is an output of a single tx/rx sequence execution)
-     * @param outputBuffer output buffer specification
-     * @param workMode scheme work mode
-     * @param digitalDownConversion DDC parameters
      */
-    ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode, DigitalDownConversion ddc)
-        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::move(ddc), {}) {}
+        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode,
+                 std4us::Optional<DigitalDownConversion>(std::move(ddc)), {}) {}
 
 
     /**
      * TODO(0.12.0) Deprecated: please use Scheme::create instead
      */
-    ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode, const std::vector<framework::NdArray> &constants)
-        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, constants) {}
+        : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode,
+                 std4us::Optional<DigitalDownConversion>{}, constants) {}
 
     ARRUS_CPP_EXPORT
     Scheme(const Scheme &o);
@@ -125,8 +127,21 @@ public:
     const framework::DataBufferSpec &getOutputBuffer() const;
     ARRUS_CPP_EXPORT
     WorkMode getWorkMode() const;
+    /**
+     * Native accessor — returns the ABI-stable std4us::Optional by reference.
+     * Prefer this in new code.
+     */
     ARRUS_CPP_EXPORT
-    const std::optional<DigitalDownConversion> &getDigitalDownConversion() const;
+    const std4us::Optional<DigitalDownConversion> &getDigitalDownConversionNative() const;
+
+    /**
+     * Backward-compatibility shim returning std::optional by value. Inline
+     * so the std::optional is constructed/destroyed in the caller's TU.
+     */
+    std::optional<DigitalDownConversion> getDigitalDownConversion() const {
+        return std4us::toStd(getDigitalDownConversionNative());
+    }
+
     ARRUS_CPP_EXPORT
     const std::vector<arrus::framework::NdArray> &getConstants() const;
 

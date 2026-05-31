@@ -140,7 +140,7 @@ public:
 
     void sync(std::optional<long long> timeout) override;
     void setWaitForHVPSMeasurementDone() override;
-    void waitForHVPSMeasurementDone(std::optional<long long> timeout) override;
+    void waitForHVPSMeasurementDoneNative(std4us::Optional<long long> timeout) override;
     float getActualTxFrequency(float frequency) override;
     Variant getVariant() override;
 

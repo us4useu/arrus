@@ -275,7 +275,7 @@ public:
 
     virtual void start() override = 0;
     virtual void stop() override = 0;
-    virtual void trigger(bool sync, std::optional<long long> timeout) override = 0;
+    virtual void triggerNative(bool sync, std4us::Optional<long long> timeout) override = 0;
 
     /**
      * Synchronization point with us4R system. After returning from this method, the last "TX/RX" (triggered by the
@@ -285,7 +285,7 @@ public:
      *
      * @param timeout timeout in number of milliseconds
      */
-    virtual void sync(std::optional<long long> timeout) override = 0;
+    virtual void syncNative(std4us::Optional<long long> timeout) override = 0;
 
     virtual std::vector<unsigned short> getChannelsMask(Ordinal probeNumber) = 0;
 

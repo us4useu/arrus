@@ -15,7 +15,7 @@ public:
 
     Impl(std::vector<TxRxSequence> txRxSequences, uint16 rxBufferSize,
          const DataBufferSpec &outputBuffer, WorkMode workMode,
-         std::optional<DigitalDownConversion> ddc, const std::vector<NdArray> &constants)
+         std4us::Optional<DigitalDownConversion> ddc, const std::vector<NdArray> &constants)
         : txRxSequences(std::move(txRxSequences)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer), workMode(workMode),
           ddc(std::move(ddc)), constants(constants) {}
 
@@ -35,7 +35,7 @@ public:
     [[nodiscard]] uint16 getRxBufferSize() const { return rxBufferSize; }
     [[nodiscard]] const DataBufferSpec &getOutputBuffer() const { return outputBuffer; }
     [[nodiscard]] WorkMode getWorkMode() const { return workMode; }
-    [[nodiscard]] const std::optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
+    [[nodiscard]] const std4us::Optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
     [[nodiscard]] const std::vector<NdArray> &getConstants() const { return constants; }
     std::vector<TxRxSequence> const &getTxRxSequences() const { return txRxSequences; }
 
@@ -45,7 +45,7 @@ private:
     uint16 rxBufferSize{2};
     DataBufferSpec outputBuffer;
     WorkMode workMode{WorkMode::HOST};
-    std::optional<DigitalDownConversion> ddc;
+    std4us::Optional<DigitalDownConversion> ddc;
     std::vector<NdArray> constants;
 };
 
@@ -55,7 +55,7 @@ Scheme::Scheme() {
 
 // Scheme
 Scheme::Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const DataBufferSpec &outputBuffer, WorkMode workMode,
-               std::optional<DigitalDownConversion> ddc, const std::vector<NdArray> &constants) {
+               std4us::Optional<DigitalDownConversion> ddc, const std::vector<NdArray> &constants) {
     std::vector<TxRxSequence> sequences = {std::move(txRxSequence)};
     this->impl = UniqueHandle<Impl>::create(
         std::move(sequences), rxBufferSize, outputBuffer, workMode, std::move(ddc), constants
@@ -71,7 +71,7 @@ const TxRxSequence & Scheme::getTxRxSequence() const {return impl->getTxRxSequen
 const TxRxSequence & Scheme::getTxRxSequence(size_t ordinal) const {return impl->getTxRxSequence(ordinal); }
 const std::vector<TxRxSequence> &Scheme::getTxRxSequences() const {return impl->getTxRxSequences();}
 const std::vector<NdArray> & Scheme::getConstants() const {return impl->getConstants(); }
-const std::optional<DigitalDownConversion> & Scheme::getDigitalDownConversion() const { return impl->getDigitalDownConversion(); }
+const std4us::Optional<DigitalDownConversion> & Scheme::getDigitalDownConversionNative() const { return impl->getDigitalDownConversion(); }
 Scheme::WorkMode Scheme::getWorkMode() const { return impl->getWorkMode(); }
 uint16 Scheme::getRxBufferSize() const { return impl->getRxBufferSize(); }
 const framework::DataBufferSpec & Scheme::getOutputBuffer() const {return impl->getOutputBuffer(); }
@@ -114,7 +114,7 @@ SchemeBuilder& SchemeBuilder::withWorkMode(Scheme::WorkMode mode) {
 }
 
 SchemeBuilder& SchemeBuilder::withDigitalDownConversion(DigitalDownConversion ddc) {
-    this->scheme.impl->ddc = std::move(ddc);
+    this->scheme.impl->ddc = std4us::Optional<DigitalDownConversion>(std::move(ddc));
     return *this;
 }
 

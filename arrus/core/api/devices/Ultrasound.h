@@ -2,6 +2,7 @@
 #define ARRUS_CORE_API_DEVICES_ULTRASOUND_H
 
 #include <memory>
+#include <optional>
 
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
@@ -14,6 +15,8 @@
 #include "arrus/core/api/ops/us4r/Scheme.h"
 #include "arrus/core/api/session/Metadata.h"
 #include "arrus/core/api/common/Slice.h"
+#include "std4us/Optional.hpp"
+#include "std4us/StdInterop.hpp"
 
 namespace arrus::devices {
 
@@ -28,8 +31,8 @@ public:
 
     ~Ultrasound() override = default;
 
-    std::string getDescription() const override {
-        return "Ultrasound device";
+    std4us::String getDescriptionNative() const override {
+        return std4us::String("Ultrasound device");
     }
 
     virtual std::pair<framework::Buffer::SharedHandle, std::vector<session::Metadata::SharedHandle>>
@@ -41,13 +44,23 @@ public:
      * Trigger a single run of the current work mode (TX/RX in case of workMode=MANUAL_OP,
      * sequence of TX/RXs in other cases).
      *
+     * Virtual ABI surface uses std4us::Optional for stability across MSVC
+     * Debug/Release. A non-virtual std::optional overload below forwards
+     * here as an inline backward-compatibility shim.
+     */
+    virtual void triggerNative(bool sync, std4us::Optional<long long> timeout) = 0;
+
+    /**
+     * Backward-compatibility shim (non-virtual) that forwards to triggerNative.
+     *
      * @param sync whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
      *        the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done.
      * @param timeout timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
      *        sync = true.
      */
-    virtual void trigger(bool sync = false, std::optional<long long> timeout = std::nullopt) = 0;
-
+    void trigger(bool sync = false, std::optional<long long> timeout = std::nullopt) {
+        triggerNative(sync, std4us::fromStd(timeout));
+    }
 
     /**
      * Synchronization point with us4R system. After returning from this method, the last "TX/RX" (triggered by the
@@ -55,9 +68,19 @@ public:
      *
      * Sync with "SEQ_IRQ" interrupt (i.e. wait until the SEQ IRQ will occur).
      *
+     * Virtual ABI surface uses std4us::Optional. A non-virtual std::optional
+     * overload forwards here.
+     */
+    virtual void syncNative(std4us::Optional<long long> timeout) = 0;
+
+    /**
+     * Backward-compatibility shim (non-virtual) that forwards to syncNative.
+     *
      * @param timeout timeout in number of milliseconds
      */
-    virtual void sync(std::optional<long long> timeout) = 0;
+    void sync(std::optional<long long> timeout) {
+        syncNative(std4us::fromStd(timeout));
+    }
 
     /**
      * Returns NOMINAL Ultrasound device sampling frequency.

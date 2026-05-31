@@ -887,10 +887,10 @@ void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
     });
 }
 
-void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
+void Us4OEMImpl::waitForHVPSMeasurementDoneNative(std4us::Optional<long long> timeout) {
     logger->log(LogSeverity::TRACE, "Waiting for HVPS Measurement done IRQ");
     auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
-    this->waitForIrq(measurementDoneIrq, timeout);
+    this->waitForIrq(measurementDoneIrq, std4us::toStd(timeout));
 }
 
 float Us4OEMImpl::getActualTxFrequency(float frequency) {

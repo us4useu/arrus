@@ -2,11 +2,14 @@
 #define ARRUS_CORE_API_DEVICES_US4R_US4OEM_H
 
 #include <memory>
+#include <optional>
 
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/TriggerGenerator.h"
 #include "arrus/core/api/devices/us4r/HVPSMeasurement.h"
+#include "std4us/Optional.hpp"
+#include "std4us/StdInterop.hpp"
 
 namespace arrus::devices {
 
@@ -217,8 +220,21 @@ public:
     /**
      * Waits for the HVPS Measurement done irq.
      * This method is intended to be used in the probe_check implementation.
+     *
+     * Virtual ABI surface uses std4us::Optional for stability across MSVC
+     * Debug/Release. A non-virtual std::optional overload below forwards
+     * here as an inline backward-compatibility shim.
      */
-    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) = 0;
+    virtual void waitForHVPSMeasurementDoneNative(std4us::Optional<long long> timeout) = 0;
+
+    /**
+     * Backward-compatibility shim: accepts a std::optional and forwards to
+     * the native virtual. Not virtual itself, so it does not need overriding
+     * in subclasses.
+     */
+    void waitForHVPSMeasurementDone(std::optional<long long> timeout) {
+        waitForHVPSMeasurementDoneNative(std4us::fromStd(timeout));
+    }
 
     /**
      * Return the system TX frequency that would be actually set for the given TX frequency.

@@ -58,8 +58,8 @@ Session::Handle createSession(const SessionSettings &sessionSettings) {
         std::make_unique<GpuFactory>());
 }
 
-Session::Handle createSession(const std::string &filepath) {
-    auto settings = arrus::io::readSessionSettings(filepath);
+Session::Handle createSessionNative(const std4us::String &filepath) {
+    auto settings = arrus::io::readSessionSettings(std4us::toStd(filepath));
     return createSession(settings);
 }
 
@@ -82,8 +82,8 @@ SessionImpl::SessionImpl(
     configureDevices(sessionSettings);
 }
 
-arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path) {
-    std::string sanitizedPath = sanitizeDeviceId(path);
+arrus::devices::Device::RawHandle SessionImpl::getDeviceNative(const std4us::String &path) {
+    std::string sanitizedPath = sanitizeDeviceId(std4us::toStd(path));
     auto deviceId = DeviceId::parse(sanitizedPath);
     arrus::devices::Device::RawHandle rootDevice = getDevice(deviceId);
     return rootDevice;
@@ -196,7 +196,8 @@ void SessionImpl::stopScheme() {
     }
 }
 
-void SessionImpl::run(bool sync, std::optional<long long> timeout) {
+void SessionImpl::runNative(bool sync, std4us::Optional<long long> timeoutOpt) {
+    auto timeout = std4us::toStd(timeoutOpt);
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     ASSERT_STATE_NOT(State::CLOSED);
     if (!currentScheme.has_value()) {
@@ -269,7 +270,8 @@ void SessionImpl::verifyScheme(const ops::us4r::Scheme &scheme) {
 
 Session::State SessionImpl::getCurrentState() { return state; }
 
-UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) {
+UploadResult SessionImpl::setSubsequenceNative(uint16 start, uint16 end, std4us::Optional<float> sriOpt, uint16 arrayId) {
+    auto sri = std4us::toStd(sriOpt);
     if(!currentScheme.has_value()) {
         throw ::arrus::IllegalArgumentException("Please call upload method before setting the sub-sequence");
     }
@@ -294,8 +296,8 @@ UploadResult SessionImpl::setSubsequences(const std::vector<Slice> &slices, cons
     return UploadResult(buffer, {metadata});
 }
 
-bool SessionImpl::hasDevice(const std::string &deviceIdString) const {
-    std::string sanitizedId = sanitizeDeviceId(deviceIdString);
+bool SessionImpl::hasDeviceNative(const std4us::String &deviceIdString) const {
+    std::string sanitizedId = sanitizeDeviceId(std4us::toStd(deviceIdString));
     auto deviceId = DeviceId::parse(sanitizedId);
     return hasDevice(deviceId);
 }

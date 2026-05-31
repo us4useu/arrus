@@ -1,12 +1,10 @@
 #ifndef ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
 #define ARRUS_CORE_API_DEVICES_US4R_US4RSETTINGS_H
 
-#include <map>
-#include <optional>
-#include <ostream>
 #include <utility>
+#include <map>
+#include <ostream>
 
-#include "arrus/core/api/devices/us4r/Us4OEMInterrupt.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "RxSettings.h"
@@ -17,9 +15,6 @@
 #include "arrus/core/api/devices/us4r/DigitalBackplaneSettings.h"
 #include "arrus/core/api/devices/us4r/Bitstream.h"
 #include "arrus/core/api/devices/us4r/WatchdogSettings.h"
-#include "arrus/core/api/devices/us4r/HVPSFuseSettings.h"
-#include "std4us/Optional.hpp"
-#include "std4us/StdInterop.hpp"
 
 namespace arrus::devices {
 
@@ -43,7 +38,6 @@ namespace arrus::devices {
  * @param limits TX/RX constraints to apply on the system (e.g. minimum/maximum voltage, etc.).
  * @param watchdogSettings us4OEM+ watchdog settings.
  * @param allowDuplicateOEMIds whether we should allow to run system with duplicate OEM ids (e.g. due to connectivity issues).
- * @param hvpsFuseSettings HVPS fuse settings to use; nullopt means that the default settings should be used
  */
 class Us4RSettings {
 public:
@@ -65,27 +59,24 @@ public:
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
         bool allowDuplicateOEMIds = true,
-        bool maskDVDDInterrupt = false,
-        std::optional<HVPSFuseSettings> hvpsFuseSettings = std::nullopt,
-        Us4OEMInterruptCallbacksMap interruptCallbacks = {}
+        bool maskDVDDInterrupt = false
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
-          hvSettings(std4us::fromStd(hvSettings)),
+          hvSettings(std::move(hvSettings)),
           channelsMask(std::move(channelsMask)),
           reprogrammingMode(reprogrammingMode),
-          nUs4OEMs(std4us::fromStd(nUs4OEMs)),
+          nUs4OEMs(nUs4OEMs),
           adapterToUs4RModuleNumber(std::move(adapterToUs4RModuleNumber)),
           externalTrigger(externalTrigger),
           txFrequencyRange(txFrequencyRange),
-          digitalBackplaneSettings(std4us::fromStd(digitalBackplaneSettings)),
+          digitalBackplaneSettings(std::move(digitalBackplaneSettings)),
           bitstreams(std::move(bitstreams)),
-          limits(std4us::fromStd(limits)),
+          limits(std::move(limits)),
           watchdogSettings(std::move(watchdogSettings)),
           allowDuplicateOEMIds(allowDuplicateOEMIds),
-          maskDVDDInterrupt(maskDVDDInterrupt),
-          hvpsFuseSettings(std4us::fromStd(hvpsFuseSettings)),
-          interruptCallbacks(std::move(interruptCallbacks))
+          maskDVDDInterrupt(maskDVDDInterrupt)
+        
     {}
 
     Us4RSettings(
@@ -104,9 +95,7 @@ public:
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
         bool allowDuplicateOEMIds = true,
-        bool maskDVDDInterrupt = false,
-        std::optional<HVPSFuseSettings> hvpsFuseSettings = std::nullopt,
-        Us4OEMInterruptCallbacksMap interruptCallbacks = {}
+        bool maskDVDDInterrupt = false
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -123,9 +112,7 @@ public:
                 std::move(limits),
                 std::move(watchdogSettings),
                 allowDuplicateOEMIds,
-                maskDVDDInterrupt,
-                std::move(hvpsFuseSettings),
-                std::move(interruptCallbacks)
+                maskDVDDInterrupt
         )
     {}
 
@@ -133,10 +120,8 @@ public:
         return us4oemSettings;
     }
 
-    std::optional<ProbeAdapterSettings> getProbeAdapterSettings() const {
-        return std4us::toStd(probeAdapterSettings);
-    }
-    const std4us::Optional<ProbeAdapterSettings> &getProbeAdapterSettingsNative() const {
+    const std::optional<ProbeAdapterSettings> &
+    getProbeAdapterSettings() const {
         return probeAdapterSettings;
     }
 
@@ -168,17 +153,11 @@ public:
         return (Ordinal)probeSettings.size();
     }
 
-    std::optional<RxSettings> getRxSettings() const {
-        return std4us::toStd(rxSettings);
-    }
-    const std4us::Optional<RxSettings> &getRxSettingsNative() const {
+    const std::optional<RxSettings> &getRxSettings() const {
         return rxSettings;
     }
 
-    std::optional<HVSettings> getHVSettings() const {
-        return std4us::toStd(hvSettings);
-    }
-    const std4us::Optional<HVSettings> &getHVSettingsNative() const {
+    const std::optional<HVSettings> &getHVSettings() const {
         return hvSettings;
     }
 
@@ -202,10 +181,7 @@ public:
         return reprogrammingMode;
     }
 
-    std::optional<Ordinal> getNumberOfUs4oems() const {
-        return std4us::toStd(nUs4OEMs);
-    }
-    const std4us::Optional<Ordinal> &getNumberOfUs4oemsNative() const {
+    const std::optional<Ordinal> &getNumberOfUs4oems() const {
         return nUs4OEMs;
     }
 
@@ -221,28 +197,19 @@ public:
         return txFrequencyRange;
     }
 
-    std::optional<DigitalBackplaneSettings> getDigitalBackplaneSettings() const {
-        return std4us::toStd(digitalBackplaneSettings);
-    }
-    const std4us::Optional<DigitalBackplaneSettings> &getDigitalBackplaneSettingsNative() const {
+    const std::optional<DigitalBackplaneSettings> &getDigitalBackplaneSettings() const {
         return digitalBackplaneSettings;
     }
 
     const std::vector<Bitstream> &getBitstreams() const { return bitstreams; }
 
-    std::optional<Us4RTxRxLimits> getTxRxLimits() const { return std4us::toStd(limits); }
-    const std4us::Optional<Us4RTxRxLimits> &getTxRxLimitsNative() const { return limits; }
+    const std::optional<Us4RTxRxLimits> &getTxRxLimits() const { return limits; }
 
     const WatchdogSettings &getWatchdogSettings() const { return watchdogSettings; }
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
     bool isDVDDInterruptMasked() const { return maskDVDDInterrupt; }
-
-    std::optional<HVPSFuseSettings> getHVPSFuseSettings() const { return std4us::toStd(hvpsFuseSettings); }
-    const std4us::Optional<HVPSFuseSettings> &getHVPSFuseSettingsNative() const { return hvpsFuseSettings; }
-
-    const Us4OEMInterruptCallbacksMap &getInterruptCallbacks() const { return interruptCallbacks; }
 
 private:
     /* A list of settings for Us4OEMs.
@@ -251,14 +218,14 @@ private:
     /** Probe adapter settings. Optional - when not set, at least one
      *  Us4OEMSettings must be set. When is set, the list of Us4OEM
      *  settings should be empty. */
-    std4us::Optional<ProbeAdapterSettings> probeAdapterSettings;
+    std::optional<ProbeAdapterSettings> probeAdapterSettings{};
     /** List of ProbeSettings to set. Optional - when is set, ProbeAdapterSettings also
      * must be available.*/
     std::vector<ProbeSettings> probeSettings;
     /** Required when no Us4OEM settings are set. */
-    std4us::Optional<RxSettings> rxSettings;
+    std::optional<RxSettings> rxSettings;
     /** Optional (us4r devices may have externally controlled hv suppliers. */
-    std4us::Optional<HVSettings> hvSettings;
+    std::optional<HVSettings> hvSettings;
     /** A set of channels that should be turned off in the us4r system.
      * This is list of lists; each list represents what channels of the
      * ultrasound interface (probe) should be turned off.
@@ -273,7 +240,7 @@ private:
      * (equal to the maximum ordinal number of us4OEM). Optional, if set to
      * std::nullopt, the number of us4OEMs will be determined based on the
      * probe adapter mapping (as the maximum of us4OEM module ordinal numbers). */
-    std4us::Optional<Ordinal> nUs4OEMs;
+    std::optional<Ordinal> nUs4OEMs = std::nullopt;
     /** The mapping from the us4OEM ordinal number in the probe adapter mapping
      * and the actual ordinal number of us4OEM. Optional, empty vector means that
      * no mapping should be applied (identity mapping). */
@@ -285,7 +252,7 @@ private:
     /**
      * Digital backplane ("DBAR") settings. If not provided, DBAR will be determined based on select HV supplier.
      */
-     std4us::Optional<DigitalBackplaneSettings> digitalBackplaneSettings;
+     std::optional<DigitalBackplaneSettings> digitalBackplaneSettings;
      /**
       * Bitstream definitions.
       */
@@ -293,7 +260,7 @@ private:
      /**
       * TxRx limits to apply for in this session with us4R. Optional, by default the us4us-defined limits are applied.
       */
-     std4us::Optional<Us4RTxRxLimits> limits;
+     std::optional<Us4RTxRxLimits> limits{std::nullopt};
      /** OEM watchdog settings */
      WatchdogSettings watchdogSettings{1.0f, 1.1f, 1.0f};
      /**
@@ -308,185 +275,6 @@ private:
      * False value means that Pulser DVDD interrput is enabled and error will raised when it occurs
      */
      bool maskDVDDInterrupt{false};
-
-     /**
-      * HVPS fuse settings. Optional, nullopt means that the default HVPS fuse settings should be used.
-      */
-     std4us::Optional<HVPSFuseSettings> hvpsFuseSettings;
-
-     /**
-      * User-provided callbacks keyed by us4OEM system interrupt. A callback
-      * is registered with the underlying interrupt handler only for the keys
-      * present in this map. Default: empty (no callbacks registered).
-      */
-     Us4OEMInterruptCallbacksMap interruptCallbacks;
-};
-
-/**
- * Builder for Us4RSettings.
- *
- * Lets callers (in particular, those that obtain a Us4RSettings from a
- * configuration file) produce a modified copy of an existing Us4RSettings
- * without having to re-pass every field through the public constructor.
- * Us4RSettings itself remains immutable.
- *
- * Initialize the builder with an existing Us4RSettings, call any of the
- * setters to override individual fields, then call build() to obtain the
- * resulting Us4RSettings.
- */
-class Us4RSettingsBuilder {
-public:
-    using ReprogrammingMode = Us4OEMSettings::ReprogrammingMode;
-
-    /** Initialize the builder with the values of an existing Us4RSettings. */
-    explicit Us4RSettingsBuilder(const Us4RSettings &settings)
-        : probeAdapterSettings(settings.getProbeAdapterSettingsNative().value()),
-          probeSettings(settings.getProbeSettingsList()),
-          rxSettings(settings.getRxSettingsNative().value()),
-          hvSettings(settings.getHVSettingsNative()),
-          channelsMask(settings.getChannelsMaskForAllProbes()),
-          reprogrammingMode(settings.getReprogrammingMode()),
-          nUs4OEMs(settings.getNumberOfUs4oemsNative()),
-          adapterToUs4RModuleNumber(settings.getAdapterToUs4RModuleNumber()),
-          externalTrigger(settings.isExternalTrigger()),
-          txFrequencyRange(settings.getTxFrequencyRange()),
-          digitalBackplaneSettings(settings.getDigitalBackplaneSettingsNative()),
-          bitstreams(settings.getBitstreams()),
-          limits(settings.getTxRxLimitsNative()),
-          watchdogSettings(settings.getWatchdogSettings()),
-          allowDuplicateOEMIds(settings.isAllowDuplicateOEMIds()),
-          maskDVDDInterrupt(settings.isDVDDInterruptMasked()),
-          hvpsFuseSettings(settings.getHVPSFuseSettingsNative()),
-          interruptCallbacks(settings.getInterruptCallbacks()) {}
-
-    Us4RSettingsBuilder &setProbeAdapterSettings(ProbeAdapterSettings v) {
-        probeAdapterSettings = std::move(v); return *this;
-    }
-    Us4RSettingsBuilder &setProbeSettings(std::vector<ProbeSettings> v) {
-        probeSettings = std::move(v); return *this;
-    }
-    Us4RSettingsBuilder &setRxSettings(RxSettings v) {
-        rxSettings = std::move(v); return *this;
-    }
-    Us4RSettingsBuilder &setHVSettings(std::optional<HVSettings> v) {
-        hvSettings = std4us::fromStd(v); return *this;
-    }
-    Us4RSettingsBuilder &setChannelsMask(std::vector<std::unordered_set<ChannelIdx>> v) {
-        channelsMask = std::move(v); return *this;
-    }
-    Us4RSettingsBuilder &setReprogrammingMode(ReprogrammingMode v) {
-        reprogrammingMode = v; return *this;
-    }
-    Us4RSettingsBuilder &setNumberOfUs4oems(std::optional<Ordinal> v) {
-        nUs4OEMs = std4us::fromStd(v); return *this;
-    }
-    Us4RSettingsBuilder &setAdapterToUs4RModuleNumber(std::vector<Ordinal> v) {
-        adapterToUs4RModuleNumber = std::move(v); return *this;
-    }
-    Us4RSettingsBuilder &setExternalTrigger(bool v) { externalTrigger = v; return *this; }
-    Us4RSettingsBuilder &setTxFrequencyRange(int v) { txFrequencyRange = v; return *this; }
-    Us4RSettingsBuilder &setDigitalBackplaneSettings(std::optional<DigitalBackplaneSettings> v) {
-        digitalBackplaneSettings = std4us::fromStd(v); return *this;
-    }
-    Us4RSettingsBuilder &setBitstreams(std::vector<Bitstream> v) {
-        bitstreams = std::move(v); return *this;
-    }
-    Us4RSettingsBuilder &setTxRxLimits(std::optional<Us4RTxRxLimits> v) {
-        limits = std4us::fromStd(v); return *this;
-    }
-    Us4RSettingsBuilder &setWatchdogSettings(WatchdogSettings v) {
-        watchdogSettings = std::move(v); return *this;
-    }
-    Us4RSettingsBuilder &setAllowDuplicateOEMIds(bool v) { allowDuplicateOEMIds = v; return *this; }
-    Us4RSettingsBuilder &setMaskDVDDInterrupt(bool v) { maskDVDDInterrupt = v; return *this; }
-    Us4RSettingsBuilder &setHVPSFuseSettings(std::optional<HVPSFuseSettings> v) {
-        hvpsFuseSettings = std4us::fromStd(v); return *this;
-    }
-    /** Replaces the whole map of per-interrupt callbacks. */
-    Us4RSettingsBuilder &setInterruptCallbacks(Us4OEMInterruptCallbacksMap v) {
-        interruptCallbacks = std::move(v); return *this;
-    }
-
-    /** Sets the callback for a single interrupt; replaces any existing entry. */
-    Us4RSettingsBuilder &setInterruptCallback(Us4OEMInterrupt interrupt,
-                                              Us4OEMInterruptCallback callback) {
-        interruptCallbacks[interrupt] = std::move(callback);
-        return *this;
-    }
-
-    /**
-     * Registers the same callback for every safe-state us4OEM interrupt.
-     * The safe-state interrupt is the interrupt that is raised when
-     * some exceptional issue occurred on the system (e.g. too long TX pulse was detected).
-     * The callback receives both the interrupt that fired and the OEM ordinal,
-     * so a single function can branch on the interrupt if needed.
-     * Replaces any per-interrupt entries previously set on this builder.
-     * Passing an empty std::function clears all five entries.
-     */
-    Us4RSettingsBuilder &setInterruptCallbackForAllSafeStateInterrupts(
-        std::function<void(Us4OEMInterrupt, Ordinal)> callback) {
-        constexpr Us4OEMInterrupt all[] = {
-            Us4OEMInterrupt::PROBE_NOT_CONNECTED,
-            Us4OEMInterrupt::PULSER_INTERRUPT,
-            Us4OEMInterrupt::TX_TIMEOUT,
-            Us4OEMInterrupt::WATCHDOG_IRQ1,
-            Us4OEMInterrupt::HVPS_FUSE
-        };
-        if(!callback) {
-            for(auto irq : all) {
-                interruptCallbacks[irq] = {};
-            }
-            return *this;
-        }
-        for(auto irq : all) {
-            interruptCallbacks[irq] = [callback, irq](Ordinal oem) {
-                callback(irq, oem);
-            };
-        }
-        return *this;
-    }
-
-    Us4RSettings build() const {
-        return Us4RSettings(
-            probeAdapterSettings,
-            probeSettings,
-            rxSettings,
-            std4us::toStd(hvSettings),
-            channelsMask,
-            reprogrammingMode,
-            std4us::toStd(nUs4OEMs),
-            adapterToUs4RModuleNumber,
-            externalTrigger,
-            txFrequencyRange,
-            std4us::toStd(digitalBackplaneSettings),
-            bitstreams,
-            std4us::toStd(limits),
-            watchdogSettings,
-            allowDuplicateOEMIds,
-            maskDVDDInterrupt,
-            std4us::toStd(hvpsFuseSettings),
-            interruptCallbacks);
-    }
-
-private:
-    ProbeAdapterSettings probeAdapterSettings;
-    std::vector<ProbeSettings> probeSettings;
-    RxSettings rxSettings;
-    std4us::Optional<HVSettings> hvSettings;
-    std::vector<std::unordered_set<ChannelIdx>> channelsMask;
-    ReprogrammingMode reprogrammingMode;
-    std4us::Optional<Ordinal> nUs4OEMs;
-    std::vector<Ordinal> adapterToUs4RModuleNumber;
-    bool externalTrigger;
-    int txFrequencyRange;
-    std4us::Optional<DigitalBackplaneSettings> digitalBackplaneSettings;
-    std::vector<Bitstream> bitstreams;
-    std4us::Optional<Us4RTxRxLimits> limits;
-    WatchdogSettings watchdogSettings;
-    bool allowDuplicateOEMIds;
-    bool maskDVDDInterrupt;
-    std4us::Optional<HVPSFuseSettings> hvpsFuseSettings;
-    Us4OEMInterruptCallbacksMap interruptCallbacks;
 };
 
 }

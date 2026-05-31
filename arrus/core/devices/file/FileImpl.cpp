@@ -195,7 +195,7 @@ void FileImpl::consumer() {
     logger->log(LogSeverity::INFO, "File consumer stopped.");
 }
 
-void FileImpl::trigger(bool, std::optional<long long> ) {
+void FileImpl::triggerNative(bool, std4us::Optional<long long>) {
     throw std::runtime_error("File::trigger: NYI");
 }
 
@@ -231,8 +231,8 @@ FileImpl::setSubsequences(const std::vector<Slice> &, const std::vector<std::opt
 float FileImpl::getSamplingFrequency() const { return 65e6; }
 float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 
-std::string FileImpl::getDescription() const {
-    return format("File device: {}", settings.getFilepath());
+std4us::String FileImpl::getDescriptionNative() const {
+    return std4us::fromStd(format("File device: {}", settings.getFilepath()));
 }
 
 }// namespace arrus::devices

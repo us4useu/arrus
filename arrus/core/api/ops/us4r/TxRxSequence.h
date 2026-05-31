@@ -1,16 +1,20 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_TXRXSEQUENCE_H
 #define ARRUS_CORE_API_OPS_US4R_TXRXSEQUENCE_H
 
-#include <optional>
-#include <utility>
 #include <algorithm>
 #include <iterator>
+#include <optional>
+#include <string>
+#include <utility>
 
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/framework.h"
 #include "arrus/core/api/ops/us4r/Rx.h"
 #include "arrus/core/api/ops/us4r/Tx.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
+#include "std4us/Optional.hpp"
+#include "std4us/StdInterop.hpp"
+#include "std4us/String.hpp"
 
 #include <unordered_set>
 
@@ -64,8 +68,8 @@ public:
      * @param sri sequence repetition interval - the total time that a given sequence should take.
      * @param nRepeats - the number of repetitions of a given sequence. Determines the size of the batch
      */
-    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI, int16 nRepeats = 1, std::string name = "")
-        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats), name(name) {}
+    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI, int16 nRepeats = 1, const std::string &name = "")
+        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats), name(std4us::fromStd(name)) {}
 
     TxRxSequence copy(std::vector<TxRx> ops) {
         return TxRxSequence(std::move(ops), this->tgcCurve, this->sri.value(), this->nRepeats);
@@ -85,11 +89,19 @@ public:
      * Returns sequence repetition interval (the total time the given sequence should actually take).
      * nullopt means that the frame acquisition time should be determined by total PRI only.
      */
-    const std::optional<float> getSri() const {
+    std::optional<float> getSri() const {
+        if (sri.value() != NO_SRI) {
+            return std4us::toStd(sri);
+        } else {
+            return std::optional<float>();
+        }
+    }
+
+    std4us::Optional<float> getSriNative() const {
         if (sri.value() != NO_SRI) {
             return sri;
         } else {
-            return std::optional<float>();
+            return std4us::Optional<float>();
         }
     }
 
@@ -134,14 +146,15 @@ public:
     /**
      * Returns the name of sequence.
      */
-    const std::string &getName() const { return name; }
+    std::string getName() const { return std4us::toStd(name); }
+    const std4us::String &getNameNative() const { return name; }
 
 private:
     std::vector<TxRx> txrxs;
     TGCCurve tgcCurve;
-    std::optional<float> sri;
+    std4us::Optional<float> sri;
     int16 nRepeats;
-    std::string name;
+    std4us::String name;
 };
 
 }// namespace arrus::ops::us4r

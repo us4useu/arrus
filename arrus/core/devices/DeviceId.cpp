@@ -65,7 +65,8 @@ private:
     boost::bimap<std::string, DeviceType> reprs;
 };
 
-DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
+DeviceType parseToDeviceTypeEnumNative(const std4us::String &deviceTypeStrNative) {
+    auto deviceTypeStr = std4us::toStd(deviceTypeStrNative);
     try {
         return DeviceTypeEnumStringRepr::getInstance().parse(deviceTypeStr);
     }
@@ -82,12 +83,13 @@ DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
     }
 }
 
-std::string toString(const DeviceType deviceTypeEnum) {
-    return DeviceTypeEnumStringRepr::getInstance().toString(deviceTypeEnum);
+std4us::String toStringNative(const DeviceType deviceTypeEnum) {
+    return std4us::fromStd(DeviceTypeEnumStringRepr::getInstance().toString(deviceTypeEnum));
 }
 
 // DeviceId.
-DeviceId DeviceId::parse(const std::string &deviceId) {
+DeviceId DeviceId::parseNative(const std4us::String &deviceIdNative) {
+    auto deviceId = std4us::toStd(deviceIdNative);
     std::vector<std::string> deviceIdComponents;
     boost::algorithm::split(deviceIdComponents, deviceId,
                             boost::is_any_of(":"));

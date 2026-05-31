@@ -26,8 +26,6 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/us4r/Bitstream.proto
     io/proto/devices/us4r/Us4RTxRxLimits.proto
     io/proto/devices/us4r/WatchdogSettings.proto
-    io/proto/devices/GpuSettings.proto
-    io/proto/devices/us4r/HVPSFuseSettings.proto
 )
 ################################################################################
 # Target
@@ -49,7 +47,6 @@ set(SRC_FILES
     api/devices/us4r/ProbeAdapterModelId.h
     api/devices/us4r/ProbeAdapterSettings.h
     api/devices/us4r/Us4OEM.h
-    api/devices/us4r/Us4OEMInterrupt.h
     api/devices/us4r/Us4OEMSettings.h
     api/devices/us4r/Us4R.h
     api/devices/us4r/Us4RSettings.h
@@ -201,7 +198,6 @@ set(SRC_FILES
     devices/us4r/Us4RSubsequence.h
     devices/us4r/types.h
     api/devices/us4r/WatchdogSettings.h
-    api/devices/GpuSettings.h
     api/devices/probe/Lens.h
     api/devices/probe/MatchingLayer.h
     api/version.h
@@ -210,14 +206,16 @@ set(SRC_FILES
     version.cpp.in
     api/ops/us4r/Waveform.h
     devices/us4r/TxWaveformConverter.h
+<<<<<<< HEAD
+   devices/us4r/TxWaveformSoftStartConverter.h
+=======
     devices/gpu/GpuFactory.h
-    devices/gpu/CudaRuntime.h
-    devices/gpu/CudaRuntime.cpp
     api/common/Slice.h
-    api/devices/us4r/HVPSFuseSettings.h
+>>>>>>> 12df7347 (#M_US4R-85: Removed soft-start for long TX pulses.)
 )
 
-set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
+set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
+    api/common/Slice.h)
 
 # Generate version.cpp file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp")
@@ -235,8 +233,6 @@ add_library(${TARGET_NAME} SHARED ${SRC_FILES} ${PROTO_SRC} ${PROTO_HDRS} ${GENE
 target_compile_definitions(${TARGET_NAME}
     PRIVATE
     "BOOST_ALL_NO_LIB"
-    $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>
-    $<$<PLATFORM_ID:Windows>:NOMINMAX>
     )
 
 ################################################################################
@@ -249,14 +245,12 @@ target_include_directories(${TARGET_NAME}
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-
 ################################################################################
 # Dependencies
 ################################################################################
 target_link_libraries(${TARGET_NAME}
     PUBLIC
     Us4::US4OEM
-    std4us
     PRIVATE
     Us4::HV256
     Us4::DBARLite
@@ -269,7 +263,6 @@ target_link_libraries(${TARGET_NAME}
     Eigen3::Eigen3
     Microsoft.GSL::GSL
     ${ARRUS_OS_DEPS}
-    ${CMAKE_DL_LIBS}
 )
 ################################################################################
 # Target compile options
@@ -318,7 +311,7 @@ if (ARRUS_RUN_TESTS)
         common/logging.cpp
     )
 
-    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp "common/logging.cpp;devices/gpu/CudaRuntime.cpp")
+    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp common/logging.cpp)
     create_core_test(devices/us4r/mapping/ProbeToAdapterMappingConverterTest.cpp
          "devices/us4r/mapping/ProbeToAdapterMappingConverter.h;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     create_core_test(devices/us4r/mapping/AdapterToUs4OEMMappingConverterTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")
@@ -331,7 +324,6 @@ if (ARRUS_RUN_TESTS)
         devices/us4r/Us4RImpl.cpp
         ops/us4r/Scheme.cpp
         ops/us4r/DigitalDownConversion.cpp
-        devices/gpu/CudaRuntime.cpp
     )
     create_core_test(devices/us4r/Us4RImplTest.cpp "${US4R_IMPL_TEST_DEPS}" Us4::US4OEM)
     # core::io tests

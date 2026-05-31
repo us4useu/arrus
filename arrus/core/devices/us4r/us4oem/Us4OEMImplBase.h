@@ -74,7 +74,7 @@ public:
      * Waits for the HVPS Measurement done irq.
      * This method is intended to be used in the probe_check implementation.
      */
-    virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) override = 0;
+    virtual void waitForHVPSMeasurementDoneNative(std4us::Optional<long long> timeout) override = 0;
 
 
     HVPSMeasurement getHVPSMeasurement() override = 0;

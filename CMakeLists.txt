@@ -94,6 +94,15 @@ find_package(fmt REQUIRED)
 find_package(Microsoft.GSL REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+# std4us — ABI-stable container library used at the arrus public API boundary.
+# Defaults to ~/src/std4us (i.e. a sibling of the arrus repo). Override with
+# -DARRUS_STD4US_DIR=/path/to/std4us.
+set(ARRUS_STD4US_DIR "${CMAKE_SOURCE_DIR}/../std4us" CACHE PATH "Path to std4us source tree")
+if(NOT EXISTS "${ARRUS_STD4US_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "std4us not found at ARRUS_STD4US_DIR=${ARRUS_STD4US_DIR}")
+endif()
+add_subdirectory(${ARRUS_STD4US_DIR} ${CMAKE_BINARY_DIR}/std4us EXCLUDE_FROM_ALL)
+
 # OS specific dependencies.
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     set(ARRUS_OS_DEPS "")

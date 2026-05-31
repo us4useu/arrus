@@ -16,8 +16,8 @@ public:
 
     Gpu(const DeviceId &id, const GpuSettings &settings) : Device(id), settings(settings) {}
 
-    virtual std::string getDescription() const {
-        return "General Purpose GPU";
+    std4us::String getDescriptionNative() const override {
+        return std4us::String("General Purpose GPU");
     }
 
     const GpuSettings &getSettings() const { return settings; }

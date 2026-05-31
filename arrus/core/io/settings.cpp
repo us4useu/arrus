@@ -629,7 +629,8 @@ GpuSettings readGpuSettings(const proto::GpuSettings &gpu) {
     }
 }
 
-SessionSettings readSessionSettings(const std::string &filepath) {
+SessionSettings readSessionSettingsNative(const std4us::String &filepathNative) {
+    auto filepath = std4us::toStd(filepathNative);
     auto logger = ::arrus::getDefaultLogger();
     // Read ARRUS_PATH.
     const char *arrusPathStr = std::getenv(ARRUS_PATH_KEY);

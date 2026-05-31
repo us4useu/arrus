@@ -5,6 +5,8 @@
 #include <string>
 
 #include "arrus/core/api/common/macros.h"
+#include "std4us/StdInterop.hpp"
+#include "std4us/String.hpp"
 
 namespace arrus::devices {
 
@@ -24,22 +26,28 @@ enum class DeviceType {
 };
 
 /**
-    * Converts string to DeviceType.
-    *
-    * @param deviceTypeStr string representation of device type enum.
-    * @return device type enum
-    */
-ARRUS_CPP_EXPORT
-DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr);
-
-/**
- * Converts DeviceType to string.
- *
- * @param deviceType device type enum to convert
- * @return string representation of device type
+ * Converts string to DeviceType. Native (exported) overload takes
+ * std4us::String for ABI stability.
  */
 ARRUS_CPP_EXPORT
-std::string toString(DeviceType deviceTypeEnum);
+DeviceType parseToDeviceTypeEnumNative(const std4us::String &deviceTypeStr);
+
+/** Backward-compatibility shim accepting std::string (inline). */
+inline DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
+    return parseToDeviceTypeEnumNative(std4us::fromStd(deviceTypeStr));
+}
+
+/**
+ * Converts DeviceType to string. Native (exported) overload returns
+ * std4us::String for ABI stability.
+ */
+ARRUS_CPP_EXPORT
+std4us::String toStringNative(DeviceType deviceTypeEnum);
+
+/** Backward-compatibility shim returning std::string (inline). */
+inline std::string toString(DeviceType deviceTypeEnum) {
+    return std4us::toStd(toStringNative(deviceTypeEnum));
+}
 
 /**
  * Device ordinal number, e.g. GPU 0, GPU 1, Us4OEM 0, Us4OEM 1 etc.
@@ -80,7 +88,12 @@ public:
     }
 
     ARRUS_CPP_EXPORT
-    static DeviceId parse(const std::string &deviceId);
+    static DeviceId parseNative(const std4us::String &deviceId);
+
+    /** Backward-compatibility shim (inline). */
+    static DeviceId parse(const std::string &deviceId) {
+        return parseNative(std4us::fromStd(deviceId));
+    }
 
 private:
     DeviceType deviceType;

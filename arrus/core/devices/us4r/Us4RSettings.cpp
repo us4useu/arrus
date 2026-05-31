@@ -23,7 +23,7 @@ std::ostream &operator<<(std::ostream &os, const Us4RSettings &settings) {
         os << us4oemSetting << "; ";
     }
 
-    auto &probeAdapterSettings = settings.getProbeAdapterSettings();
+    auto probeAdapterSettings = settings.getProbeAdapterSettings();
     auto &probeSettings = settings.getProbeSettingsList();
     // TODO(ARRUS-179)
 //    auto &rxSettings = settings.getRxSettings();

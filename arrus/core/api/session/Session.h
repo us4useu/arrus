@@ -1,6 +1,9 @@
 #ifndef ARRUS_CORE_API_SESSION_SESSION_H
 #define ARRUS_CORE_API_SESSION_SESSION_H
 
+#include <optional>
+#include <string>
+
 #include "arrus/core/api/common/Parameters.h"
 #include "arrus/core/api/common/Slice.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -11,6 +14,9 @@
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/api/session/SessionSettings.h"
 #include "arrus/core/api/session/UploadResult.h"
+#include "std4us/Optional.hpp"
+#include "std4us/StdInterop.hpp"
+#include "std4us/String.hpp"
 
 namespace arrus::session {
 
@@ -49,19 +55,25 @@ public:
     }
 
     /**
-     * Returns a handle to device with given Id. The string format is:
-     * /DeviceType:Ordinal, e.g. "/Us4R:0".
+     * Returns a handle to device with given Id. Virtual ABI surface uses
+     * std4us::String for stability across MSVC Debug/Release.
      *
      * @param deviceId device identifier
      * @return a handle to the device
      */
-    virtual arrus::devices::Device * getDevice(const std::string &deviceId) = 0;
+    virtual arrus::devices::Device * getDeviceNative(const std4us::String &deviceId) = 0;
+
+    /**
+     * Backward-compatibility shim: accepts std::string and forwards.
+     *
+     * The string format is: /DeviceType:Ordinal, e.g. "/Us4R:0".
+     */
+    arrus::devices::Device * getDevice(const std::string &deviceId) {
+        return getDeviceNative(std4us::fromStd(deviceId));
+    }
 
     /**
      * Returns a handle to device with given Id.
-     *
-     * @param deviceId device identifier
-     * @return a handle to the device
      */
     virtual arrus::devices::Device * getDevice(const arrus::devices::DeviceId &deviceId) = 0;
 
@@ -105,7 +117,16 @@ public:
      * @param timeout timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
      *        sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP
      */
-    virtual void run(bool sync = false, std::optional<long long> timeout = std::nullopt) = 0;
+    /**
+     * Virtual ABI surface uses std4us::Optional. Non-virtual run() shim
+     * below forwards.
+     */
+    virtual void runNative(bool sync, std4us::Optional<long long> timeout) = 0;
+
+    /** Backward-compatibility shim (non-virtual). */
+    void run(bool sync = false, std::optional<long long> timeout = std::nullopt) {
+        runNative(sync, std4us::fromStd(timeout));
+    }
 
     /**
      * Closes session.
@@ -140,7 +161,13 @@ public:
      * @param arrayId id array to select, default: array with id 0
      * @return the new data buffer and metadata
      */
-    virtual UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) = 0;
+    /** Native ABI surface using std4us::Optional. */
+    virtual UploadResult setSubsequenceNative(uint16 start, uint16 end, std4us::Optional<float> sri, uint16 arrayId) = 0;
+
+    /** Backward-compatibility shim (non-virtual). */
+    UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) {
+        return setSubsequenceNative(start, end, std4us::fromStd(sri), arrayId);
+    }
 
     /**
      * Selects [start, end) slices for each sub-sequence.
@@ -162,16 +189,18 @@ public:
     virtual UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
     /**
-     * Returns true if this session has been configured to work with the given device, otherwise false.
-     *
-     * @param deviceId device identifier
+     * Returns true if this session has been configured to work with the given device.
+     * Native virtual takes std4us::String.
      */
-    virtual bool hasDevice(const std::string &deviceId) const = 0;
+    virtual bool hasDeviceNative(const std4us::String &deviceId) const = 0;
+
+    /** Backward-compatibility shim. */
+    bool hasDevice(const std::string &deviceId) const {
+        return hasDeviceNative(std4us::fromStd(deviceId));
+    }
 
     /**
-     * Returns true if this session has been configured to work with the given device, otherwise false.
-     *
-     * @param deviceId device identifier
+     * Returns true if this session has been configured to work with the given device.
      */
     virtual bool hasDevice(const arrus::devices::DeviceId &deviceId) const = 0;
 
@@ -189,14 +218,23 @@ ARRUS_CPP_EXPORT
 Session::Handle createSession(const SessionSettings &sessionSettings);
 
 /**
-* Reads given configuration file and returns a handle to new session.
-*
-* @param filepath a path to session settings
-* @return a unique handle to session
-*/
+ * Reads given configuration file and returns a handle to new session.
+ * Native (exported) overload takes std4us::String for ABI stability.
+ *
+ * @param filepath a path to session settings
+ * @return a unique handle to session
+ */
 ARRUS_CPP_EXPORT
-Session::Handle createSession(const std::string& filepath);
+Session::Handle createSessionNative(const std4us::String &filepath);
+
+/**
+ * Backward-compatibility shim accepting std::string. Inline — the
+ * std::string never crosses the library boundary.
+ */
+inline Session::Handle createSession(const std::string &filepath) {
+    return createSessionNative(std4us::fromStd(filepath));
 }
+}// namespace arrus::session
 
 
 #endif //ARRUS_CORE_API_SESSION_SESSION_H

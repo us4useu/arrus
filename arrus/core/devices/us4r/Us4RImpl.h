@@ -54,7 +54,8 @@ public:
 
     Us4RImpl(Us4RImpl const &&) = delete;
 
-    Device::RawHandle getDevice(const std::string &path) override {
+    Device::RawHandle getDeviceNative(const std4us::String &pathNative) override {
+        auto path = std4us::toStd(pathNative);
         auto [root, tail] = getPathRoot(path);
         boost::algorithm::trim(root);
         boost::algorithm::trim(tail);
@@ -92,9 +93,9 @@ public:
 
     void stop() override;
 
-    void trigger(bool sync, std::optional<long long> timeout) override;
+    void triggerNative(bool sync, std4us::Optional<long long> timeout) override;
 
-    void sync(std::optional<long long> timeout) override;
+    void syncNative(std4us::Optional<long long> timeout) override;
 
     void setVoltage(Voltage voltage) override;
     void setVoltage(const std::vector<HVVoltage> &voltages) override;
@@ -164,7 +165,7 @@ public:
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
-    std::string getDescription() const override;
+    std4us::String getDescriptionNative() const override;
     float getMinimumTGCValue() const override;
 
     /**

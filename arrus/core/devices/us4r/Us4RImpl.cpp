@@ -801,16 +801,17 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
     return result;
 }
 
-void Us4RImpl::trigger(bool sync, std::optional<long long> timeout) {
+void Us4RImpl::triggerNative(bool sync, std4us::Optional<long long> timeout) {
     this->getMasterOEM()->syncTrigger();
     if(sync) {
-        this->sync(timeout);
+        this->syncNative(timeout);
     }
 }
 
-void Us4RImpl::sync(std::optional<long long> timeout)  {
+void Us4RImpl::syncNative(std4us::Optional<long long> timeout)  {
+    auto stdTimeout = std4us::toStd(timeout);
     for(auto &us4oem: us4oems) {
-        us4oem->sync(timeout);
+        us4oem->sync(stdTimeout);
     }
 }
 
@@ -1606,7 +1607,7 @@ std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequ
     return result;
 }
 
-string Us4RImpl::getDescription() const {
+std4us::String Us4RImpl::getDescriptionNative() const {
     std::stringstream stream;
     stream << "us4r-api version: " << ::us4r::version();
     stream << ", Number of us4OEMs: " << us4oems.size();
@@ -1615,7 +1616,7 @@ string Us4RImpl::getDescription() const {
     for(const auto &probe: probeSettings) {
         stream << probe.getModel().getModelId().toString() << "; ";
     }
-    return stream.str();
+    return std4us::fromStd(stream.str());
 }
 
 float Us4RImpl::getMinimumTGCValue() const {

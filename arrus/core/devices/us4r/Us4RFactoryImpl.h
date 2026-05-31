@@ -51,14 +51,14 @@ public:
         if (settings.getProbeAdapterSettings().has_value()) {
             // Probe, Adapter -> Us4OEM settings.
             // Adapter
-            auto &probeAdapterSettings = settings.getProbeAdapterSettings().value();
+            const auto &probeAdapterSettings = settings.getProbeAdapterSettingsNative().value();
             ProbeAdapterSettingsValidator adapterValidator(0);
             adapterValidator.validate(probeAdapterSettings);
             adapterValidator.throwOnErrors();
             // Probes list
             auto probeSettings = settings.getProbeSettingsList();
             // TODO validate probe settings
-            auto &rxSettings = settings.getRxSettings().value();
+            const auto &rxSettings = settings.getRxSettingsNative().value();
             // Rx settings will be validated by a specific device
             // (Us4OEMs validator)
             // Convert to Us4OEM settings
