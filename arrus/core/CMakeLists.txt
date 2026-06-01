@@ -3,7 +3,10 @@ set(TARGET_NAME arrus-core)
 ################################################################################
 # protobuf
 ################################################################################
-protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
+protobuf_generate(OUT_VAR PROTO_SRC
+    IMPORT_DIRS 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    PROTOS
     io/proto/Dictionary.proto
     io/proto/session/SessionSettings.proto
     io/proto/common/IntervalInteger.proto
@@ -262,10 +265,11 @@ target_link_libraries(${TARGET_NAME}
     Us4::DBARLitePcie
     Us4::Us4RDBAR
     Us4::Us4RPSC
-    Boost::Boost
+    Boost::boost
+    Boost::filesystem
+    std4us::std4us
     protobuf::libprotobuf
-    fmt::fmt
-    Eigen3::Eigen3
+    Eigen3::Eigen
     Microsoft.GSL::GSL
     ${ARRUS_OS_DEPS}
     ${CMAKE_DL_LIBS}
@@ -392,10 +396,10 @@ install(
 # Examples
 ################################################################################
 add_executable(pwi-example examples/PwiExample.cpp)
-target_link_libraries(pwi-example PRIVATE arrus-core)
+target_link_libraries(pwi-example PRIVATE arrus-core std4us::std4us Boost::boost)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
 
 add_executable(custom-tx-waveform-example examples/CustomTxWaveform.cpp)
-target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core)
+target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core std4us::std4us Boost::boost)
 target_include_directories(custom-tx-waveform-example PRIVATE ${ARRUS_ROOT_DIR})
 

@@ -32,8 +32,7 @@ matlab_add_mex(
     MatlabStdoutBuffer.h
     LINK_TO
     arrus-core
-    Boost::Boost
-    fmt::fmt
+    Boost::boost
     Microsoft.GSL::GSL
 )
 ################################################################################
