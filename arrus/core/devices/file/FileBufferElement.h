@@ -99,7 +99,6 @@ private:
     arrus::framework::NdArray dataView;
     size_t position;
     State state{arrus::framework::BufferElement::State::FREE};
-    bool isClosed{false};
 };
 
 }

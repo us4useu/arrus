@@ -41,7 +41,7 @@ public:
 
     static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
 
-    ~Us4RImpl() override;
+    ~Us4RImpl() noexcept override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
@@ -178,7 +178,7 @@ public:
     void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
     void disableHpf() override;
     virtual Us4OEM::Variant getVariant() override;
-    std::vector<int64_t> getHVPSTuningInfo();
+    std::vector<int64_t> getHVPSTuningInfo() override;
 
 private:
     struct VoltageLogbook {
