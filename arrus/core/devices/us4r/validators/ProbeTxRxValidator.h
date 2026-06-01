@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_VALIDATORS_PROBETXRXVALIDATOR_H
 #define ARRUS_CORE_DEVICES_US4R_VALIDATORS_PROBETXRXVALIDATOR_H
 
+#include <format>
 #include <utility>
 
 #include "arrus/core/common/validation.h"
@@ -21,7 +22,7 @@ public:
 
         for (size_t firing = 0; firing < sequence.size(); ++firing) {
             const auto &op = sequence.at(firing);
-            auto firingStr = format(" (firing {})", firing);
+            auto firingStr = std::format(" (firing {})", firing);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), nChannelsTx, firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), nChannelsTx, firingStr);
             const auto pulse = ::arrus::ops::us4r::Pulse::fromWaveform(op.getTxWaveform());

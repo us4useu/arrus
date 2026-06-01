@@ -1,7 +1,7 @@
+#include <format>
 #include <gtest/gtest.h>
 #include <ostream>
 
-#include "arrus/common/format.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/us4r/validators/WatchdogSettingsValidator.h"

@@ -75,7 +75,6 @@ set(SRC_FILES
     api/common/LoggerFactory.h
     ../common/compiler.h
     ../common/asserts.h
-    ../common/format.h
 
     devices/utils.h
     devices/DeviceId.cpp

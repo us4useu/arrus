@@ -1,12 +1,13 @@
 #ifndef ARRUS_CORE_DEVICES_TXRXPARAMETERS_H
 #define ARRUS_CORE_DEVICES_TXRXPARAMETERS_H
 
+#include <format>
 #include <gsl/gsl>
 #include <ostream>
+#include <std4us/string.h>
 #include <utility>
 
 #include "arrus/common/asserts.h"
-#include "arrus/common/format.h"
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/types.h"
@@ -104,7 +105,7 @@ public:
         os << std::scientific;
         os << "Tx/Rx: ";
         os << "TX: ";
-        os << "aperture: " << ::arrus::toString(parameters.getTxAperture());
+        os << "aperture: " << std4us::join(parameters.getTxAperture(), ", ");
         os << ", delays: ";
         for(auto d: parameters.getTxDelays()) {
             os << d << ", ";
@@ -134,7 +135,7 @@ public:
             }
         }
         os << "; RX: ";
-        os << "aperture: " << ::arrus::toString(parameters.getRxAperture());
+        os << "aperture: " << std4us::join(parameters.getRxAperture(), ", ");
         os << ", sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
         os << ", fs divider: " << parameters.getRxDecimationFactor() << ", padding: " << parameters.getRxPadding()[0]
            << ", " << parameters.getRxPadding()[1];
@@ -349,8 +350,8 @@ public:
             os << param << ", ";
         }
         os << " n repeats: " << sequence.getNRepeats() << ", ";
-        os << " SRI: " << arrus::toString(sequence.getSri()) << ", ";
-        os << " TGC curve: " << arrus::toString(sequence.getTgcCurve());
+        os << " SRI: " << std::to_string(sequence.getSri().value_or(0.0f)) << ", ";
+        os << " TGC curve: " << std4us::join(sequence.getTgcCurve(), ", ");
         os << std::endl;
         return os;
     }

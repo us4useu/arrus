@@ -7,6 +7,7 @@
 #include "arrus/core/common/hash.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
 
+#include <format>
 #include <list>
 
 namespace arrus::devices {
@@ -118,7 +119,7 @@ public:
                 if (isOn) {
                     isRxNop = false;
                     ARRUS_REQUIRES_TRUE(onChannel < nRxChannels,
-                                        format("Up to {} active rx channels can be set.", nRxChannels));
+                                        std::format("Up to {} active rx channels can be set.", nRxChannels));
                     // Physical channel number, values 0-31
                     auto rxChannel = channelMapping[channel];
                     rxChannel = rxChannel % nRxChannels;
@@ -150,9 +151,9 @@ public:
             auto mappingIt = rxMappings.find(rxMapping);
             if (mappingIt == std::end(rxMappings)) {
                 ARRUS_REQUIRES_TRUE(rxMapping.size() == nRxChannels,
-                                    format("Invalid size of the RX channel mapping: {}", rxMapping.size()));
+                                    std::format("Invalid size of the RX channel mapping: {}", rxMapping.size()));
                 ARRUS_REQUIRES_TRUE(currentMapId < 128,
-                                    format("128 different rx mappings can be loaded only, oem: {}.", oem));
+                                    std::format("128 different rx mappings can be loaded only, oem: {}.", oem));
                 // - This is a brand-new mapping -- create it on us4OEM.
                 rxMappings.emplace(rxMapping, currentMapId);
                 result.insert(currentMapId, rxMapping);

@@ -1,14 +1,14 @@
 #include "ProbeSettings.h"
 
-#include "arrus/common/format.h"
 #include "arrus/core/devices/probe/ProbeModel.h"
 
+#include <std4us/string.h>
 namespace arrus::devices {
 
 std::ostream &
 operator<<(std::ostream &os, const ProbeSettings &settings) {
     os << "model: " << settings.getModel() << " channelMapping: "
-       << ::arrus::toString(settings.getChannelMapping());
+       << std4us::join(settings.getChannelMapping(), ", ");
     return os;
 }
 

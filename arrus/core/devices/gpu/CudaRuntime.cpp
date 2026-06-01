@@ -1,7 +1,6 @@
 #include "CudaRuntime.h"
 
 #include "arrus/core/common/logging.h"
-#include "arrus/common/format.h"
 
 #ifdef _WIN32
 #include <windows.h>

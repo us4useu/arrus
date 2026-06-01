@@ -1,9 +1,10 @@
 #include "FileImpl.h"
-#include "arrus/common/format.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/common/exceptions.h"
 #include <cmath>
+#include <format>
+#include <fstream>
 #include <utility>
 #include <ctime>
 
@@ -15,7 +16,7 @@ using namespace arrus::session;
 FileImpl::FileImpl(const DeviceId &id, const FileSettings &settings)
     : File(id), logger{getLoggerFactory()->getLogger()}, settings(settings) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-    this->logger->log(LogSeverity::INFO, ::arrus::format("File device, path: {}", settings.getFilepath()));
+    this->logger->log(LogSeverity::INFO, std::format("File device, path: {}", settings.getFilepath()));
     this->dataset = readDataset(settings.getFilepath());
     this->probe = std::make_unique<FileProbe>(id, settings.getProbeModel());
 }
@@ -28,7 +29,7 @@ std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) 
     file.seekg(0, std::ios::end);
     std::streampos fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
-    logger->log(LogSeverity::INFO, format("Input file size: {} MiB", float(fileSize) / (1 << 20)));
+    logger->log(LogSeverity::INFO, std::format("Input file size: {} MiB", float(fileSize) / (1 << 20)));
     if (fileSize == 0) {
         throw ArrusException("Empty input file. Is your input file correct?");
     }
@@ -38,7 +39,7 @@ std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) 
     }
     std::vector<int16_t> all(fileSize / sizeof(int16_t));
     if (all.size() % settings.getNFrames() != 0) {
-        throw ArrusException(format("Invalid input data size: the number of int16_t values {} is not divisible by {}. "
+        throw ArrusException(std::format("Invalid input data size: the number of int16_t values {} is not divisible by {}. "
                                     "(the number of declared frames). Is your input file correct?",
                                     all.size(), settings.getNFrames()));
     }
@@ -73,7 +74,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> FileImpl::u
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.
     if (this->frameShape.product() != dataset.at(0).size()) {
         throw ArrusException(
-            format("The provided sequence (output dimensions: nTx: {}, nRx: {}, nSamples: {}, nComponents: {})) "
+            std::format("The provided sequence (output dimensions: nTx: {}, nRx: {}, nSamples: {}, nComponents: {})) "
                    "does not correspond to the data from the file (number of int16_t values: {}). "
                    "Please make sure you are uploading the correct sequence.",
                    nTx, nRx, nSamples, nValues, dataset.at(0).size()));
@@ -206,13 +207,13 @@ void FileImpl::setParameters(const Parameters &params) {
         auto value = item.second;
         if (key == "/sequence:0/begin") {
             if (value < 0) {
-                throw ::arrus::IllegalArgumentException(::arrus::format("{} should be not less than 0", key));
+                throw ::arrus::IllegalArgumentException(std::format("{} should be not less than 0", key));
             }
             pendingSliceBegin = value;
         } else if (key == "/sequence:0/end") {
             int currentNTx = (int) frameShape.get(1);
             if (value >= currentNTx) {
-                throw ::arrus::IllegalArgumentException(::arrus::format("{} should be less than {}", key, currentNTx));
+                throw ::arrus::IllegalArgumentException(std::format("{} should be less than {}", key, currentNTx));
             }
             pendingSliceEnd = value;
         } else {
@@ -232,7 +233,7 @@ float FileImpl::getSamplingFrequency() const { return 65e6; }
 float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 
 std::string FileImpl::getDescription() const {
-    return format("File device: {}", settings.getFilepath());
+    return std::format("File device: {}", settings.getFilepath());
 }
 
 }// namespace arrus::devices

@@ -1,7 +1,7 @@
 #ifndef ARRUS_API_MATLAB_WRAPPERS_MATLABCLASSIMPL_H
 #define ARRUS_API_MATLAB_WRAPPERS_MATLABCLASSIMPL_H
 
-#include <memory>
+#include <format>
 #include <unordered_map>
 #include <utility>
 
@@ -9,8 +9,6 @@
 #include "api/matlab/wrappers/Ptr.h"
 #include "api/matlab/wrappers/common.h"
 #include "arrus/common/asserts.h"
-#include "arrus/common/format.h"
-
 namespace arrus::matlab {
 
 /**
@@ -53,7 +51,7 @@ public:
         try {
             func = methods.at(method);
         } catch (const std::out_of_range &e) {
-            throw IllegalArgumentException(format("Class {} has no method with name {}.", classId, method));
+            throw IllegalArgumentException(std::format("Class {} has no method with name {}.", classId, method));
         }
         func(obj, outputs, inputs);
     }

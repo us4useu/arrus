@@ -7,7 +7,7 @@
 #include <thread>
 #include <regex>
 
-#include <boost/algorithm/string.hpp>
+#include <std4us/string.h>
 #include <vector>
 
 #include "BlockingQueue.h"
@@ -56,10 +56,10 @@ public:
 
     Device::RawHandle getDevice(const std::string &path) override {
         auto [root, tail] = getPathRoot(path);
-        boost::algorithm::trim(root);
-        boost::algorithm::trim(tail);
+        std4us::trim(root);
+        std4us::trim(tail);
         if (!tail.empty()) {
-            throw IllegalArgumentException(arrus::format(
+            throw IllegalArgumentException(std::format(
                 "Us4R devices allows access only to the top-level devices (got relative path: '{}')", path));
         }
         DeviceId componentId = DeviceId::parse(root);

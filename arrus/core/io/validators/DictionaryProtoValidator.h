@@ -44,7 +44,7 @@ public:
         // Validate probes
         int i = 0;
         for(auto &probe : obj->probe_models()) {
-            std::string fieldName = arrus::format("probe_model:{}", i);
+            std::string fieldName = std::format("probe_model:{}", i);
             expectTrue(fieldName, hasId(probe),
                        "id (including its components) should not empty");
             if(hasId(probe)) {
@@ -66,7 +66,7 @@ public:
 
         i = 0;
         for(auto &adapter: obj->probe_adapter_models()) {
-            std::string fieldName = arrus::format("probe_adapter_model:{}", i);
+            std::string fieldName = std::format("probe_adapter_model:{}", i);
             expectTrue(fieldName, hasId(adapter),
                        "id (including its components) should not empty");
             if(hasId(adapter)) {
@@ -88,14 +88,14 @@ public:
         i = 0;
         for(auto &conn : obj->probe_to_adapter_connections()) {
             std::string fieldName =
-                arrus::format("probe_adapter_connection:{}", i);
+                std::format("probe_adapter_connection:{}", i);
 
             // Verify if the probe model with given id actually exists.
             ModelId probeModelId = {conn.probe_model_id().manufacturer(),
                                     conn.probe_model_id().name()};
 
             expectTrue(fieldName, probeIds.find(probeModelId) != probeIds.end(),
-                       arrus::format("Undefined probe id: {}, {}",
+                       std::format("Undefined probe id: {}, {}",
                                      probeModelId.first, probeModelId.second));
 
             // Verify if the adapter models with given ids actually exist.
@@ -103,7 +103,7 @@ public:
                 ModelId id = {probeAdapterModelId.manufacturer(),
                               probeAdapterModelId.name()};
                 expectTrue(fieldName, adapterIds.find(id) != adapterIds.end(),
-                           arrus::format("Undefined adapter id: {}, {}",
+                           std::format("Undefined adapter id: {}, {}",
                                          id.first, id.second));
             }
 

@@ -1,6 +1,8 @@
 #ifndef ARRUS_ARRUS_CORE_DEVICES_US4R_US4OEM_UTILS_H
 #define ARRUS_ARRUS_CORE_DEVICES_US4R_US4OEM_UTILS_H
 
+#include <format>
+
 /** Common functions for Us4OEM handling */
 namespace arrus::devices {
 
@@ -25,7 +27,7 @@ inline std::optional<float> getSRIExtend(
         if (totalPri < sri.value()) {
             lastPriExtend = sri.value() - totalPri;
         } else {
-            throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
+            throw IllegalArgumentException(std::format("Sequence repetition interval {} cannot be set, "
                                                   "sequence total pri is equal {}",
                                                   sri.value(), totalPri));
         }

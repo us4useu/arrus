@@ -29,7 +29,7 @@ public:
         // Configure IUs4OEM
         ChannelIdx chGroupSize = descriptor.getNRxChannels();
         ARRUS_REQUIRES_TRUE(IUs4OEM::NCH % chGroupSize == 0,
-                            arrus::format("Number of Us4OEM channels ({}) is not divisible by the size of channel group ({})",
+                            std::format("Number of Us4OEM channels ({}) is not divisible by the size of channel group ({})",
                                     IUs4OEM::NCH, chGroupSize));
         ChannelIdx nChannelGroups = IUs4OEM::NCH / chGroupSize;
 
@@ -37,11 +37,11 @@ public:
         // Convert to uint8_t
         std::vector<uint8_t> channelMapping;
         ARRUS_REQUIRES_AT_MOST(cfg.getChannelMapping().size(), UINT8_MAX,
-                               arrus::format("Maximum number of channels: {}", UINT8_MAX));
+                               std::format("Maximum number of channels: {}", UINT8_MAX));
 
         for(auto value : cfg.getChannelMapping()) {
             ARRUS_REQUIRES_AT_MOST(value, (ChannelIdx) UINT8_MAX,
-                                   arrus::format("Us4OEM channel index cannot exceed {}", (ChannelIdx) UINT8_MAX));
+                                   std::format("Us4OEM channel index cannot exceed {}", (ChannelIdx) UINT8_MAX));
             channelMapping.push_back(static_cast<uint8_t>(value));
         }
 

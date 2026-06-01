@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_COMMON_COLLECTIONS_H
 #define ARRUS_CORE_COMMON_COLLECTIONS_H
 
+#include <format>
 #include <string>
 #include <vector>
 #include <numeric>
@@ -9,13 +10,13 @@
 #include <bitset>
 #include <stdexcept>
 #include <iterator>
+#include <std4us/string.h>
 
 #include <gsl/span>
 #include <boost/range/combine.hpp>
 
 #include "arrus/core/api/arrus.h"
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/common/format.h"
 
 namespace arrus {
 
@@ -308,8 +309,8 @@ public:
         try {
             return valueMap.at(value);
         } catch(const std::out_of_range& ) {
-            throw IllegalArgumentException(format("Invalid value: '{}' should be one of: '{}'",
-                                                  value, toString(getAvailableValues())));
+            throw IllegalArgumentException(std::format("Invalid value: '{}' should be one of: '{}'",
+                                                  value, std4us::join(getAvailableValues(), ", ")));
         }
     }
 

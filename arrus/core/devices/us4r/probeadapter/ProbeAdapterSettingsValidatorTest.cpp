@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
+#include <std4us/string.h>
 #include <utility>
 
 #include "arrus/core/common/tests.h"
@@ -29,10 +30,11 @@ struct TestAdapterSettings {
                    ", " +
                    std::to_string(v.second) + ")";
         };
+        std::vector<std::string> channelMappingStr;
+        std::transform(settings.channelMapping.begin(), settings.channelMapping.end(),
+                       std::back_inserter(channelMappingStr), func);
         os << " nChannels: " << settings.nChannels
-           << " channelMapping: " <<
-           (arrus::toStringTransform<ProbeAdapterSettings::ChannelAddress>(
-               settings.channelMapping, func));
+           << " channelMapping: " << std4us::join(channelMappingStr, ", ");
         return os;
     }
 

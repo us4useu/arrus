@@ -2,9 +2,9 @@
 #define ARRUS_ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMBUFFER_H
 
 #include "arrus/common/compiler.h"
-#include "arrus/common/format.h"
 #include "arrus/common/utils.h"
 
+#include <format>
 #include <utility>
 
 #include "arrus/core/api/common/types.h"
@@ -153,7 +153,7 @@ public:
 
     [[nodiscard]] const Us4OEMBufferArrayDef &getArrayDef(size_t i) const {
         if(i >= arrayDefs.size()) {
-            throw IllegalArgumentException(format(
+            throw IllegalArgumentException(std::format(
                 "Us4OEMBufferView: array id exceeds the number of arrays defined for "
                 "the given OEM buffer, got: {}, number of arrays: {}.", i, getArrayDefs().size()));
         }

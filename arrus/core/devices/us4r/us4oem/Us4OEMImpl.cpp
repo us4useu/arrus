@@ -2,14 +2,15 @@
 
 #include <chrono>
 #include <cmath>
+#include <format>
 #include <thread>
 #include <utility>
 #include <regex>
+#include <std4us/string.h>
 
 #include "Us4OEMDescriptorFactory.h"
 #include "Us4OEMTxRxValidator.h"
 #include "arrus/common/asserts.h"
-#include "arrus/common/format.h"
 #include "arrus/common/utils.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 #include "arrus/core/api/ops/us4r/constraints/TxRxSequenceLimits.h"
@@ -48,11 +49,11 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> 
 
 Us4OEMImpl::~Us4OEMImpl() {
     try {
-        logger->log(LogSeverity::DEBUG, arrus::format("Destroying handle"));
+        logger->log(LogSeverity::DEBUG, std::format("Destroying handle"));
     } catch (const std::exception &e) {
-        std::cerr << arrus::format("Exception while calling us4oem destructor: {}", e.what()) << std::endl;
+        std::cerr << std::format("Exception while calling us4oem destructor: {}", e.what()) << std::endl;
     }
-    logger->log(LogSeverity::DEBUG, arrus::format("Us4OEM handle destroyed."));
+    logger->log(LogSeverity::DEBUG, std::format("Us4OEM handle destroyed."));
 }
 
 bool Us4OEMImpl::isMaster() { return descriptor.isMaster(); }
@@ -82,8 +83,8 @@ void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const fl
                                    float freq, float gain) {
     const auto availableGains = DDC_GAIN_MAP.getAvailableValues();
     ARRUS_REQUIRES_TRUE_IAE(setContains(availableGains, gain),
-                            format("Digital Down Conversion gain should be one of: {}",
-                               ::arrus::toString(availableGains)));
+                            std::format("Digital Down Conversion gain should be one of: {}",
+                               std4us::join(availableGains, ", ")));
     auto actualValue = DDC_GAIN_MAP.get(gain);
     ius4oem->AfeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq, actualValue);
 }
@@ -210,8 +211,8 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
         for (OpId opId = 0; opId < ARRUS_SAFE_CAST(sequence.size(), OpId); ++opId, ++firingId) {
             auto const &op = sequence.at(opId);
             logger->log(LogSeverity::TRACE,
-                        format("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId, op.isNOP(),
-                               ::arrus::toString(op)));
+                        std::format("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId, op.isNOP(),
+                               std4us::to_string(op)));
             // TX
             auto txAperture = arrus::toBitset<Us4OEMDescriptor::N_TX_CHANNELS>(op.getTxAperture());
             // RX
@@ -226,7 +227,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             Us4OEMChannelsGroupsMask channelsGroups =
                 op.isNOP() ? emptyChannelGroups : getActiveChannelGroups(filteredTxAperture, filteredRxAperture);
             ARRUS_REQUIRES_TRUE_IAE(txrxTime <= op.getPri(),
-                                    format("Total time required for a single TX/RX ({}) should not exceed PRI ({})",
+                                    std::format("Total time required for a single TX/RX ({}) should not exceed PRI ({})",
                                            txrxTime, op.getPri()));
             // Upload
             ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
@@ -260,7 +261,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 auto pulse = Pulse::fromWaveform(op.getTxWaveform());
                 ARRUS_REQUIRES_TRUE(
                     pulse.has_value(),
-                    format("Couldn't get the correct TX pulse for the waveform declared in the firing {}", firingId));
+                    std::format("Couldn't get the correct TX pulse for the waveform declared in the firing {}", firingId));
                 ius4oem->SetTxFreqency(pulse.value().getCenterFrequency(), firingId);
                 auto nTxHalfPeriods = static_cast<uint32>(pulse.value().getNPeriods()*2);
                 ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
@@ -294,7 +295,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
     if (startSample != (startSample / div) * div) {
         startSample = (startSample / div) * div;
         this->logger->log(LogSeverity::WARNING,
-                          ::arrus::format("Decimation factor {} requires start offset to be multiple "
+                          std::format("Decimation factor {} requires start offset to be multiple "
                                           "of {}. Offset adjusted to {}.",
                                           ddc->getDecimationFactor(), div, startSample));
     }
@@ -314,7 +315,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
     const size_t nBytes = nSamples * descriptor.getNRxChannels() * sampleSize;
 
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
-                           format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
+                           std::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
     ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
@@ -331,7 +332,7 @@ size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, u
     const size_t sampleSize = sizeof(RawDataType);
     const size_t nBytes = nSamples * descriptor.getNRxChannels() * sampleSize;
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
-                           format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
+                           std::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
     ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
@@ -427,7 +428,7 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
             Us4OEMBufferElement{elementStartAddress, outputAddress - elementStartAddress, (uint16) (entryId - 1)});
         elementStartAddress = outputAddress;
     }
-    return std::make_pair(std::move(builder.build()), rxTimeOffset);
+    return std::make_pair(builder.build(), rxTimeOffset);
 }
 
 void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, uint16 rxBufferSize,
@@ -444,7 +445,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
         if (sri.has_value()) {
             ARRUS_REQUIRES_TRUE_IAE(
                 totalPri < sri.value(),
-                format("Sequence repetition interval {} cannot be set, sequence total pri is equal {}", sri.value(),
+                std::format("Sequence repetition interval {} cannot be set, sequence total pri is equal {}", sri.value(),
                        totalPri));
             lastPriExtension = sri.value() - totalPri;
         }
@@ -503,7 +504,7 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
     std::string deviceIdStr = getDeviceId().toString();
     for (size_t i = 0; i < sequences.size(); ++i) {
         const auto &seq = sequences.at(i);
-        Us4OEMTxRxValidator seqValidator(format("{} tx rx sequence #{}", deviceIdStr, i),
+        Us4OEMTxRxValidator seqValidator(std::format("{} tx rx sequence #{}", deviceIdStr, i),
                                          descriptor,
                                          static_cast<BitstreamId>(bitstreamOffsets.size()) );
         seqValidator.validate(seq);
@@ -515,10 +516,10 @@ void Us4OEMImpl::validate(const std::vector<TxRxParametersSequence> &sequences, 
 
     auto maxFirings = descriptor.getTxRxSequenceLimits().getMaxNumberOfFirings();
 
-    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, format("Exceeded the maximum ({}) number of firings: {}", maxFirings, nFirings));
+    ARRUS_REQUIRES_AT_MOST(nFirings, maxFirings, std::format("Exceeded the maximum ({}) number of firings: {}", maxFirings, nFirings));
     const auto maxSequenceSize = descriptor.getTxRxSequenceLimits().getSize().end();
     ARRUS_REQUIRES_AT_MOST(nTriggers, maxSequenceSize,
-                           format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
+                           std::format("Exceeded the maximum ({}) number of triggers: {}", maxSequenceSize, nTriggers));
 }
 
 float Us4OEMImpl::getTxRxTime(float rxTime) const {
@@ -529,7 +530,7 @@ float Us4OEMImpl::getTxRxTime(float rxTime) const {
         txrxTime = std::max(rxTime, descriptor.getSequenceReprogrammingTime());
     } else {
         throw IllegalArgumentException(
-            format("Unrecognized reprogramming mode: {}", static_cast<size_t>(reprogrammingMode)));
+            std::format("Unrecognized reprogramming mode: {}", static_cast<size_t>(reprogrammingMode)));
     }
     return txrxTime;
 }
@@ -657,7 +658,7 @@ std::pair<uint32_t, float> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcD
         //If so, do not adjust RX offset and log warning
         if(!this->isDecimationFactorAdjustmentLogged) {
             this->logger->log(LogSeverity::INFO,
-                          ::arrus::format("Decimation factor {} causes RX data to start after the moment TX starts."
+                          std::format("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} microseconds to align start of RX data with start of TX.",
                                           ddcDecimationFactor, (float)(rxOffset - txOffset - filterDelay)/65.0f));
             this->isDecimationFactorAdjustmentLogged = true;
@@ -717,7 +718,7 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
         expectedNumberOfCoeffs = 32 * decInt + 24;
     }
     if (static_cast<size_t>(expectedNumberOfCoeffs) != nCoefficients) {
-        throw IllegalArgumentException(format("Incorrect number of DDC FIR filter coefficients, should be {}, "
+        throw IllegalArgumentException(std::format("Incorrect number of DDC FIR filter coefficients, should be {}, "
                                               "actual: {}",
                                               expectedNumberOfCoeffs, nCoefficients));
     }
@@ -908,7 +909,7 @@ void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>
     std::vector<size_t> newProfiles(currentTxDelayProfileIds.size());
     for(const auto &[sequenceId, profileId] : profiles) {
         if(sequenceId > currentTxDelayProfileIds.size()) {
-            throw IllegalArgumentException(format("The sequence with id {} is out of the scope of the "
+            throw IllegalArgumentException(std::format("The sequence with id {} is out of the scope of the "
                                            "currently uploaded scheme (the number of uploaded sequences: {})",
                                                   sequenceId, currentTxDelayProfileIds.size()));
         }
@@ -938,7 +939,7 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     else if(sn.size() == OEM_PLUS_SN_2_ORDINAL_SIZE) {
         // us4OEM+
         if(! std::regex_match(sn, matches, pattern2OrdinalRegex) ) {
-            throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should have the following pattern: {}.", pattern2OrdinalStr));
+            throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern2OrdinalStr));
         }
         const auto mountingType = matches[1].str();
         const auto number = matches[2].str();
@@ -953,13 +954,13 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     }
     else if (sn.size() == OEM_PLUS_SN_4_ORDINAL_SIZE) {
         if(! std::regex_match(sn, matches, pattern4OrdinalRegex) ) {
-            throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should have the following pattern: {}.", pattern4OrdinalStr));
+            throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern4OrdinalStr));
         }
         const auto number = matches[2].str();
         variantStr = number.substr(10, 2);
     }
     else {
-        throw ::arrus::IllegalStateException(format("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn));
+        throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn));
     }
 
     const auto variantSymbol = variantStr.at(0);
@@ -973,7 +974,7 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
         return Us4OEM::Variant::PLUS_HF;
     }
     else {
-        throw IllegalStateException(format("Unknown variant for OEM with SN: {}", sn));
+        throw IllegalStateException(std::format("Unknown variant for OEM with SN: {}", sn));
     }
 }
 

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <format>
 #include <utility>
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/common/validation.h"
@@ -31,7 +32,7 @@ namespace arrus::devices {
         for (size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &op = txRxs.at(firing);
             if (!op.isNOP()) {
-                auto firingStr = ::arrus::format(" (firing {})", firing);
+                auto firingStr = std::format(" (firing {})", firing);
                 // Tx
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxAperture().size(), size_t(descriptor.getNTxChannels()), firingStr);
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getTxDelays().size(), size_t(descriptor.getNTxChannels()), firingStr);
@@ -53,7 +54,7 @@ namespace arrus::devices {
                         validateTx(pulse, txLimits2, firingStr);
                         break;
                     default:
-                        throw IllegalArgumentException(format("Unsupported amplitude level: {}", pulse.getAmplitudeLevel()));
+                        throw IllegalArgumentException(std::format("Unsupported amplitude level: {}", pulse.getAmplitudeLevel()));
                     }
                 } else {
                     // custom waveform
