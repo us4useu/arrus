@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <format>
+
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/FrameChannelMappingImpl.h"
@@ -80,7 +82,7 @@ protected:
             for(size_t ch = 0; ch < a->getNumberOfLogicalChannels(); ++ch) {
                 auto aAddr = a->getLogical(frame, ch);
                 auto bAddr = b->getLogical(frame, ch);
-                EXPECT_EQ(aAddr, bAddr) << format("Failed for frame: {} channel: {}: a: {}, b: {}",
+                EXPECT_EQ(aAddr, bAddr) << std::format("Failed for frame: {} channel: {}: a: {}, b: {}",
                                                   frame, ch, aAddr.toString(), bAddr.toString());
             }
         }

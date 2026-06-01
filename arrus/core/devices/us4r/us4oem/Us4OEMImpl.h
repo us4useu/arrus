@@ -4,6 +4,7 @@
 #include "Us4OEMRxMappingRegisterBuilder.h"
 
 #include <iostream>
+#include <format>
 #include <thread>
 #include <unordered_set>
 #include <utility>
@@ -12,7 +13,6 @@
 #include "IRQEvent.h"
 #include "Us4OEMDescriptor.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
-#include "arrus/common/format.h"
 #include "arrus/common/cache.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/common/logging.h"

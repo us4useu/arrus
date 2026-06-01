@@ -1,9 +1,11 @@
 #ifndef ARRUS_CORE_API_COMMON_TUPLE_H
 #define ARRUS_CORE_API_COMMON_TUPLE_H
 
+#include <format>
 #include <vector>
 #include <numeric>
 #include <ostream>
+#include <std4us/string.h>
 
 #include "arrus/core/api/common/exceptions.h"
 
@@ -59,6 +61,10 @@ public:
 
     const std::vector<T> &getValues() const {
         return values;
+    }
+
+    const std::string toString() const {
+        return std::format("Tuple({})", std4us::join(values, ", "));
     }
 
     size_t product() const {

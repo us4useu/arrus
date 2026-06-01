@@ -1,7 +1,7 @@
+#include <format>
 #include <gtest/gtest.h>
 
 #include "Us4RSubsequence.h"
-#include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"

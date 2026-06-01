@@ -1,6 +1,6 @@
 #include "ProbeAdapterSettings.h"
 
-#include "arrus/common/format.h"
+#include <format>
 
 namespace arrus::devices {
 

@@ -2,10 +2,10 @@
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_IRQEVENT_H
 
 #include <condition_variable>
+#include <format>
 #include <mutex>
 #include <optional>
 
-#include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
 
 namespace arrus::devices {
@@ -48,7 +48,7 @@ public:
             // In the correct scenario, we expect that the number of already handled IRQs is equal to the number of
             // registered IRQs minus 1.
             // If it's not true, it means that we have lost some IRQ -- this is an exception that user should react to.
-            throw IllegalStateException(format("The number of registered IRQs is different than the number of handled IRQs."
+            throw IllegalStateException(std::format("The number of registered IRQs is different than the number of handled IRQs."
                                         " We detected missing IRQs: handled: {}, registered: {}.", irqsHandled, irqsRegistered));
         }
         ++this->irqsHandled;

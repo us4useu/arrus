@@ -51,7 +51,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 arrus::LogSeverity level = convertToLogSeverity(inputs[3]);
                 this->logging->addLogFile(filepath, level);
             } else {
-                throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
+                throw arrus::IllegalArgumentException(std::format("Unrecognized global function: {}", methodId));
             }
             return;
         }
@@ -91,7 +91,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                     clazz->call(handle, methodId, outputs, args);
                 } catch (...) {
                     ctx->logInfo(
-                        ::arrus::format("Exception while calling method '{}' of type '{}'", methodId, classId));
+                        std::format("Exception while calling method '{}' of type '{}'", methodId, classId));
                     throw;
                 }
             }
@@ -143,7 +143,7 @@ arrus::LogSeverity MexFunction::convertToLogSeverity(const ::matlab::data::Array
     } else if (severity == "TRACE") {
         return arrus::LogSeverity::TRACE;
     } else {
-        throw arrus::IllegalArgumentException(arrus::format("Unknown severity level: {}", severity));
+        throw arrus::IllegalArgumentException(std::format("Unknown severity level: {}", severity));
     }
 }
 

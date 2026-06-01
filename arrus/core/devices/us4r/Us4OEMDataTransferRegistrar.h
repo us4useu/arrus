@@ -7,6 +7,7 @@
 #include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+#include <format>
 #include <ostream>
 
 namespace arrus::devices {
@@ -76,7 +77,7 @@ public:
             strategy = 0;
         }
         this->logger->log(LogSeverity::DEBUG,
-                          format("Us4OEM:{}, transfer strategy: {}", us4oem->getDeviceId().getOrdinal(), strategy));
+                          std::format("Us4OEM:{}, transfer strategy: {}", us4oem->getDeviceId().getOrdinal(), strategy));
     }
 
     [[nodiscard]] size_t getNumberOfTransfers() const {
@@ -145,7 +146,7 @@ public:
                 uint16 firing = parts[0].getEntryId();// the firing that finishes given transfer
                 for (auto &part : parts) {
                     ARRUS_REQUIRES_TRUE_E(part.getSize() <= maxTransferSize,
-                                          ArrusException(format("A single frame cannot exceed {} bytes, got: {}",
+                                          ArrusException(std::format("A single frame cannot exceed {} bytes, got: {}",
                                                                 part.getSize(), maxTransferSize)));
 
                     if (size + part.getSize() > maxTransferSize) {
@@ -250,9 +251,9 @@ public:
         try {                                                                                                          \
             ARRUS_ON_NEW_DATA_CALLBACK_strategy_##strategy ARRUS_ON_NEW_DATA_CALLBACK_signal_##signal                  \
         } catch (const std::exception &e) {                                                                            \
-            logger->log(LogSeverity::ERROR, format("Us4OEM {}: callback exception: {}", us4oemOrdinal, e.what()));     \
+            logger->log(LogSeverity::ERROR, std::format("Us4OEM {}: callback exception: {}", us4oemOrdinal, e.what()));     \
         } catch (...) {                                                                                                \
-            logger->log(LogSeverity::ERROR, format("Us4OEM {}: callback unknown exception.", us4oemOrdinal));          \
+            logger->log(LogSeverity::ERROR, std::format("Us4OEM {}: callback unknown exception.", us4oemOrdinal));          \
         }                                                                                                              \
     }
 

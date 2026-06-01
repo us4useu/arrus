@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_API_COMMON_INTERVAL_H
 #define ARRUS_CORE_API_COMMON_INTERVAL_H
 
+#include <format>
 #include <utility>
 
 #include "arrus/core/api/common/exceptions.h"
@@ -35,6 +36,10 @@ public:
 
     bool operator!=(const Interval &rhs) const {
         return !(rhs == *this);
+    }
+
+    std::string toString() const {
+        return std::format("Interval: start: {}, end: {}", interval.first, interval.second);
     }
 
 private:

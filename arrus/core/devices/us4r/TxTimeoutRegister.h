@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <unordered_map>
 #include <vector>
 #include <optional>
@@ -14,7 +15,6 @@
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/common/hash.h"
 #include "arrus/core/common/collections.h"
-#include "arrus/common/format.h"
 #include "arrus/common/utils.h"
 
 namespace arrus::devices {
@@ -146,7 +146,7 @@ public:
                 auto it = std::find_if(std::begin(timeouts), std::end(timeouts),
                              [txTime](auto t) {return t >= txTime; });
                 if(it == std::end(timeouts)) {
-                    throw std::runtime_error(format("Couldn't find a timeout that would be greater "
+                    throw std::runtime_error(std::format("Couldn't find a timeout that would be greater "
                                                     "or equal than tx time: {} [us]", txTime));
                 }
                 auto timeoutId = ARRUS_SAFE_CAST(std::distance(std::begin(timeouts), it), uint8_t);
@@ -177,7 +177,7 @@ private:
             TxTimeout txTime = getTxTimeUs(op, maxOpDelayProfile);
             if(txTime > MAX_TIMEOUT) {
                 throw IllegalArgumentException(
-                    format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
+                    std::format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
             }
             return txTime;
         }

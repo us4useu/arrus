@@ -4,9 +4,9 @@
 #include "Us4OEMDescriptor.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/api/ops/us4r/constraints/TxRxSequenceLimits.h"
-#include "arrus/common/format.h"
 #include <ius4oem.h>
 #include <cstdint>
+#include <format>
 namespace arrus::devices {
 
 class Us4OEMDescriptorFactory {
@@ -141,7 +141,7 @@ public:
                 35 // sample number TX start (i.e. TX delay = 0)
             };
         default:
-            throw arrus::IllegalArgumentException(format("Unsupported us4OEM version: {}", version));
+            throw arrus::IllegalArgumentException(std::format("Unsupported us4OEM version: {}", version));
         }
     }
 

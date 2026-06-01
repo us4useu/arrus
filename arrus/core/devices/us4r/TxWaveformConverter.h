@@ -1,10 +1,10 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_TXWAVEFORMCONVERTER_H
 #define ARRUS_CORE_DEVICES_US4R_TXWAVEFORMCONVERTER_H
 
-#include "arrus/common/format.h"
 #include "arrus/common/utils.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/ops/us4r/Waveform.h"
+#include <format>
 #include <vector>
 
 namespace arrus::devices {
@@ -36,7 +36,7 @@ public:
             return HVP1;
         case 0:
             return CLAMP;
-        default: throw IllegalArgumentException(format("Unrecognized waveform state: {}", apiState));
+        default: throw IllegalArgumentException(std::format("Unrecognized waveform state: {}", apiState));
         }
     }
 
@@ -94,7 +94,7 @@ public:
         if (nRepetitions > 1) {
             const size_t maxNRepetitions = (1 << (3 + 5 * (segmentLength - 1))) + 2 - 1;
             if (nRepetitions > maxNRepetitions) {
-                throw IllegalArgumentException(arrus::format(
+                throw IllegalArgumentException(std::format(
                     "Exceeded maximum number of repetitions: '{}', value: '{}'", maxNRepetitions, nRepetitions));
             }
         }
@@ -308,7 +308,7 @@ public:
                     }
                 } else {
                     throw IllegalArgumentException(
-                        format("The TX waveform contains too long single state duration: {}", d));
+                        std::format("The TX waveform contains too long single state duration: {}", d));
                 }
             }
         }
@@ -337,7 +337,7 @@ public:
             }
             if(repeatedSegmentStates.size() > MAX_REPEATED_SEGMENT_LENGTH) {
                 throw IllegalArgumentException(
-                    format(
+                    std::format(
                         "The TX waveform has too long single state duration(s) to be repeated the given "
                         "number of times '{}' ", nRepeats));
             }
@@ -380,7 +380,7 @@ public:
 
                 uint32 durationClk = toClk(duration);
                 if (durationClk < 2) {
-                    throw IllegalArgumentException(format(
+                    throw IllegalArgumentException(std::format(
                         "The minimum waveform state duration that can be set on the pulser is {}, got: {}",
                         MINIMUM_DURATION, duration));
                 }
@@ -449,7 +449,7 @@ private:
         constexpr size_t size = 4;
         size_t maxValue = (1 << size);
         if (value >= maxValue) {
-            throw IllegalArgumentException(format("Waveform state '{}' should be less than '{}'", value, maxValue));
+            throw IllegalArgumentException(std::format("Waveform state '{}' should be less than '{}'", value, maxValue));
         }
         return setBitField(input, 0, size, value);
     }
@@ -459,7 +459,7 @@ private:
         size_t maxValue = (1 << size);
         if (value >= maxValue) {
             throw IllegalArgumentException(
-                format("Waveform number of cycles '{}' should be less than '{}'", value, maxValue));
+                std::format("Waveform number of cycles '{}' should be less than '{}'", value, maxValue));
         }
         return setBitField(input, 4, size, value);
     }
@@ -469,7 +469,7 @@ private:
         size_t maxValue = (1 << size);
         if (type >= maxValue) {
             throw IllegalArgumentException(
-                format("Waveform repeat type '{}' should be less than '{}'", type, maxValue));
+                std::format("Waveform repeat type '{}' should be less than '{}'", type, maxValue));
         }
         return setBitField(input, 14, size, type);
     }

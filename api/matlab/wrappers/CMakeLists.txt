@@ -18,7 +18,6 @@ matlab_add_mex(
     SRC
     ${ARRUS_ROOT_DIR}/arrus/common/compiler.h
     ${ARRUS_ROOT_DIR}/arrus/common/asserts.h
-    ${ARRUS_ROOT_DIR}/arrus/common/format.h
     common.h
     convert.h
     MexContext.h

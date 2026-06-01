@@ -5,8 +5,6 @@
 #include "TxTimeoutRegister.h"
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
 #include "arrus/core/common/tests.h"
-#include "arrus/common/format.h"
-
 
 namespace {
 

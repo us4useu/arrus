@@ -21,7 +21,7 @@ public:
         nActiveRxChannels += refOp.getRxPadding().sum();
         for (size_t firing = 0; firing < txRxs.size(); ++firing) {
             const auto &firingOp = txRxs.at(firing);
-            auto firingStr = ::arrus::format("firing {}", firing);
+            auto firingStr = std::format("firing {}", firing);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(firingOp.getRxAperture().size(), size_t(nChannels), firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(firingOp.getTxAperture().size(), size_t(nChannels), firingStr);
             ARRUS_VALIDATOR_EXPECT_EQUAL_M(firingOp.getTxDelays().size(), size_t(nChannels), firingStr);

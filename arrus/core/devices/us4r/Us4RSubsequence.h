@@ -2,11 +2,11 @@
 #define ARRUS_ARRUS_CORE_DEVICES_US4R_US4RSUBSEQUENCE_H
 
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <utility>
 
 #include "FrameChannelMappingImpl.h"
-#include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
@@ -300,13 +300,13 @@ private:
     void validate(SequenceId sequenceId, uint16 start, uint16 stop) {
         if(sequenceId >= sequences.size()) {
             throw IllegalStateException(
-                format("Sequence {} is outside of of the uploaded sequences (size: {})", sequenceId, sequences.size()));
+                std::format("Sequence {} is outside of of the uploaded sequences (size: {})", sequenceId, sequences.size()));
         }
         const auto &seq = sequences.at(sequenceId);
         const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
         if(stop > currentSequenceSize) {
             throw IllegalArgumentException(
-                format("The new sub-sequence [{}, {}] is outside of the scope of the sequence with id: {} "
+                std::format("The new sub-sequence [{}, {}] is outside of the scope of the sequence with id: {} "
                              " [0, {})", start, stop, sequenceId, currentSequenceSize));
         }
     }
@@ -339,7 +339,7 @@ private:
 
         if (end > parts.size()) {
             throw IllegalArgumentException(
-                format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})", end, parts.size()));
+                std::format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})", end, parts.size()));
         }
         auto b = std::begin(parts);
         // NEW ARRAY DEF (A SINGLE ARRAY SHOULD BE DEFINED)
