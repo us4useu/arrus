@@ -1,7 +1,59 @@
+#     ██████████      ███████                     
+#    ▒▒███▒▒▒▒███   ███▒▒▒▒▒███                   
+#     ▒███   ▒▒███ ███     ▒▒███                  
+#     ▒███    ▒███▒███      ▒███                  
+#     ▒███    ▒███▒███      ▒███                  
+#     ▒███    ███ ▒▒███     ███                   
+#     ██████████   ▒▒▒███████▒                    
+#    ▒▒▒▒▒▒▒▒▒▒      ▒▒▒▒▒▒▒                      
+#                                                                                
+#                                                 
+#     ██████   █████    ███████    ███████████    
+#    ▒▒██████ ▒▒███   ███▒▒▒▒▒███ ▒█▒▒▒███▒▒▒█    
+#     ▒███▒███ ▒███  ███     ▒▒███▒   ▒███  ▒     
+#     ▒███▒▒███▒███ ▒███      ▒███    ▒███        
+#     ▒███ ▒▒██████ ▒███      ▒███    ▒███        
+#     ▒███  ▒▒█████ ▒▒███     ███     ▒███        
+#     █████  ▒▒█████ ▒▒▒███████▒      █████       
+#    ▒▒▒▒▒    ▒▒▒▒▒    ▒▒▒▒▒▒▒       ▒▒▒▒▒        
+#                                                 
+#                                                 
+#      █████████  █████   █████ █████ ███████████ 
+#     ███▒▒▒▒▒███▒▒███   ▒▒███ ▒▒███ ▒▒███▒▒▒▒▒███
+#    ▒███    ▒▒▒  ▒███    ▒███  ▒███  ▒███    ▒███
+#    ▒▒█████████  ▒███████████  ▒███  ▒██████████ 
+#     ▒▒▒▒▒▒▒▒███ ▒███▒▒▒▒▒███  ▒███  ▒███▒▒▒▒▒▒  
+#     ███    ▒███ ▒███    ▒███  ▒███  ▒███        
+#    ▒▒█████████  █████   █████ █████ █████       
+#     ▒▒▒▒▒▒▒▒▒  ▒▒▒▒▒   ▒▒▒▒▒ ▒▒▒▒▒ ▒▒▒▒▒        
+#
+# Reason: std4us pointing at a development branch
+
 import os
 import pydevops.cmake as cmake
 import pydevops.conan as conan
+import pydevops.gitdep as gitdep
 import pydevops.us4us as us4us
+import pydevops.utils as utils
+
+def get_generator_options_for_current_os():
+    if os.name == "nt":
+        if utils.is_version_at_least("0.5.0"):
+            return {
+                # Use Visual Studio's ClangCL
+                # In VS2026, the version is Clang 21
+                "toolset": "ClangCL",
+                "generator": "'Visual Studio 18 2026'",
+            }
+        else:
+            print("Consider upgrading pydevops to version 0.5.0 or later for better compatibility with Visual Studio 2017 and later.")
+            return {
+                "generator": "'Visual Studio 15 2017 Win64'"
+            }
+    else:
+        return {
+            "generator": "'Unix Makefiles'"
+        }
 
 
 # pydevops version
@@ -11,14 +63,6 @@ version = "0.2.0"
 # explicitly. Note: the below tag/branch should conform with the us4R required
 # version.
 us4r_api_default_branch_tag = "v0.15.0"
-
-
-def get_default_generator_for_current_os():
-    if os.name == "nt":
-        return "'Visual Studio 15 2017 Win64'"
-    else:
-        return "'Unix Makefiles'"
-
 
 def get_default_us4r_api_dir(context):
     if (not context.has_option("us4r_api_dir")
@@ -30,9 +74,10 @@ def get_default_us4r_api_dir(context):
         context.remove_option("us4r_api_release_dir")
         return f"{release_dir}/{us4r_api_default_branch_tag}"
 
-
 stages = {
     "cfg": (
+        ("fetch_std4us", gitdep.Fetch),
+        ("add_std4us_index", conan.AddLocalIndex),
         ("conan", conan.Install),
         ("cmake", cmake.Configure),
     ),
@@ -69,7 +114,23 @@ aliases = {
 defaults = {
     "build_type": "Release",
     "us4r_api_dir": get_default_us4r_api_dir,
-    "/cfg/cmake/generator": get_default_generator_for_current_os(),
     "/cfg/cmake/DARRUS_EMBED_DEPS": "ON",
-    "/install/prefix": "./install"
+    "/install/prefix": "./install",
+    "/cfg/fetch_std4us/repo": "https://github.com/us4useu/std4us.git",
+    "/cfg/fetch_std4us/revision": "clang-dev",
+    "/cfg/fetch_std4us/path": "std4us",
+    "/cfg/add_std4us_index/path": "std4us",
 }
+
+defaults.update(get_generator_options_for_current_os())
+
+transforms = [
+    lambda options: {
+        f"/cfg/cmake/preset": f"conan-{options['/build/config'].lower()}", 
+        f"/build/preset": f"conan-{options['/build/config'].lower()}",
+        f"/test/preset": f"conan-{options['/build/config'].lower()}",
+        },
+    lambda options: {
+        f"/install/build_dir_suffix": f"/{options['/build/config']}/"
+    },
+]

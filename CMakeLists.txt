@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21.0)
 
 project(arrus LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 # Version
 set(PROJECT_VERSION 0.14.0)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
@@ -56,7 +56,7 @@ if(ARRUS_CUDA)
 endif()
 
 # Common C++ compile options
-if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
+if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows" AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # permissive- is required by range-v3/0.5.0
     set(ARRUS_CPP_COMMON_COMPILE_OPTIONS /permissive- /EHsc /bigobj)
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "/W4 /WX")
@@ -64,15 +64,27 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
             _WIN32
             # warnings occurs in boost bimap implementation headers
-            _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
             _CRT_SECURE_NO_WARNINGS
             NOMINMAX)
-else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR "NYI")
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror -Wno-psabi")
     set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
-            ARRUS_LINUX
-            _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
+            ARRUS_LINUX)
+elseif("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    string(REPLACE "." ";" VERSION_LIST ${CMAKE_CXX_COMPILER_VERSION})
+    list(GET VERSION_LIST 0 COMPILER_VERSION)
+
+    set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "-I/usr/lib/llvm-${COMPILER_VERSION}/include/c++/v1 -stdlib=libc++")
+    set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror ")
+
+    set(ARRUS_CPP_COMMON_COMPILE_DEFINITIONS
+            ARRUS_LINUX)
+    set(ARRUS_CPP_COMMON_LINKER_OPTIONS 
+        "-I/usr/lib/llvm-${COMPILER_VERSION}/include/c++/v1 -L/usr/lib/llvm-${COMPILER_VERSION}/lib -stdlib=libc++ -fuse-ld=lld")
+    set(CMAKE_INSTALL_RPATH "\$ORIGIN;${CMAKE_INSTALL_RPATH};/usr/lib/llvm-${COMPILER_VERSION}/lib")
 endif()
 
 # installation directories
@@ -86,13 +98,20 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 find_package(Us4 0.15.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
 find_package(Boost REQUIRED)
+# Conan packages: will use version as in conanfile.txt
 set(Boost_USE_STATIC_LIBS ON)
+
+# CMake has broken dependency relations for Boost::log
+# See: https://gitlab.kitware.com/cmake/cmake/-/work_items/20638
+set(_Boost_LOG_SETUP_DEPENDENCIES log)
+
+find_package(Boost REQUIRED COMPONENTS log program_options)
 find_package(Protobuf REQUIRED)
 # Use project root to search for .proto files.
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
-find_package(fmt REQUIRED)
 find_package(Microsoft.GSL REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(std4us REQUIRED)
 
 # OS specific dependencies.
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")

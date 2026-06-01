@@ -223,3 +223,12 @@ cmake-build-release/
 # Merge conflict markers
 *.orig
 *.bkp
+
+# Ignore bash history files from dev containers we create using Docker
+.docker/.bash_history
+
+# Ignore conan cache from docker
+.docker/cache/
+
+# Artifact from Conan2's build system
+CMakeUserPresets.json
