@@ -47,7 +47,7 @@ public:
 
     Us4OEMDataTransferRegistrar(Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Us4OEMImplBase *us4oem,
                                 size_t maxTransferSize)
-        : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src), maxTransferSize(maxTransferSize) {
+        : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src) {
         ARRUS_INIT_COMPONENT_LOGGER(logger, "Us4OEMDataTransferRegistrar");
         if (dst->getNumberOfElements() % src.getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
@@ -245,7 +245,7 @@ public:
                                            dstBuffer->usesDmaBuf());
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy)                                                                   \
-    [=, currentDstIdx = srcIdx, currentTransferIdx = transferIdx]() mutable {                                          \
+    [=, this, currentDstIdx = srcIdx, currentTransferIdx = transferIdx]() mutable {                                          \
         IGNORE_UNUSED(currentTransferIdx);                                                                             \
         IGNORE_UNUSED(currentDstIdx);                                                                                  \
         try {                                                                                                          \
@@ -318,8 +318,6 @@ private:
     // Number of transfer dst points.
     size_t dstNTransfers{0};
     int strategy{0};
-    /** Maximum allowable size of a single transfer. */
-    size_t maxTransferSize;
 };
 
 }// namespace arrus::devices

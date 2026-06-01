@@ -1601,7 +1601,7 @@ std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequ
         const auto &ops = seq.getOps();
         auto &outputDelays = result.at(i);
         outputDelays.resize(ops.size());
-        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=](const auto &op) {
+        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=, this](const auto &op) {
             return this->getRxDelay(op);
         });
     }

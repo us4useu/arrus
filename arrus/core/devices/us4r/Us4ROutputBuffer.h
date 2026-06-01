@@ -658,7 +658,7 @@ public:
         }
         // Concatenate shape of each array (concatenate array elements produced by each us4OEM)
         for (const auto &arrayShapes : partShapes) {
-            shapes.emplace_back(std::move(concatenate(arrayShapes)));
+            shapes.emplace_back(concatenate(arrayShapes));
         }
         size_t address = 0;
         for (ArrayId arrayId = 0; arrayId < nArrays; ++arrayId) {

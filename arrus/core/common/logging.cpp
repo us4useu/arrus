@@ -2,20 +2,6 @@
 #include <fstream>
 #include <iostream>
 
-#include <memory>
-#include <set>
-#include <string>
-
-#include <boost/core/null_deleter.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/sinks/sync_frontend.hpp>
-#include <boost/log/sinks/text_ostream_backend.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <utility>
-
 #include "logging.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "LoggerImpl.h"
@@ -117,56 +103,50 @@ addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
     return sink;
 }
 
-class Logging::LoggingImpl {
-public:
-    LoggingImpl() {
-        boost::log::add_common_attributes();
-    }
+Logging::LoggingImpl::LoggingImpl() {
+    boost::log::add_common_attributes();
+}
 
-    void addTextSink(std::shared_ptr<std::ostream> ostream, LogSeverity minSeverity, bool autoFlush) {
-        boost::shared_ptr<std::ostream> boostPtr = boost::shared_ptr<std::ostream>(
-            ostream.get(),
-            [ostream](std::ostream *) mutable { ostream.reset(); });
-        addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
-    }
+void Logging::LoggingImpl::addTextSink(std::shared_ptr<std::ostream> ostream, LogSeverity minSeverity, bool autoFlush) {
+    boost::shared_ptr<std::ostream> boostPtr = boost::shared_ptr<std::ostream>(
+        ostream.get(),
+        [ostream](std::ostream *) mutable { ostream.reset(); });
+    addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
+}
 
-    void addLogFile(const std::string &filepath, LogSeverity minSeverity) {
-        boost::filesystem::path resolved = resolveLogFilePath(filepath);
-        if (!registeredFiles.insert(resolved).second) { // .second == inserted: bool?
-            return;
-        }
-        std::shared_ptr<std::ostream> logFileStream =
-            std::make_shared<std::ofstream>(resolved.string().c_str(), std::ios_base::app);
-        addTextSink(logFileStream, minSeverity, true);
+void Logging::LoggingImpl::addLogFile(const std::string &filepath, LogSeverity minSeverity) {
+    boost::filesystem::path resolved = resolveLogFilePath(filepath);
+    if (!registeredFiles.insert(resolved).second) { // .second == inserted: bool?
+        return;
     }
+    std::shared_ptr<std::ostream> logFileStream =
+        std::make_shared<std::ofstream>(resolved.string().c_str(), std::ios_base::app);
+    addTextSink(logFileStream, minSeverity, true);
+}
 
-    void addClog(LogSeverity level) {
-        if (this->clogSink != nullptr) {
-            return;
-        }
-        boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
-        this->clogSink = addTextSinkBoostPtr(stream, level, false);
+void Logging::LoggingImpl::addClog(LogSeverity level) {
+    if (this->clogSink != nullptr) {
+        return;
     }
+    boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
+    this->clogSink = addTextSinkBoostPtr(stream, level, false);
+}
 
-    void setClogLevel(LogSeverity level) {
-        if(this->clogSink == nullptr) {
-            this->addClog(level);
-        } else {
-            this->clogSink->set_filter(severity >= level);
-        }
+void Logging::LoggingImpl::setClogLevel(LogSeverity level) {
+    if(this->clogSink == nullptr) {
+        this->addClog(level);
+    } else {
+        this->clogSink->set_filter(severity >= level);
     }
+}
 
-    Logger::Handle getLogger() {
-        return std::make_unique<LoggerImpl>();
-    }
+Logger::Handle Logging::LoggingImpl::getLogger() {
+    return std::make_unique<LoggerImpl>();
+}
 
-    Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes) {
-        return std::make_unique<LoggerImpl>(attributes);
-    }
-private:
-    boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>> clogSink;
-    std::set<boost::filesystem::path> registeredFiles;
-};
+Logger::Handle Logging::LoggingImpl::getLogger(const std::vector<arrus::Logger::Attribute> &attributes) {
+    return std::make_unique<LoggerImpl>(attributes);
+}
 
 // Logging.
 Logging::Logging(std::unique_ptr<LoggingImpl> pImpl) : pImpl(std::move(pImpl)) {}
