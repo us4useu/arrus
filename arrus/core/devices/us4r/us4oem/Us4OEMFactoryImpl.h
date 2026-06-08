@@ -15,7 +15,7 @@ public:
     Us4OEMFactoryImpl() = default;
 
     Us4OEMImplBase::Handle getUs4OEM(Ordinal ordinal, IUs4OEMHandle &ius4oem, const Us4OEMSettings &cfg,
-                                     bool isExternalTrigger, bool acceptRxNops,
+                                     bool acceptRxNops,
                                      const std::optional<Us4RTxRxLimits> &limits) override {
         // Validate settings.
         Us4OEMDescriptor descriptor = getOEMDescriptor(ordinal, ius4oem, limits);
@@ -75,7 +75,7 @@ public:
                                             cfg.getRxSettings(),
                                             cfg.getReprogrammingMode(),
                                             descriptor,
-                                            isExternalTrigger, acceptRxNops);
+                                            acceptRxNops);
     }
 
 

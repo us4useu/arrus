@@ -83,7 +83,7 @@ public:
             }
 
             auto [us4oems, masterIUs4OEM] =
-                getUs4OEMs(us4OEMSettings, settings.isExternalTrigger(), probeAdapterSettings.getIOSettings(),
+                getUs4OEMs(us4OEMSettings, probeAdapterSettings.getIOSettings(),
                            ius4oemHandles, settings.getTxRxLimits(), settings.getWatchdogSettings());
             std::vector<Us4OEMImplBase::RawHandle> us4oemPtrs(us4oems.size());
             std::transform(std::begin(us4oems), std::end(us4oems), std::begin(us4oemPtrs),
@@ -133,7 +133,7 @@ private:
      * @return a pair: us4oems, master ius4oem
      */
     std::pair<std::vector<Us4OEMImplBase::Handle>, IUs4OEM *>
-    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, bool isExternalTrigger, const us4r::IOSettings &io,
+    getUs4OEMs(const std::vector<Us4OEMSettings> &us4oemCfgs, const us4r::IOSettings &io,
                std::vector<IUs4OEMHandle> &ius4oems, const std::optional<Us4RTxRxLimits> &limits,
                const WatchdogSettings watchdogSettings) {
         // Pre-configure us4oems.
@@ -176,14 +176,17 @@ private:
         if (io.hasFrameMetadataCapability()) {
             pulseCounterOems = io.getFrameMetadataCapabilityOEMs();
         }
+        // The external (sequence) trigger is driven by the IO settings capability.
+        const bool useSequenceTriggerCapability = io.hasSequenceTriggerCapability();
         for (unsigned i = 0; i < ius4oems.size(); ++i) {
             // TODO(Us4R-10) use ius4oem->GetDeviceID() as an ordinal number, instead of value of i
             auto ordinal = static_cast<Ordinal>(i);
             us4oems.push_back(us4oemFactory->getUs4OEM(
-                static_cast<Ordinal>(i), ius4oems[i], us4oemCfgs[i], isExternalTrigger,
+                static_cast<Ordinal>(i), ius4oems[i], us4oemCfgs[i],
                 setContains(pulseCounterOems, ordinal), // accept RX nops?
                 // NOTE: the above should be consistent with the ProbeAdapterImpl::frameMetadataOem
                 limits));
+            us4oems.back()->setUseSequenceTriggerCapability(useSequenceTriggerCapability);
         }
         initCapabilities(us4oems, io);
         return {std::move(us4oems), master};

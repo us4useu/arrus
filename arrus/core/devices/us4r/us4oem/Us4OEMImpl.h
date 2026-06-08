@@ -77,10 +77,11 @@ public:
     Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem,
                std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                Us4OEMSettings::ReprogrammingMode reprogrammingMode, Us4OEMDescriptor descriptor,
-               bool externalTrigger, bool acceptRxNops);
+               bool acceptRxNops);
     ~Us4OEMImpl() override;
 
     bool isMaster() override;
+    void setUseSequenceTriggerCapability(bool value) override { this->useSequenceTriggerCapability = value; }
     void startTrigger() override;
     void stopTrigger() override;
     void syncTrigger() override;
@@ -230,7 +231,7 @@ private:
     /** Current RX settings */
     // TODO(ARRUS-179) consider removing the below property
     RxSettings rxSettings;
-    bool externalTrigger{false};
+    bool useSequenceTriggerCapability{false};
     /** Current sampling frequency of the data produced by us4OEM. */
     float currentSamplingFrequency{0};
     /** Global state mutex */

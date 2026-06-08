@@ -55,6 +55,11 @@ public:
         return oems;
     }
 
+    bool hasSequenceTriggerCapability() const {
+        auto it = addresses.find(IOCapability::SEQUENCE_TRIGGER);
+        return it != std::end(addresses) && it->second.size() > 0;
+    }
+
 
 
 private:
@@ -73,6 +78,11 @@ public:
 
     IOSettingsBuilder &setFrameMetadataCapability(const IOAddressSet& addresses) {
         addr.emplace(IOCapability::FRAME_METADATA, addresses);
+        return *this;
+    }
+
+    IOSettingsBuilder &setSequenceTriggerCapability(const IOAddressSet& addresses) {
+        addr.emplace(IOCapability::SEQUENCE_TRIGGER, addresses);
         return *this;
     }
 
