@@ -22,10 +22,21 @@ public:
 
     using ElementIdxType = ChannelIdx;
 
+    /**
+     * Probe model constructor.
+     *
+     * @param modelId probe model ID
+     * @param numberOfElements number of elements this probe model has
+     * @param pitch probe's pitch (the distance between two consecutive elements)
+     * @param txFrequencyRange (minimum, maximum) allowable TX frequency (float; carrier frequency can only be set to specific values)
+     * @param voltageRange (minimum, maximum) allowable TX voltage
+     * @param curvatureRadius probe's curvature radius
+     * @param lens probe's lens specification (thickness, speed of sound in the material, etc.)
+     * @param matchingLayer probe's matching layer specification (thickness, speed of sound in the material, etc.)
+     */
     ProbeModel(ProbeModelId modelId,
                const Tuple<ElementIdxType> &numberOfElements,
                const Tuple<double> &pitch,
-               // Float, because carrier frequency can be set only to specific values
                const Interval<float> &txFrequencyRange,
                const Interval<Voltage> &voltageRange,
                const double curvatureRadius,

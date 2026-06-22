@@ -117,9 +117,9 @@ the system with `start_scheme()` method), and which currently require performing
 | Aperture                                           | No                                | session.upload(),                       | Yes (local)                      |
 |                                                    |                                   | arrus.ops.us4r.Rx()                     |                                  |
 +----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
-| Sample Range                                       | No                                | session.upload(),                       | Yes (local), however all Rxs     |
-|                                                    |                                   | arrus.ops.us4r.Rx()                     | must acquire the same number of  |
-|                                                    |                                   |                                         | samples                          |
+| Sample Range                                       | No                                | session.upload(),                       | | Yes (local),                   |
+|                                                    |                                   | arrus.ops.us4r.Rx()                     | | however all Rxs must acquire   |
+|                                                    |                                   |                                         | | the same number of samples     |
 +----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
 | Downsampling factor                                | No                                | session.upload(),                       | No (global per sequence)         |
 |                                                    |                                   | arrus.ops.us4r.Rx()                     |                                  |
@@ -152,6 +152,10 @@ the system with `start_scheme()` method), and which currently require performing
 | **TX/RX**                                                                                                                                                           |
 +----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
 | PRI                                                | No                                | session.upload(), arrus.ops.us4r.TxRx() | Yes (local)                      |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| **TX/RX sequence**                                                                                                                                                  |
++----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
+| Sequence first, last TX/RX                         | Yes                               | session.set_subsequences()              | -                                |
 +----------------------------------------------------+-----------------------------------+-----------------------------------------+----------------------------------+
 
 

@@ -150,7 +150,6 @@ public:
 
     /**
      * Returns probe settings for probe 0.
-     * TODO (ARRUS-276) deprecated, will be removed in v0.12.0
      */
     std::optional<ProbeSettings> getProbeSettings() const {
         if(probeSettings.empty()) {
@@ -173,7 +172,8 @@ public:
 
     /**
      * Returns channels mask to be applied for Probe:0 TX/RX apertures.
-     * DEPRECATED (v0.11.0): please use getChannelsMask(probeNr).
+     *
+     * DEPRECATED (since v0.11.0): please use getChannelsMask(probeNr).
      */
     const std::unordered_set<ChannelIdx> &getChannelsMask() const {
         return getChannelsMaskForProbe(0);

@@ -97,6 +97,25 @@ Devices
 .. doxygenclass:: arrus::devices::Us4RSettings
     :members:
 
+.. doxygenclass:: arrus::devices::ProbeAdapterSettings
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::devices::ProbeSettings
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::devices::us4r::IOSettings
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::devices::us4r::IOSettingsBuilder
+    :project: arrus
+    :members:
+
+.. doxygenenum:: arrus::devices::us4r::IOCapability
+    :project: arrus
+
 .. doxygenclass:: arrus::devices::Us4RTxRxLimits
     :members:
 
