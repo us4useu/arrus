@@ -32,7 +32,6 @@ matlab_add_mex(
     LINK_TO
     arrus-core
     Boost::boost
-    Microsoft.GSL::GSL
 )
 ################################################################################
 # Include directories

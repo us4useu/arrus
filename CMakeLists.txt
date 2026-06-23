@@ -115,7 +115,6 @@ find_package(Boost REQUIRED COMPONENTS log program_options)
 find_package(Protobuf REQUIRED)
 # Use project root to search for .proto files.
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
-find_package(Microsoft.GSL REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(std4us REQUIRED)
 

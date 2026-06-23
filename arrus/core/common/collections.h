@@ -11,8 +11,8 @@
 #include <stdexcept>
 #include <iterator>
 #include <std4us/string.h>
+#include <span>
 
-#include <gsl/span>
 #include <boost/range/combine.hpp>
 
 #include "arrus/core/api/arrus.h"

@@ -2,7 +2,6 @@
 #define ARRUS_CORE_DEVICES_TXRXPARAMETERS_H
 
 #include <format>
-#include <gsl/gsl>
 #include <ostream>
 #include <std4us/string.h>
 #include <utility>

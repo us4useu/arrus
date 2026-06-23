@@ -269,7 +269,6 @@ target_link_libraries(${TARGET_NAME}
     std4us::std4us
     protobuf::libprotobuf
     Eigen3::Eigen
-    Microsoft.GSL::GSL
     ${ARRUS_OS_DEPS}
     ${CMAKE_DL_LIBS}
 )

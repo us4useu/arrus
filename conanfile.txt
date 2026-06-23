@@ -1,6 +1,5 @@
 [requires]
 boost/1.90.0
-ms-gsl/4.2.1
 gtest/1.17.0
 eigen/5.0.1
 protobuf/7.35.0

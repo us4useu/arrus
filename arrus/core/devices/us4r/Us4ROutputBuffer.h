@@ -4,7 +4,6 @@
 #include <chrono>
 #include <condition_variable>
 #include <format>
-#include <gsl/span>
 #include <iostream>
 #include <mutex>
 

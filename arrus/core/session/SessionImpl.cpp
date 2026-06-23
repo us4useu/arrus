@@ -1,7 +1,6 @@
 #include "arrus/core/session/SessionImpl.h"
 
 #include <format>
-#include <gsl/gsl>
 #include <memory>
 #include <std4us/string.h>
 

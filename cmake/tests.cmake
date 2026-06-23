@@ -28,7 +28,6 @@ function(create_core_test test_src)
     target_link_libraries(${target_name}
         GTest::GTest
         Boost::boost
-        Microsoft.GSL::GSL
         Eigen3::Eigen
         ${other_deps})
     target_include_directories(
