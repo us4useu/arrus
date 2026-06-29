@@ -1,7 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS // Avoid the error about getenv being unsafe.
 
 #include "arrus/core/api/io/settings.h"
-#include <boost/filesystem.hpp>
 #include <cstdlib>
 #include <fcntl.h>
 #include <filesystem>
@@ -629,19 +628,19 @@ GpuSettings readGpuSettings(const proto::GpuSettings &gpu) {
 SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
     // Read ARRUS_PATH.
-    const char *arrusPathStr = std::getenv(ARRUS_PATH_KEY);
-    boost::filesystem::path arrusPath;
-    if (arrusPathStr != nullptr) {
+    auto arrusPathStr = std::string(std::getenv(ARRUS_PATH_KEY));
+    std::filesystem::path arrusPath;
+    if (!arrusPathStr.empty()) {
         arrusPath = arrusPathStr;
     }
     // Read and validate session.
-    boost::filesystem::path sessionSettingsPath{filepath};
+    std::filesystem::path sessionSettingsPath{filepath};
     // Try with the provided path first.
-    if (!boost::filesystem::is_regular_file(sessionSettingsPath)) {
+    if (!std::filesystem::is_regular_file(sessionSettingsPath)) {
         // Next, try with ARRUS_PATH.
         if (!arrusPath.empty() && sessionSettingsPath.is_relative()) {
             sessionSettingsPath = arrusPath / sessionSettingsPath;
-            if (!boost::filesystem::is_regular_file(sessionSettingsPath)) {
+            if (!std::filesystem::is_regular_file(sessionSettingsPath)) {
                 throw IllegalArgumentException(std::format("File not found {}.", filepath));
             }
         } else {
@@ -663,18 +662,18 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     if (!s->dictionary_file().empty()) {
         std::string dictionaryPathStr;
         // 1. Try to find the file relative to the current working directory.
-        if (boost::filesystem::is_regular_file(s->dictionary_file())) {
+        if (std::filesystem::is_regular_file(s->dictionary_file())) {
             dictionaryPathStr = s->dictionary_file();
         } else {
             // 2. Try to use the parent directory of session settings.
             auto dictP = sessionSettingsPath.parent_path() / s->dictionary_file();
-            if (boost::filesystem::is_regular_file(dictP)) {
+            if (std::filesystem::is_regular_file(dictP)) {
                 dictionaryPathStr = dictP.string();
             } else {
                 // 3. Try to use ARRUS_PATH, if available.
                 if (!arrusPath.empty()) {
-                    boost::filesystem::path arrusDicP = arrusPath / s->dictionary_file();
-                    if (boost::filesystem::is_regular_file(arrusDicP)) {
+                    std::filesystem::path arrusDicP = arrusPath / s->dictionary_file();
+                    if (std::filesystem::is_regular_file(arrusDicP)) {
                         dictionaryPathStr = arrusDicP.string();
                     } else {
                         throw IllegalArgumentException(

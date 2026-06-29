@@ -60,12 +60,12 @@ namespace {
  * as it is currently not explicitly supported by ARRUS logging.
  * This may, however, be supported in the future.
  */
-boost::filesystem::path resolveLogFilePath(const std::string &filepath) {
-    boost::filesystem::path p(filepath);
+std::filesystem::path resolveLogFilePath(const std::string &filepath) {
+    std::filesystem::path p(filepath);
     try {
-        return boost::filesystem::weakly_canonical(boost::filesystem::absolute(p));
-    } catch (const boost::filesystem::filesystem_error &) {
-        return boost::filesystem::absolute(p);
+        return std::filesystem::weakly_canonical(std::filesystem::absolute(p));
+    } catch (const std::filesystem::filesystem_error &) {
+        return std::filesystem::absolute(p);
     }
 }
 
@@ -115,7 +115,7 @@ void Logging::LoggingImpl::addTextSink(std::shared_ptr<std::ostream> ostream, Lo
 }
 
 void Logging::LoggingImpl::addLogFile(const std::string &filepath, LogSeverity minSeverity) {
-    boost::filesystem::path resolved = resolveLogFilePath(filepath);
+    std::filesystem::path resolved = resolveLogFilePath(filepath);
     if (!registeredFiles.insert(resolved).second) { // .second == inserted: bool?
         return;
     }

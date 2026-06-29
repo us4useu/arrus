@@ -2,13 +2,13 @@
 #define ARRUS_CORE_API_COMMON_LOGGING_H
 
 #include <boost/core/null_deleter.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/sinks/sync_frontend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/support/date_time.hpp>
+#include <filesystem>
 #include <memory>
 #include <set>
 #include <string>
@@ -53,7 +53,7 @@ namespace arrus {
             private:
                 boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>> 
                     clogSink;
-                std::set<boost::filesystem::path> registeredFiles;
+                std::set<std::filesystem::path> registeredFiles;
             };
 
         explicit Logging(std::unique_ptr<LoggingImpl> pImpl);
