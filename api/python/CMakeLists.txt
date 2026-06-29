@@ -151,9 +151,9 @@ if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             COMMAND
             ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_BINARY_DIR}/tmp/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/arrus
-            #COMMAND
-            #${CMAKE_COMMAND} -E copy_directory
-            #${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
+            COMMAND
+            ${CMAKE_COMMAND} -E copy_directory
+            ${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
             COMMAND
             ${CMAKE_COMMAND} -E copy
             ${ARRUS_TARGET_SHARED_OBJECT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/arrus

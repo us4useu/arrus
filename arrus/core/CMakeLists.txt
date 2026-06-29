@@ -32,6 +32,10 @@ protobuf_generate(OUT_VAR PROTO_SRC
     io/proto/devices/GpuSettings.proto
     io/proto/devices/us4r/HVPSFuseSettings.proto
 )
+
+# ClangCL on Windows generates a -Winvalid-offsetof warning for every usage of offsetoff 
+# in the generated protobuf files. Silence it, since it is a false positive.
+set_source_files_properties(${PROTO_SRC} PROPERTIES COMPILE_FLAGS "-Wno-invalid-offsetof")
 ################################################################################
 # Target
 ################################################################################
@@ -265,6 +269,7 @@ target_link_libraries(${TARGET_NAME}
     Us4::Us4RDBAR
     Us4::Us4RPSC
     Boost::boost
+    Boost::log
     Boost::filesystem
     std4us::std4us
     protobuf::libprotobuf
