@@ -29,6 +29,7 @@ function(create_core_test test_src)
         GTest::GTest
         Boost::boost
         Eigen3::Eigen
+        std4us::std4us
         ${other_deps})
     target_include_directories(
         ${target_name}

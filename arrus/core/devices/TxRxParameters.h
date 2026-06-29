@@ -350,7 +350,7 @@ public:
         }
         os << " n repeats: " << sequence.getNRepeats() << ", ";
         os << " SRI: " << std::to_string(sequence.getSri().value_or(0.0f)) << ", ";
-        os << " TGC curve: " << std4us::join(sequence.getTgcCurve(), ", ");
+        os << " TGC curve: " << std4us::to_string(sequence.getTgcCurve());
         os << std::endl;
         return os;
     }

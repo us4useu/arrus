@@ -5,6 +5,8 @@
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/probe/ProbeSettingsValidator.h"
 
+#include <std4us/string.h>
+
 namespace {
 using namespace arrus;
 using namespace arrus::devices;
@@ -27,10 +29,10 @@ struct TestProbeSettings {
     friend std::ostream &
     operator<<(std::ostream &os, const TestProbeSettings &settings) {
         os << "modelId: " << settings.modelId
-           << " numberOfElements: " << toString(settings.numberOfElements)
-           << " pitch: " << toString(settings.pitch)
-           << " txFrequencyRange: " << toString(settings.txFrequencyRange)
-           << " channelMapping: " << toString(settings.channelMapping);
+           << " numberOfElements: " << std4us::to_string(settings.numberOfElements)
+           << " pitch: " << std4us::to_string(settings.pitch)
+           << " txFrequencyRange: " << std4us::to_string(settings.txFrequencyRange)
+           << " channelMapping: " << std4us::to_string(settings.channelMapping);
         return os;
     }
 };

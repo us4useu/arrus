@@ -206,14 +206,9 @@ protected:
     void expectOneOf(const std::string &parameter, U value, Container dictionary, const std::string &msg = "") {
         if(dictionary.find(value) == dictionary.end()) {
             // Concatenate and sort dictionary values.
-            std::vector<std::string> stringRepresentation;
-            std::transform(std::begin(dictionary), std::end(dictionary), std::back_inserter(stringRepresentation),
-                           [](auto &val) {
-                               return boost::lexical_cast<std::string>((U) val);
-                           });
             errors.emplace(parameter, std::format("Value '{}{}' should be one of: '{}' (found: '{}')",
                                                     parameter, msg,
-                                                    std4us::join(stringRepresentation, ", "),
+                                                    std4us::join(dictionary, ", "),
                                                     value));
         }
     }

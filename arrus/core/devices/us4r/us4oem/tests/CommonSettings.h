@@ -8,6 +8,8 @@
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMDescriptor.h"
 
+#include <std4us/string.h>
+
 using namespace arrus;
 using namespace arrus::devices;
 
@@ -38,13 +40,13 @@ struct TestUs4OEMSettings {
 
     friend std::ostream &
     operator<<(std::ostream &os, const TestUs4OEMSettings &settings) {
-        os << "channelMapping: " << toString(settings.channelMapping)
-           << " dtgcAttenuation: " << toString(settings.dtgcAttenuation)
+        os << "channelMapping: " << std4us::to_string(settings.channelMapping)
+           << " dtgcAttenuation: " << std4us::to_string(settings.dtgcAttenuation)
            << " pgaGain: " << (int) settings.pgaGain
            << " lnaGain: " << (int) settings.lnaGain
            << " lpfCutoff: " << settings.lpfCutoff
-           << " activeTermination: " << toString(settings.activeTermination)
-           << " tgcSamples: " << toString(settings.tgcSamples);
+           << " activeTermination: " << std4us::to_string(settings.activeTermination)
+           << " tgcSamples: " << std4us::to_string(settings.tgcSamples);
 
         for(const auto &invalidParameter : settings.invalidParameters) {
             os << " invalidParameter: " << invalidParameter;
