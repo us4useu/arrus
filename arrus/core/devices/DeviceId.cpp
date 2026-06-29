@@ -98,10 +98,8 @@ DeviceId DeviceId::parse(const std::string &deviceId) {
                 "(got: '{}')", deviceId
         ));
     }
-    auto deviceTypeStr = deviceIdComponents[0];
-    auto ordinalStr = deviceIdComponents[1];
-    std4us::trim(deviceTypeStr);
-    std4us::trim(ordinalStr);
+    auto deviceTypeStr = std4us::trim(deviceIdComponents[0]);
+    auto ordinalStr = std4us::trim(deviceIdComponents[1]);
     // Device Type.
     DeviceType deviceTypeEnum = parseToDeviceTypeEnum(deviceTypeStr);
 

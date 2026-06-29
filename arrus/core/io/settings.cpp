@@ -628,9 +628,9 @@ GpuSettings readGpuSettings(const proto::GpuSettings &gpu) {
 SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
     // Read ARRUS_PATH.
-    auto arrusPathStr = std::string(std::getenv(ARRUS_PATH_KEY));
+    const char *arrusPathStr = std::getenv(ARRUS_PATH_KEY);
     std::filesystem::path arrusPath;
-    if (!arrusPathStr.empty()) {
+    if (arrusPathStr != nullptr) {
         arrusPath = arrusPathStr;
     }
     // Read and validate session.
@@ -701,6 +701,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     DictionaryProtoValidator dictionaryValidator("dictionary");
     dictionaryValidator.validate(d);
     dictionaryValidator.throwOnErrors();
+    std::cout << "past part 3" << std::endl;
 
     SettingsDictionary dictionary = readDictionary(d.get());
     SessionSettingsBuilder settingsBuilder;

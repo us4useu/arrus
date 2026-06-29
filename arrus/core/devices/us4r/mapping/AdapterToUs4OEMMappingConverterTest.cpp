@@ -1,5 +1,7 @@
 // Welcome in the Windows API hell...
-# define NOMINMAX
+// Update: even more hell, this is already defined somewhere.
+// Keeping it just in case.
+//# define NOMINMAX
 
 #include <gtest/gtest.h>
 
@@ -625,8 +627,8 @@ TEST_F(A2OConverterTestMappingEsaote3, ProducesCorrectFCMSingleDistributedOperat
     }
 
     std::vector<FrameChannelMapping::Handle> fcms;
-    fcms.push_back(std::move(builder0.build()));
-    fcms.push_back(std::move(builder1.build()));
+    fcms.push_back(builder0.build());
+    fcms.push_back(builder1.build());
 
     auto converter = createConverter();
     convert(converter, seq);
@@ -699,8 +701,8 @@ TEST_F(A2OConverterTestMappingEsaote3, ProducesCorrectFCMSingleDistributedOperat
     }
 
     std::vector<FrameChannelMapping::Handle> fcms;
-    fcms.push_back(std::move(builder0.build()));
-    fcms.push_back(std::move(builder1.build()));
+    fcms.push_back(builder0.build());
+    fcms.push_back(builder1.build());
 
     auto converter = createConverter();
     convert(converter, seq);
@@ -785,8 +787,8 @@ TEST_F(A2OConverterTestMappingEsaote3, ProducesCorrectFCMForMultiOpRxAperture) {
     }
 
     std::vector<FrameChannelMapping::Handle> fcms;
-    fcms.push_back(std::move(builder0.build()));
-    fcms.push_back(std::move(builder1.build()));
+    fcms.push_back(builder0.build());
+    fcms.push_back(builder1.build());
 
     auto converter = createConverter();
     convert(converter, seq);
@@ -871,8 +873,8 @@ TEST_F(A2OConverterTestMappingEsaote3, AppliesPaddingToFCMCorrectly) {
     // No active channels
 
     std::vector<FrameChannelMapping::Handle> fcms;
-    fcms.push_back(std::move(builder0.build()));
-    fcms.push_back(std::move(builder1.build()));
+    fcms.push_back(builder0.build());
+    fcms.push_back(builder1.build());
 
     auto converter = createConverter();
     convert(converter, seq);
@@ -927,8 +929,8 @@ TEST_F(A2OConverterTestMappingEsaote3, AppliesPaddingToFCMCorrectlyRxApertureUsi
     }
 
     std::vector<FrameChannelMapping::Handle> fcms;
-    fcms.push_back(std::move(builder0.build()));
-    fcms.push_back(std::move(builder1.build()));
+    fcms.push_back(builder0.build());
+    fcms.push_back(builder1.build());
 
     auto converter = createConverter();
     convert(converter, seq);
@@ -986,8 +988,8 @@ TEST_F(A2OConverterTestMappingEsaote3, AppliesPaddingToFCMCorrectlyRightSide) {
     }
 
     std::vector<FrameChannelMapping::Handle> fcms;
-    fcms.push_back(std::move(builder0.build()));
-    fcms.push_back(std::move(builder1.build()));
+    fcms.push_back(builder0.build());
+    fcms.push_back(builder1.build());
 
     auto converter = createConverter();
     convert(converter, seq);

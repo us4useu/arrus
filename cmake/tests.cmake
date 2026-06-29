@@ -26,7 +26,9 @@ function(create_core_test test_src)
         ${other_srcs}
     )
     target_link_libraries(${target_name}
-        GTest::GTest
+        GTest::gtest
+        GTest::gmock
+        GTest::gmock_main
         Boost::boost
         Eigen3::Eigen
         std4us::std4us

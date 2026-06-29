@@ -4,6 +4,7 @@
 #include "arrus/common/utils.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/ops/us4r/Waveform.h"
+#include <algorithm>
 #include <format>
 #include <vector>
 
