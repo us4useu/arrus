@@ -1,7 +1,11 @@
+#define _CRT_SECURE_NO_WARNINGS // Avoid the error about getenv being unsafe.
+
 #include "arrus/core/api/io/settings.h"
 #include <boost/filesystem.hpp>
 #include <cstdlib>
 #include <fcntl.h>
+#include <filesystem>
+#include <fstream>
 #include <format>
 #include <memory>
 #include <std4us/string.h>
@@ -11,18 +15,6 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/session/SessionSettings.h"
 #include "cfg/default.h"
-
-#ifdef _MSC_VER
-
-#include <io.h>
-#define ARRUS_OPEN_FILE _open
-
-#elif ARRUS_LINUX
-
-#include <fcntl.h>
-#define ARRUS_OPEN_FILE open
-
-#endif
 
 #include "arrus/common/asserts.h"
 #include "arrus/common/compiler.h"
@@ -51,10 +43,11 @@ using namespace ::arrus::session;
 
 template<typename T>
 std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
-    int fd = ARRUS_OPEN_FILE(filepath.c_str(), O_RDONLY);
-    ARRUS_REQUIRES_TRUE(fd != 0, std::format("Could not open file {}", filepath));
-    google::protobuf::io::FileInputStream input(fd);
-    input.SetCloseOnDelete(true);
+    // Open file and create input stream using std::filesystem
+    std::filesystem::path path(filepath);
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    ARRUS_REQUIRES_TRUE(file.is_open(), std::format("Could not open file {}", filepath));
+    google::protobuf::io::IstreamInputStream input(&file);
     auto result = std::make_unique<T>();
     bool parseOk = google::protobuf::TextFormat::Parse(&input, result.get());
     if (!parseOk) {
@@ -727,3 +720,5 @@ SessionSettings readSessionSettings(const std::string &filepath) {
 }
 
 }// namespace arrus::io
+
+#undef _CRT_SECURE_NO_WARNINGS
