@@ -56,8 +56,8 @@ public:
 
     Device::RawHandle getDevice(const std::string &path) override {
         auto [root, tail] = getPathRoot(path);
-        std4us::trim(root);
-        std4us::trim(tail);
+        root = std4us::trim(root);
+        tail = std4us::trim(tail);
         if (!tail.empty()) {
             throw IllegalArgumentException(std::format(
                 "Us4R devices allows access only to the top-level devices (got relative path: '{}')", path));

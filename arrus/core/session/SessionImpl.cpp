@@ -87,8 +87,7 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path
     return rootDevice;
 }
 std::string SessionImpl::sanitizeDeviceId(const std::string &path) const {
-    std::string sanitizedPath{path};
-    std4us::trim(sanitizedPath);
+    std::string sanitizedPath{std4us::trim(path)};
     // Get the root node (without the / ) and check if there is any tail
     auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
     if(! tail.empty()) {
@@ -245,8 +244,7 @@ void SessionImpl::setParameters(const Parameters &params) {
         const std::string &key = item.first;
         int value = item.second;
 
-        std::string sanitizedKey{key};
-        std4us::trim(sanitizedKey);
+        std::string sanitizedKey{std4us::trim(key)};
 
         // parse path
         auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedKey);
