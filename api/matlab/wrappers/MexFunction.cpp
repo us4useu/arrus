@@ -49,9 +49,7 @@ void MexFunction::operator()(ArgumentList outputs, ArgumentList inputs) {
                 ARRUS_REQUIRES_AT_LEAST(inputs.size(), 4, "A path to the log file and logging level are required.");
                 std::string filepath = inputs[2][0];
                 arrus::LogSeverity level = convertToLogSeverity(inputs[3]);
-                std::shared_ptr<std::ostream> logFileStream =
-                    std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
-                this->logging->addOutputStream(logFileStream, level);
+                this->logging->addLogFile(filepath, level);
             } else {
                 throw arrus::IllegalArgumentException(arrus::format("Unrecognized global function: {}", methodId));
             }

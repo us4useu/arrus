@@ -12,7 +12,11 @@
 namespace arrus::devices::us4r {
 
 /**
- * Us4R IO settings (capabilities, etc.)
+ * Us4R IO settings (capabilities, etc.).
+ *
+ * This class specifies the mapping from IO address (IO ordinal number) to IO capability.
+ *
+ * Please use \ref IOSettingsBuilder to create an instance of this class.
  */
 class IOSettings {
 public:
@@ -66,16 +70,27 @@ private:
  */
 class IOSettingsBuilder {
 public:
+    /**
+     * Assigns probe-connected check capability to the given (us4OEM, IO number).
+     */
     IOSettingsBuilder &setProbeConnectedCheckCapability(const IOAddressSet& addresses) {
         addr.emplace(IOCapability::PROBE_CONNECTED_CHECK, addresses);
         return *this;
     }
 
+    /**
+     * Assigns frame-metadata capability to the given (us4OEM, IO number).
+     *
+     * NOTE: frame-metadata capability (e.g. external encoder metadata) requires us4OEM custom firmware.
+     */
     IOSettingsBuilder &setFrameMetadataCapability(const IOAddressSet& addresses) {
         addr.emplace(IOCapability::FRAME_METADATA, addresses);
         return *this;
     }
 
+    /**
+     * Builds the IOSettings for the selected IO - capability mappings.
+     */
     IOSettings build() {
         return IOSettings(addr);
     }

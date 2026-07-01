@@ -20,6 +20,7 @@ protected:
         return builder.setStopOnOverflow(false)
                .setNumberOfElements(1)
                .setLayoutTo(oemBuffers)
+               .setUseP2pDma(false)
                .build();
     }
 

@@ -15,8 +15,9 @@ public:
     using ChannelMapping = std::vector<ChannelIdx>;
 
     /**
+     * Probe settings.
      *
-     * @param model
+     * @param model probe model specification
      * @param channelMapping flattened channel mappings. For 2-D array channel
      *    mapping is row major order.
      */

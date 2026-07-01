@@ -155,6 +155,7 @@ namespace std {
 %template(VectorUInt16) vector<unsigned short>;
 %template(VectorUInt8) vector<unsigned char>;
 %template(VectorInt8) vector<int8_t>;
+%template(VectorInt64) vector<int64_t>;
 %template(VectorSizet) vector<size_t>;
 %template(PairUint32) pair<unsigned, unsigned>;
 %template(PairChannelIdx) pair<unsigned short, unsigned short>;
@@ -242,10 +243,7 @@ using namespace ::arrus;
     }
 
     void addLogFile(const std::string &filepath, const ::arrus::LogSeverity level) {
-        std::shared_ptr<std::ostream> logFileStream =
-            // append to the end of the file
-            std::make_shared<std::ofstream>(filepath.c_str(), std::ios_base::app);
-        LOGGING_FACTORY->addOutputStream(logFileStream, level);
+        LOGGING_FACTORY->addLogFile(filepath, level);
     }
 
     void setClogLevel(const ::arrus::LogSeverity level) {
@@ -377,6 +375,7 @@ using namespace ::arrus::session;
 
 %shared_ptr(arrus::session::Metadata);
 %shared_ptr(arrus::session::Session);
+%shared_ptr(arrus::session::SessionSettings);
 %ignore createSession;
 
 // Ignore overloaded `run` methods -- the full signature will be used only.
@@ -429,6 +428,17 @@ void arrusSessionRun(std::shared_ptr<arrus::session::Session> session, bool asyn
 void arrusUs4OEMWaitForHVPSMeasuerementDone(arrus::devices::Us4OEM *us4oem, std::optional<long long> timeout) {
     ArrusPythonGILUnlock unlock;
     us4oem->waitForHVPSMeasurementDone(timeout);
+}
+
+void arrusUs4RSetVoltage(arrus::devices::Us4R *us4r, unsigned char voltage) {
+    ArrusPythonGILUnlock unlock;
+    us4r->setVoltage(voltage);
+}
+
+void arrusUs4RSetVoltageMulti(arrus::devices::Us4R *us4r,
+                              const std::vector<arrus::devices::HVVoltage> &voltages) {
+    ArrusPythonGILUnlock unlock;
+    us4r->setVoltage(voltages);
 }
 
 
@@ -622,6 +632,7 @@ void OptionalVectorFloatPushBack(std::vector<std::optional<float>> &vector, std:
 #include "arrus/core/api/devices/probe/ProbeModelId.h"
 #include "arrus/core/api/devices/us4r/HVSettings.h"
 #include "arrus/core/api/devices/us4r/HVModelId.h"
+#include "arrus/core/api/devices/us4r/Us4OEMInterrupt.h"
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
 #include "arrus/core/api/session/SessionSettings.h"
 
@@ -645,8 +656,140 @@ using namespace ::us4us::us4r;
 %ignore operator<<(std::ostream &os, const HVModelId &id);
 %include "arrus/core/api/devices/us4r/HVModelId.h"
 %include "arrus/core/api/devices/us4r/HVSettings.h"
+%include "arrus/core/api/devices/us4r/Us4OEMInterrupt.h"
 %include "arrus/core/api/devices/us4r/Us4RSettings.h"
 %include "arrus/core/api/session/SessionSettings.h"
 
 // ------------------------------------------ IO
 %include "arrus/core/api/io/settings.h"
+
+// ------------------------------------------ SYSTEM INTERRUPT CALLBACK
+%feature("director") Us4OEMInterruptListener;
+
+%inline %{
+
+/**
+ * Director-style listener Python users subclass to receive us4OEM system
+ * interrupts. Override one of the per-interrupt methods (on_probe_not_connected,
+ * on_pulser_interrupt, on_tx_timeout, on_watchdog0, on_watchdog1) to handle a
+ * single interrupt, or override on_any_interrupt to handle every supported
+ * interrupt with one function. If both kinds of overrides are provided, the
+ * specific per-interrupt override wins for that interrupt.
+ *
+ * The runtime calls these methods from a us4r-api interrupt thread; the C++
+ * adapter acquires the GIL before invoking them.
+ *
+ * The listener instance must remain alive for as long as the Session that
+ * was created from the SessionSettings holding the adapted callbacks.
+ */
+class Us4OEMInterruptListener {
+public:
+    Us4OEMInterruptListener() = default;
+    virtual ~Us4OEMInterruptListener() = default;
+
+    /**
+     * Catch-all hook invoked by the default per-interrupt methods.
+     * Override to handle every supported interrupt with a single function.
+     */
+    virtual void on_any_interrupt(arrus::devices::Us4OEMInterrupt /*interrupt*/,
+                                  arrus::devices::Ordinal /*oem*/) {}
+
+    virtual void on_probe_not_connected(arrus::devices::Ordinal oem) {
+        on_any_interrupt(arrus::devices::Us4OEMInterrupt::PROBE_NOT_CONNECTED, oem);
+    }
+    virtual void on_pulser_interrupt(arrus::devices::Ordinal oem) {
+        on_any_interrupt(arrus::devices::Us4OEMInterrupt::PULSER_INTERRUPT, oem);
+    }
+    virtual void on_tx_timeout(arrus::devices::Ordinal oem) {
+        on_any_interrupt(arrus::devices::Us4OEMInterrupt::TX_TIMEOUT, oem);
+    }
+    virtual void on_watchdog0(arrus::devices::Ordinal oem) {
+        on_any_interrupt(arrus::devices::Us4OEMInterrupt::WATCHDOG_IRQ0, oem);
+    }
+    virtual void on_watchdog1(arrus::devices::Ordinal oem) {
+        on_any_interrupt(arrus::devices::Us4OEMInterrupt::WATCHDOG_IRQ1, oem);
+    }
+    virtual void on_hvps_fuse(arrus::devices::Ordinal oem) {
+        on_any_interrupt(arrus::devices::Us4OEMInterrupt::HVPS_FUSE, oem);
+    }
+};
+
+%};
+
+%{
+namespace {
+
+template <class F>
+arrus::devices::Us4OEMInterruptCallback
+makeListenerCallback(Us4OEMInterruptListener *listener, F method) {
+    return [listener, method](arrus::devices::Ordinal oem) {
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        try {
+            (listener->*method)(oem);
+        } catch (const std::exception &e) {
+            std::cerr << "Exception in interrupt listener: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "Unhandled exception in interrupt listener" << std::endl;
+        }
+        PyGILState_Release(gstate);
+    };
+}
+
+}// namespace
+%}
+
+%inline %{
+
+/**
+ * Loads SessionSettings from a prototxt configuration file and attaches the
+ * given listener as the us4OEM interrupt callbacks for every Us4R in the
+ * configuration. One callback is registered per supported interrupt; each
+ * dispatches to the matching listener method. Returns an opaque shared
+ * handle that can be passed to createSessionSharedHandleFromSettings.
+ */
+std::shared_ptr<arrus::session::SessionSettings>
+createSessionSettingsFrom(const std::string &filepath,
+                          Us4OEMInterruptListener &listener) {
+    auto loaded = arrus::io::readSessionSettings(filepath);
+
+    Us4OEMInterruptListener *listenerPtr = &listener;
+    arrus::devices::Us4OEMInterruptCallbacksMap cbs;
+    cbs[arrus::devices::Us4OEMInterrupt::PROBE_NOT_CONNECTED] =
+        makeListenerCallback(listenerPtr, &Us4OEMInterruptListener::on_probe_not_connected);
+    cbs[arrus::devices::Us4OEMInterrupt::PULSER_INTERRUPT] =
+        makeListenerCallback(listenerPtr, &Us4OEMInterruptListener::on_pulser_interrupt);
+    cbs[arrus::devices::Us4OEMInterrupt::TX_TIMEOUT] =
+        makeListenerCallback(listenerPtr, &Us4OEMInterruptListener::on_tx_timeout);
+    cbs[arrus::devices::Us4OEMInterrupt::WATCHDOG_IRQ0] =
+        makeListenerCallback(listenerPtr, &Us4OEMInterruptListener::on_watchdog0);
+    cbs[arrus::devices::Us4OEMInterrupt::WATCHDOG_IRQ1] =
+        makeListenerCallback(listenerPtr, &Us4OEMInterruptListener::on_watchdog1);
+    cbs[arrus::devices::Us4OEMInterrupt::HVPS_FUSE] =
+        makeListenerCallback(listenerPtr, &Us4OEMInterruptListener::on_hvps_fuse);
+
+    arrus::session::SessionSettingsBuilder builder;
+    for (const auto &u : loaded.getUs4Rs()) {
+        builder.addUs4R(arrus::devices::Us4RSettingsBuilder(u)
+                            .setInterruptCallbacks(cbs)
+                            .build());
+    }
+    for (const auto &f : loaded.getFiles()) {
+        builder.addFile(f);
+    }
+    for (size_t i = 0; i < loaded.getNumberOfGpus(); ++i) {
+        builder.addGpu(loaded.getGpuSettings(i));
+    }
+    return std::make_shared<arrus::session::SessionSettings>(builder.build());
+}
+
+/**
+ * Creates a Session from a previously built SessionSettings handle.
+ */
+std::shared_ptr<arrus::session::Session>
+createSessionSharedHandleFromSettings(
+    const std::shared_ptr<arrus::session::SessionSettings> &settings) {
+    return std::shared_ptr<arrus::session::Session>(
+        arrus::session::createSession(*settings).release());
+}
+
+%};

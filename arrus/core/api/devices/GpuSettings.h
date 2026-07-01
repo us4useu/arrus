@@ -13,15 +13,14 @@ public:
 
     /**
      * Returns the GPU memory limit as a percentage of total VRAM (e.g., 0.5 = 50%).
-     * 
+     *
      * @return Memory limit percentage, or std::nullopt if no limit is set
      */
     const std::optional<float>& getMemoryLimitPercentage() const { return memoryLimitPercentage; }
 
-
     /**
      * Returns whether to use GPU memory pool.
-     * 
+     *
      * @return True if memory pool should be used, false otherwise
      */
     bool isUseMemoryPool() const { return useMemoryPool; }

@@ -44,6 +44,7 @@ function(create_core_test test_src)
     target_compile_definitions(${target_name} PRIVATE
         ARRUS_CORE_UNIT_TESTS
         _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
+        NOMINMAX
         ${compile_definitions})
     add_test(NAME ${test_src} COMMAND ${target_name})
 

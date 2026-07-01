@@ -90,7 +90,8 @@ public:
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::RxLimits {
-                            Interval<uint32>{64, 16384}
+                            // The number of samples must be divisible by 64, therefore 65536-64 = 65472
+                            Interval<uint32>{64, 65472}
                         },
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },
@@ -130,7 +131,7 @@ public:
                             Interval<Voltage>{5, 90}
                         },
                         arrus::ops::us4r::RxLimits {
-                            Interval<uint32>{64, 16384}
+                            Interval<uint32>{64, 65472}
                         },
                         Interval<float>{35e-6f, 1.0f},  // PRI, == (the sequence reprogramming time, 1s)
                     },

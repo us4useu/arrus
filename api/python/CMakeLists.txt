@@ -15,6 +15,18 @@ if (MSVC)
             GENERATED_COMPILE_OPTIONS /Od /EHsc
     )
 endif ()
+# On Linux LP64 (x86_64, aarch64), int64_t is `long int`, not `long long int`.
+# SWIG only emits the matching typedef when SWIGWORDSIZE64 is defined; auto-
+# detection in swigarch.i covers __x86_64__ but not aarch64, so set it
+# explicitly for all 64-bit Linux builds to keep `std::vector<int64_t>`
+# instantiations consistent with the C++ side.
+if (UNIX AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set_property(
+            SOURCE wrappers/core.i
+            PROPERTY
+            COMPILE_OPTIONS -DSWIGWORDSIZE64
+    )
+endif ()
 swig_add_library(py_core
         TYPE SHARED
         LANGUAGE PYTHON

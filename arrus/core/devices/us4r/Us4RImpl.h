@@ -178,6 +178,7 @@ public:
     void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
     void disableHpf() override;
     virtual Us4OEM::Variant getVariant() override;
+    std::vector<int64_t> getHVPSTuningInfo();
 
 private:
     struct VoltageLogbook {

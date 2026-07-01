@@ -225,6 +225,11 @@ public:
     MOCK_METHOD(void, SetCustomSequenceWaveform, (const unsigned short firing, const std::vector<uint32_t>&), (override));
     MOCK_METHOD(float, GetMeasuredHVMVoltage, (), (override));
     MOCK_METHOD(float, GetMeasuredHVPVoltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVP0Voltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVP1Voltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVM0Voltage, (), (override));
+    MOCK_METHOD(float, GetMeasuredHVM1Voltage, (), (override));
+    MOCK_METHOD(std::vector<float>, GetMeasuredVoltages, (), (override));
     MOCK_METHOD((std::pair<float, float>), GetTGCValueRange, (), (const, override));
     MOCK_METHOD(void, BuildSequenceWaveforms, (bool verify), (override));
     MOCK_METHOD(::us4us::us4r::Vector<uint32_t>, RunPulserReadbackTest, (uint32_t), (override));
@@ -246,12 +251,7 @@ public:
     MOCK_METHOD(std::vector<uint16_t>, GetPulsersStatusRegister, (), (override));
     MOCK_METHOD(std::vector<std::string>, GetPulserStatusRegisterDescription, (uint16_t status), (override));
     MOCK_METHOD(void, SetHVPSVoltage, (uint8_t), (override));
-    MOCK_METHOD(void, SetCustomHvpsFuseHV0CurrentThreshold, (float overcurrentLevel), (override));
-    MOCK_METHOD(void, SetCustomHvpsFuseHV1CurrentThreshold, (float overcurrentLevel), (override));
-    MOCK_METHOD(void, SetCustomHvpsFuseHV0StaticVoltageMargin, (float overcurrentLevel), (override));
-    MOCK_METHOD(void, SetCustomHvpsFuseHV0PowerThreshold, (float overpowerLevel), (override));
-    MOCK_METHOD(void, SetCustomHvpsFuseHV1PowerThreshold, (float overpowerLevel), (override));
-    MOCK_METHOD(void, SetCustomHvpsFuseHV1StaticVoltageMargin, (float overcurrentLevel), (override));
+    MOCK_METHOD(void, SetCustomHvpsFuseThresholds, (::us4us::us4r::HvpsRails rail, const ::us4us::us4r::HvpsFuseCustomThresholds& thresholds), (override));
     MOCK_METHOD(int64_t, GetHVPSTuningTimestamp, (), (override));
 };
 

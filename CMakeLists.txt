@@ -65,7 +65,8 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             _WIN32
             # warnings occurs in boost bimap implementation headers
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
-            _CRT_SECURE_NO_WARNINGS)
+            _CRT_SECURE_NO_WARNINGS
+            NOMINMAX)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
     set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror -Wno-psabi")

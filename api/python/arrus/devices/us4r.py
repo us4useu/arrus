@@ -13,7 +13,7 @@ import arrus.kernels
 import arrus.kernels.kernel
 import arrus.kernels.tgc
 from collections.abc import Iterable
-from typing import Optional, Union, Sequence
+from typing import Optional, Union, Sequence, List
 from arrus.devices.probe import ProbeDTO
 
 from arrus.kernels.simple_tx_rx_sequence import get_sample_range
@@ -183,10 +183,13 @@ class Us4R(Device, Ultrasound):
         """
         if len(args) == 1:
             arrus.utils.core.assert_hv_voltage_correct(args[0])
-            self._handle.setVoltage(args[0])
+            # Use the GIL-releasing wrapper: setVoltage can block for >1s and
+            # we must let the interrupt-dispatcher thread acquire the GIL to
+            # invoke any user-registered system interrupt callbacks.
+            arrus.core.arrusUs4RSetVoltage(self._handle, args[0])
         else:
             voltages = arrus.utils.core.convert_to_hv_voltages(args)
-            self._handle.setVoltage(voltages)
+            arrus.core.arrusUs4RSetVoltageMulti(self._handle, voltages)
 
     def disable_hv(self):
         """
@@ -481,7 +484,6 @@ class Us4R(Device, Ultrasound):
         This property is set by default to true.
         """
         return self._handle.setStopOnOverflow(is_stop)
-
     def set_maximum_pulse_length(self, max_length):
         """
         Sets maximum pulse length that can be set during the TX/RX sequence programming.
@@ -490,8 +492,6 @@ class Us4R(Device, Ultrasound):
         :param max_length: maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
         """
         self._handle.setMaximumPulseLength(max_length)
-
-
     def _get_fcm(self, array_id, upload_result, sequence):
         """
         Returns frame channel mapping (FCM) extracted from the given upload result, assuming
@@ -512,7 +512,6 @@ class Us4R(Device, Ultrasound):
             frame_offsets=frame_offsets,
             n_frames=n_frames,
             batch_size=sequence.n_repeats)
-
     def _get_unique_tgc_context_and_tgc(self, sequences, medium):
         # Make sure that every sequence gives us the same TGC curve.
         # For that:
@@ -582,19 +581,22 @@ class Us4R(Device, Ultrasound):
         if isinstance(tgc, Iterable):
             tgc = np.array(tgc)
         return next(iter(tgc_contexts)), tgc
-
     def get_minimum_tgc_value(self):
         return self._handle.getMinimumTGCValue()
-
     def get_maximum_tgc_value(self):
         return self._handle.getMaximumTGCValue()
-
     def get_variant(self) -> Variant:
         """
         Returns variant of the device.
         """
         core_variant = self._handle.getVariant()
         return arrus.devices.us4oem._variant_enum_to_enum(core_variant)
+    
+    def get_hvps_tuning_info(self) -> List[int]:
+        """
+        Returns HVPS tuning info (unix format timestamps (number of seconds) for each OEM if previously tuned)
+        """
+        return list(self._handle.getHVPSTuningInfo())
 
 
 # ------------------------------------------ LEGACY MOCK

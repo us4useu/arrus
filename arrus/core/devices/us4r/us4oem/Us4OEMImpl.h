@@ -4,6 +4,7 @@
 #include "Us4OEMRxMappingRegisterBuilder.h"
 
 #include <iostream>
+#include <thread>
 #include <unordered_set>
 #include <utility>
 
@@ -29,6 +30,22 @@
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
+
+#ifndef US4US_US4R_PROGRAMMING_CHUNK_SIZE
+#define US4US_US4R_PROGRAMMING_CHUNK_SIZE 1024
+#endif
+
+#ifndef US4US_US4R_PROGRAMMING_CHUNK_SLEEP
+#define US4US_US4R_PROGRAMMING_CHUNK_SLEEP 10
+#endif
+
+#define US4US_US4R_PROGRAMMING_CHUNK_PAUSE(idx)                                \
+    do {                                                                       \
+        if (((idx) % US4US_US4R_PROGRAMMING_CHUNK_SIZE) == 0 && (idx) != 0) {  \
+            std::this_thread::sleep_for(                                       \
+                std::chrono::milliseconds(US4US_US4R_PROGRAMMING_CHUNK_SLEEP));\
+        }                                                                      \
+    } while (0)
 
 namespace arrus::devices {
 
@@ -141,6 +158,8 @@ public:
     std::pair<float, float> getTGCValueRange() const override;
 
     void setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) override;
+
+    int64_t getHVPSTuningInfo() override; 
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;

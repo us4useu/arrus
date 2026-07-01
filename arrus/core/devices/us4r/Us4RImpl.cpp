@@ -354,6 +354,10 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     // Set voltages.
     if (isHVPS) {
+        // Set the over-current / over-power settings if specified by the user
+        //
+        setHVPSFuseSettings(hvpsFuseSettings);
+
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
             futures.push_back(std::async(
@@ -398,8 +402,6 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
 
-    // Set the over-current / over-power settings if specified by the user
-    setHVPSFuseSettings(hvpsFuseSettings);
 
 }
 
@@ -512,11 +514,22 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
         us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
         us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
     }
+    // Derive host buffer placement (CPU or GPU) from the scheme's DataBufferSpec.
+    const auto &placement = currentScheme->getOutputBuffer().getPlacement();
+    const auto placementType = placement.getDeviceType();
+    const auto placementOrdinal = placement.getOrdinal();
+    if (!((placementType == DeviceType::CPU || placementType == DeviceType::GPU) && placementOrdinal == 0)) {
+        throw IllegalArgumentException(
+            format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
+                   placement.toString()));
+    }
+    const bool useP2pDma = (placementType == DeviceType::GPU);
     // Create output buffer.
     Us4ROutputBufferBuilder builder;
     buffer = builder.setStopOnOverflow(stopOnOverflow)
                           .setNumberOfElements(hostBufNElements)
                           .setLayoutTo(buffers)
+                          .setUseP2pDma(useP2pDma)
                           .build();
     registerOutputBuffer(buffer.get(), buffers, workMode);
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
@@ -876,10 +889,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     }
 
     // TODO try avoid converting from samples to time then back to samples?
-    uint16 maxNSamples = int16(roundf(maxT * nominalFs));
+    auto maxNSamples = uint32(roundf(maxT * nominalFs));
     // Note: the last TGC sample should be applied before the reception ends.
     // This is to avoid using the same TGC curve between triggers.
-    auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
+    auto values = ::arrus::getRange<uint32>(offset, maxNSamples, tgcT);
     values.push_back(maxNSamples);// TODO(jrozb91) To reconsider (not a full TGC sampling time)
     std::vector<float> time;
     for (auto v : values) {
@@ -1724,28 +1737,30 @@ Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
     return result;
 }
 
+std::vector<int64_t> Us4RImpl::getHVPSTuningInfo() {
+    std::vector<int64_t> result;
+    for(auto &us4oem: us4oems) {
+        result.push_back(us4oem->getHVPSTuningInfo());
+    }
+    return result;
+}
+
 void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
     if(settings.has_value()) {
+        // NOTE: level 1 -> rail 1; level 2 -> rail 0.
+        auto thresholdsRail0 = ::us4us::us4r::HvpsFuseCustomThresholds{
+            settings->getLevel2StaticVoltageMargin(),
+            settings->getLevel2MaxCurrentThreshold(),
+            settings->getLevel2MaxPowerThreshold()
+        };
+        auto thresholdsRail1 = ::us4us::us4r::HvpsFuseCustomThresholds{
+            settings->getLevel1StaticVoltageMargin(),
+            settings->getLevel1MaxCurrentThreshold(),
+            settings->getLevel1MaxPowerThreshold()
+        };
         for(const auto &us4oem: us4oems) {
-            // NOTE: level 1 -> rail 1; level 2 -> rail 0.
-            if(settings->getLevel1MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1PowerThreshold(settings->getLevel1MaxPowerThreshold().value());
-            }
-            if(settings->getLevel1MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1CurrentThreshold(settings->getLevel1MaxCurrentThreshold().value());
-            }
-            if(settings->getLevel1StaticVoltageMargin().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1StaticVoltageMargin(settings->getLevel1StaticVoltageMargin().value());
-            }
-            if(settings->getLevel2MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0PowerThreshold(settings->getLevel2MaxPowerThreshold().value());
-            }
-            if(settings->getLevel2MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0CurrentThreshold(settings->getLevel2MaxCurrentThreshold().value());
-            }
-            if(settings->getLevel2StaticVoltageMargin().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0StaticVoltageMargin(settings->getLevel2StaticVoltageMargin().value());
-            }
+            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV0, thresholdsRail0);
+            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV1, thresholdsRail1);
         }
     }
 }

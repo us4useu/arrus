@@ -1,9 +1,13 @@
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
 
 #include <memory>
+#include <set>
 #include <string>
 
 #include <boost/core/null_deleter.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/sinks/sync_frontend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
@@ -61,6 +65,26 @@ Logger::SharedHandle getDefaultLogger() {
 
 // Internal.
 
+namespace {
+
+/**
+ * Resolves the given path to the canonical/absolute path.
+ *
+ * NOTE: this method intentionally DOES NOT EXPAND the '~' (home) directory,
+ * as it is currently not explicitly supported by ARRUS logging.
+ * This may, however, be supported in the future.
+ */
+boost::filesystem::path resolveLogFilePath(const std::string &filepath) {
+    boost::filesystem::path p(filepath);
+    try {
+        return boost::filesystem::weakly_canonical(boost::filesystem::absolute(p));
+    } catch (const boost::filesystem::filesystem_error &) {
+        return boost::filesystem::absolute(p);
+    }
+}
+
+}
+
 // LoggingImpl.
 typedef boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend> textSink;
 
@@ -106,7 +130,20 @@ public:
         addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
     }
 
+    void addLogFile(const std::string &filepath, LogSeverity minSeverity) {
+        boost::filesystem::path resolved = resolveLogFilePath(filepath);
+        if (!registeredFiles.insert(resolved).second) { // .second == inserted: bool?
+            return;
+        }
+        std::shared_ptr<std::ostream> logFileStream =
+            std::make_shared<std::ofstream>(resolved.string().c_str(), std::ios_base::app);
+        addTextSink(logFileStream, minSeverity, true);
+    }
+
     void addClog(LogSeverity level) {
+        if (this->clogSink != nullptr) {
+            return;
+        }
         boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
         this->clogSink = addTextSinkBoostPtr(stream, level, false);
     }
@@ -128,6 +165,7 @@ public:
     }
 private:
     boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>> clogSink;
+    std::set<boost::filesystem::path> registeredFiles;
 };
 
 // Logging.
@@ -151,6 +189,10 @@ void Logging::setClogLevel(::arrus::LogSeverity level) {
 
 void Logging::addOutputStream(std::shared_ptr<std::ostream> stream, LogSeverity level) {
     this->pImpl->addTextSink(std::move(stream), level, true);
+}
+
+void Logging::addLogFile(const std::string &filepath, LogSeverity level) {
+    this->pImpl->addLogFile(filepath, level);
 }
 
 void Logging::removeAllStreams() {
