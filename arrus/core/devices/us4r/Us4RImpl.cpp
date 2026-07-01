@@ -1665,8 +1665,9 @@ Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, co
 
     std::unordered_set<std::string> sequenceNames;
     for (const auto& s : sequences) {
-        sequenceNames.insert(std4us::trim(s.getName()));
-        arraysBySequence[s.getName()] = std::vector<OrderedArray>();
+        const auto name = std4us::trim(s.getName());
+        sequenceNames.insert(name);
+        arraysBySequence[name] = std::vector<OrderedArray>();
     }
 
     for(const auto &profile: txDelayProfiles) {
