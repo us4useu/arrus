@@ -379,7 +379,7 @@ template<> inline NdArray::DataType NdArray::getDataType<int32>() { return DataT
 template<> inline NdArray::DataType NdArray::getDataType<float32>() { return DataType::FLOAT32; }
 template<> inline NdArray::DataType NdArray::getDataType<double>() { return DataType::FLOAT64; }
 
-template<typename T> NdArray asarray(std::vector<T> vec) { return std::move(NdArray::asarray<T>(vec)); }
+template<typename T> NdArray asarray(std::vector<T> vec) { return NdArray::asarray<T>(vec); }
 
 }// namespace arrus::framework
 
