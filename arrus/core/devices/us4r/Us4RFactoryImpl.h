@@ -176,8 +176,6 @@ private:
         if (io.hasFrameMetadataCapability()) {
             pulseCounterOems = io.getFrameMetadataCapabilityOEMs();
         }
-        // The external (sequence) trigger is driven by the IO settings capability.
-        const bool useSequenceTriggerCapability = io.hasSequenceTriggerCapability();
         for (unsigned i = 0; i < ius4oems.size(); ++i) {
             // TODO(Us4R-10) use ius4oem->GetDeviceID() as an ordinal number, instead of value of i
             auto ordinal = static_cast<Ordinal>(i);
@@ -186,7 +184,6 @@ private:
                 setContains(pulseCounterOems, ordinal), // accept RX nops?
                 // NOTE: the above should be consistent with the ProbeAdapterImpl::frameMetadataOem
                 limits));
-            us4oems.back()->setUseSequenceTriggerCapability(useSequenceTriggerCapability);
         }
         initCapabilities(us4oems, io);
         return {std::move(us4oems), master};
@@ -219,6 +216,7 @@ private:
     }
 
     void initCapabilities(const Us4RImpl::Us4OEMs &us4oems, const us4r::IOSettings settings) {
+        // Probe connected capability.
         if (settings.hasProbeConnectedCheckCapability()) {
             auto addr = settings.getProbeConnectedCheckCapabilityAddress();
             if (addr.getUs4OEM() == 0) {
@@ -229,6 +227,18 @@ private:
         } else {
             for(auto &us4oem: us4oems) {
                us4oem->getIUs4OEM()->DisableProbeCheck();
+            }
+        }
+        // The external (sequence) trigger is driven by the IO settings capability.
+        if(settings.hasSequenceTriggerCapability()) {
+            const auto ioAddress = settings.getSequenceTriggerCapabilityAddress();
+            if (ioAddress.getUs4OEM() == 0) {
+                us4oems.at(ioAddress.getUs4OEM())->getIUs4OEM()->SetIODirection(ioAddress.getIO(), IUs4OEM::Direction::INPUT);
+            } else {
+                throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");
+            }
+            for(const auto &us4oem: us4oems) {
+                us4oem->setUseSequenceTriggerCapability(true);
             }
         }
     }
