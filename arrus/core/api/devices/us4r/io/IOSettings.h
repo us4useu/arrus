@@ -55,7 +55,21 @@ public:
         return oems;
     }
 
+    bool hasSequenceTriggerCapability() const {
+        auto it = addresses.find(IOCapability::SEQUENCE_TRIGGER);
+        return it != std::end(addresses) && it->second.size() > 0;
+    }
 
+    IOAddress getSequenceTriggerCapabilityAddress() const {
+        if(!hasSequenceTriggerCapability()) {
+            throw arrus::IllegalArgumentException("The IO Settings of the device have no sequence trigger capability.");
+        }
+        const auto &addrs = addresses.find(IOCapability::SEQUENCE_TRIGGER)->second;
+        if(addrs.size() != 1) {
+            throw arrus::IllegalArgumentException("The sequence trigger capability accepts only a single address.");
+        }
+        return *addrs.begin();
+    }
 
 private:
     std::unordered_map<IOCapability, IOAddressSet> addresses;
@@ -73,6 +87,14 @@ public:
 
     IOSettingsBuilder &setFrameMetadataCapability(const IOAddressSet& addresses) {
         addr.emplace(IOCapability::FRAME_METADATA, addresses);
+        return *this;
+    }
+
+    IOSettingsBuilder &setSequenceTriggerCapability(const IOAddressSet& addresses) {
+        if(addresses.size() != 1) {
+            throw arrus::IllegalArgumentException("The sequence trigger capability accepts only a single address.");
+        }
+        addr.emplace(IOCapability::SEQUENCE_TRIGGER, addresses);
         return *this;
     }
 

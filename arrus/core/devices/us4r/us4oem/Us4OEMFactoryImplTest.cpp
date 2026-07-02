@@ -195,7 +195,7 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
                                 std::begin(channelMapping) + 32), 0))
             .Times(1);
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, false, DEFAULT_US4R_LIMITS);
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, DEFAULT_US4R_LIMITS);
 }
 
 TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
@@ -221,7 +221,7 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
     // Expect
     EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, false, DEFAULT_US4R_LIMITS);
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, DEFAULT_US4R_LIMITS);
 }
 
 // Tx channel mapping
@@ -250,7 +250,7 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
             .Times(0);
 
     // Run
-    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, false, DEFAULT_US4R_LIMITS);
+    factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, DEFAULT_US4R_LIMITS);
 }
 
 TEST(Us4OEMFactoryTest, SetsAppropriateTxRxLimits) {

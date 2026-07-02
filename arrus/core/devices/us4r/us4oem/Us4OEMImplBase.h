@@ -46,6 +46,11 @@ public:
 
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
     virtual void enableSequencer(uint16 startEntry, bool dvddMask) = 0;
+    /**
+     * Sets whether this OEM should use the sequence trigger capability (external trigger
+     * driven by the IO settings).
+     */
+    virtual void setUseSequenceTriggerCapability(bool value) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
     virtual void setRxSettings(const RxSettings& settings) = 0;
     virtual void setTestPattern(RxTestPattern pattern) = 0;

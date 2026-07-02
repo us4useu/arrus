@@ -31,11 +31,11 @@ using namespace arrus::ops::us4r;
 
 Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> channelMapping, RxSettings rxSettings,
                        Us4OEMSettings::ReprogrammingMode reprogrammingMode, Us4OEMDescriptor descriptor,
-                       bool externalTrigger = false, bool acceptRxNops = false)
+                       bool acceptRxNops = false)
     : Us4OEMImplBase(id), logger{getLoggerFactory()->getLogger()}, ius4oem(std::move(ius4oem)),
       descriptor(std::move(descriptor)),
       channelMapping(std::move(channelMapping)), reprogrammingMode(reprogrammingMode),
-      rxSettings(std::move(rxSettings)), externalTrigger(externalTrigger),
+      rxSettings(std::move(rxSettings)),
       serialNumber([this]() { return this->ius4oem->GetSerialNumber(); }),
       revision([this]() { return this->ius4oem->GetRevisionNumber(); }), acceptRxNops(acceptRxNops) {
 
@@ -488,7 +488,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                     //  or we have the MANUAL work mode, and we are hitting the last TX/RX in the TX/RX
                     //  (the IRQ = 4 is used to implement the synchronous version of the Us4r::trigger(sync=true))
                     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
-                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && externalTrigger,
+                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && useSequenceTriggerCapability,
                                         triggerSyncPerTxRx || (isCheckpoint && workMode == ops::us4r::Scheme::WorkMode::MANUAL));
                     if (op.getBitstreamId().has_value() && isMaster()) {
                         ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));

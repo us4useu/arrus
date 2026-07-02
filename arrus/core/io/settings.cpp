@@ -140,6 +140,9 @@ ProbeAdapterSettings readAdapterSettings(const ap::ProbeAdapterModel &proto) {
                     case arrus::proto::IOCapability::FRAME_METADATA:
                         settingsBuilder.setFrameMetadataCapability(addressSet);
                         break;
+                    case arrus::proto::IOCapability::SEQUENCE_TRIGGER:
+                        settingsBuilder.setSequenceTriggerCapability(addressSet);
+                        break;
                     default:
                         throw IllegalArgumentException(
                             "Unhandled capability nr: " + std::to_string(entry.capability()));
