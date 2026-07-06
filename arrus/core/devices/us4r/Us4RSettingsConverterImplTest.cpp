@@ -368,38 +368,6 @@ std::vector<ChannelIdx> getAtlLikeProbeChannelMapping() {
     return ::arrus::getRange<ChannelIdx>(0, 128);
 }
 
-/*
-std::vector<ChannelIdx> getEsaotePhaseArrayProbeMapping() {
-    std::vector<ChannelIdx> result;
-    for(int i = 0; i < 48; ++i) {
-        result.push_back(i);
-    }
-    for(int i = 144; i < 192; ++i) {
-        result.push_back(i);
-    }
-    return result;
-}
-*/
-
-/*
-std::vector<ChannelIdx> getOneByOneProbeMapping() {
-    return ::arrus::getRange<ChannelIdx>(0, 128);
-}
-*/
-
-/*
-ProbeAdapterSettings::ChannelMapping getEsaote3ChannelMapping() {
-    ProbeAdapterSettings::ChannelMapping mapping;
-    for(int i = 0; i < 192; ++i) {
-        auto group = i / 32;
-        auto module = group % 2;
-        auto channel = i % 32 + 32*(i/64);
-        mapping.push_back({module, channel});
-    }
-    return mapping;
-}
-*/
-
 ProbeAdapterSettings::ChannelMapping getEsaote3Us4RChannelMapping() {
     // 6 modules used
     ProbeAdapterSettings::ChannelMapping mapping;

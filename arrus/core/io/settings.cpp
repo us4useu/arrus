@@ -701,7 +701,6 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     DictionaryProtoValidator dictionaryValidator("dictionary");
     dictionaryValidator.validate(d);
     dictionaryValidator.throwOnErrors();
-    std::cout << "past part 3" << std::endl;
 
     SettingsDictionary dictionary = readDictionary(d.get());
     SessionSettingsBuilder settingsBuilder;

@@ -270,7 +270,6 @@ target_link_libraries(${TARGET_NAME}
     Us4::Us4RPSC
     Boost::boost
     Boost::log
-    Boost::filesystem
     std4us::std4us
     protobuf::libprotobuf
     Eigen3::Eigen

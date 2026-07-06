@@ -30,8 +30,6 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyNoTxTimeouts) {
     BitMask rxAperture(nChannels, true);
     ops::us4r::Pulse pulse0{10.0e6f, 5000.0f, false}; // 500 us pulse
 
-    //size_t nTimeouts = 0;
-
     std::vector<TxRx> txrxs = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,

@@ -491,7 +491,6 @@ TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannelForAllOperations) {
         // Frame 1, 2
         for(int frame = 1; frame <= 2; ++frame) {
             uint8 i = 0;
-            //ChannelIdx rxChannelNumber = 0;
             for(auto bit : rxApertures[frame]) {
                 if(bit) {
                     auto address = fcm->getLogical(frame, i);

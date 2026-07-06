@@ -32,6 +32,7 @@ matlab_add_mex(
     LINK_TO
     arrus-core
     Boost::boost
+    std4us::std4us
 )
 ################################################################################
 # Include directories

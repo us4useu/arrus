@@ -94,7 +94,7 @@ DeviceId DeviceId::parse(const std::string &deviceId) {
 
     if (deviceIdComponents.size() != 2) {
         throw IllegalArgumentException(std::format(
-                "Device id should be have format: deviceType:ordinal "
+                "Device id should be in the format of: deviceType:ordinal "
                 "(got: '{}')", deviceId
         ));
     }

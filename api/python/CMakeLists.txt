@@ -175,9 +175,9 @@ elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
             COMMAND
             ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_BINARY_DIR}/tmp/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/arrus
-            #COMMAND
-            #${CMAKE_COMMAND} -E copy_directory
-            #${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
+            COMMAND
+            ${CMAKE_COMMAND} -E copy_directory
+            ${Us4_ROOT_DIR}/lib64 ${CMAKE_CURRENT_BINARY_DIR}/arrus
             # Assumming RPATH is already set to $ORIGIN
             COMMAND
             ${CMAKE_COMMAND} -E copy

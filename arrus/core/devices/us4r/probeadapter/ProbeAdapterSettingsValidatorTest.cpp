@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <iostream>
 #include <std4us/string.h>
 #include <utility>
