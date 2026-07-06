@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <map>
 #include <sstream>
+#include <set>
 
 #include <boost/lexical_cast.hpp>
 #include <std4us/string.h>
