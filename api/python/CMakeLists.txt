@@ -5,8 +5,7 @@
 ################################################################################
 find_package(SWIG REQUIRED)
 include(UseSWIG)
-find_package(PythonInterp ${ARRUS_PY_VERSION} REQUIRED)
-find_package(PythonLibs ${ARRUS_PY_VERSION} REQUIRED)
+find_package(Python3 ${ARRUS_PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
 set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
 if (MSVC)
     set_property(
@@ -57,7 +56,7 @@ endif ()
 
 target_include_directories(py_core
         PRIVATE
-        ${PYTHON_INCLUDE_DIRS}
+        ${Python3_INCLUDE_DIRS}
         ${ARRUS_ROOT_DIR}
         ${US4_INCLUDE_DIR}
         )
@@ -67,7 +66,7 @@ target_link_libraries(py_core
         arrus-core
         Boost::boost
         std4us::std4us
-        ${PYTHON_LIBRARIES}
+        ${Python3_LIBRARIES}
         )
 ################################################################################
 # Python packaging
@@ -160,7 +159,7 @@ if ("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             COMMAND
             ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
             COMMAND
-            ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
+            ${Python3_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
             DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} py_core)
 
 elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
@@ -189,7 +188,7 @@ elseif ("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
             COMMAND
             ${CMAKE_COMMAND} -E touch ${TIMESTAMP}
             COMMAND
-            ${PYTHON_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
+            ${Python3_EXECUTABLE} ${SETUP_PY_OUT} bdist_wheel
             DEPENDS ${SETUP_PY_IN} ${SOURCE_FILES} ${TEST_FILES} py_core)
 endif ()
 

@@ -1,9 +1,9 @@
 # based on: https://github.com/Mizux/cmake-swig/blob/master/cmake/python.cmake
-find_package(PythonInterp REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 function(search_python_module MODULE_NAME)
     execute_process(
-        COMMAND ${PYTHON_EXECUTABLE}
+        COMMAND ${Python3_EXECUTABLE}
             -c "import ${MODULE_NAME}; print(${MODULE_NAME}.__version__)"
         RESULT_VARIABLE _RESULT
         OUTPUT_VARIABLE MODULE_VERSION
@@ -23,7 +23,7 @@ endfunction()
 function(create_python_venv TARGET_NAME VENV_WORKING_DIR)
     search_python_module(virtualenv)
     file(MAKE_DIRECTORY ${VENV_WORKING_DIR})
-    set(VENV_EXECUTABLE ${PYTHON_EXECUTABLE} -m virtualenv)
+    set(VENV_EXECUTABLE ${Python3_EXECUTABLE} -m virtualenv)
     set(VENV_DIR "${VENV_WORKING_DIR}/venv")
     set(VENV_TIMESTAMP "${VENV_DIR}/timestamp")
     if(WIN32)
@@ -35,7 +35,7 @@ function(create_python_venv TARGET_NAME VENV_WORKING_DIR)
     endif()
     add_custom_command(OUTPUT ${VENV_TIMESTAMP}
         COMMAND
-            ${VENV_EXECUTABLE} -p ${PYTHON_EXECUTABLE} ${VENV_DIR}
+            ${VENV_EXECUTABLE} -p ${Python3_EXECUTABLE} ${VENV_DIR}
         COMMAND
             ${CMAKE_COMMAND} -E touch ${VENV_TIMESTAMP}
         BYPRODUCTS
