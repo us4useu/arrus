@@ -2,6 +2,20 @@
 #include <fstream>
 #include <iostream>
 
+#include <memory>
+#include <set>
+#include <string>
+
+#include <boost/core/null_deleter.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <utility>
+
 #include "logging.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "LoggerImpl.h"
@@ -19,36 +33,6 @@ std::shared_ptr<LoggerFactory> getDefaultLoggerFactoryWithClog();
 std::shared_ptr<LoggerFactory> loggerFactory;
 Logger::SharedHandle defaultLogger;
 
-// API
-void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory) {
-    loggerFactory = factory;
-    defaultLogger = factory->getLogger();
-    ARRUS_INIT_COMPONENT_LOGGER(defaultLogger, "ARRUS");
-}
-
-Logging* useDefaultLoggerFactory() {
-    auto pimpl = std::make_unique<Logging::LoggingImpl>();
-    auto logging = std::make_shared<::arrus::Logging>(std::move(pimpl));
-    setLoggerFactory(logging);
-    return logging.get();
-}
-
-std::shared_ptr<LoggerFactory> getLoggerFactory() {
-    if(loggerFactory == nullptr) {
-        std::cout << "Using default logging mechanism." << std::endl;
-        setLoggerFactory(getDefaultLoggerFactoryWithClog());
-    }
-    return loggerFactory;
-}
-
-Logger::SharedHandle getDefaultLogger() {
-    if(defaultLogger == nullptr) {
-        std::cout << "Using default logging mechanism." << std::endl;
-        setLoggerFactory(getDefaultLoggerFactoryWithClog());
-    }
-    return defaultLogger;
-}
-
 // Internal.
 
 namespace {
@@ -60,12 +44,12 @@ namespace {
  * as it is currently not explicitly supported by ARRUS logging.
  * This may, however, be supported in the future.
  */
-std::filesystem::path resolveLogFilePath(const std::string &filepath) {
-    std::filesystem::path p(filepath);
+boost::filesystem::path resolveLogFilePath(const std::string &filepath) {
+    boost::filesystem::path p(filepath);
     try {
-        return std::filesystem::weakly_canonical(std::filesystem::absolute(p));
-    } catch (const std::filesystem::filesystem_error &) {
-        return std::filesystem::absolute(p);
+        return boost::filesystem::weakly_canonical(boost::filesystem::absolute(p));
+    } catch (const boost::filesystem::filesystem_error &) {
+        return boost::filesystem::absolute(p);
     }
 }
 
@@ -103,50 +87,56 @@ addTextSinkBoostPtr(const boost::shared_ptr<std::ostream> &ostream,
     return sink;
 }
 
-Logging::LoggingImpl::LoggingImpl() {
-    boost::log::add_common_attributes();
-}
-
-void Logging::LoggingImpl::addTextSink(std::shared_ptr<std::ostream> ostream, LogSeverity minSeverity, bool autoFlush) {
-    boost::shared_ptr<std::ostream> boostPtr = boost::shared_ptr<std::ostream>(
-        ostream.get(),
-        [ostream](std::ostream *) mutable { ostream.reset(); });
-    addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
-}
-
-void Logging::LoggingImpl::addLogFile(const std::string &filepath, LogSeverity minSeverity) {
-    std::filesystem::path resolved = resolveLogFilePath(filepath);
-    if (!registeredFiles.insert(resolved).second) { // .second == inserted: bool?
-        return;
+class Logging::LoggingImpl {
+public:
+    LoggingImpl() {
+        boost::log::add_common_attributes();
     }
-    std::shared_ptr<std::ostream> logFileStream =
-        std::make_shared<std::ofstream>(resolved.string().c_str(), std::ios_base::app);
-    addTextSink(logFileStream, minSeverity, true);
-}
 
-void Logging::LoggingImpl::addClog(LogSeverity level) {
-    if (this->clogSink != nullptr) {
-        return;
+    void addTextSink(std::shared_ptr<std::ostream> ostream, LogSeverity minSeverity, bool autoFlush) {
+        boost::shared_ptr<std::ostream> boostPtr = boost::shared_ptr<std::ostream>(
+            ostream.get(),
+            [ostream](std::ostream *) mutable { ostream.reset(); });
+        addTextSinkBoostPtr(boostPtr, minSeverity, autoFlush);
     }
-    boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
-    this->clogSink = addTextSinkBoostPtr(stream, level, false);
-}
 
-void Logging::LoggingImpl::setClogLevel(LogSeverity level) {
-    if(this->clogSink == nullptr) {
-        this->addClog(level);
-    } else {
-        this->clogSink->set_filter(severity >= level);
+    void addLogFile(const std::string &filepath, LogSeverity minSeverity) {
+        boost::filesystem::path resolved = resolveLogFilePath(filepath);
+        if (!registeredFiles.insert(resolved).second) { // .second == inserted: bool?
+            return;
+        }
+        std::shared_ptr<std::ostream> logFileStream =
+            std::make_shared<std::ofstream>(resolved.string().c_str(), std::ios_base::app);
+        addTextSink(logFileStream, minSeverity, true);
     }
-}
 
-Logger::Handle Logging::LoggingImpl::getLogger() {
-    return std::make_unique<LoggerImpl>();
-}
+    void addClog(LogSeverity level) {
+        if (this->clogSink != nullptr) {
+            return;
+        }
+        boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
+        this->clogSink = addTextSinkBoostPtr(stream, level, false);
+    }
 
-Logger::Handle Logging::LoggingImpl::getLogger(const std::vector<arrus::Logger::Attribute> &attributes) {
-    return std::make_unique<LoggerImpl>(attributes);
-}
+    void setClogLevel(LogSeverity level) {
+        if(this->clogSink == nullptr) {
+            this->addClog(level);
+        } else {
+            this->clogSink->set_filter(severity >= level);
+        }
+    }
+
+    Logger::Handle getLogger() {
+        return std::make_unique<LoggerImpl>();
+    }
+
+    Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes) {
+        return std::make_unique<LoggerImpl>(attributes);
+    }
+private:
+    boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>> clogSink;
+    std::set<boost::filesystem::path> registeredFiles;
+};
 
 // Logging.
 Logging::Logging(std::unique_ptr<LoggingImpl> pImpl) : pImpl(std::move(pImpl)) {}
@@ -179,6 +169,8 @@ void Logging::removeAllStreams() {
     boost::log::core::get()->remove_all_sinks();
 }
 
+Logging::~Logging() = default;
+
 // Utility functions.
 std::shared_ptr<LoggerFactory> getDefaultLoggerFactoryWithClog() {
     auto loggingMechanism = std::make_shared<::arrus::Logging>(std::make_unique<Logging::LoggingImpl>());
@@ -188,5 +180,34 @@ std::shared_ptr<LoggerFactory> getDefaultLoggerFactoryWithClog() {
     return loggingMechanism;
 }
 
+// API
+void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory) {
+    loggerFactory = factory;
+    defaultLogger = factory->getLogger();
+    ARRUS_INIT_COMPONENT_LOGGER(defaultLogger, "ARRUS");
+}
+
+Logging* useDefaultLoggerFactory() {
+    auto pimpl = std::make_unique<Logging::LoggingImpl>();
+    auto logging = std::make_shared<::arrus::Logging>(std::move(pimpl));
+    setLoggerFactory(logging);
+    return logging.get();
+}
+
+std::shared_ptr<LoggerFactory> getLoggerFactory() {
+    if(loggerFactory == nullptr) {
+        std::cout << "Using default logging mechanism." << std::endl;
+        setLoggerFactory(getDefaultLoggerFactoryWithClog());
+    }
+    return loggerFactory;
+}
+
+Logger::SharedHandle getDefaultLogger() {
+    if(defaultLogger == nullptr) {
+        std::cout << "Using default logging mechanism." << std::endl;
+        setLoggerFactory(getDefaultLoggerFactoryWithClog());
+    }
+    return defaultLogger;
+}
 
 }

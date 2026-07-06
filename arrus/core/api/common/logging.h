@@ -1,18 +1,7 @@
 #ifndef ARRUS_CORE_API_COMMON_LOGGING_H
 #define ARRUS_CORE_API_COMMON_LOGGING_H
 
-#include <boost/core/null_deleter.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/sinks/sync_frontend.hpp>
-#include <boost/log/sinks/text_ostream_backend.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <filesystem>
 #include <memory>
-#include <set>
-#include <string>
-#include <utility>
 
 #include "arrus/core/api/common/macros.h"
 #include "arrus/core/api/common/LoggerFactory.h"
@@ -35,26 +24,7 @@ namespace arrus {
      */
     class Logging: public LoggerFactory {
     public:
-        class LoggingImpl {
-            public:
-                LoggingImpl();
-
-                void addTextSink(std::shared_ptr<std::ostream> ostream, LogSeverity minSeverity, bool autoFlush);
-
-                void addLogFile(const std::string &filepath, LogSeverity minSeverity);
-
-                void addClog(::arrus::LogSeverity level);
-
-                void setClogLevel(::arrus::LogSeverity level);
-
-                Logger::Handle getLogger();
-
-                Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes);
-            private:
-                boost::shared_ptr<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>> 
-                    clogSink;
-                std::set<std::filesystem::path> registeredFiles;
-            };
+        class LoggingImpl;
 
         explicit Logging(std::unique_ptr<LoggingImpl> pImpl);
 
@@ -63,7 +33,7 @@ namespace arrus {
         ARRUS_CPP_EXPORT
         Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes) override;
 
-        ~Logging() override = default;
+        ~Logging() override;
 
         /**
          * Adds std::cout logging output stream to the default logging mechanism
