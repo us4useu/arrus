@@ -1,8 +1,8 @@
 % Neuromodulation: alignment script
     
 %% Predefined parameters
-tStim = 1;
-tPause = 2;
+tStim = 0.3;
+tPause = 0.4;
 
 txFreq = 6.5e6;
 txFoc = 20e-3;
@@ -12,14 +12,14 @@ nTx = 100;
 
 volt = 3;
 prf = 1000;
-nRep = 10;
+nRep = 1000;
 
 pri = 1./prf;
 nCyc = pri * dutyCycle * txFreq;
 
 %% Initialize the system
-addpath('C:\Users\pkarwat\Documents\GitHub\arrus\install\matlab');
-addpath('C:\Users\pkarwat\Documents\GitHub\arrus\install\matlab\arrus\mexcuda');
+addpath('..\..\..\..\install\matlab');
+addpath('..\..\..\..\install\matlab\arrus\mexcuda');
 addpath('../../');
 addpath('../../arrus');
 

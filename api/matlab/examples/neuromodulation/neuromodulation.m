@@ -1,6 +1,13 @@
 % Neuromodulation function
 function [sri] = neuromodulation(volt,prf,nRep,tInit,tStim,tPause)
     
+% volt [v]
+% prf [Hz]
+% nRep [1]
+% tInit [s]
+% tStim [s]
+% tPause [s]
+
     %% Predefined parameters
     txFreq = 6.5e6;
     txFoc = 20e-3;
@@ -37,8 +44,8 @@ function [sri] = neuromodulation(volt,prf,nRep,tInit,tStim,tPause)
     end
     
     %% Initialize the system
-    addpath('C:\Users\pkarwat\Documents\GitHub\arrus\install\matlab');
-    addpath('C:\Users\pkarwat\Documents\GitHub\arrus\install\matlab\arrus\mexcuda');
+    addpath('..\..\..\..\install\matlab');
+    addpath('..\..\..\..\install\matlab\arrus\mexcuda');
     addpath('../../');
     addpath('../../arrus');
     
@@ -81,9 +88,14 @@ function [sri] = neuromodulation(volt,prf,nRep,tInit,tStim,tPause)
     beep();
     disp("Press any key to start the 10 sec countdown...");
     pause;
-    pause(8); beep();
-    pause(1); beep();
-    pause(1); beep();
+    for i=1:10
+        disp(10+1-i);
+        pause(1);
+    end
+    disp('START');
+%     pause(8); beep();
+%     pause(1); beep();
+%     pause(1); beep();
     
     neuroTimer = NeuroTimer(tStim);
     for iRep=1:nRep
