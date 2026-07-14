@@ -230,6 +230,7 @@ using namespace ::arrus;
 // ------------------------------------------ LOGGING
 %shared_ptr(arrus::Logger)
 
+%ignore *::operator<<(std::ostream &stream, arrus::LogSeverity level);
 %include "arrus/core/api/common/LogSeverity.h"
 %include "arrus/core/api/common/Logger.h"
 
@@ -266,6 +267,7 @@ using namespace ::arrus;
 %include "arrus/core/api/common/Slice.h"
 %include "arrus/core/api/common/Interval.h"
 %include "arrus/core/api/common/Span.h"
+%ignore *::operator<<(std::ostream &, const Parameters &);
 %include "arrus/core/api/ops/us4r/DigitalDownConversion.h"
 %include "arrus/core/api/common/Parameters.h"
 
@@ -306,6 +308,7 @@ namespace arrus {
 %ignore arrus::framework::NdArray::NdArray;
 %include "arrus/core/api/framework/NdArray.h"
 
+%ignore *::operator<<(std::ostream &, const FrameChannelMappingAddress &);
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
 %include "arrus/core/api/framework/Buffer.h"
@@ -466,10 +469,11 @@ void arrusUs4RSetVoltageMulti(arrus::devices::Us4R *us4r,
 using namespace arrus::devices;
 %};
 
-%ignore operator<<(std::ostream &os, const DeviceId &id);
+%ignore *::operator<<(std::ostream &, const DeviceId &);
 %include "arrus/core/api/devices/DeviceId.h"
 %include "arrus/core/api/devices/Device.h"
 %include "arrus/core/api/devices/DeviceWithComponents.h"
+%ignore *::operator<<(std::ostream &os, const ProbeModelId &id);
 %include "arrus/core/api/devices/probe/ProbeModelId.h"
 %include "arrus/core/api/devices/probe/ProbeModel.h"
 %include "arrus/core/api/devices/probe/Probe.h"
@@ -561,6 +565,7 @@ using namespace arrus::ops::us4r;
 %feature("valuewrapper") TxRx;
 %include "arrus/core/api/ops/us4r/tgc.h"
 %ignore arrus::ops::us4r::Pulse::toWaveform() const;
+%ignore *::operator<<(std::ostream &, const Pulse &);
 %include "arrus/core/api/ops/us4r/Pulse.h"
 %include "arrus/core/api/ops/us4r/Waveform.h"
 %include "arrus/core/api/ops/us4r/Rx.h"
@@ -651,16 +656,16 @@ using namespace ::us4us::us4r;
 %include "arrus/core/api/devices/us4r/RxSettings.h";
 %include "Us4OEM/api/RxSettings.h"
 %include "arrus/core/api/devices/us4r/Us4OEMSettings.h";
-%ignore operator<<(std::ostream &os, const ProbeAdapterModelId &id);
+%ignore *::operator<<(std::ostream &os, const ProbeAdapterModelId &id);
 %include "arrus/core/api/devices/us4r/ProbeAdapterModelId.h";
 %include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h";
-%ignore operator<<(std::ostream &os, const ProbeModelId &id);
+%ignore *::operator<<(std::ostream &os, const ProbeModelId &id);
 %include "arrus/core/api/devices/probe/ProbeModelId.h";
 %include "arrus/core/api/devices/probe/Lens.h";
 %include "arrus/core/api/devices/probe/MatchingLayer.h";
 %include "arrus/core/api/devices/probe/ProbeModel.h";
 %include "arrus/core/api/devices/probe/ProbeSettings.h"
-%ignore operator<<(std::ostream &os, const HVModelId &id);
+%ignore *::operator<<(std::ostream &os, const HVModelId &id);
 %include "arrus/core/api/devices/us4r/HVModelId.h"
 %include "arrus/core/api/devices/us4r/HVSettings.h"
 %include "arrus/core/api/devices/us4r/Us4OEMInterrupt.h"

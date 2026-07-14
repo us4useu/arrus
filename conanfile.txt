@@ -5,6 +5,9 @@ eigen/5.0.1
 protobuf/7.35.0
 std4us/0.0.1
 
+[tool_requires]
+swig/4.4.0
+
 [options]
 boost/*:shared=False
 boost/*:error_code_header_only=True

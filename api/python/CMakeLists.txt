@@ -3,7 +3,7 @@
 ################################################################################
 # - Targets
 ################################################################################
-find_package(SWIG REQUIRED)
+find_package(SWIG 4.4.0 REQUIRED)
 include(UseSWIG)
 find_package(Python3 ${ARRUS_PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
 set_property(SOURCE wrappers/core.i PROPERTY CPLUSPLUS ON)
