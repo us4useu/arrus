@@ -1,11 +1,12 @@
 [settings]
-os=Windows
-os_build=Windows
 arch=x86_64
-arch_build=x86_64
-compiler=Visual Studio
-compiler.version=15
 build_type=Release
-[options]
-[build_requires]
-[env]
+compiler=msvc
+compiler.version=195
+compiler.runtime=dynamic
+compiler.runtime_type=Release
+compiler.cppstd=23
+os=Windows
+
+[conf]
+tools.cmake.cmaketoolchain:generator=Ninja

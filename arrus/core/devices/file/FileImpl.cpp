@@ -2,6 +2,7 @@
 #include "arrus/core/common/collections.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/common/exceptions.h"
+#include <chrono>
 #include <cmath>
 #include <format>
 #include <fstream>
