@@ -96,7 +96,7 @@ CudaRuntime &CudaRuntime::instance() {
 CudaRuntime::CudaRuntime() : pImpl(new Impl) {
     pImpl->handle = openLibrary();
     if (pImpl->handle == nullptr) {
-        getDefaultLogger()->log(LogSeverity::DEBUG, "CUDA Runtime library not found; P2P DMA disabled.");
+        getDefaultLogger()->debug("CUDA Runtime library not found; P2P DMA disabled.");
         return;
     }
     pImpl->getDeviceCount = reinterpret_cast<GetDeviceCountFn>(resolveSymbol(pImpl->handle, "cudaGetDeviceCount"));
@@ -112,10 +112,9 @@ CudaRuntime::CudaRuntime() : pImpl(new Impl) {
         && pImpl->cudaFreeHost != nullptr;
 
     if (pImpl->available) {
-        getDefaultLogger()->log(LogSeverity::DEBUG, "CUDA Runtime library loaded.");
+        getDefaultLogger()->debug("CUDA Runtime library loaded.");
     } else {
-        getDefaultLogger()->log(LogSeverity::WARNING,
-                                "CUDA Runtime library opened but a required symbol could not be resolved.");
+        getDefaultLogger()->warn("CUDA Runtime library opened but a required symbol could not be resolved.");
     }
 }
 

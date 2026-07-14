@@ -268,7 +268,7 @@ private:
                 stringBuilder << "PCI device: " << i << ", ID: " << oems.at(i)->GetID()  << "; ";
             }
             if(allowDuplicateIds) {
-                getDefaultLogger()->log(LogSeverity::WARNING, stringBuilder.str());
+                getDefaultLogger()->warn(stringBuilder.str());
             }
             else {
                 stringBuilder << " To replace this error with warning message, set `allow_duplicate_oem_ids` "

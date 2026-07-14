@@ -17,20 +17,20 @@ using namespace arrus::session;
 FileImpl::FileImpl(const DeviceId &id, const FileSettings &settings)
     : File(id), logger{getLoggerFactory()->getLogger()}, settings(settings) {
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
-    this->logger->log(LogSeverity::INFO, std::format("File device, path: {}", settings.getFilepath()));
+    this->logger->info("File device, path: {}", settings.getFilepath());
     this->dataset = readDataset(settings.getFilepath());
     this->probe = std::make_unique<FileProbe>(id, settings.getProbeModel());
 }
 
 std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) {
-    logger->log(LogSeverity::INFO, "Reading input dataset...");
+    logger->info("Reading input dataset...");
     std::ifstream file{filepath, std::ios::in | std::ios::binary};
     // Read input file size.
     file.unsetf(std::ios::skipws);
     file.seekg(0, std::ios::end);
     std::streampos fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
-    logger->log(LogSeverity::INFO, std::format("Input file size: {} MiB", float(fileSize) / (1 << 20)));
+    logger->info("Input file size: {} MiB", float(fileSize) / (1 << 20));
     if (fileSize == 0) {
         throw ArrusException("Empty input file. Is your input file correct?");
     }
@@ -51,7 +51,7 @@ std::vector<FileImpl::Frame> FileImpl::readDataset(const std::string &filepath) 
         Frame frame(std::begin(all) + i * frameSize, std::begin(all) + (i + 1) * frameSize);
         result.push_back(std::move(frame));
     }
-    logger->log(LogSeverity::INFO, "Data ready.");
+    logger->info("Data ready.");
     return result;
 }
 
@@ -107,7 +107,7 @@ Probe::RawHandle FileImpl::getProbe(Ordinal ordinal) {
 void FileImpl::start() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if (this->state == State::STARTED) {
-        logger->log(LogSeverity::INFO, "Already started.");
+        logger->info("Already started.");
     } else {
         this->state = State::STARTED;
         this->producerThread = std::thread(&FileImpl::producer, this);
@@ -118,7 +118,7 @@ void FileImpl::start() {
 void FileImpl::stop() {
     std::unique_lock<std::mutex> guard(deviceStateMutex);
     if(this->state == State::STOPPED) {
-        logger->log(LogSeverity::INFO, "Already stopped.");
+        logger->info("Already stopped.");
     }
     else {
         this->state = State::STOPPED;
@@ -132,7 +132,7 @@ void FileImpl::stop() {
 void FileImpl::producer() {
     size_t elementNr = 0;
     size_t frameNr = 0;
-    logger->log(LogSeverity::INFO, "Starting producer.");
+    logger->info("Starting producer.");
     while(this->state == State::STARTED) {
         bool cont = buffer->write(elementNr, [this, &frameNr] (const framework::BufferElement::SharedHandle &element) {
             auto &frame = this->dataset.at(frameNr);
@@ -179,12 +179,12 @@ void FileImpl::producer() {
             }
         }
     }
-    logger->log(LogSeverity::INFO, "File producer stopped.");
+    logger->info("File producer stopped.");
 }
 
 void FileImpl::consumer() {
     size_t elementNr = 0;
-    logger->log(LogSeverity::INFO, "Starting consumer.");
+    logger->info("Starting consumer.");
     while(this->state == State::STARTED) {
         bool cont = buffer->read(elementNr, [this] (const framework::BufferElement::SharedHandle &element) {
             this->buffer->getOnNewDataCallback()(element);
@@ -194,7 +194,7 @@ void FileImpl::consumer() {
         }
         elementNr = (elementNr+1) % buffer->getNumberOfElements();
     }
-    logger->log(LogSeverity::INFO, "File consumer stopped.");
+    logger->info("File consumer stopped.");
 }
 
 void FileImpl::trigger(bool, std::optional<long long> ) {

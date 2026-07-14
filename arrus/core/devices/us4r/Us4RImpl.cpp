@@ -74,10 +74,9 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     for (size_t i = 0; i < this->channelsMask.size(); ++i) {
         const auto &mask = this->channelsMask.at(i);
         if (mask.empty()) {
-            this->logger->log(LogSeverity::DEBUG, std::format("No channel masking applied on Probe:{}", i));
+            this->logger->debug("No channel masking applied on Probe:{}", i);
         } else {
-            this->logger->log(LogSeverity::INFO,
-                              std::format("The following 'Probe:{}' channels will be masked: {}", i, std4us::join(mask, ", ")));
+            this->logger->info("The following 'Probe:{}' channels will be masked: {}", i, mask);
         }
     }
 
@@ -121,7 +120,7 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(HVModelId hvModel, b
 void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isOEMPlus) {
 
     if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc" && isOEMPlus) {
-        this->logger->log(LogSeverity::INFO, std::format("Voltage verification with US4RPSC is not supported with OEM+"));
+        this->logger->info("Voltage verification with US4RPSC is not supported with OEM+");
         return;
     }
 
@@ -148,7 +147,7 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
         // the number of voltages is of voltages to be logged here is small
         measurementLog += std::format("{} = {} V; ", voltages[i].name, voltages[i].voltage);
     }
-    logger->log(LogSeverity::INFO, measurementLog);
+    logger->info(measurementLog);
 
     if (fail) {
         disableHV();
@@ -193,11 +192,11 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
             this->us4oems[0]->getIUs4OEM()->TriggerStart();
         }
     } catch(const std::exception &e) {
-        this->logger->log(LogSeverity::ERROR, std::format("Exception while setting voltage, stopping the system: {}", e.what()));
+        this->logger->error("Exception while setting voltage, stopping the system: {}", e.what());
         this->stop();
         throw;
     } catch(...) {
-        this->logger->log(LogSeverity::ERROR, "Unknown exception while setting voltage, stopping the system.");
+        this->logger->error("Unknown exception while setting voltage, stopping the system.");
         this->stop();
         throw;
     }
@@ -319,8 +318,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
             const auto minVoltage = minVoltages.at(i);
             const auto maxVoltage = maxVoltages.at(i);
 
-            logger->log(LogSeverity::INFO,
-                        std::format("Setting voltage -{}, +{}, TX amplitude: {}", voltageMinus, voltagePlus, i+1));
+            logger->info("Setting voltage -{}, +{}, TX amplitude: {}", voltageMinus, voltagePlus, i+1);
             ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
                                   IllegalArgumentException(std::format(
                                       "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,
@@ -393,8 +391,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
                     actualVoltage, expectedVoltage));
         }
     } else if(!isHVPS) {
-        this->logger->log(LogSeverity::INFO,
-                          "Skipping voltage verification (measured by HV: "
+        this->logger->info("Skipping voltage verification (measured by HV: "
                           "US4PSC does not provide the possibility to measure the voltage).");
     }
 
@@ -435,7 +432,7 @@ void Us4RImpl::disableHV() {
     if (this->state == State::STARTED) {
         throw IllegalStateException("You cannot disable HV while the system is running.");
     }
-    logger->log(LogSeverity::INFO, "Disabling HV");
+    logger->info("Disabling HV");
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
 
     for (uint8_t n = 0; n < hv.size(); n++) {
@@ -540,7 +537,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
 
 void Us4RImpl::start() {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
-    logger->log(LogSeverity::DEBUG, "Starting us4r.");
+    logger->debug("Starting us4r.");
     if (this->buffer == nullptr) {
         throw ::arrus::IllegalArgumentException("Call upload function first.");
     }
@@ -584,10 +581,10 @@ void Us4RImpl::stop() { this->stopDevice(); }
 void Us4RImpl::stopDevice() {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STARTED) {
-        logger->log(LogSeverity::DEBUG, "Device Us4R is already stopped.");
+        logger->debug("Device Us4R is already stopped.");
     } else {
         this->state = State::STOP_IN_PROGRESS;
-        logger->log(LogSeverity::DEBUG, "Stopping system.");
+        logger->debug("Stopping system.");
         if (this->digitalBackplane.has_value() && isExternalTrigger) {
             this->digitalBackplane.value()->enableInternalTrigger();
         }
@@ -598,25 +595,23 @@ void Us4RImpl::stopDevice() {
                 us4oem->getIUs4OEM()->DisableRuntimeInterrupts();
             }
             catch (const std::exception &e) {
-                logger->log(
-                        LogSeverity::WARNING,
-                        std::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
+                logger->warn("Error on waiting for pending interrupts and transfers: {}", e.what());
             }
         }
-        logger->log(LogSeverity::DEBUG, "Stopped.");
+        logger->debug("Stopped.");
     }
     this->state = State::STOPPED;
 }
 
 Us4RImpl::~Us4RImpl() noexcept {
     try {
-        logger->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
+        logger->debug("Closing connection with Us4R.");
         this->stopDevice();
         // TODO: the below should be part of session handler
         if (this->buffer) {
             cleanupBuffers();
         }
-        logger->log(LogSeverity::INFO, "Connection to Us4R closed.");
+        logger->info("Connection to Us4R closed.");
     } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
     }
@@ -921,9 +916,8 @@ void Us4RImpl::setRxSettings(const RxSettings &settings) {
         this->rxSettings = settings;
     } catch (...) {
         if (isStateInconsistent) {
-            logger->log(LogSeverity::ERROR,
-                        "Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
-                        "were not properly configured.");
+            logger->error("Us4R AFE parameters are in inconsistent state: some of the us4OEM modules "
+                           "were not properly configured.");
         }
         throw;
     }
@@ -983,9 +977,8 @@ void Us4RImpl::checkState() const {
 void Us4RImpl::setStopOnOverflow(bool value) {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STOPPED) {
-        logger->log(LogSeverity::WARNING,
-                    "The StopOnOverflow property should be set "
-                    "only when the device is stopped.");
+        logger->warn("The StopOnOverflow property should be set "
+                     "only when the device is stopped.");
     }
     this->stopOnOverflow = value;
 }
@@ -1003,10 +996,9 @@ void Us4RImpl::applyForAllUs4OEMs(const std::function<void(Us4OEM *us4oem)> &fun
         isConsistent = false;
     } catch (...) {
         if (isConsistent) {
-            logger->log(LogSeverity::ERROR,
-                        std::format("Error while calling '{}': the function was not applied "
-                               "correctly for all us4OEMs.",
-                               funcName));
+            logger->error("Error while calling '{}': the function was not applied "
+                           "correctly for all us4OEMs.",
+                           funcName);
         }
         throw;
     }
@@ -1205,12 +1197,12 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
     case Scheme::WorkMode::SYNC:
         return [this, outputBuffer, isMaster, firings]() {
             try {
-                this->logger->log(LogSeverity::WARNING, "Detected RX data overflow.");
+                this->logger->warn("Detected RX data overflow.");
                 outputBuffer->runOnOverflowCallback();
                 if(isMaster) {
 //                    std::unique_lock<std::mutex> guard(triggerMutex);
                     const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
-                    this->logger->log(LogSeverity::TRACE, std::format("Detected RX data overflow, current sequencer index: {}.", currentIdx));
+                    this->logger->trace("Detected RX data overflow, current sequencer index: {}.", currentIdx);
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
                     for(const auto &[startFiring, endFiring]: firings) {
@@ -1237,13 +1229,13 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
 
                         if(i > 0) {
                             us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
-                            logger->log(LogSeverity::TRACE, std::format("OEM:{} returned to IDLE state.", i));
+                            logger->trace("OEM:{} returned to IDLE state.", i);
                         }
                     }
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, std::format("RX overflow callback exception: {}", e.what()));
-            } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
+                logger->error("RX overflow callback exception: {}", e.what());
+            } catch (...) { logger->error("RX overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
@@ -1252,16 +1244,16 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
         return [this, outputBuffer]() {
             try {
                 if (outputBuffer->isStopOnOverflow()) {
-                    this->logger->log(LogSeverity::ERROR, "Rx data overflow, stopping the device.");
+                    this->logger->error("Rx data overflow, stopping the device.");
                     this->getMasterOEM()->stop();
                     outputBuffer->markAsInvalid();
                 } else {
-                    this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
+                    this->logger->warn("Rx data overflow ...");
                     outputBuffer->runOnOverflowCallback();
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, std::format("RX overflow callback exception: {}", e.what()));
-            } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
+                logger->error("RX overflow callback exception: {}", e.what());
+            } catch (...) { logger->error("RX overflow callback exception: unknown"); }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
@@ -1276,12 +1268,12 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
     case Scheme::WorkMode::SYNC:
         return [this, outputBuffer, isMaster, firings]() {
             try {
-                this->logger->log(LogSeverity::WARNING, "Detected host data overflow.");
+                this->logger->warn("Detected host data overflow.");
                 outputBuffer->runOnOverflowCallback();
                 if(isMaster) {
 //                    std::unique_lock<std::mutex> guard(triggerMutex);
                     const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
-                    this->logger->log(LogSeverity::TRACE, std::format("Detected transfer data overflow, current sequencer index: {}.", currentIdx));
+                    this->logger->trace("Detected transfer data overflow, current sequencer index: {}.", currentIdx);
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
                     for(const auto &[startFiring, endFiring]: firings) {
@@ -1309,13 +1301,13 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                         // be released the last one.
                         if(i > 0) {
                             us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
-                            logger->log(LogSeverity::TRACE, std::format("OEM:{} returned to IDLE state.", i));
+                            logger->trace("OEM:{} returned to IDLE state.", i);
                         }
                     }
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, std::format("Host overflow callback exception: {}", e.what()));
-            } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
+                logger->error("Host overflow callback exception: {}", e.what());
+            } catch (...) { logger->error("Host overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
     case Scheme::WorkMode::HOST:
@@ -1324,16 +1316,16 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
         return [this, outputBuffer]() {
             try {
                 if (outputBuffer->isStopOnOverflow()) {
-                    this->logger->log(LogSeverity::ERROR, "Host data overflow, stopping the device.");
+                    this->logger->error("Host data overflow, stopping the device.");
                     this->getMasterOEM()->stop();
                     outputBuffer->markAsInvalid();
                 } else {
                     outputBuffer->runOnOverflowCallback();
-                    this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
+                    this->logger->warn("Host data overflow ...");
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, std::format("Host overflow callback exception: ", e.what()));
-            } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
+                logger->error("Host overflow callback exception: {}", e.what());
+            } catch (...) { logger->error("Host overflow callback exception: unknown"); }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
     }
@@ -1361,7 +1353,7 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    logger->log(LogSeverity::DEBUG, std::format("Setting {}", params.toString()));
+    logger->debug("Setting {}", params.toString());
     std::vector<std::pair<size_t, size_t>> values;
     // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
     // and just interpret the string as sequence ordinal number?
@@ -1559,7 +1551,7 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 
 void Us4RImpl::handlePulserInterrupt() {
     if (this->state == State::STOPPED) {
-        logger->log(LogSeverity::DEBUG, std::format("System already stopped."));
+        logger->debug("System already stopped.");
         this->disableHV();
     }
     else {

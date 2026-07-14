@@ -222,9 +222,8 @@ public:
         elementSize = calculateElementSize(arrayDefs);
         try {
             dataBufferSize = elementSize * nElements;
-            getDefaultLogger()->log(
-                LogSeverity::DEBUG,
-                std::format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize, nElements, useP2pDma));
+            getDefaultLogger()->debug("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", 
+                dataBufferSize, elementSize, nElements, useP2pDma);
 
             if (useP2pDma) {
                 auto &cuda = CudaRuntime::instance();
@@ -243,34 +242,32 @@ public:
                 bool unifiedAddressing = cuda.getDeviceUnifiedAddressing(0);
                 usesUnifiedMemory = deviceCount == 1 && integrated && unifiedAddressing;
 
-                getDefaultLogger()->log(
-                    LogSeverity::DEBUG,
-                    std::format("CUDA device 0, integrated: {}, unifiedAddressing: {}, unified memory: {}",
-                           integrated, unifiedAddressing, usesUnifiedMemory));
+                getDefaultLogger()->debug("CUDA device 0, integrated: {}, unifiedAddressing: {}, unified memory: {}",
+                                   integrated, unifiedAddressing, usesUnifiedMemory);
 
                 if (!usesUnifiedMemory) {
                     dataBuffer = reinterpret_cast<DataType *>(cuda.malloc(dataBufferSize));
                     if (dataBuffer == nullptr) {
-                        getDefaultLogger()->log(LogSeverity::ERROR, "cudaMalloc failed");
+                        getDefaultLogger()->error("cudaMalloc failed");
                         throw std::runtime_error("cudaMalloc failed");
                     }
                 } else {
                     // For integrated GPUs with unified memory, we use cudaHostAlloc
                     dataBuffer = reinterpret_cast<DataType *>(cuda.hostAllocDefault(dataBufferSize));
                     if (dataBuffer == nullptr) {
-                        getDefaultLogger()->log(LogSeverity::ERROR, "cudaHostAlloc failed");
+                        getDefaultLogger()->error("cudaHostAlloc failed");
                         throw std::runtime_error("cudaHostAlloc failed");
                     }
                 }
             } else {
                 dataBuffer = reinterpret_cast<DataType *>(mallocChunked(dataBufferSize, ALLOC_CHUNK_SIZE));
             }
-            getDefaultLogger()->log(LogSeverity::DEBUG, std::format("Allocated address: {}", (size_t) dataBuffer));
+            getDefaultLogger()->debug("Allocated address: {}", (size_t) dataBuffer);
             createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
             releaseDataBuffer();
             dataBuffer = nullptr;
-            getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
+            getDefaultLogger()->debug("Released the output buffer.");
             throw;
         }
         this->initialize();
@@ -278,7 +275,7 @@ public:
 
     ~Us4ROutputBuffer() override {
         releaseDataBuffer();
-        getDefaultLogger()->log(LogSeverity::DEBUG, "Released the output buffer.");
+        getDefaultLogger()->debug("Released the output buffer.");
     }
 
     void registerOnNewDataCallback(framework::OnNewDataCallback &callback) override {
@@ -329,7 +326,7 @@ public:
     bool signal(Ordinal n, uint16 elementNr) {
         std::unique_lock<std::mutex> guard(mutex);
         if (this->state != State::RUNNING) {
-            getDefaultLogger()->log(LogSeverity::DEBUG, "Signal queue shutdown.");
+            getDefaultLogger()->debug("Signal queue shutdown.");
             return false;
         }
         this->validateState();

@@ -36,7 +36,7 @@ public:
             try {
                 getIHV()->DisableHV();
             } catch( const std::exception &ee) {
-                logger->log(LogSeverity::ERROR, std::format("Exception while disabling HV: {}", ee.what()));
+                logger->error("Exception while disabling HV: {}", ee.what());
             }
             throw;
         } catch (const ::us4us::AssertionException &) {
@@ -44,14 +44,13 @@ public:
             try {
                 getIHV()->DisableHV();
             } catch( const std::exception &ee) {
-                logger->log(LogSeverity::ERROR, std::format("Exception while disabling HV: {}", ee.what()));
+                logger->error("Exception while disabling HV: {}", ee.what());
             }
             throw;
         } catch (const std::exception &e) {
-            logger->log(LogSeverity::INFO,
-                        std::format("First attempt to set HV voltage failed with "
-                                        "message: '{}', trying once more.",
-                                        e.what()));
+            logger->info("First attempt to set HV voltage failed with "
+                         "message: '{}', trying once more.",
+                         e.what());
             getIHV()->EnableHV();
             getIHV()->SetHVVoltage(voltages);
         }
@@ -79,10 +78,9 @@ public:
         try {
             getIHV()->DisableHV();
         } catch (std::exception &e) {
-            logger->log(LogSeverity::INFO,
-                        std::format("First attempt to disable high voltage failed with "
-                                        "message: '{}', trying once more.",
-                                        e.what()));
+            logger->info("First attempt to disable high voltage failed with "
+                         "message: '{}', trying once more.",
+                         e.what());
             getIHV()->DisableHV();
         }
     }

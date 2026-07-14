@@ -649,7 +649,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     }
 
     std::string settingsPathStr = sessionSettingsPath.string();
-    logger->log(LogSeverity::INFO, std::format("Using configuration file: {}", settingsPathStr));
+    logger->info("Using configuration file: {}", settingsPathStr);
 
     std::unique_ptr<ap::SessionSettings> s = readProtoTxt<ap::SessionSettings>(settingsPathStr);
     //Validate.
@@ -686,7 +686,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::DEBUG, std::format("Using dictionary file: {}", dictionaryPathStr));
+        logger->debug("Using dictionary file: {}", dictionaryPathStr);
     } else {
         // Read default dictionary.
         try {
@@ -696,7 +696,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                                                            "dictionary. Message: {}",
                                                            e.what()));
         }
-        logger->log(LogSeverity::DEBUG, "Using default dictionary.");
+        logger->debug("Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
     dictionaryValidator.validate(d);
@@ -714,7 +714,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
         settingsBuilder.addGpu(readGpuSettings(s->gpu()));
     }
     SessionSettings settings = settingsBuilder.build();
-    logger->log(LogSeverity::DEBUG, std::format("Read settings from '{}': {}", filepath, std4us::to_string(settings)));
+    logger->debug("Read settings from '{}': {}", filepath, std4us::to_string(settings));
     return settings;
 }
 
