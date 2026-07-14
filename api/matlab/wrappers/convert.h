@@ -67,7 +67,7 @@ template<typename T> T safeCastInt(const ::matlab::data::Array &arr, const size_
         auto min = (double)std::numeric_limits<T>::min();
         auto max = (double)std::numeric_limits<T>::max();
         if (v < min || v > max) {
-            arrus::IllegalArgumentException(std::format("Value {} should be in range [{}, {}]", v, min, max));
+            arrus::IllegalArgumentException("Value {} should be in range [{}, {}]", v, min, max);
         }
         return v;
     } else {
@@ -129,13 +129,13 @@ template<typename T> bool isMatlabArrayCompatibleWithType(const ::matlab::data::
         return isArrayTypeOkFor<T>(array.getType());
     } catch (const std::exception &e) {
         throw ::arrus::IllegalArgumentException(
-            std::format("Exception while resolving array's data type: {}", e.what()));
+            "Exception while resolving array's data type: {}", e.what());
     }
 }
 #define ARRUS_MATLAB_REQUIRES_COMPATIBLE_TYPE_FOR_PROPERTY(array, expectedType, propertyName)                          \
     do {                                                                                                               \
         if (!isMatlabArrayCompatibleWithType<expectedType>(array)) {                                                   \
-            throw arrus::IllegalArgumentException("Incompatible expected and given type for: " + (propertyName));      \
+            throw arrus::IllegalArgumentException("Incompatible expected and given type for: {}", (propertyName));      \
         }                                                                                                              \
     } while (0)
 
@@ -152,7 +152,7 @@ template<typename T> T convertToCppScalar(const ::matlab::data::Array &array, co
     try {
         return safeCast<T>(array, 0);
     } catch (const IllegalArgumentException &e) {
-        throw IllegalArgumentException("Error while converting " + arrayName + " to C++ scalar: " + e.what());
+        throw IllegalArgumentException("Error while converting {} to C++ scalar: {}", arrayName, e.what());
     }
 }
 
@@ -181,7 +181,7 @@ T getCppScalar(const MexContext::SharedHandle &ctx, const MatlabElementRef &obje
         return convertToCppScalar<T>(arr, propertyName);
     } catch (const std::exception &e) {
         throw ::arrus::IllegalArgumentException(
-            std::format("Exception while getting property '{}' to C++: {}", propertyName, e.what()));
+            "Exception while getting property '{}' to C++: {}", propertyName, e.what());
     }
 }
 
@@ -210,7 +210,7 @@ std::optional<T> getCppOptionalScalar(const MexContext::SharedHandle &ctx, const
         return convertToCppScalar<T>(arr, propertyName);
     } catch (const std::exception &e) {
         throw ::arrus::IllegalArgumentException(
-            std::format("Exception while reading property '{}' to C++: {}", propertyName, e.what()));
+            "Exception while reading property '{}' to C++: {}", propertyName, e.what());
     }
 }
 
@@ -233,14 +233,14 @@ T getCppRequiredScalar(const MexContext::SharedHandle &ctx, const MatlabElementR
     try {
         ::matlab::data::Array arr = getMatlabProperty(ctx, object, propertyName);
         if (arr.isEmpty()) {
-            throw IllegalArgumentException(std::format("Field '{}' is required", propertyName));
+            throw IllegalArgumentException("Field '{}' is required", propertyName);
         }
         ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(arr, propertyName);
         ARRUS_MATLAB_REQUIRES_COMPATIBLE_TYPE_FOR_PROPERTY(arr, T, propertyName);
         return convertToCppScalar<T>(arr, propertyName);
     } catch (const std::exception &e) {
         throw ::arrus::IllegalArgumentException(
-            std::format("Exception while reading property '{}' to C++: {}", propertyName, e.what()));
+            "Exception while reading property '{}' to C++: {}", propertyName, e.what());
     }
 }
 
@@ -263,7 +263,7 @@ template<typename T> std::vector<T> convertToCppVector(const ::matlab::data::Arr
             result[i] = safeCast<T>(t, i);
         }
     } catch (const IllegalArgumentException &e) {
-        throw IllegalArgumentException("Error while converting " + arrayName + " to C++ vector: " + e.what());
+        throw IllegalArgumentException("Error while converting {} to C++ vector: {}", arrayName, e.what());
     }
     return result;
 }
@@ -277,7 +277,7 @@ std::vector<T> getCppVector(const MexContext::SharedHandle &ctx, const MatlabEle
         return convertToCppVector<T>(arr, propertyName);
     } catch (const std::exception &e) {
         throw ::arrus::IllegalArgumentException(
-            std::format("Exception while reading property '{}' to C++: {}", propertyName, e.what()));
+            "Exception while reading property '{}' to C++: {}", propertyName, e.what());
     }
 }
 
@@ -288,9 +288,9 @@ std::pair<T, T> getCppPair(const MexContext::SharedHandle &ctx, const MatlabElem
                            const std::string &propertyName) {
     std::vector<T> vec = getCppVector<T>(ctx, object, propertyName);
     if (vec.size() != 2) {
-        throw ::arrus::IllegalArgumentException(std::format("Exception while reading property '{} to C++: "
-                                                                "the array should contains exactly two values.",
-                                                                propertyName));
+        throw ::arrus::IllegalArgumentException("Exception while reading property '{}' to C++: "
+                                                "the array should contains exactly two values.",
+                                                propertyName);
     }
     return std::make_pair(vec[0], vec[1]);
 }
@@ -316,7 +316,7 @@ std::vector<T> getCppObjectVector(const MexContext::SharedHandle &ctx, const Mat
         return result;
     } catch (const std::exception &e) {
         throw ::arrus::IllegalArgumentException(
-            std::format("Exception while reading property '{}' to C++: {}", property, e.what()));
+            "Exception while reading property '{}' to C++: {}", property, e.what());
     }
 }
 

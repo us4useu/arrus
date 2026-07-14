@@ -59,8 +59,8 @@ public:
         root = std4us::trim(root);
         tail = std4us::trim(tail);
         if (!tail.empty()) {
-            throw IllegalArgumentException(std::format(
-                "Us4R devices allows access only to the top-level devices (got relative path: '{}')", path));
+            throw IllegalArgumentException(
+                "Us4R devices allows access only to the top-level devices (got relative path: '{}')", path);
         }
         DeviceId componentId = DeviceId::parse(root);
         return getDevice(componentId);

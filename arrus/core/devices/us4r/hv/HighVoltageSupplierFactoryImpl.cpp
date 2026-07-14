@@ -24,9 +24,8 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
     const std::string &name = settings.getModelId().getName();
     ARRUS_REQUIRES_EQUAL(manufacturer, "us4us",
                          IllegalArgumentException(
-                             std::format(
                                  "Only us4us High-Voltage suppliers are supported only (got {})",
-                                 manufacturer)));
+                                 manufacturer));
     Logger::SharedHandle arrusLogger = getLoggerFactory()->getLogger();
     us4us::us4r::Logger::Handle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
     DeviceId id(DeviceType::HV, 0);
@@ -77,8 +76,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
 
     }
     else {
-        throw IllegalArgumentException(
-            std::format("Unrecognized high-voltage supplier: {}, {}", manufacturer, name));
+        throw IllegalArgumentException("Unrecognized high-voltage supplier: {}, {}", manufacturer, name);
     }
 }
 }

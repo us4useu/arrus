@@ -61,7 +61,7 @@ public:
             return matlabEngine->feval(typeId, 1, params)[0];
         } catch (const std::exception &e) {
             throw ::arrus::IllegalArgumentException(
-                std::format("Exception while creating object '{}': {}", typeId, e.what()));
+                "Exception while creating object '{}': {}", typeId, e.what());
         }
     }
 
@@ -72,7 +72,7 @@ public:
              )[0];
         } catch (const std::exception &e) {
             throw ::arrus::IllegalArgumentException(
-                std::format("Exception while calling 'isa': {}", e.what()));
+                "Exception while calling 'isa': {}", e.what());
         }
     }
 
@@ -81,7 +81,7 @@ public:
             return getArrayFactory().createScalar<T>(value);
         } catch (const std::exception &e) {
             throw ::arrus::IllegalArgumentException(
-                std::format("Exception while creating scalar array '{}': {}", value, e.what()));
+                "Exception while creating scalar array '{}': {}", value, e.what());
         }
     }
 
@@ -90,7 +90,7 @@ public:
             return getArrayFactory().createScalar(v);
         } catch (const std::exception &e) {
             throw ::arrus::IllegalArgumentException(
-                std::format("Exception while creating scalar string array: {}", e.what()));
+                "Exception while creating scalar string array: {}", e.what());
         }
     }
 
@@ -99,7 +99,7 @@ public:
             return getArrayFactory().createScalar(v);
         } catch (const std::exception &e) {
             throw ::arrus::IllegalArgumentException(
-                std::format("Exception while creating scalar string array: {}", e.what()));
+                "Exception while creating scalar string array: {}", e.what());
         }
     }
 
@@ -108,8 +108,7 @@ public:
             ::matlab::data::ArrayDimensions dimensions = {1, value.size()};
             return getArrayFactory().createArray(dimensions, std::begin(value), std::end(value));
         } catch (const std::exception &e) {
-            throw ::arrus::IllegalArgumentException(std::format(
-                "Exception while creating vector array '{}': {}", std4us::join(value, ", "), e.what()));
+            throw ::arrus::IllegalArgumentException("Exception while creating vector array '{}': {}", std::join(value, ", "), e.what());
         }
     }
 
@@ -121,11 +120,11 @@ public:
             case ::arrus::framework::NdArray::DataType::FLOAT32:
                 return createTypedArray<::arrus::float64>(array);
             default:
-                throw IllegalArgumentException(std::format("Unhandled arrus data type: {}",
-                                               std::to_string(size_t(array.getDataType()))));
+                throw IllegalArgumentException("Unhandled arrus data type: {}",
+                                               std::to_string(size_t(array.getDataType())));
             }
         } catch (const std::exception &e) {
-            throw IllegalArgumentException(std::format("Exception while creating array: {}", e.what()));
+            throw IllegalArgumentException("Exception while creating array: {}", e.what());
         }
     }
 
@@ -163,11 +162,11 @@ public:
             case ::matlab::data::ArrayType::DOUBLE:
                 return createTypedNdArrayCastFloat(array, placement, name);
             default:
-                throw IllegalArgumentException(std::format("Unhandled arrus data type: {}",
-                                                      std::to_string(size_t(array.getType()))));
+                throw IllegalArgumentException("Unhandled arrus data type: {}",
+                                               std::to_string(size_t(array.getType())));
             }
         } catch (const std::exception &e) {
-            throw IllegalArgumentException(std::format("Exception while creating array: {}", e.what()));
+            throw IllegalArgumentException("Exception while creating array: {}", e.what());
         }
     }
 

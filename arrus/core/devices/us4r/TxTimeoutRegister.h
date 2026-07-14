@@ -177,7 +177,7 @@ private:
             TxTimeout txTime = getTxTimeUs(op, maxOpDelayProfile);
             if(txTime > MAX_TIMEOUT) {
                 throw IllegalArgumentException(
-                    std::format("TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT));
+                    "TX time {} is higher than the maximum timeout: {}", txTime, MAX_TIMEOUT);
             }
             return txTime;
         }

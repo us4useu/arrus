@@ -20,7 +20,7 @@ class SettingsDictionary {
         try {
             return adaptersMap.at(idStr);
         } catch(const std::out_of_range &) {
-            throw IllegalArgumentException(std::format("Adapter model not found: {}", idStr));
+            throw IllegalArgumentException("Adapter model not found: {}", idStr);
         }
     }
 
@@ -39,11 +39,10 @@ class SettingsDictionary {
         try {
             return probesMap.at(key);
         } catch(const std::out_of_range &) {
-            throw IllegalArgumentException(std::format(
-                "There is no defined setting in the dictionary "
-                "for pair: ({}, {}), ({}, {})",
-                probeModelId.getManufacturer(), probeModelId.getName(),
-                adapterModelId.getManufacturer(), adapterModelId.getName()));
+            throw IllegalArgumentException("There is no defined setting in the dictionary "
+                                           "for pair: ({}, {}), ({}, {})",
+                                           probeModelId.getManufacturer(), probeModelId.getName(),
+                                           adapterModelId.getManufacturer(), adapterModelId.getName());
         }
     }
 
@@ -61,7 +60,7 @@ class SettingsDictionary {
             return modelsMap.at(idStr);
         }
         catch(const std::out_of_range &) {
-            throw IllegalArgumentException(std::format("Probe model not found: {}", idStr));
+            throw IllegalArgumentException("Probe model not found: {}", idStr);
         }
     }
 

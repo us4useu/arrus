@@ -13,16 +13,14 @@ constexpr char PATH_DELIMITER = '/';
 inline
 std::pair<std::string, std::string> getPathRoot(const std::string &path) {
     if(path.empty() || path[0] != PATH_DELIMITER) {
-        throw IllegalArgumentException(
-                std::format("Invalid path '{}', should start with '{}'",
-                                path, PATH_DELIMITER));
+        throw IllegalArgumentException("Invalid path '{}', should start with '{}'", path, PATH_DELIMITER);
     }
 
     std::string relPath = path.substr(1, path.size() - 1);
     if(relPath.empty()) {
-        throw IllegalArgumentException(
-                std::format("Path should refer to some object "
-                              "(got: '{}')", path));
+        throw IllegalArgumentException("Path should refer to some object "
+                                       "(got: '{}')",
+                                       path);
     }
 
     size_t firstElementEnd = relPath.find(PATH_DELIMITER);

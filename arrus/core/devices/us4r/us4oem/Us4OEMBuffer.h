@@ -153,9 +153,9 @@ public:
 
     [[nodiscard]] const Us4OEMBufferArrayDef &getArrayDef(size_t i) const {
         if(i >= arrayDefs.size()) {
-            throw IllegalArgumentException(std::format(
+            throw IllegalArgumentException(
                 "Us4OEMBufferView: array id exceeds the number of arrays defined for "
-                "the given OEM buffer, got: {}, number of arrays: {}.", i, getArrayDefs().size()));
+                "the given OEM buffer, got: {}, number of arrays: {}.", i, getArrayDefs().size());
         }
         return arrayDefs[i];
     }

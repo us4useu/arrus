@@ -24,7 +24,7 @@ public:
 
     [[nodiscard]] const TxRxSequence &getTxRxSequence(size_t ordinal) const {
         if(ordinal >= txRxSequences.size()) {
-            throw IllegalArgumentException(std::format("Exceeded the maximum number of sequences: {}", txRxSequences.size()));
+            throw IllegalArgumentException("Exceeded the maximum number of sequences: {}", txRxSequences.size());
         }
         return txRxSequences.at(0);
     }

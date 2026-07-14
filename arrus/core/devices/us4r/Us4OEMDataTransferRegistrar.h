@@ -145,8 +145,8 @@ public:
                 uint16 firing = parts[0].getEntryId();// the firing that finishes given transfer
                 for (auto &part : parts) {
                     ARRUS_REQUIRES_TRUE_E(part.getSize() <= maxTransferSize,
-                                          ArrusException(std::format("A single frame cannot exceed {} bytes, got: {}",
-                                                                part.getSize(), maxTransferSize)));
+                                          ArrusException("A single frame cannot exceed {} bytes, got: {}",
+                                                                part.getSize(), maxTransferSize));
 
                     if (size + part.getSize() > maxTransferSize) {
                         transfers.emplace_back(destination, source, size, firing);

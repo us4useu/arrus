@@ -156,11 +156,11 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
             const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
             if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
                 throw IllegalStateException(
-                    std::format("{} invalid '{}', should be in range: [{}, {}]",
+                    "{} invalid '{}', should be in range: [{}, {}]",
                     logbook.name,
                     logbook.voltage,
                     (static_cast<float>(expectedVoltage) - tolerance),
-                    (static_cast<float>(expectedVoltage) + tolerance)));
+                    (static_cast<float>(expectedVoltage) + tolerance));
             }
         }
     }
@@ -260,7 +260,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
                 voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx2().getVoltage();
                 break;
             default:
-                throw IllegalArgumentException(std::format("Unsupported voltage amplitude {}", amplitude));
+                throw IllegalArgumentException("Unsupported voltage amplitude {}", amplitude);
             }
             if(setContains(availableAmplitudes, amplitude)) {
                 // Voltage available
@@ -295,9 +295,9 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
             auto minVoltage = *std::max_element(std::begin(min), std::end(min));
             auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
             if(minVoltage > maxVoltage) {
-                throw IllegalStateException(std::format("Invalid probe and us4OEM limit settings: "
+                throw IllegalStateException("Invalid probe and us4OEM limit settings: "
                                                    "the actual minimum voltage {} is greater than the maximum: {}.",
-                                                   minVoltage, maxVoltage));
+                                                   minVoltage, maxVoltage);
             }
             minVoltages.at(amplitude-1) = minVoltage;
             maxVoltages.at(amplitude-1) = maxVoltage;
@@ -320,13 +320,13 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
             logger->info("Setting voltage -{}, +{}, TX amplitude: {}", voltageMinus, voltagePlus, i+1);
             ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
-                                  IllegalArgumentException(std::format(
+                                  IllegalArgumentException(
                                       "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,
-                                      minVoltage, maxVoltage)));
+                                      minVoltage, maxVoltage));
             ARRUS_REQUIRES_TRUE_E(voltagePlus >= minVoltage && voltagePlus <= maxVoltage,
-                                  IllegalArgumentException(std::format(
+                                  IllegalArgumentException(
                                       "Unaccepted voltage '{}', should be in range: [{}, {}]", voltagePlus,
-                                      minVoltage, maxVoltage)));
+                                      minVoltage, maxVoltage));
         }
     }
 
@@ -387,8 +387,8 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
         if (actualVoltage != expectedVoltage) {
             disableHV();
             throw IllegalStateException(
-                std::format("Voltage set on HV module '{}' does not match requested value: '{}'",
-                    actualVoltage, expectedVoltage));
+                "Voltage set on HV module '{}' does not match requested value: '{}'",
+                    actualVoltage, expectedVoltage);
         }
     } else if(!isHVPS) {
         this->logger->info("Skipping voltage verification (measured by HV: "
@@ -519,8 +519,8 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
     const auto placementOrdinal = placement.getOrdinal();
     if (!((placementType == DeviceType::CPU || placementType == DeviceType::GPU) && placementOrdinal == 0)) {
         throw IllegalArgumentException(
-            std::format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
-                   placement.toString()));
+            "Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
+                   placement.toString());
     }
     const bool useP2pDma = (placementType == DeviceType::GPU);
     // Create output buffer.
@@ -1212,7 +1212,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                         }
                     }
                     if(pendingFiring == std::nullopt) {
-                        throw IllegalStateException(std::format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                        throw IllegalStateException("Couldn't find the current index in the firing ranges!: {}", currentIdx);
                     }
                     // Wait until the end of the [startFiring, endFiring] entries will be released.
                     // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
@@ -1283,7 +1283,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                         }
                     }
                     if(pendingFiring == std::nullopt) {
-                        throw IllegalStateException(std::format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                        throw IllegalStateException("Couldn't find the current index in the firing ranges!: {}", currentIdx);
                     }
                     // Wait until the end of the [startFiring, endFiring] entries will be released.
                     // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
@@ -1364,7 +1364,7 @@ void Us4RImpl::setParameters(const Parameters &params) {
         const auto [sequenceName, parameterName] = parseTxDelaysParamName(key);
         const auto sequenceOrdinal = mapGetValueOrNone(sequenceNameToOrdinalMap, sequenceName);
         if(!sequenceOrdinal.has_value()) {
-            throw IllegalArgumentException(std::format("Could not find TX/RX sequence with name: {}", sequenceName));
+            throw IllegalArgumentException("Could not find TX/RX sequence with name: {}", sequenceName);
         }
         // Wer accept txDelays and txFocus; as for the txFocus, this is basically a shortcut for now
         // (Python API translates focus to delays during the programming).
@@ -1373,10 +1373,10 @@ void Us4RImpl::setParameters(const Parameters &params) {
         }
         auto nProfiles = mapGetValueOrNone(sequenceNumberOfTxDelayProfiles, sequenceName).value_or(0);
         if(value < 0) {
-            throw IllegalArgumentException(std::format("The value {} should not be negative", value));
+            throw IllegalArgumentException("The value {} should not be negative", value);
         }
         if(static_cast<size_t>(value) >= nProfiles) {
-            throw IllegalArgumentException(std::format("The value {} exceeds the number of currently uploaded TX delay profiles: {}", value, nProfiles));
+            throw IllegalArgumentException("The value {} exceeds the number of currently uploaded TX delay profiles: {}", value, nProfiles);
         }
         values.emplace_back(std::make_pair(ARRUS_SAFE_CAST(sequenceOrdinal.value(), size_t), static_cast<size_t>(value)));
     }
@@ -1682,8 +1682,8 @@ Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, co
         for(size_t i = 0; i < arrays.size(); ++i) {
             const auto &a = arrays.at(i);
             if(a.first != i) {
-                throw IllegalArgumentException(std::format("The Constants numbering should have no gaps, e.g. Delays:0, Delays:2 "
-                                                      "are not accepted (found: /{}/txDelays:{}, expected: {})", name, a.first, i));
+                throw IllegalArgumentException("The Constants numbering should have no gaps, e.g. Delays:0, Delays:2 "
+                                                      "are not accepted (found: /{}/txDelays:{}, expected: {})", name, a.first, i);
             }
             result[name].push_back(a.second);
         }
@@ -1699,11 +1699,10 @@ std::tuple<std::string, std::string, size_t> Us4RImpl::parseTxDelaysConstantName
         size_t parameterOrdinal = stoi(match[3].str());
         return {sequenceName, parameterName, parameterOrdinal};
     } else {
-        throw IllegalArgumentException(
-            std::format("The constant name should follow the following pattern: "
-                   "^//([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$, "
-                   "got: {}", name)
-        );
+        throw IllegalArgumentException("The constant name should follow the following pattern: "
+                                       "^//([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$, "
+                                       "got: {}",
+                                       name);
     }
 }
 
@@ -1714,11 +1713,10 @@ std::tuple<std::string, std::string> Us4RImpl::parseTxDelaysParamName(const std:
         std::string parameterName = match[2].str();
         return {sequenceName, parameterName};
     } else {
-        throw IllegalArgumentException(
-            std::format("The constant name should follow the following pattern: "
-                   "/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$, "
-                   "got: {}", name)
-        );
+        throw IllegalArgumentException("The constant name should follow the following pattern: "
+                                       "^//([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$, "
+                                       "got: {}",
+                                       name);
     }
 }
 

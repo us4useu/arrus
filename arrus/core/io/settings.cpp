@@ -50,9 +50,9 @@ std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
     auto result = std::make_unique<T>();
     bool parseOk = google::protobuf::TextFormat::Parse(&input, result.get());
     if (!parseOk) {
-        throw IllegalArgumentException(std::format("Error while parsing file {}, please check error messages "
+        throw IllegalArgumentException("Error while parsing file {}, please check error messages "
                                                        "that appeared the above.",
-                                                       filepath));
+                                                       filepath);
     }
     return result;
 }
@@ -293,7 +293,7 @@ ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, c
         try {
             return dictionary.getAdapterSettings(id);
         } catch (const std::out_of_range &) {
-            throw IllegalArgumentException(std::format("Adapter with id {} not found.", id.toString()));
+            throw IllegalArgumentException("Adapter with id {} not found.", id.toString());
         }
     } else {
         throw ArrusException("NYI");
@@ -307,13 +307,12 @@ getUniqueConnection(const proto::ProbeModel_Id &probeId,
     ProbeModelId id{probeId.manufacturer(), probeId.name()};
     if (connections.count(key) > 1) {
         throw IllegalArgumentException(
-            std::format("Multiple probe to adapter connection definitions for probe: {}", id.toString()));
+            "Multiple probe to adapter connection definitions for probe: {}", id.toString());
     }
     auto it = connections.find(key);
     if (it == std::end(connections)) {
         throw IllegalArgumentException(
-            std::format("No definition found for probe {} in the probe to adapter connections list.",
-                   id.toString()));
+            "No definition found for probe {} in the probe to adapter connections list.", id.toString());
     }
     return it->second;
 }
@@ -433,7 +432,7 @@ ProbeModel readProbeModel(const proto::FileSettings &file, const SettingsDiction
         try {
             return dictionary.getProbeModel(id);
         } catch (std::out_of_range &) {
-            throw IllegalArgumentException(std::format("Probe model with id {} not found.", id.toString()));
+            throw IllegalArgumentException("Probe model with id {} not found.", id.toString());
         }
     } else {
         throw std::runtime_error("NYI");
@@ -641,10 +640,10 @@ SessionSettings readSessionSettings(const std::string &filepath) {
         if (!arrusPath.empty() && sessionSettingsPath.is_relative()) {
             sessionSettingsPath = arrusPath / sessionSettingsPath;
             if (!std::filesystem::is_regular_file(sessionSettingsPath)) {
-                throw IllegalArgumentException(std::format("File not found {}.", filepath));
+                throw IllegalArgumentException("File not found {}.", filepath);
             }
         } else {
-            throw IllegalArgumentException(std::format("File not found {}.", filepath));
+            throw IllegalArgumentException("File not found {}.", filepath);
         }
     }
 
@@ -676,12 +675,10 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                     if (std::filesystem::is_regular_file(arrusDicP)) {
                         dictionaryPathStr = arrusDicP.string();
                     } else {
-                        throw IllegalArgumentException(
-                            std::format("Invalid path to dictionary: {}", s->dictionary_file()));
+                        throw IllegalArgumentException("Invalid path to dictionary: {}", s->dictionary_file());
                     }
                 } else {
-                    throw IllegalArgumentException(
-                        std::format("Invalid path to dictionary: {}", s->dictionary_file()));
+                    throw IllegalArgumentException("Invalid path to dictionary: {}", s->dictionary_file());
                 }
             }
         }
@@ -692,9 +689,9 @@ SessionSettings readSessionSettings(const std::string &filepath) {
         try {
             d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
         } catch (const IllegalArgumentException &e) {
-            throw IllegalArgumentException(std::format("Error while reading ARRUS default "
-                                                           "dictionary. Message: {}",
-                                                           e.what()));
+            throw IllegalArgumentException("Error while reading ARRUS default "
+                                           "dictionary. Message: {}",
+                                           e.what());
         }
         logger->debug("Using default dictionary.");
     }

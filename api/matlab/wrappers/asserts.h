@@ -10,16 +10,16 @@
 
 #define ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, n, methodName) \
     ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
-        arrus::IllegalArgumentException(std::format( \
+        arrus::IllegalArgumentException( \
             "Function '{}' requires exactly {} parameters (got {})", \
-                (methodName), (n), (inputs).size())))
+                (methodName), (n), (inputs).size()))
 
 
 #define ARRUS_MATLAB_REQUIRES_N_PARAMETERS_CLASS_METHOD(inputs, n, className, methodName) \
     ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
-        arrus::IllegalArgumentException(std::format( \
+        arrus::IllegalArgumentException( \
             "Function '{}::{}' requires exactly {} parameters (got {})", \
-                (className), (methodName), (n), (inputs).size())))
+                (className), (methodName), (n), (inputs).size()))
 
 #define ARRUS_MATLAB_REQUIRES_SCALAR_NAMED(array, arrayName)          \
 do {                                                      \
@@ -52,9 +52,7 @@ do {                                                                    \
 
 #define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE(value, dataType) \
     ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(value, dataType, \
-        arrus::IllegalArgumentException(std::format(            \
-            "Value {} should be in range [{}, {}]", value, min, max     \
-        ));                                                             \
+        arrus::IllegalArgumentException("Value {} should be in range [{}, {}]", value, min, max) \
     )
 
 #define ARRUS_MATLAB_REQUIRES_INTEGER_EXCEPTION(value, exception)          \
@@ -67,9 +65,7 @@ do {                                                  \
 
 #define ARRUS_MATLAB_REQUIRES_INTEGER(value) \
     ARRUS_MATLAB_REQUIRES_INTEGER_EXCEPTION( \
-        value, arrus::IllegalArgumentException(std::format(            \
-            "Value {} should be integer", value)))
-
+        value, arrus::IllegalArgumentException("Value {} should be integer", value))
 
 #define ARRUS_REQUIRES_ALL_DATA_TYPE_VALUE(list, dataType, msg)          \
 do {                                                                    \
@@ -77,12 +73,11 @@ do {                                                                    \
     dataType max = std::numeric_limits<dataType>::max();     \
     for(auto value : list) {                                      \
         if (value < min || value > max) {                                   \
-            throw arrus::IllegalArgumentException(std::format(            \
-                "Value {} should be in range [{}, {}], {}",  \
+            throw arrus::IllegalArgumentException("Value {} should be in range [{}, {}], {}",  \
                 value, min, max, msg     \
-            ));                                                             \
+            );                                                             \
         }                                                    \
-    } \
+    }                                                         \
 } while(0)
 
 #define ARRUS_MATLAB_REQUIRES_ALL_INTEGER(list)          \
@@ -90,9 +85,7 @@ do {                                                  \
     double ignore;                                       \
     for(auto value : list) {                                               \
         if (std::modf(value, &ignore) != 0.0) {   \
-            throw arrus::IllegalArgumentException(std::format(            \
-                "Value {} should be integer", value     \
-            ));                                                             \
+            throw arrus::IllegalArgumentException("Value {} should be integer", value); \
         }                                                    \
     }\
 } while(0)
@@ -102,14 +95,10 @@ do {                                                    \
     double ignore;\
     for(auto value : list) {                                               \
         if (std::modf(value, &ignore) != 0.0) {   \
-            throw arrus::IllegalArgumentException(std::format(            \
-                "Value {} should be binary", value     \
-            ));                                                             \
+            throw arrus::IllegalArgumentException("Value {} should be binary", value); \
         }                                               \
         if(value != 1 && value != 0) {                   \
-        throw arrus::IllegalArgumentException(std::format(            \
-                "Value {} should be binary", value     \
-            ));                                                         \
+            throw arrus::IllegalArgumentException("Value {} should be binary", value); \
         }                                                    \
     }\
 } while(0)

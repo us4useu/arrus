@@ -528,7 +528,7 @@ float Us4OEMImpl::getTxRxTime(float rxTime) const {
         txrxTime = std::max(rxTime, descriptor.getSequenceReprogrammingTime());
     } else {
         throw IllegalArgumentException(
-            std::format("Unrecognized reprogramming mode: {}", static_cast<size_t>(reprogrammingMode)));
+            "Unrecognized reprogramming mode: {}", static_cast<size_t>(reprogrammingMode));
     }
     return txrxTime;
 }
@@ -715,9 +715,9 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
         expectedNumberOfCoeffs = 32 * decInt + 24;
     }
     if (static_cast<size_t>(expectedNumberOfCoeffs) != nCoefficients) {
-        throw IllegalArgumentException(std::format("Incorrect number of DDC FIR filter coefficients, should be {}, "
-                                              "actual: {}",
-                                              expectedNumberOfCoeffs, nCoefficients));
+        throw IllegalArgumentException("Incorrect number of DDC FIR filter coefficients, should be {}, "
+                                      "actual: {}",
+                                      expectedNumberOfCoeffs, nCoefficients);
     }
     enableAfeDemod();
     setAfeDemodConfig(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters), firCoefficients,
@@ -906,9 +906,9 @@ void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>
     std::vector<size_t> newProfiles(currentTxDelayProfileIds.size());
     for(const auto &[sequenceId, profileId] : profiles) {
         if(sequenceId > currentTxDelayProfileIds.size()) {
-            throw IllegalArgumentException(std::format("The sequence with id {} is out of the scope of the "
+            throw IllegalArgumentException("The sequence with id {} is out of the scope of the "
                                            "currently uploaded scheme (the number of uploaded sequences: {})",
-                                                  sequenceId, currentTxDelayProfileIds.size()));
+                                                  sequenceId, currentTxDelayProfileIds.size());
         }
         newProfiles.at(sequenceId) = profileId;
     }
@@ -936,7 +936,7 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     else if(sn.size() == OEM_PLUS_SN_2_ORDINAL_SIZE) {
         // us4OEM+
         if(! std::regex_match(sn, matches, pattern2OrdinalRegex) ) {
-            throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern2OrdinalStr));
+            throw ::arrus::IllegalStateException("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern2OrdinalStr);
         }
         const auto mountingType = matches[1].str();
         const auto number = matches[2].str();
@@ -951,13 +951,13 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     }
     else if (sn.size() == OEM_PLUS_SN_4_ORDINAL_SIZE) {
         if(! std::regex_match(sn, matches, pattern4OrdinalRegex) ) {
-            throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern4OrdinalStr));
+            throw ::arrus::IllegalStateException("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern4OrdinalStr);
         }
         const auto number = matches[2].str();
         variantStr = number.substr(10, 2);
     }
     else {
-        throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn));
+        throw ::arrus::IllegalStateException("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn);
     }
 
     const auto variantSymbol = variantStr.at(0);
@@ -971,7 +971,7 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
         return Us4OEM::Variant::PLUS_HF;
     }
     else {
-        throw IllegalStateException(std::format("Unknown variant for OEM with SN: {}", sn));
+        throw IllegalStateException("Unknown variant for OEM with SN: {}", sn);
     }
 }
 

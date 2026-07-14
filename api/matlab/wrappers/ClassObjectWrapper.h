@@ -26,9 +26,9 @@ public:
      * Creates a new object. In the case of simple pointer wrapper, this is NOP.
      */
     MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) override {
-        throw ::arrus::IllegalArgumentException(std::format("This class of objects: {} cannot be instantiated by "
+        throw ::arrus::IllegalArgumentException("This class of objects: {} cannot be instantiated by "
                                                        "arrus MATLAB API, probably there is some other method "
-                                                       "to get that value...", getClassId()));
+                                                       "to get that value...", getClassId());
     };
 
     /**
@@ -38,9 +38,9 @@ public:
      * @param handle a handle to the deleted object
      */
     void remove(const MatlabObjectHandle handle) override {
-        throw ::arrus::IllegalArgumentException(std::format("This class of objects: {} cannot be removed by "
+        throw ::arrus::IllegalArgumentException("This class of objects: {} cannot be removed by "
                                                        "arrus MATLAB API, probably this object is managed by some"
-                                                       "other mechanism. ", getClassId()));
+                                                       "other mechanism. ", getClassId());
     }
 
 protected:

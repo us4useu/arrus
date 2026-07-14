@@ -29,7 +29,7 @@ using namespace arrus::devices;
     do {                                                                                                               \
         if (this->state != expectedState) {                                                                            \
             throw ::arrus::IllegalStateException(                                                                      \
-                std::format("Invalid session state, should be: {}", toString(expectedState)));                     \
+                "Invalid session state, should be: {}", toString(expectedState));                     \
         }                                                                                                              \
     } while (0)
 
@@ -37,7 +37,7 @@ using namespace arrus::devices;
     do {                                                                                                               \
         if (this->state == excludedState) {                                                                            \
             throw ::arrus::IllegalStateException(                                                                      \
-                std::format("Invalid session state, should not be: {}", toString(excludedState)));                 \
+                "Invalid session state, should not be: {}", toString(excludedState));                 \
         }                                                                                                              \
     } while (0)
 
@@ -88,7 +88,7 @@ std::string SessionImpl::sanitizeDeviceId(const std::string &path) const {
     auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
     if(! tail.empty()) {
         throw IllegalArgumentException(
-            std::format("Invalid path '{}', top-level devices can be accessed only.", path));
+            "Invalid path '{}', top-level devices can be accessed only.", path);
     }
     return root;
 }
@@ -102,7 +102,7 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceI
             return aliases.at(deviceId);
         }
     } catch (const std::out_of_range &) {
-        throw IllegalArgumentException(std::format("Device unavailable: {}", deviceId.toString()));
+        throw IllegalArgumentException("Device unavailable: {}", deviceId.toString());
     }
 }
 

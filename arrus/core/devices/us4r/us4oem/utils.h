@@ -27,9 +27,9 @@ inline std::optional<float> getSRIExtend(
         if (totalPri < sri.value()) {
             lastPriExtend = sri.value() - totalPri;
         } else {
-            throw IllegalArgumentException(std::format("Sequence repetition interval {} cannot be set, "
+            throw IllegalArgumentException("Sequence repetition interval {} cannot be set, "
                                                   "sequence total pri is equal {}",
-                                                  sri.value(), totalPri));
+                                                  sri.value(), totalPri);
         }
     }
     return lastPriExtend;

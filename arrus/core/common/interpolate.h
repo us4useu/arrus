@@ -38,9 +38,8 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                 result[i] = minFillValue.value();
             }
             else {
-                throw IllegalArgumentException(std::format(
-                    "Interpolation 1D: value {} is out of range [{}, {}].",
-                    value, *std::begin(x), *std::prev(std::end(x))));
+                throw IllegalArgumentException("Interpolation 1D: value {} is out of range [{}, {}].",
+                                                    value, *std::begin(x), *std::prev(std::end(x)));
             }
         } else if(it == std::begin(x)) {
             if(*it == *std::begin(x)) {
@@ -51,9 +50,8 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                     result[i] = maxFillValue.value();
                 }
                 else {
-                    throw IllegalArgumentException(std::format(
-                        "Interp 1D: value {} is out of range [{}, {}].",
-                        value, *std::begin(x), *std::prev(std::end(x))));
+                    throw IllegalArgumentException("Interp 1D: value {} is out of range [{}, {}].",
+                                                   value, *std::begin(x), *std::prev(std::end(x)));
                 }
             }
         } else {
