@@ -121,7 +121,7 @@ class ConstMetadata:
     def copy(self, **kwargs):
         kw = dict(context=self.context, data_desc=self.data_description,
                 input_shape=self.input_shape, is_iq_data=self.is_iq_data,
-                dtype=self.dtype)
+                dtype=self.dtype, version=self.version, name=self.name)
         return ConstMetadata(**{**kw, **kwargs})
 
 
