@@ -4,6 +4,12 @@ Release notes
 0.14.x
 ------
 
+0.14.1
+
+- Python API:
+
+    - Modified session.close method to release Python GIL (Global Interpreter Lock) before closing the session. This allows other threads to continue executing while the session is being closed, which helps avoid deadlocks in multi-threaded applications. #ARRUS-578
+
 0.14.0
 
 - core (driver):
