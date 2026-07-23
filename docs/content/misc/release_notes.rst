@@ -8,8 +8,8 @@ Release notes
 
 - core (driver):
 
-    - Linux: updated kernel-space driver to 0.15.1. Implemented safe managed PCI DMA (moved low-level DMA logic to kernel space), LKM signing (secure boot) and DKMS support. Minimum required Linux kernel version bumped to 5.15. #M_OEM-240, #M_OEM-241, #M_OEM-269.
-    - Windows: updated kernel-space driver to 0.15.1. Implemented managed safe managed PCI DMA (moved low-level DMA handling to kernel space) #M_OEM-234, #M_OEM-269.
+    - Linux: updated kernel-space driver to 0.15.1. Implemented safe managed PCI DMA (moved low-level DMA logic to kernel space), LKM signing (secure boot) and DKMS support. Minimum required Linux kernel version bumped to 5.15. The new drivers are available here: https://us4useu.github.io/arrus-toolkit/content/installation/index.html#id1 #M_OEM-240, #M_OEM-241, #M_OEM-269.
+    - Windows: updated kernel-space driver to 0.15.1. Implemented managed safe managed PCI DMA (moved low-level DMA handling to kernel space). The new drivers are available here: https://us4useu.github.io/arrus-toolkit/content/installation/index.html#id1 #M_OEM-234, #M_OEM-269.
     - Prevented simultaneous disabling of ATGC and DTGC. From now on, exactly one of the mechanisms must be enabled. #M_OEM-306.
     - Fixed multiple voltage settings within a single session for firmware 2.2.0.0. #M_OEM-315.
     - Fixed Watchdog's host threshold on Windows #M_OEM-317.
