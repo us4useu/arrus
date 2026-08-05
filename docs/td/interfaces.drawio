@@ -1,0 +1,101 @@
+<mxfile host="Electron" modified="2026-08-04T11:57:04.464Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="gL0YsIz6YaPozZY-t53l" version="21.6.8" type="device">
+  <diagram name="Page-1" id="SAKZxAGoiApn_wJUleef">
+    <mxGraphModel dx="1400" dy="773" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-1" value="ARRUS" style="rounded=0;whiteSpace=wrap;html=1;horizontal=1;verticalAlign=top;fontStyle=1;fontSize=22;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="90" y="160" width="630" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-7" value="Devices" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="200" width="590" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-14" value="Sensors" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="300" y="230" width="390" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-2" value="Ultrasound" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="315" y="260" width="365" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-3" value="Probe" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="330" y="300" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-8" value="Ops registry" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="460" width="590" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-4" value="Tx" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="140" y="500" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-9" value="Rx" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="500" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-10" value="Beamforming" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="500" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-11" value="FirFilter" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="140" y="550" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-12" value="DDC" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="550" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-13" value="..." style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="550" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-16" value="Processing devices" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="120" y="230" width="160" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-18" value="Transducer/Element" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="330" width="120" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-19" value="GPU" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="270" width="130" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-21" value="Ultrasound System" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="490" y="300" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-22" value="US4R-HAL" style="rounded=0;whiteSpace=wrap;html=1;horizontal=1;verticalAlign=top;fontStyle=1;fontSize=22;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="780" y="160" width="630" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="BLicKOK3N3Bxr_5GC2EX-23" target="BLicKOK3N3Bxr_5GC2EX-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-25" value="implements" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="BLicKOK3N3Bxr_5GC2EX-24">
+          <mxGeometry x="0.01" y="3" relative="1" as="geometry">
+            <mxPoint y="-18" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="BLicKOK3N3Bxr_5GC2EX-23" target="BLicKOK3N3Bxr_5GC2EX-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="BLicKOK3N3Bxr_5GC2EX-23" target="BLicKOK3N3Bxr_5GC2EX-28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="BLicKOK3N3Bxr_5GC2EX-23" target="BLicKOK3N3Bxr_5GC2EX-29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-36" value="includes" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="BLicKOK3N3Bxr_5GC2EX-35">
+          <mxGeometry x="0.2091" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-23" value="Us4R" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="830" y="300" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-27" value="us4OEM" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="225" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-28" value="ProbeAdapter" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="340" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-29" value="HV" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="470" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-37" value="CPU" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="322.5" width="130" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="BLicKOK3N3Bxr_5GC2EX-38" value="Xilinx" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="370" width="130" height="35" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
