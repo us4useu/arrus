@@ -13,10 +13,10 @@ class Us4OEMDescriptorFactory {
 public:
 
     static Us4OEMDescriptor getDescriptor(const IUs4OEMHandle &ius4oem, bool isMaster) {
-        auto version = ius4oem->GetOemVersion();
+        auto version = ius4oem->getOemVersion();
 
-        auto minFrequencyLegacy = ius4oem->GetMinTxFrequency();
-        auto maxFrequencyLegacy = ius4oem->GetMaxTxFrequency();
+        auto minFrequencyLegacy = ius4oem->getMinTxFrequency();
+        auto maxFrequencyLegacy = ius4oem->getMaxTxFrequency();
 
         switch (version) {
         case 1:

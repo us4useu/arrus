@@ -139,22 +139,22 @@ private:
         // Pre-configure us4oems.
         for(size_t i = 0; i < us4oemCfgs.size(); ++i) {
             const auto &ius4oem = ius4oems.at(i);
-            ius4oem->SetTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
-            if(Us4OEMImpl::isOEMPlus(ius4oem->GetOemVersion())) {
+            ius4oem->setTxFrequencyRange(us4oemCfgs[i].getTxFrequencyRange());
+            if(Us4OEMImpl::isOEMPlus(ius4oem->getOemVersion())) {
                 if(watchdogSettings.isEnabled()) {
 
-                    ius4oem->SetOEMWatchdogThresholds(
+                    ius4oem->setOemWatchdogThresholds(
                         // Convert to ms
                         ARRUS_SAFE_CAST(std::roundf(watchdogSettings.getOEMThreshold0()*1000), int16),
                         ARRUS_SAFE_CAST(std::roundf(watchdogSettings.getOEMThreshold1()*1000), int16)
                     );
-                    ius4oem->SetHostWatchdogThresholds(
+                    ius4oem->setHostWatchdogThresholds(
                         // Convert to ms
                         ARRUS_SAFE_CAST(std::roundf(watchdogSettings.getHostThreshold()*1000), int16)
                     );
                 }
                 else {
-                    ius4oem->DisableWatchdog();
+                    ius4oem->disableWatchdog();
                 }
             }
         }
@@ -220,20 +220,20 @@ private:
         if (settings.hasProbeConnectedCheckCapability()) {
             auto addr = settings.getProbeConnectedCheckCapabilityAddress();
             if (addr.getUs4OEM() == 0) {
-                us4oems.at(addr.getUs4OEM())->getIUs4OEM()->EnableProbeCheck(addr.getIO());
+                us4oems.at(addr.getUs4OEM())->getIUs4OEM()->enableProbeCheck(addr.getIO());
             } else {
                 throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");
             }
         } else {
             for(auto &us4oem: us4oems) {
-               us4oem->getIUs4OEM()->DisableProbeCheck();
+               us4oem->getIUs4OEM()->disableProbeCheck();
             }
         }
         // The external (sequence) trigger is driven by the IO settings capability.
         if(settings.hasSequenceTriggerCapability()) {
             const auto ioAddress = settings.getSequenceTriggerCapabilityAddress();
             if (ioAddress.getUs4OEM() == 0) {
-                us4oems.at(ioAddress.getUs4OEM())->getIUs4OEM()->SetIODirection(ioAddress.getIO(), IUs4OEM::Direction::INPUT);
+                us4oems.at(ioAddress.getUs4OEM())->getIUs4OEM()->setIoDirection(ioAddress.getIO(), IUs4OEM::Direction::INPUT);
             } else {
                 throw arrus::IllegalArgumentException("Probe check functionality must be connected to us4OEM #0");
             }
@@ -257,7 +257,7 @@ private:
         std::unordered_set<unsigned int> idsSet;
         // transform vector to set
         std::transform(std::begin(oems), std::end(oems), std::inserter(idsSet, std::end(idsSet)), [](const auto &oem) {
-            return oem->GetID();
+            return oem->getId();
         });
 
         if(idsSet.size() < oems.size()) {
@@ -265,7 +265,7 @@ private:
             std::stringstream stringBuilder;
             stringBuilder << "Detected OEMs with non-unique IDs. ";
             for(size_t i = 0; i < oems.size(); ++i) {
-                stringBuilder << "PCI device: " << i << ", ID: " << oems.at(i)->GetID()  << "; ";
+                stringBuilder << "PCI device: " << i << ", ID: " << oems.at(i)->getId()  << "; ";
             }
             if(allowDuplicateIds) {
                 getDefaultLogger()->warn(stringBuilder.str());

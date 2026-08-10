@@ -20,7 +20,7 @@ public:
         // (currently will std::terminate on an exception).
         std::sort(std::begin(ius4oems), std::end(ius4oems),
                   [](const IUs4OEMHandle &x, const IUs4OEMHandle &y) {
-                      return x->GetID() < y->GetID();
+                      return x->getId() < y->getId();
                   });
     }
 
@@ -28,7 +28,7 @@ public:
         initializeUs4oems(ius4oems, 1);
         // Perform successive initialization levels.
         for(int level = 2; level <= 4; level++) {
-            ius4oems[0]->Synchronize();
+            ius4oems[0]->synchronize();
             initializeUs4oems(ius4oems, level);
         }
         // Us4OEMs are initialized here.
@@ -39,7 +39,7 @@ private:
         std::vector<std::future<void>> results;
 
         for(const IUs4OEMHandle &ius4oem : ius4oems) {
-            std::future<void> result = std::async(std::launch::async, [&ius4oem, level]() {ius4oem->Initialize(level);});
+            std::future<void> result = std::async(std::launch::async, [&ius4oem, level]() {ius4oem->initialize(level);});
             results.push_back(std::move(result));
         }
         for(auto &result: results) {

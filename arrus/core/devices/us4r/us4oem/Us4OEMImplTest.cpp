@@ -56,9 +56,9 @@ protected:
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
         // Default values returned by us4oem.
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+ variant 0
+        ON_CALL(*ius4oemPtr, getMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, getMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, getOemVersion).WillByDefault(testing::Return(2)); // OEM+ variant 0
     }
 
     Us4OEMUploadResult upload(const TxParametersSequenceColl &sequences) {
@@ -114,7 +114,6 @@ protected:
             channelMapping, defaultRxSettings,
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
             defaultDescriptor,
-            false,
             false
         );
     }
@@ -134,12 +133,12 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay1) {
         )
         .get()
     };
-    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0)); // Note: the value 0.0 is the default value
+    ON_CALL(*ius4oemPtr, getOemVersion).WillByDefault(testing::Return(2)); // OEM+
+    EXPECT_CALL(*ius4oemPtr, setRxDelay(rxDelay, 0)); // Note: the value 0.0 is the default value
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
-    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, DEFAULT_DESCRIPTOR.getSampleTxStart() + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, setRxTime(Ge(expectedRxTime), 0));
+    EXPECT_CALL(*ius4oemPtr, scheduleReceive(0, _, nSamples, DEFAULT_DESCRIPTOR.getSampleTxStart() + sampleRange.start(), _, _, _));
     upload(seq);
 }
 
@@ -156,18 +155,18 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectRxTimeAndDelay2) {
         )
         .get()
     };
-    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+
-    EXPECT_CALL(*ius4oemPtr, SetRxDelay(rxDelay, 0)); // Note: the default value of TxRxParameters
+    ON_CALL(*ius4oemPtr, getOemVersion).WillByDefault(testing::Return(2)); // OEM+
+    EXPECT_CALL(*ius4oemPtr, setRxDelay(rxDelay, 0)); // Note: the default value of TxRxParameters
     uint32 nSamples = sampleRange.end() - sampleRange.start();
     float expectedRxTime = float(nSamples) / defaultDescriptor.getSamplingFrequency();
-    EXPECT_CALL(*ius4oemPtr, SetRxTime(Ge(expectedRxTime), 0));
-    EXPECT_CALL(*ius4oemPtr, ScheduleReceive(0, _, nSamples, DEFAULT_DESCRIPTOR.getSampleTxStart() + sampleRange.start(), _, _, _));
+    EXPECT_CALL(*ius4oemPtr, setRxTime(Ge(expectedRxTime), 0));
+    EXPECT_CALL(*ius4oemPtr, scheduleReceive(0, _, nSamples, DEFAULT_DESCRIPTOR.getSampleTxStart() + sampleRange.start(), _, _, _));
     upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
     // NOTE the below calls are specific for the legacy us4OEM
-    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
+    ON_CALL(*ius4oemPtr, getOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -175,15 +174,15 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods) {
         )
         .get()
     };
-    EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(3, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxFreqency(3e6f, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxInvert(true, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxHalfPeriods(3, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxFreqency(3e6f, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxInvert(true, 0));
     upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
     // NOTE the below calls are specific for the legacy us4OEM
-    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
+    ON_CALL(*ius4oemPtr, getOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -191,13 +190,13 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods2) {
         )
         .get()
     };
-    EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(6, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxHalfPeriods(6, 0));
     upload(seq);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
     // NOTE the below calls are specific for the legacy us4OEM
-    ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
+    ON_CALL(*ius4oemPtr, getOemVersion).WillByDefault(testing::Return(0)); // us4OEM legacy
     std::vector<TxRxParameters> seq = {
         ARRUS_STRUCT_INIT_LIST(
             TestTxRxParams,
@@ -205,7 +204,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectNumberOfTxHalfPeriods3) {
         )
         .get()
     };
-    EXPECT_CALL(*ius4oemPtr, SetTxHalfPeriods(61, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxHalfPeriods(61, 0));
     upload(seq);
 }
 
@@ -217,9 +216,9 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
     std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> rxAperture, txAperture;
     // empty
     std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS> activeChannelGroup;
-    EXPECT_CALL(*ius4oemPtr, SetRxAperture(rxAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxAperture(txAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(activeChannelGroup, 0));
+    EXPECT_CALL(*ius4oemPtr, setRxAperture(rxAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxAperture(txAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, setActiveChannelGroup(activeChannelGroup, 0));
 
     upload(seq);
 }
@@ -250,7 +249,7 @@ TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectActiveChannelGroups) {
     // 7 -> 14
     std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS> expectedChannelGroups;
     expectedChannelGroups[4] = expectedChannelGroups[2] = expectedChannelGroups[14] = true;
-    EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(expectedChannelGroups, 0));
+    EXPECT_CALL(*ius4oemPtr, setActiveChannelGroup(expectedChannelGroups, 0));
     upload(seq);
 }
 
@@ -286,9 +285,9 @@ TEST_F(Us4OEMImplEsaote3LikeTest, DoesNothingWithAperturesWhenNoChannelMask) {
     auto expectedRxAperture = ::arrus::toBitset<Us4OEMDescriptor::N_ADDR_CHANNELS>(rxAperture);
     auto &expectedTxDelays = txDelays;
 
-    EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0, 0));
+    EXPECT_CALL(*ius4oemPtr, setRxAperture(expectedRxAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxAperture(expectedTxAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0, 0));
     upload(seq);
 }
 
@@ -322,9 +321,9 @@ TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannel) {
     std::vector<float> expectedTxDelays(txDelays);
     expectedTxDelays[7] = 0.0f;
 
-    EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxAperture, 0));
-    EXPECT_CALL(*ius4oemPtr, SetTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0, 0));
+    EXPECT_CALL(*ius4oemPtr, setRxAperture(expectedRxAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxAperture(expectedTxAperture, 0));
+    EXPECT_CALL(*ius4oemPtr, setTxDelays(::us4us::us4r::Span<float>(expectedTxDelays), 0, 0, 0));
     auto result = upload(seq);
     auto fcm = result.getFCM(0);
 
@@ -456,8 +455,8 @@ TEST_F(Us4OEMImplEsaote3LikeTest, MasksProperlyASingleChannelForAllOperations) {
     ::testing::Sequence rxApertureCallSequence;
 
     for(int i = 0; i < expectedRxApertures.size(); ++i) {
-        EXPECT_CALL(*ius4oemPtr, SetRxAperture(expectedRxApertures[i], i)).InSequence(rxApertureCallSequence);
-        EXPECT_CALL(*ius4oemPtr, SetTxAperture(expectedTxApertures[i], i)).InSequence(txApertureCallSequence);
+        EXPECT_CALL(*ius4oemPtr, setRxAperture(expectedRxApertures[i], i)).InSequence(rxApertureCallSequence);
+        EXPECT_CALL(*ius4oemPtr, setTxAperture(expectedTxApertures[i], i)).InSequence(txApertureCallSequence);
     }
 
     auto result = upload(seq);
@@ -525,7 +524,7 @@ protected:
             channelMapping, defaultRxSettings,
             reprogrammingMode,
             defaultDescriptor,
-            false, false
+            false
         );
 
     }
@@ -624,7 +623,6 @@ protected:
             channelMapping, defaultRxSettings,
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
             defaultDescriptor,
-            false,
             false
         );
     }
@@ -664,9 +662,9 @@ TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParameters) {
     DigitalDownConversion ddc(
         1e6f, coeffs, 4.0f, 12.0f
     );
-    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(1);
-    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable()).Times(0);
-    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, true));
+    EXPECT_CALL(*ius4oemPtr, afeDemodEnable()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, afeDemodDisable()).Times(0);
+    EXPECT_CALL(*ius4oemPtr, afeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, true));
     us4oem->setAfeDemod(ddc);
 }
 
@@ -675,8 +673,8 @@ TEST_F(Us4OEMDigitalDownConversionTest, TurnsOffsDDCCorrectly) {
     DigitalDownConversion ddc(
         1e6f, coeffs, 4.0f, 12.0f
     );
-    EXPECT_CALL(*ius4oemPtr, AfeDemodDisable()).Times(1);
-    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(0);
+    EXPECT_CALL(*ius4oemPtr, afeDemodDisable()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, afeDemodEnable()).Times(0);
     us4oem->setAfeDemod(std::nullopt);
 }
 
@@ -692,9 +690,9 @@ TEST_F(Us4OEMDigitalDownConversionTest, AcceptsCorrectParametersTurnsOffGainFor0
         // gain
         0.0f
     );
-    EXPECT_CALL(*ius4oemPtr, AfeDemodEnable()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, afeDemodEnable()).Times(1);
     //                                      dec int, dec frac. coeffs, demodulation frequency, turn off gain
-    EXPECT_CALL(*ius4oemPtr, AfeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, false));
+    EXPECT_CALL(*ius4oemPtr, afeDemodConfig(4, 0, CArrayEqual(coeffs), coeffs.size(), 1e6, false));
     us4oem->setAfeDemod(ddc);
 }
 
@@ -711,9 +709,9 @@ protected:
         ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
         ius4oemPtr = dynamic_cast<MockIUs4OEM *>(ius4oem.get());
         // Default values returned by us4oem.
-        ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
-        ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2));
+        ON_CALL(*ius4oemPtr, getMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, getMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, getOemVersion).WillByDefault(testing::Return(2));
 
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);
         us4oem = std::make_unique<Us4OEMImpl>(
@@ -722,7 +720,6 @@ protected:
             channelMapping, defaultRxSettings,
             Us4OEMSettings::ReprogrammingMode::SEQUENTIAL,
             defaultDescriptor,
-            false,
             false
         );
     }
@@ -745,7 +742,7 @@ protected:
 
 TEST_P(GetUs4OEMVariantTest, CorrectSerialNumberParse) {
     const auto sn = GetParam().serialNumber;
-    ON_CALL(*ius4oemPtr, GetSerialNumber).WillByDefault(testing::Return(sn));
+    ON_CALL(*ius4oemPtr, getSerialNumber).WillByDefault(testing::Return(sn));
     Us4OEM::Variant variant = us4oem->getVariant();
     EXPECT_EQ(variant, GetParam().expectedVariant);
 }

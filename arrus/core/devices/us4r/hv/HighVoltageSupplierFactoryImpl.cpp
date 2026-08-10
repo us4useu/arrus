@@ -33,17 +33,17 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
     if(name == "hv256")  {
 
         std::vector<HighVoltageSupplier::Handle> hvs;
-        auto ver = us4oems[0]->GetOemVersion();
+        auto ver = us4oems[0]->getOemVersion();
         ARRUS_REQUIRES_TRUE(backplane.has_value(), "Backplane is required for hv256.");
         IDBAR* dbar = backplane.value()->getIDBAR();
 
         if(ver == 1) {
-            std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
+            std::unique_ptr<IHV> hv(getHV256(dbar->getI2cHv(), std::move(logger)));
             auto _hv = std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));
         }
         else if(ver >= 2 && ver <= 5) {
-            std::unique_ptr<IHV> hv(GetHV256(dbar->GetI2CHV(), std::move(logger)));
+            std::unique_ptr<IHV> hv(getHV256(dbar->getI2cHv(), std::move(logger)));
             auto _hv = std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
             hvs.push_back(std::move(_hv));
         }
@@ -57,7 +57,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
         std::vector<HighVoltageSupplier::Handle> hvs;
         ARRUS_REQUIRES_TRUE(backplane.has_value(), "Backplane is required for hv256.");
         IDBAR* dbar = backplane.value()->getIDBAR();
-        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->GetI2CHV(), std::move(logger)));
+        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->getI2cHv(), std::move(logger)));
         auto _hv =  std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
         hvs.push_back(std::move(_hv));
 
@@ -67,7 +67,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
         std::vector<HighVoltageSupplier::Handle> hvs;
 
         for(auto us4oem: us4oems) {
-            IHV *hv = us4oem->getHVPS();
+            IHV *hv = us4oem->getHvps();
             // NOTE: us4oemhvps is owned by the Us4OEMPlus class.
             hvs.push_back(std::make_unique<HighVoltageSupplierView>(id, settings.getModelId(), hv));
         }

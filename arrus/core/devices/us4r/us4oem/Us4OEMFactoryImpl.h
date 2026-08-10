@@ -49,7 +49,7 @@ public:
         for(uint8_t physicalIdx : channelMapping) {
             // src - physical channel
             // dst - virtual channel
-            ius4oem->SetTxChannelMapping(physicalIdx, virtualIdx++);
+            ius4oem->setTxChannelMapping(physicalIdx, virtualIdx++);
         }
         // Rx channel mapping
         // Check if the the permutation in channel mapping is the same
@@ -59,7 +59,7 @@ public:
         const bool isSinglePermutation = isConsistentPermutations(cfg.getChannelMapping(), chGroupSize, nChannelGroups);
 
         if(isSinglePermutation) {
-            ius4oem->SetRxChannelMapping(
+            ius4oem->setRxChannelMapping(
                     std::vector<uint8_t>(std::begin(channelMapping), std::begin(channelMapping) + chGroupSize),
                     0);
         }

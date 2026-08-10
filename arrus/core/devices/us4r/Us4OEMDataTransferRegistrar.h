@@ -109,7 +109,7 @@ public:
             for(auto &arrayTransfers: elementTransfers) {
                 for(const auto &transfer: arrayTransfers) {
                     auto firing = elementFirstFiring + transfer.firing;
-                    ius4oem->ClearTransferRXBufferToHost(firing);
+                    ius4oem->clearTransferRxBufferToHost(firing);
                 }
             }
             // element.getGlobalFiring() -- the last firing of the given element
@@ -179,7 +179,7 @@ public:
                     uint8 *dst = addressDst + transfer.destination;
                     size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
-                    ius4oem->PrepareHostBuffer(dst, size, src, dstBuffer->usesDmaBuf());
+                    ius4oem->prepareHostBuffer(dst, size, src, dstBuffer->usesDmaBuf());
                 }
             }
         }
@@ -194,7 +194,7 @@ public:
                     uint8 *dst = addressDst + transfer.destination;
                     size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
-                    ius4oem->ReleaseTransferRxBufferToHost(dst, size, src);
+                    ius4oem->releaseTransferRxBufferToHost(dst, size, src);
                 }
             }
         }
@@ -211,7 +211,7 @@ public:
                     uint8 *dst = addressDst + transfer.destination;
                     size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
-                    ius4oem->PrepareTransferRXBufferToHost(transferIdx, dst, size, src, dstBuffer->usesDmaBuf());
+                    ius4oem->prepareTransferRxBufferToHost(transferIdx, dst, size, src, dstBuffer->usesDmaBuf());
                 }
             }
         }
@@ -232,7 +232,7 @@ public:
 // (nSrc < nDst && nDst <= 256)
 #define ARRUS_ON_NEW_DATA_CALLBACK_strategy_1                                                                          \
     currentTransferIdx = (int16) ((currentTransferIdx + srcNTransfers) % dstNTransfers);                               \
-    ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, currentTransferIdx, nullptr);
+    ius4oem->scheduleTransferRxBufferToHost(transferLastFiring, currentTransferIdx, nullptr);
 
 // Strategy 2: re-program transfer, so in the next call this transfer will write to subsequent dst element
 // (nDst > 256)
@@ -240,7 +240,7 @@ public:
     uint16 nextElementIdx = (int16) ((currentDstIdx + srcNElements) % dstNElements);                                   \
     auto nextDstAddress = dstBuffer->getAddress(nextElementIdx);                                                       \
     nextDstAddress += transfer.destination;                                                                            \
-    ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src,                      \
+    ius4oem->prepareTransferRxBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src,                      \
                                            dstBuffer->usesDmaBuf());
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy)                                                                   \
@@ -292,7 +292,7 @@ public:
                         }
                     }
                     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(transferIdx);
-                    ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
+                    ius4oem->scheduleTransferRxBufferToHost(transferLastFiring, transferIdx, callback);
                     ++localIdx; ++transferIdx;
                 }
             }
