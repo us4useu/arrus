@@ -420,6 +420,13 @@ void arrusSessionStopScheme(std::shared_ptr<arrus::session::Session> session) {
     session->stopScheme();
 }
 
+
+void arrusSessionClose(std::shared_ptr<arrus::session::Session> session) {
+    ArrusPythonGILUnlock unlock;
+    session->close();
+}
+
+
 void arrusSessionRun(std::shared_ptr<arrus::session::Session> session, bool async, std::optional<long long> timeout) {
     ArrusPythonGILUnlock unlock;
     session->run(async, timeout);

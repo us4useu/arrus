@@ -556,7 +556,7 @@ void Us4RImpl::start() {
     //  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
         // Reset tx subsystem pointers.
-        us4oem->getIUs4OEM()->EnableTransmit();
+        us4oem->getIUs4OEM()->EnableTxRx();
         // Reset sequencer pointers.
         // The sequencer pointer (the entry from which sequencer starts) should not be reset when
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,

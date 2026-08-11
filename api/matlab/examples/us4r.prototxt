@@ -24,6 +24,13 @@ us4r: {
         }
     }
 
+    digital_backplane: {
+        model_id {
+            manufacturer: "us4us"
+            name: "dbarlite"
+        }
+    }
+
     channels_mask: {
         channels: []
     }
