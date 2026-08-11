@@ -30,7 +30,7 @@ public:
             return getDbarLiteHandle(us4oems, logger, 8);
         }
         else if(name == "us4rdbar") {
-            std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
+            std::unique_ptr<IDBAR> dbar(getUs4rDbar(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else {
@@ -48,7 +48,7 @@ public:
             return getDbarLiteHandle(us4oems, logger, 32);
         }
         else if(name == "us4rpsc") {
-            std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
+            std::unique_ptr<IDBAR> dbar(getUs4rDbar(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else if(name == "us4oemhvps") {

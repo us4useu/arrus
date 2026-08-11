@@ -57,7 +57,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
         std::vector<HighVoltageSupplier::Handle> hvs;
         ARRUS_REQUIRES_TRUE(backplane.has_value(), "Backplane is required for hv256.");
         IDBAR* dbar = backplane.value()->getIDBAR();
-        std::unique_ptr<IHV> hv(GetUs4RPSC(dbar->getI2cHv(), std::move(logger)));
+        std::unique_ptr<IHV> hv(getUs4rPsc(dbar->getI2cHv(), std::move(logger)));
         auto _hv =  std::make_unique<HighVoltageSupplierOwner>(id, settings.getModelId(), std::move(hv));
         hvs.push_back(std::move(_hv));
 

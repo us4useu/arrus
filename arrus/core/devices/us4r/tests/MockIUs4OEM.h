@@ -80,8 +80,6 @@ public:
     MOCK_METHOD(void, enableTestPatterns, (), (override));
     MOCK_METHOD(void, disableTestPatterns, (), (override));
     MOCK_METHOD(void, syncTestPatterns, (), (override));
-    MOCK_METHOD(void, scheduleTransferRxBufferToHost, (const size_t, unsigned char *, size_t, size_t,
-        const std::function<void (void)> &));
     MOCK_METHOD(void, syncTransfer, (), (override));
     MOCK_METHOD(void, scheduleTransferRxBufferToHost, (const size_t,const size_t,const std::function<void (void)> &), (override));
     MOCK_METHOD(void, prepareTransferRxBufferToHost, (const size_t,unsigned char *,size_t,size_t, bool isGpu), (override));
