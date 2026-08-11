@@ -3,7 +3,10 @@ set(TARGET_NAME arrus-core)
 ################################################################################
 # protobuf
 ################################################################################
-protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
+protobuf_generate(OUT_VAR PROTO_SRC
+    IMPORT_DIRS 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    PROTOS
     io/proto/Dictionary.proto
     io/proto/session/SessionSettings.proto
     io/proto/common/IntervalInteger.proto
@@ -29,6 +32,10 @@ protobuf_generate_cpp(PROTO_SRC PROTO_HDRS
     io/proto/devices/GpuSettings.proto
     io/proto/devices/us4r/HVPSFuseSettings.proto
 )
+
+# ClangCL on Windows generates a -Winvalid-offsetof warning for every usage of offsetoff 
+# in the generated protobuf files. Silence it, since it is a false positive.
+set_source_files_properties(${PROTO_SRC} PROPERTIES COMPILE_FLAGS "-Wno-invalid-offsetof")
 ################################################################################
 # Target
 ################################################################################
@@ -72,7 +79,6 @@ set(SRC_FILES
     api/common/LoggerFactory.h
     ../common/compiler.h
     ../common/asserts.h
-    ../common/format.h
 
     devices/utils.h
     devices/DeviceId.cpp
@@ -262,11 +268,11 @@ target_link_libraries(${TARGET_NAME}
     Us4::DBARLitePcie
     Us4::Us4RDBAR
     Us4::Us4RPSC
-    Boost::Boost
+    Boost::boost
+    Boost::log
+    std4us::std4us
     protobuf::libprotobuf
-    fmt::fmt
-    Eigen3::Eigen3
-    Microsoft.GSL::GSL
+    Eigen3::Eigen
     ${ARRUS_OS_DEPS}
     ${CMAKE_DL_LIBS}
 )
@@ -275,6 +281,8 @@ target_link_libraries(${TARGET_NAME}
 ################################################################################
 # strict compile options defined for on the source level
 target_compile_options(${TARGET_NAME} PRIVATE ${ARRUS_CPP_COMMON_COMPILE_OPTIONS})
+set_target_properties(${TARGET_NAME} PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE")
 target_link_options(${TARGET_NAME} PRIVATE ${ARRUS_CPP_COMMON_LINKER_OPTIONS})
 target_compile_definitions(${TARGET_NAME} PRIVATE
     ${ARRUS_CPP_COMMON_COMPILE_DEFINITIONS}
@@ -392,10 +400,10 @@ install(
 # Examples
 ################################################################################
 add_executable(pwi-example examples/PwiExample.cpp)
-target_link_libraries(pwi-example PRIVATE arrus-core)
+target_link_libraries(pwi-example PRIVATE arrus-core std4us::std4us Boost::boost)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
 
 add_executable(custom-tx-waveform-example examples/CustomTxWaveform.cpp)
-target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core)
+target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core std4us::std4us Boost::boost)
 target_include_directories(custom-tx-waveform-example PRIVATE ${ARRUS_ROOT_DIR})
 

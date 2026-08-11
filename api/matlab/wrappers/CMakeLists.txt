@@ -18,7 +18,6 @@ matlab_add_mex(
     SRC
     ${ARRUS_ROOT_DIR}/arrus/common/compiler.h
     ${ARRUS_ROOT_DIR}/arrus/common/asserts.h
-    ${ARRUS_ROOT_DIR}/arrus/common/format.h
     common.h
     convert.h
     MexContext.h
@@ -32,9 +31,8 @@ matlab_add_mex(
     MatlabStdoutBuffer.h
     LINK_TO
     arrus-core
-    Boost::Boost
-    fmt::fmt
-    Microsoft.GSL::GSL
+    Boost::boost
+    std4us::std4us
 )
 ################################################################################
 # Include directories

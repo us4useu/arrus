@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <csignal>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "arrus/core/common/logging.h"
 #include "arrus/core/api/io/settings.h"
@@ -22,8 +22,8 @@ std::vector<ChannelIdx> generateReversed(ChannelIdx a, ChannelIdx b) {
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
-    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    boost::filesystem::path("us4r.prototxt");
+    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
+                    std::filesystem::path("us4r.prototxt");
     ::arrus::session::SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
@@ -125,8 +125,8 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectly) {
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithDisabledWatchdog) {
-    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
-        boost::filesystem::path("us4r_disabled_watchdog.prototxt");
+    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
+        std::filesystem::path("us4r_disabled_watchdog.prototxt");
     ::arrus::session::SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
@@ -134,8 +134,8 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithDisabledWatchdog
 }
 
 TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
-    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
-                    boost::filesystem::path("custom_us4r.prototxt");
+    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
+                    std::filesystem::path("custom_us4r.prototxt");
     SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
@@ -201,8 +201,8 @@ TEST(ReadingProtoTxtFile, readsCustomUs4RPrototxtSettingsCorrectly) {
 }
 
 TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithPartiallySeletedHVPSFuseSettings) {
-    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) /
-        boost::filesystem::path("us4r_partial_hvps_fuse_settings.prototxt");
+    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) /
+        std::filesystem::path("us4r_partial_hvps_fuse_settings.prototxt");
     ::arrus::session::SessionSettings settings = arrus::io::readSessionSettings(
         filepath.string());
     auto const &us4rSettings = settings.getUs4RSettings();
@@ -216,7 +216,7 @@ TEST(ReadingProtoTxtFile, readsUs4RPrototxtSettingsCorrectlyWithPartiallySeleted
 
 
 TEST(ReadingProtoTxtFile, readFileDeviceCorrectly) {
-    auto filepath = boost::filesystem::path(ARRUS_TEST_DATA_PATH) / boost::filesystem::path("file.prototxt");
+    auto filepath = std::filesystem::path(ARRUS_TEST_DATA_PATH) / std::filesystem::path("file.prototxt");
     SessionSettings settings = arrus::io::readSessionSettings(filepath.string());
     auto const &fileSettings = settings.getFileSettings(0);
     EXPECT_EQ(fileSettings.getFilepath(), "/home/test/test.bin");

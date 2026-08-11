@@ -1,6 +1,7 @@
 #ifndef API_MATLAB_WRAPPERS_CLASSOBJECTWRAPPER_H
 #define API_MATLAB_WRAPPERS_CLASSOBJECTWRAPPER_H
 
+#include <format>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -9,7 +10,6 @@
 #include "api/matlab/wrappers/asserts.h"
 #include "api/matlab/wrappers/MatlabClassImpl.h"
 
-#include "arrus/common/format.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/session/SessionSettings.h"
@@ -26,7 +26,7 @@ public:
      * Creates a new object. In the case of simple pointer wrapper, this is NOP.
      */
     MatlabObjectHandle create(std::shared_ptr<MexContext> ctx, MatlabInputArgs &args) override {
-        throw ::arrus::IllegalArgumentException(format("This class of objects: {} cannot be instantiated by "
+        throw ::arrus::IllegalArgumentException(std::format("This class of objects: {} cannot be instantiated by "
                                                        "arrus MATLAB API, probably there is some other method "
                                                        "to get that value...", getClassId()));
     };
@@ -38,7 +38,7 @@ public:
      * @param handle a handle to the deleted object
      */
     void remove(const MatlabObjectHandle handle) override {
-        throw ::arrus::IllegalArgumentException(format("This class of objects: {} cannot be removed by "
+        throw ::arrus::IllegalArgumentException(std::format("This class of objects: {} cannot be removed by "
                                                        "arrus MATLAB API, probably this object is managed by some"
                                                        "other mechanism. ", getClassId()));
     }

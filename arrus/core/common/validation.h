@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_COMMON_VALIDATION_H
 #define ARRUS_CORE_COMMON_VALIDATION_H
 
+#include <format>
 #include <limits>
 #include <string>
 #include <utility>
@@ -9,12 +10,12 @@
 #include <unordered_map>
 #include <map>
 #include <sstream>
+#include <set>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string/join.hpp>
+#include <std4us/string.h>
 
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/common/format.h"
 
 namespace arrus {
 
@@ -73,7 +74,7 @@ class Validator {
                 }
                 c++;
             }
-            std::string message = arrus::format("One or more problems have been found with {}: {}",
+            std::string message = std::format("One or more problems have been found with {}: {}",
                                                 componentName, ss.str());
             throw IllegalArgumentException(message);
         }
@@ -86,7 +87,7 @@ protected:
     template<typename U>
     void expectEqual(const std::string &parameter, const U &value, const U &expected, const std::string &msg = "") {
         if(value != expected) {
-            errors.emplace(parameter, arrus::format("Value '{}{}' should be equal '{}' (found: '{}')",
+            errors.emplace(parameter, std::format("Value '{}{}' should be equal '{}' (found: '{}')",
                                                     parameter, msg, expected, value));
         }
     }
@@ -97,7 +98,7 @@ protected:
     template<typename U>
     void expectAtMost(const std::string &parameter, const U &value, const U &expected, const std::string &msg = "") {
         if(value > expected) {
-            errors.emplace(parameter, arrus::format("Value '{}{}' should be at most '{}' (found: '{}')",
+            errors.emplace(parameter, std::format("Value '{}{}' should be at most '{}' (found: '{}')",
                                                     parameter, msg, expected, value));
         }
     }
@@ -108,7 +109,7 @@ protected:
     template<typename U>
     void expectDivisible(const std::string &parameter, const U &value, const U &divider, const std::string &msg = "") {
         if(value % divider != 0) {
-            errors.emplace(parameter, arrus::format("Value '{}{}' should be divisible by '{}' (actually is: '{}')",
+            errors.emplace(parameter, std::format("Value '{}{}' should be divisible by '{}' (actually is: '{}')",
                                                     parameter, msg, divider, value));
         }
     }
@@ -125,8 +126,8 @@ protected:
             }
         }
         if(!invalidValues.empty()) {
-            errors.emplace(parameter, arrus::format("Value(s) '{}{}' should be in range [{}, {}] (found: '{}')",
-                                                    parameter, msg, min, max, toString(invalidValues)));
+            errors.emplace(parameter, std::format("Value(s) '{}{}' should be in range [{}, {}] (found: '{}')",
+                                                    parameter, msg, min, max, std4us::join(invalidValues, ", ")));
         }
     }
 
@@ -156,8 +157,8 @@ protected:
         }
 
         if(!invalidValues.empty()) {
-            errors.emplace(parameter, arrus::format("Value(s) '{}{}' should be in range [{}, {}] (found: '{}')",
-                                                    parameter, msg, min, max, toString(invalidValues)));
+            errors.emplace(parameter, std::format("Value(s) '{}{}' should be in range [{}, {}] (found: '{}')",
+                                                    parameter, msg, min, max, std4us::join(invalidValues, ", ")));
         }
     }
 
@@ -171,8 +172,8 @@ protected:
             }
         }
         if(!invalidValues.empty()) {
-            errors.emplace(parameter, arrus::format("Value(s) '{}' should be positive (found: '{}')",
-                                                    parameter, toString(invalidValues)));
+            errors.emplace(parameter, std::format("Value(s) '{}' should be positive (found: '{}')",
+                                                    parameter, std4us::join(invalidValues, ", ")));
         }
     }
 
@@ -185,7 +186,7 @@ protected:
         constexpr auto min = (std::numeric_limits<V>::min)();
         constexpr auto max = (std::numeric_limits<V>::max)();
         if(!(value >= min && value <= max)) {
-            errors.emplace(parameter, arrus::format("Value '{}{}' should be in range [{}, {}] (found: '{}')",
+            errors.emplace(parameter, std::format("Value '{}{}' should be in range [{}, {}] (found: '{}')",
                                                     parameter, msg, min, max, value));
         }
     }
@@ -197,7 +198,7 @@ protected:
     void expectInRange(const std::string &parameter, const U &value, const U &min, const U &max,
                        const std::string &msg = "") {
         if(!(value >= min && value <= max)) {
-            errors.emplace(parameter, arrus::format("Value '{}{}' should be in range [{}, {}] (found: '{}')",
+            errors.emplace(parameter, std::format("Value '{}{}' should be in range [{}, {}] (found: '{}')",
                                                     parameter, msg, min, max, value));
         }
     }
@@ -206,14 +207,9 @@ protected:
     void expectOneOf(const std::string &parameter, U value, Container dictionary, const std::string &msg = "") {
         if(dictionary.find(value) == dictionary.end()) {
             // Concatenate and sort dictionary values.
-            std::vector<std::string> stringRepresentation;
-            std::transform(std::begin(dictionary), std::end(dictionary), std::back_inserter(stringRepresentation),
-                           [](auto &val) {
-                               return boost::lexical_cast<std::string>((U) val);
-                           });
-            errors.emplace(parameter, arrus::format("Value '{}{}' should be one of: '{}' (found: '{}')",
+            errors.emplace(parameter, std::format("Value '{}{}' should be one of: '{}' (found: '{}')",
                                                     parameter, msg,
-                                                    boost::algorithm::join(stringRepresentation, ", "),
+                                                    std4us::join(dictionary, ", "),
                                                     value));
         }
     }
@@ -222,20 +218,20 @@ protected:
     void expectUnique(const std::string &parameter, std::vector<U> values, const std::string &msg = "") {
         std::unordered_set<U> set(std::begin(values), std::end(values));
         if(set.size() != values.size()) {
-            errors.emplace(parameter, arrus::format("Parameter '{}{}' contains non-unique values. (got: '{}')",
-                                                    parameter, msg, ::arrus::toString(values)));
+            errors.emplace(parameter, std::format("Parameter '{}{}' contains non-unique values. (got: '{}')",
+                                                    parameter, msg, std4us::join(values, ", ")));
         }
     }
 
     void expectTrue(const std::string &parameter, bool condition, const std::string &msg) {
         if(!condition) {
-            errors.emplace(parameter, arrus::format("{}", msg));
+            errors.emplace(parameter, std::format("{}", msg));
         }
     }
 
     void expectFalse(const std::string &parameter, bool condition, const std::string &msg) {
         if(condition) {
-            errors.emplace(parameter, arrus::format("{}", msg));
+            errors.emplace(parameter, std::format("{}", msg));
         }
     }
 

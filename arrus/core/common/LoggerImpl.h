@@ -44,7 +44,7 @@ public:
         BOOST_LOG_SEV(logger, severity) << msg;
     }
 
-    void setAttribute(const std::string& key, const std::string& value) {
+    void setAttribute(const std::string& key, const std::string& value) override {
         auto attrs_map = logger.get_attributes();
         auto it = attrs_map.find(key);
         if (it != attrs_map.end()) {

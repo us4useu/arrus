@@ -1,8 +1,13 @@
+#define _CRT_SECURE_NO_WARNINGS // Avoid the error about getenv being unsafe.
+
 #include "arrus/core/api/io/settings.h"
-#include <boost/filesystem.hpp>
 #include <cstdlib>
 #include <fcntl.h>
+#include <filesystem>
+#include <fstream>
+#include <format>
 #include <memory>
+#include <std4us/string.h>
 #include <unordered_map>
 
 #include "arrus/common/utils.h"
@@ -10,21 +15,8 @@
 #include "arrus/core/session/SessionSettings.h"
 #include "cfg/default.h"
 
-#ifdef _MSC_VER
-
-#include <io.h>
-#define ARRUS_OPEN_FILE _open
-
-#elif ARRUS_LINUX
-
-#include <fcntl.h>
-#define ARRUS_OPEN_FILE open
-
-#endif
-
 #include "arrus/common/asserts.h"
 #include "arrus/common/compiler.h"
-#include "arrus/common/format.h"
 #include "arrus/core/common/validation.h"
 #include "arrus/core/io/SettingsDictionary.h"
 #include "arrus/core/io/validators/DictionaryProtoValidator.h"
@@ -50,14 +42,15 @@ using namespace ::arrus::session;
 
 template<typename T>
 std::unique_ptr<T> readProtoTxt(const std::string &filepath) {
-    int fd = ARRUS_OPEN_FILE(filepath.c_str(), O_RDONLY);
-    ARRUS_REQUIRES_TRUE(fd != 0, arrus::format("Could not open file {}", filepath));
-    google::protobuf::io::FileInputStream input(fd);
-    input.SetCloseOnDelete(true);
+    // Open file and create input stream using std::filesystem
+    std::filesystem::path path(filepath);
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    ARRUS_REQUIRES_TRUE(file.is_open(), std::format("Could not open file {}", filepath));
+    google::protobuf::io::IstreamInputStream input(&file);
     auto result = std::make_unique<T>();
     bool parseOk = google::protobuf::TextFormat::Parse(&input, result.get());
     if (!parseOk) {
-        throw IllegalArgumentException(::arrus::format("Error while parsing file {}, please check error messages "
+        throw IllegalArgumentException(std::format("Error while parsing file {}, please check error messages "
                                                        "that appeared the above.",
                                                        filepath));
     }
@@ -300,7 +293,7 @@ ProbeAdapterSettings readOrGetAdapterSettings(const proto::Us4RSettings &us4r, c
         try {
             return dictionary.getAdapterSettings(id);
         } catch (const std::out_of_range &) {
-            throw IllegalArgumentException(arrus::format("Adapter with id {} not found.", id.toString()));
+            throw IllegalArgumentException(std::format("Adapter with id {} not found.", id.toString()));
         }
     } else {
         throw ArrusException("NYI");
@@ -314,12 +307,12 @@ getUniqueConnection(const proto::ProbeModel_Id &probeId,
     ProbeModelId id{probeId.manufacturer(), probeId.name()};
     if (connections.count(key) > 1) {
         throw IllegalArgumentException(
-            format("Multiple probe to adapter connection definitions for probe: {}", id.toString()));
+            std::format("Multiple probe to adapter connection definitions for probe: {}", id.toString()));
     }
     auto it = connections.find(key);
     if (it == std::end(connections)) {
         throw IllegalArgumentException(
-            format("No definition found for probe {} in the probe to adapter connections list.",
+            std::format("No definition found for probe {} in the probe to adapter connections list.",
                    id.toString()));
     }
     return it->second;
@@ -417,7 +410,7 @@ std::vector<std::unordered_set<T>> readChannelsMask(const proto::Us4RSettings &u
         // validate
         for (auto channel: channels) {
             ARRUS_REQUIRES_DATA_TYPE(channel, T,
-                                     arrus::format("Channel mask should contain only values from uint16 range "
+                                     std::format("Channel mask should contain only values from uint16 range "
                                                    "(found: '{}')",
                                                    channel));
         }
@@ -440,7 +433,7 @@ ProbeModel readProbeModel(const proto::FileSettings &file, const SettingsDiction
         try {
             return dictionary.getProbeModel(id);
         } catch (std::out_of_range &) {
-            throw IllegalArgumentException(format("Probe model with id {} not found.", id.toString()));
+            throw IllegalArgumentException(std::format("Probe model with id {} not found.", id.toString()));
         }
     } else {
         throw std::runtime_error("NYI");
@@ -636,27 +629,27 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     auto logger = ::arrus::getDefaultLogger();
     // Read ARRUS_PATH.
     const char *arrusPathStr = std::getenv(ARRUS_PATH_KEY);
-    boost::filesystem::path arrusPath;
+    std::filesystem::path arrusPath;
     if (arrusPathStr != nullptr) {
         arrusPath = arrusPathStr;
     }
     // Read and validate session.
-    boost::filesystem::path sessionSettingsPath{filepath};
+    std::filesystem::path sessionSettingsPath{filepath};
     // Try with the provided path first.
-    if (!boost::filesystem::is_regular_file(sessionSettingsPath)) {
+    if (!std::filesystem::is_regular_file(sessionSettingsPath)) {
         // Next, try with ARRUS_PATH.
         if (!arrusPath.empty() && sessionSettingsPath.is_relative()) {
             sessionSettingsPath = arrusPath / sessionSettingsPath;
-            if (!boost::filesystem::is_regular_file(sessionSettingsPath)) {
-                throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
+            if (!std::filesystem::is_regular_file(sessionSettingsPath)) {
+                throw IllegalArgumentException(std::format("File not found {}.", filepath));
             }
         } else {
-            throw IllegalArgumentException(::arrus::format("File not found {}.", filepath));
+            throw IllegalArgumentException(std::format("File not found {}.", filepath));
         }
     }
 
     std::string settingsPathStr = sessionSettingsPath.string();
-    logger->log(LogSeverity::INFO, ::arrus::format("Using configuration file: {}", settingsPathStr));
+    logger->log(LogSeverity::INFO, std::format("Using configuration file: {}", settingsPathStr));
 
     std::unique_ptr<ap::SessionSettings> s = readProtoTxt<ap::SessionSettings>(settingsPathStr);
     //Validate.
@@ -669,37 +662,37 @@ SessionSettings readSessionSettings(const std::string &filepath) {
     if (!s->dictionary_file().empty()) {
         std::string dictionaryPathStr;
         // 1. Try to find the file relative to the current working directory.
-        if (boost::filesystem::is_regular_file(s->dictionary_file())) {
+        if (std::filesystem::is_regular_file(s->dictionary_file())) {
             dictionaryPathStr = s->dictionary_file();
         } else {
             // 2. Try to use the parent directory of session settings.
             auto dictP = sessionSettingsPath.parent_path() / s->dictionary_file();
-            if (boost::filesystem::is_regular_file(dictP)) {
+            if (std::filesystem::is_regular_file(dictP)) {
                 dictionaryPathStr = dictP.string();
             } else {
                 // 3. Try to use ARRUS_PATH, if available.
                 if (!arrusPath.empty()) {
-                    boost::filesystem::path arrusDicP = arrusPath / s->dictionary_file();
-                    if (boost::filesystem::is_regular_file(arrusDicP)) {
+                    std::filesystem::path arrusDicP = arrusPath / s->dictionary_file();
+                    if (std::filesystem::is_regular_file(arrusDicP)) {
                         dictionaryPathStr = arrusDicP.string();
                     } else {
                         throw IllegalArgumentException(
-                            ::arrus::format("Invalid path to dictionary: {}", s->dictionary_file()));
+                            std::format("Invalid path to dictionary: {}", s->dictionary_file()));
                     }
                 } else {
                     throw IllegalArgumentException(
-                        ::arrus::format("Invalid path to dictionary: {}", s->dictionary_file()));
+                        std::format("Invalid path to dictionary: {}", s->dictionary_file()));
                 }
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::DEBUG, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::DEBUG, std::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
         try {
             d = readProtoTxtStr<ap::Dictionary>(arrus::io::DEFAULT_DICT);
         } catch (const IllegalArgumentException &e) {
-            throw IllegalArgumentException(::arrus::format("Error while reading ARRUS default "
+            throw IllegalArgumentException(std::format("Error while reading ARRUS default "
                                                            "dictionary. Message: {}",
                                                            e.what()));
         }
@@ -721,8 +714,10 @@ SessionSettings readSessionSettings(const std::string &filepath) {
         settingsBuilder.addGpu(readGpuSettings(s->gpu()));
     }
     SessionSettings settings = settingsBuilder.build();
-    logger->log(LogSeverity::DEBUG, arrus::format("Read settings from '{}': {}", filepath, arrus::toString(settings)));
+    logger->log(LogSeverity::DEBUG, std::format("Read settings from '{}': {}", filepath, std4us::to_string(settings)));
     return settings;
 }
 
 }// namespace arrus::io
+
+#undef _CRT_SECURE_NO_WARNINGS

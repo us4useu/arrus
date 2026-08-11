@@ -21,7 +21,7 @@ public:
         try {
             objects.erase(handle);
         } catch (const std::out_of_range &e) {
-            throw ::arrus::IllegalArgumentException(format("There is no object of type: {} with id: {}",
+            throw ::arrus::IllegalArgumentException(std::format("There is no object of type: {} with id: {}",
                                                            getClassId(), handle));
         }
     }
@@ -31,7 +31,7 @@ protected:
         try {
             return objects.at(handle).get();
         } catch (const std::out_of_range &e) {
-            throw ::arrus::IllegalArgumentException(format("There is no object of type '{}' with id '{}.",
+            throw ::arrus::IllegalArgumentException(std::format("There is no object of type '{}' with id '{}.",
                                                            getClassId(), handle));
         }
     }

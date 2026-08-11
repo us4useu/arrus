@@ -1,11 +1,7 @@
 [settings]
 arch=armv8
-arch_build=armv8
-compiler=gcc
-compiler.libcxx=libstdc++11
-compiler.version=9
+compiler=clang
+compiler.cppstd=gnu23
+compiler.libcxx=libc++
+compiler.version=22
 os=Linux
-os_build=Linux
-[options]
-[build_requires]
-[env]

@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_MAPPING_ADATERTOUS4OEMMAPPINGCONVERTER_H
 #define ARRUS_CORE_DEVICES_US4R_MAPPING_ADATERTOUS4OEMMAPPINGCONVERTER_H
 
+#include <format>
 #include <utility>
 #include <vector>
 
@@ -28,7 +29,7 @@ public:
     std::pair<SequenceByOEM, DelayProfilesByOEM> convert(SequenceId id, const us4r::TxRxParametersSequence &seq,
                                                          const std::vector<framework::NdArray> &txDelayProfiles) {
         // Validate input sequence
-        ProbeAdapterTxRxValidator validator(format("Adapter to OEMs conversion, sequence: {}", id),
+        ProbeAdapterTxRxValidator validator(std::format("Adapter to OEMs conversion, sequence: {}", id),
                                             settings.getNumberOfChannels());
         validator.validate(seq);
         validator.throwOnErrors();
@@ -98,7 +99,7 @@ public:
             std::vector<std::vector<int32>> adapterChannels(noems);
 
             ARRUS_REQUIRES_TRUE(txAperture.size() == rxAperture.size() && txAperture.size() == nChannels,
-                                format("Tx and Rx apertures should have a size: {}", nChannels));
+                                std::format("Tx and Rx apertures should have a size: {}", nChannels));
 
             for (Ordinal oem = 0; oem < noems; ++oem) {
                 txApertures[oem][opId].resize(Us4OEMDescriptor::N_ADDR_CHANNELS, false);

@@ -12,7 +12,6 @@
 #include "api/matlab/wrappers/common.h"
 #include "api/matlab/wrappers/convert.h"
 #include "api/matlab/wrappers/framework/LockBasedBuffer.h"
-#include "arrus/common/format.h"
 #include "arrus/core/api/arrus.h"
 
 namespace arrus::matlab::framework {

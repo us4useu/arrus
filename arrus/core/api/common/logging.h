@@ -33,7 +33,7 @@ namespace arrus {
         ARRUS_CPP_EXPORT
         Logger::Handle getLogger(const std::vector<arrus::Logger::Attribute> &attributes) override;
 
-        ~Logging() override = default;
+        ~Logging() override;
 
         /**
          * Adds std::cout logging output stream to the default logging mechanism

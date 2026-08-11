@@ -1,10 +1,10 @@
 #ifndef ARRUS_CORE_COMMON_INTERPOLATE_H
 #define ARRUS_CORE_COMMON_INTERPOLATE_H
 
+#include <format>
 #include <vector>
 #include <algorithm>
 
-#include "arrus/common/format.h"
 #include "arrus/common/asserts.h"
 #include "arrus/core/api/common/exceptions.h"
 
@@ -38,7 +38,7 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                 result[i] = minFillValue.value();
             }
             else {
-                throw IllegalArgumentException(format(
+                throw IllegalArgumentException(std::format(
                     "Interpolation 1D: value {} is out of range [{}, {}].",
                     value, *std::begin(x), *std::prev(std::end(x))));
             }
@@ -51,7 +51,7 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                     result[i] = maxFillValue.value();
                 }
                 else {
-                    throw IllegalArgumentException(format(
+                    throw IllegalArgumentException(std::format(
                         "Interp 1D: value {} is out of range [{}, {}].",
                         value, *std::begin(x), *std::prev(std::end(x))));
                 }

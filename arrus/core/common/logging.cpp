@@ -33,36 +33,6 @@ std::shared_ptr<LoggerFactory> getDefaultLoggerFactoryWithClog();
 std::shared_ptr<LoggerFactory> loggerFactory;
 Logger::SharedHandle defaultLogger;
 
-// API
-void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory) {
-    loggerFactory = factory;
-    defaultLogger = factory->getLogger();
-    ARRUS_INIT_COMPONENT_LOGGER(defaultLogger, "ARRUS");
-}
-
-Logging* useDefaultLoggerFactory() {
-    auto pimpl = std::make_unique<Logging::LoggingImpl>();
-    auto logging = std::make_shared<::arrus::Logging>(std::move(pimpl));
-    setLoggerFactory(logging);
-    return logging.get();
-}
-
-std::shared_ptr<LoggerFactory> getLoggerFactory() {
-    if(loggerFactory == nullptr) {
-        std::cout << "Using default logging mechanism." << std::endl;
-        setLoggerFactory(getDefaultLoggerFactoryWithClog());
-    }
-    return loggerFactory;
-}
-
-Logger::SharedHandle getDefaultLogger() {
-    if(defaultLogger == nullptr) {
-        std::cout << "Using default logging mechanism." << std::endl;
-        setLoggerFactory(getDefaultLoggerFactoryWithClog());
-    }
-    return defaultLogger;
-}
-
 // Internal.
 
 namespace {
@@ -199,6 +169,8 @@ void Logging::removeAllStreams() {
     boost::log::core::get()->remove_all_sinks();
 }
 
+Logging::~Logging() = default;
+
 // Utility functions.
 std::shared_ptr<LoggerFactory> getDefaultLoggerFactoryWithClog() {
     auto loggingMechanism = std::make_shared<::arrus::Logging>(std::make_unique<Logging::LoggingImpl>());
@@ -208,5 +180,34 @@ std::shared_ptr<LoggerFactory> getDefaultLoggerFactoryWithClog() {
     return loggingMechanism;
 }
 
+// API
+void setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory) {
+    loggerFactory = factory;
+    defaultLogger = factory->getLogger();
+    ARRUS_INIT_COMPONENT_LOGGER(defaultLogger, "ARRUS");
+}
+
+Logging* useDefaultLoggerFactory() {
+    auto pimpl = std::make_unique<Logging::LoggingImpl>();
+    auto logging = std::make_shared<::arrus::Logging>(std::move(pimpl));
+    setLoggerFactory(logging);
+    return logging.get();
+}
+
+std::shared_ptr<LoggerFactory> getLoggerFactory() {
+    if(loggerFactory == nullptr) {
+        std::cout << "Using default logging mechanism." << std::endl;
+        setLoggerFactory(getDefaultLoggerFactoryWithClog());
+    }
+    return loggerFactory;
+}
+
+Logger::SharedHandle getDefaultLogger() {
+    if(defaultLogger == nullptr) {
+        std::cout << "Using default logging mechanism." << std::endl;
+        setLoggerFactory(getDefaultLoggerFactoryWithClog());
+    }
+    return defaultLogger;
+}
 
 }

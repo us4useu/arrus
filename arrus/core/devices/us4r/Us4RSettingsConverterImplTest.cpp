@@ -368,32 +368,6 @@ std::vector<ChannelIdx> getAtlLikeProbeChannelMapping() {
     return ::arrus::getRange<ChannelIdx>(0, 128);
 }
 
-std::vector<ChannelIdx> getEsaotePhaseArrayProbeMapping() {
-    std::vector<ChannelIdx> result;
-    for(int i = 0; i < 48; ++i) {
-        result.push_back(i);
-    }
-    for(int i = 144; i < 192; ++i) {
-        result.push_back(i);
-    }
-    return result;
-}
-
-std::vector<ChannelIdx> getOneByOneProbeMapping() {
-    return ::arrus::getRange<ChannelIdx>(0, 128);
-}
-
-ProbeAdapterSettings::ChannelMapping getEsaote3ChannelMapping() {
-    ProbeAdapterSettings::ChannelMapping mapping;
-    for(int i = 0; i < 192; ++i) {
-        auto group = i / 32;
-        auto module = group % 2;
-        auto channel = i % 32 + 32*(i/64);
-        mapping.push_back({module, channel});
-    }
-    return mapping;
-}
-
 ProbeAdapterSettings::ChannelMapping getEsaote3Us4RChannelMapping() {
     // 6 modules used
     ProbeAdapterSettings::ChannelMapping mapping;
@@ -418,6 +392,7 @@ ProbeAdapterSettings::ChannelMapping getAtlUs4RLikeChannelMapping() {
     return mapping;
 }
 
+/*
 ProbeAdapterSettings::ChannelMapping getOneByOneChannelMapping() {
     ProbeAdapterSettings::ChannelMapping mapping;
     for(int i = 0; i < 128; ++i) {
@@ -425,13 +400,14 @@ ProbeAdapterSettings::ChannelMapping getOneByOneChannelMapping() {
     }
     return mapping;
 }
+*/
 
 TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersEsaote) {
     Us4RSettingsConverterImpl converter;
 
     auto probeMapping = getSL1543ChannelMapping();
     auto adapterMapping = getEsaote3Us4RChannelMapping();
-    ChannelIdx nChannels = probeMapping.size();
+    //ChannelIdx nChannels = probeMapping.size();
 
     ProbeAdapterSettings adapterSettings(
         ProbeAdapterModelId("test", "test"),
@@ -476,7 +452,7 @@ TEST(Us4OEMRemappingTest, CorrectlyRemapsUs4OEMNumbersAtl) {
 
     auto probeMapping = getAtlLikeProbeChannelMapping();
     auto adapterMapping = getAtlUs4RLikeChannelMapping();
-    ChannelIdx nChannels = probeMapping.size();
+    //ChannelIdx nChannels = probeMapping.size();
 
     ProbeAdapterSettings adapterSettings(
         ProbeAdapterModelId("test", "test"),

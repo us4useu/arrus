@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_MAPPING_INTERFACETOINTERFACEMAPPINGCONVERTER_H
 #define ARRUS_CORE_DEVICES_US4R_MAPPING_INTERFACETOINTERFACEMAPPINGCONVERTER_H
 
+#include <format>
 #include <utility>
 
 #include "arrus/common/utils.h"
@@ -33,7 +34,7 @@ public:
     std::pair<TxRxParametersSequence, std::vector<NdArray>>
     convert(SequenceId id, const TxRxParametersSequence &sequence, const std::vector<NdArray> &txDelayProfiles) {
         // Validate input sequence
-        ProbeTxRxValidator validator(format("Probe to adapter conversion, sequence: {}", id), probeTx.getModel(),
+        ProbeTxRxValidator validator(std::format("Probe to adapter conversion, sequence: {}", id), probeTx.getModel(),
                                      probeRx.getModel());
         validator.validate(sequence);
         validator.throwOnErrors();
@@ -70,7 +71,7 @@ public:
 
             ARRUS_REQUIRES_TRUE(
                 op.getTxAperture().size() == op.getTxDelays().size() && op.getTxAperture().size() == nElementsTx,
-                format("Probe's tx, rx apertures and tx delays array should have the same size: {}", nElementsTx));
+                std::format("Probe's tx, rx apertures and tx delays array should have the same size: {}", nElementsTx));
 
             // TX
             for (size_t pch = 0; pch < op.getTxAperture().size(); ++pch) {

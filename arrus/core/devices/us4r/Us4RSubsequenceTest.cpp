@@ -1,7 +1,7 @@
+#include <format>
 #include <gtest/gtest.h>
 
 #include "Us4RSubsequence.h"
-#include "arrus/common/format.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
@@ -470,8 +470,8 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     fcmBuilder2.setChannelMapping(0, 0, 0, 0, 0);
 
     std::vector<FrameChannelMappingImpl::Handle> fcms;
-    fcms.emplace_back(std::move(fcmBuilder.build()));
-    fcms.emplace_back(std::move(fcmBuilder2.build()));
+    fcms.emplace_back(fcmBuilder.build());
+    fcms.emplace_back(fcmBuilder2.build());
 
     Us4RSubsequenceFactory factory{seqs, mapping, oemSequences, oemBuffers, fcms};
 

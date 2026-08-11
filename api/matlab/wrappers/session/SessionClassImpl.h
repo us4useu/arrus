@@ -1,6 +1,7 @@
 #ifndef ARRUS_API_MATLAB_WRAPPERS_SESSION_SESSIONOBJECTWRAPPER_H
 #define ARRUS_API_MATLAB_WRAPPERS_SESSION_SESSIONOBJECTWRAPPER_H
 
+#include <format>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -10,7 +11,6 @@
 #include "api/matlab/wrappers/Ptr.h"
 #include "api/matlab/wrappers/asserts.h"
 
-#include "arrus/common/format.h"
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/session/Session.h"
 #include "arrus/core/api/session/SessionSettings.h"
@@ -42,7 +42,7 @@ public:
         ARRUS_MATLAB_REQUIRES_SCALAR(arg);
         ARRUS_MATLAB_REQUIRES_TYPE(arg, ::matlab::data::ArrayType::MATLAB_STRING);
         std::string cfgPath = arg[0];
-        ctx->logInfo(format("Creating session using configuration file: {}", cfgPath));
+        ctx->logInfo(std::format("Creating session using configuration file: {}", cfgPath));
         std::unique_ptr<ValueType> sess = ::arrus::session::createSession(cfgPath);
         return insert(std::move(sess));
     }
@@ -105,7 +105,7 @@ public:
     void setSubsequence(MatlabObjectHandle obj, MatlabOutputArgs &outputs, MatlabInputArgs &inputs) {
         // start, end, sri
         ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, 4, "setSubsequence");
-        ctx->logInfo(format("Inputs size: {}", inputs.size()));
+        ctx->logInfo(std::format("Inputs size: {}", inputs.size()));
         uint16 start = inputs[0][0];
         uint16 end = inputs[1][0];
         ArrayId arrayId = inputs[2][0];
@@ -114,7 +114,7 @@ public:
             sri = std::nullopt;
         }
         auto *session = get(obj);
-        ctx->logInfo(format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri.has_value() ? sri.value(): 0));
+        ctx->logInfo(std::format("Setting sub-sequence: start: {}, end: {}, sri: {}", start, end, sri.has_value() ? sri.value(): 0));
         auto uploadResult = session->setSubsequences({Slice{start, end}}, {sri});
         setToMatlabOutput(outputs, uploadResult);
     }

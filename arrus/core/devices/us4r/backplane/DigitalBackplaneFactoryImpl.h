@@ -35,7 +35,7 @@ public:
         }
         else {
             throw IllegalArgumentException(
-                ::arrus::format("Unrecognized DBAR: {}, {}", manufacturer, name));
+                std::format("Unrecognized DBAR: {}, {}", manufacturer, name));
         }
     }
 
@@ -57,7 +57,7 @@ public:
         }
         else {
             throw IllegalArgumentException(
-                ::arrus::format("Unrecognized high-voltage supplier: {}, {}", manufacturer, name));
+                std::format("Unrecognized high-voltage supplier: {}, {}", manufacturer, name));
         }
     }
 

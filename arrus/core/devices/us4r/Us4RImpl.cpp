@@ -8,13 +8,14 @@
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/common/utils.h"
-#include "arrus/common/format.h"
 #include "us4r_api_version.h"
 #include <chrono>
 #include <future>
+#include <format>
 #include <memory>
 #include <thread>
 #include <regex>
+#include <std4us/string.h>
 
 #define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
     if (!rxSettings.has_value()) {                                                                                     \
@@ -73,10 +74,10 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     for (size_t i = 0; i < this->channelsMask.size(); ++i) {
         const auto &mask = this->channelsMask.at(i);
         if (mask.empty()) {
-            this->logger->log(LogSeverity::DEBUG, format("No channel masking applied on Probe:{}", i));
+            this->logger->log(LogSeverity::DEBUG, std::format("No channel masking applied on Probe:{}", i));
         } else {
             this->logger->log(LogSeverity::INFO,
-                              format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
+                              std::format("The following 'Probe:{}' channels will be masked: {}", i, std4us::join(mask, ", ")));
         }
     }
 
@@ -120,7 +121,7 @@ std::vector<Us4RImpl::VoltageLogbook> Us4RImpl::logVoltages(HVModelId hvModel, b
 void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isOEMPlus) {
 
     if(hvModel.getManufacturer() == "us4us" && hvModel.getName() == "us4rpsc" && isOEMPlus) {
-        this->logger->log(LogSeverity::INFO, format("Voltage verification with US4RPSC is not supported with OEM+"));
+        this->logger->log(LogSeverity::INFO, std::format("Voltage verification with US4RPSC is not supported with OEM+"));
         return;
     }
 
@@ -145,7 +146,7 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
     std::string measurementLog = "Recently measured voltages: ";
     for(size_t i = 0; i < voltages.size(); ++i) {
         // the number of voltages is of voltages to be logged here is small
-        measurementLog += ::arrus::format(voltages[i].name + " = {} V; ", voltages[i].voltage);
+        measurementLog += std::format("{} = {} V; ", voltages[i].name, voltages[i].voltage);
     }
     logger->log(LogSeverity::INFO, measurementLog);
 
@@ -156,7 +157,8 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
             const auto expectedVoltage = logbook.polarity == VoltageLogbook::Polarity::MINUS ? voltageMinus : voltagePlus;
             if(abs(logbook.voltage - static_cast<float>(expectedVoltage)) > tolerance) {
                 throw IllegalStateException(
-                    format(logbook.name + " invalid '{}', should be in range: [{}, {}]",
+                    std::format("{} invalid '{}', should be in range: [{}, {}]",
+                    logbook.name,
                     logbook.voltage,
                     (static_cast<float>(expectedVoltage) - tolerance),
                     (static_cast<float>(expectedVoltage) + tolerance)));
@@ -191,7 +193,7 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
             this->us4oems[0]->getIUs4OEM()->TriggerStart();
         }
     } catch(const std::exception &e) {
-        this->logger->log(LogSeverity::ERROR, format("Exception while setting voltage, stopping the system: {}", e.what()));
+        this->logger->log(LogSeverity::ERROR, std::format("Exception while setting voltage, stopping the system: {}", e.what()));
         this->stop();
         throw;
     } catch(...) {
@@ -259,7 +261,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
                 voltageLimits = oem->getDescriptor().getTxRxSequenceLimits().getTxRx().getTx2().getVoltage();
                 break;
             default:
-                throw IllegalArgumentException(format("Unsupported voltage amplitude {}", amplitude));
+                throw IllegalArgumentException(std::format("Unsupported voltage amplitude {}", amplitude));
             }
             if(setContains(availableAmplitudes, amplitude)) {
                 // Voltage available
@@ -294,7 +296,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
             auto minVoltage = *std::max_element(std::begin(min), std::end(min));
             auto maxVoltage = *std::min_element(std::begin(max), std::end(max));
             if(minVoltage > maxVoltage) {
-                throw IllegalStateException(format("Invalid probe and us4OEM limit settings: "
+                throw IllegalStateException(std::format("Invalid probe and us4OEM limit settings: "
                                                    "the actual minimum voltage {} is greater than the maximum: {}.",
                                                    minVoltage, maxVoltage));
             }
@@ -309,7 +311,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
         if(voltage.has_value()) {
             // Make sure we are not verifying amplitude for an unavailable rail/level.
             ARRUS_REQUIRES_TRUE(setContains(availableAmplitudes, int(i+1)),
-                                format("Verifying unavailable voltage amplitude level: {}!", i+1));
+                                std::format("Verifying unavailable voltage amplitude level: {}!", i+1));
 
             auto voltageMinus = voltage->getVoltageMinus();
             auto voltagePlus = voltage->getVoltagePlus();
@@ -318,13 +320,13 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
             const auto maxVoltage = maxVoltages.at(i);
 
             logger->log(LogSeverity::INFO,
-                        format("Setting voltage -{}, +{}, TX amplitude: {}", voltageMinus, voltagePlus, i+1));
+                        std::format("Setting voltage -{}, +{}, TX amplitude: {}", voltageMinus, voltagePlus, i+1));
             ARRUS_REQUIRES_TRUE_E(voltageMinus >= minVoltage && voltageMinus <= maxVoltage,
-                                  IllegalArgumentException(format(
+                                  IllegalArgumentException(std::format(
                                       "Unaccepted voltage '{}', should be in range: [{}, {}]", voltageMinus,
                                       minVoltage, maxVoltage)));
             ARRUS_REQUIRES_TRUE_E(voltagePlus >= minVoltage && voltagePlus <= maxVoltage,
-                                  IllegalArgumentException(format(
+                                  IllegalArgumentException(std::format(
                                       "Unaccepted voltage '{}', should be in range: [{}, {}]", voltagePlus,
                                       minVoltage, maxVoltage)));
         }
@@ -387,7 +389,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
         if (actualVoltage != expectedVoltage) {
             disableHV();
             throw IllegalStateException(
-                ::arrus::format("Voltage set on HV module '{}' does not match requested value: '{}'",
+                std::format("Voltage set on HV module '{}' does not match requested value: '{}'",
                     actualVoltage, expectedVoltage));
         }
     } else if(!isHVPS) {
@@ -461,7 +463,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     ARRUS_REQUIRES_TRUE_E(
         (hostBufferSize % rxBufferSize) == 0,
         IllegalArgumentException(
-            format("The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
+            std::format("The size of the host buffer {} must be equal or a multiple of the size of the rx buffer {}.",
                    hostBufferSize, rxBufferSize)));
 
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
@@ -520,7 +522,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
     const auto placementOrdinal = placement.getOrdinal();
     if (!((placementType == DeviceType::CPU || placementType == DeviceType::GPU) && placementOrdinal == 0)) {
         throw IllegalArgumentException(
-            format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
+            std::format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
                    placement.toString()));
     }
     const bool useP2pDma = (placementType == DeviceType::GPU);
@@ -598,7 +600,7 @@ void Us4RImpl::stopDevice() {
             catch (const std::exception &e) {
                 logger->log(
                         LogSeverity::WARNING,
-                        arrus::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
+                        std::format("Error on waiting for pending interrupts and transfers: {}", e.what()));
             }
         }
         logger->log(LogSeverity::DEBUG, "Stopped.");
@@ -745,7 +747,7 @@ TxRxParameters Us4RImpl::createBitstreamSequenceSelectPreamble(const TxRxSequenc
     auto txProbe = sequence.getTxProbeId().getOrdinal();
     ARRUS_REQUIRES_TRUE_IAE(
         probeSettings.at(rxProbe).getBitstreamId() == probeSettings.at(txProbe).getBitstreamId(),
-        format("All probes used within a single sequence should be connected with the same bitstream ID, "
+        std::format("All probes used within a single sequence should be connected with the same bitstream ID, "
                "incorrect probes: {}, {}",
                txProbe, rxProbe));
     auto bitstreamId = probeSettings.at(rxProbe).getBitstreamId();
@@ -1002,7 +1004,7 @@ void Us4RImpl::applyForAllUs4OEMs(const std::function<void(Us4OEM *us4oem)> &fun
     } catch (...) {
         if (isConsistent) {
             logger->log(LogSeverity::ERROR,
-                        format("Error while calling '{}': the function was not applied "
+                        std::format("Error while calling '{}': the function was not applied "
                                "correctly for all us4OEMs.",
                                funcName));
         }
@@ -1208,7 +1210,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                 if(isMaster) {
 //                    std::unique_lock<std::mutex> guard(triggerMutex);
                     const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
-                    this->logger->log(LogSeverity::TRACE, format("Detected RX data overflow, current sequencer index: {}.", currentIdx));
+                    this->logger->log(LogSeverity::TRACE, std::format("Detected RX data overflow, current sequencer index: {}.", currentIdx));
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
                     for(const auto &[startFiring, endFiring]: firings) {
@@ -1218,7 +1220,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                         }
                     }
                     if(pendingFiring == std::nullopt) {
-                        throw IllegalStateException(format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                        throw IllegalStateException(std::format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
                     }
                     // Wait until the end of the [startFiring, endFiring] entries will be released.
                     // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
@@ -1235,12 +1237,12 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
 
                         if(i > 0) {
                             us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
-                            logger->log(LogSeverity::TRACE, format("OEM:{} returned to IDLE state.", i));
+                            logger->log(LogSeverity::TRACE, std::format("OEM:{} returned to IDLE state.", i));
                         }
                     }
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: {}", e.what()));
+                logger->log(LogSeverity::ERROR, std::format("RX overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
@@ -1258,7 +1260,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     outputBuffer->runOnOverflowCallback();
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("RX overflow callback exception: {}", e.what()));
+                logger->log(LogSeverity::ERROR, std::format("RX overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1279,7 +1281,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                 if(isMaster) {
 //                    std::unique_lock<std::mutex> guard(triggerMutex);
                     const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
-                    this->logger->log(LogSeverity::TRACE, format("Detected transfer data overflow, current sequencer index: {}.", currentIdx));
+                    this->logger->log(LogSeverity::TRACE, std::format("Detected transfer data overflow, current sequencer index: {}.", currentIdx));
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
                     for(const auto &[startFiring, endFiring]: firings) {
@@ -1289,7 +1291,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                         }
                     }
                     if(pendingFiring == std::nullopt) {
-                        throw IllegalStateException(format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
+                        throw IllegalStateException(std::format("Couldn't find the current index in the firing ranges!: {}", currentIdx));
                     }
                     // Wait until the end of the [startFiring, endFiring] entries will be released.
                     // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
@@ -1307,12 +1309,12 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                         // be released the last one.
                         if(i > 0) {
                             us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
-                            logger->log(LogSeverity::TRACE, format("OEM:{} returned to IDLE state.", i));
+                            logger->log(LogSeverity::TRACE, std::format("OEM:{} returned to IDLE state.", i));
                         }
                     }
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: {}", e.what()));
+                logger->log(LogSeverity::ERROR, std::format("Host overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
         };
     case Scheme::WorkMode::ASYNC:
@@ -1330,7 +1332,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                     this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
                 }
             } catch (const std::exception &e) {
-                logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
+                logger->log(LogSeverity::ERROR, std::format("Host overflow callback exception: ", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "Host overflow callback exception: unknown"); }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1359,7 +1361,7 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    logger->log(LogSeverity::DEBUG, format("Setting {}", params.toString()));
+    logger->log(LogSeverity::DEBUG, std::format("Setting {}", params.toString()));
     std::vector<std::pair<size_t, size_t>> values;
     // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
     // and just interpret the string as sequence ordinal number?
@@ -1370,7 +1372,7 @@ void Us4RImpl::setParameters(const Parameters &params) {
         const auto [sequenceName, parameterName] = parseTxDelaysParamName(key);
         const auto sequenceOrdinal = mapGetValueOrNone(sequenceNameToOrdinalMap, sequenceName);
         if(!sequenceOrdinal.has_value()) {
-            throw IllegalArgumentException(format("Could not find TX/RX sequence with name: {}", sequenceName));
+            throw IllegalArgumentException(std::format("Could not find TX/RX sequence with name: {}", sequenceName));
         }
         // Wer accept txDelays and txFocus; as for the txFocus, this is basically a shortcut for now
         // (Python API translates focus to delays during the programming).
@@ -1379,10 +1381,10 @@ void Us4RImpl::setParameters(const Parameters &params) {
         }
         auto nProfiles = mapGetValueOrNone(sequenceNumberOfTxDelayProfiles, sequenceName).value_or(0);
         if(value < 0) {
-            throw IllegalArgumentException(format("The value {} should not be negative", value));
+            throw IllegalArgumentException(std::format("The value {} should not be negative", value));
         }
         if(static_cast<size_t>(value) >= nProfiles) {
-            throw IllegalArgumentException(format("The value {} exceeds the number of currently uploaded TX delay profiles: {}", value, nProfiles));
+            throw IllegalArgumentException(std::format("The value {} exceeds the number of currently uploaded TX delay profiles: {}", value, nProfiles));
         }
         values.emplace_back(std::make_pair(ARRUS_SAFE_CAST(sequenceOrdinal.value(), size_t), static_cast<size_t>(value)));
     }
@@ -1557,7 +1559,7 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 
 void Us4RImpl::handlePulserInterrupt() {
     if (this->state == State::STOPPED) {
-        logger->log(LogSeverity::DEBUG, format("System already stopped."));
+        logger->log(LogSeverity::DEBUG, std::format("System already stopped."));
         this->disableHV();
     }
     else {
@@ -1599,7 +1601,7 @@ std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequ
         const auto &ops = seq.getOps();
         auto &outputDelays = result.at(i);
         outputDelays.resize(ops.size());
-        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=](const auto &op) {
+        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=, this](const auto &op) {
             return this->getRxDelay(op);
         });
     }
@@ -1663,8 +1665,9 @@ Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, co
 
     std::unordered_set<std::string> sequenceNames;
     for (const auto& s : sequences) {
-        sequenceNames.insert(trim(s.getName()));
-        arraysBySequence[s.getName()] = std::vector<OrderedArray>();
+        const auto name = std4us::trim(s.getName());
+        sequenceNames.insert(name);
+        arraysBySequence[name] = std::vector<OrderedArray>();
     }
 
     for(const auto &profile: txDelayProfiles) {
@@ -1687,7 +1690,7 @@ Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, co
         for(size_t i = 0; i < arrays.size(); ++i) {
             const auto &a = arrays.at(i);
             if(a.first != i) {
-                throw IllegalArgumentException(format("The Constants numbering should have no gaps, e.g. Delays:0, Delays:2 "
+                throw IllegalArgumentException(std::format("The Constants numbering should have no gaps, e.g. Delays:0, Delays:2 "
                                                       "are not accepted (found: /{}/txDelays:{}, expected: {})", name, a.first, i));
             }
             result[name].push_back(a.second);
@@ -1705,7 +1708,7 @@ std::tuple<std::string, std::string, size_t> Us4RImpl::parseTxDelaysConstantName
         return {sequenceName, parameterName, parameterOrdinal};
     } else {
         throw IllegalArgumentException(
-            format("The constant name should follow the following pattern: "
+            std::format("The constant name should follow the following pattern: "
                    "^//([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$, "
                    "got: {}", name)
         );
@@ -1720,7 +1723,7 @@ std::tuple<std::string, std::string> Us4RImpl::parseTxDelaysParamName(const std:
         return {sequenceName, parameterName};
     } else {
         throw IllegalArgumentException(
-            format("The constant name should follow the following pattern: "
+            std::format("The constant name should follow the following pattern: "
                    "/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$, "
                    "got: {}", name)
         );

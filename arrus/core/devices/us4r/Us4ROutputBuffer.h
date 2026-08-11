@@ -3,7 +3,7 @@
 
 #include <chrono>
 #include <condition_variable>
-#include <gsl/span>
+#include <format>
 #include <iostream>
 #include <mutex>
 
@@ -15,7 +15,6 @@
 #endif
 
 #include "arrus/common/asserts.h"
-#include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/framework/DataBuffer.h"
@@ -225,7 +224,7 @@ public:
             dataBufferSize = elementSize * nElements;
             getDefaultLogger()->log(
                 LogSeverity::DEBUG,
-                format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize, nElements, useP2pDma));
+                std::format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize, nElements, useP2pDma));
 
             if (useP2pDma) {
                 auto &cuda = CudaRuntime::instance();
@@ -246,7 +245,7 @@ public:
 
                 getDefaultLogger()->log(
                     LogSeverity::DEBUG,
-                    format("CUDA device 0, integrated: {}, unifiedAddressing: {}, unified memory: {}",
+                    std::format("CUDA device 0, integrated: {}, unifiedAddressing: {}, unified memory: {}",
                            integrated, unifiedAddressing, usesUnifiedMemory));
 
                 if (!usesUnifiedMemory) {
@@ -266,7 +265,7 @@ public:
             } else {
                 dataBuffer = reinterpret_cast<DataType *>(mallocChunked(dataBufferSize, ALLOC_CHUNK_SIZE));
             }
-            getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
+            getDefaultLogger()->log(LogSeverity::DEBUG, std::format("Allocated address: {}", (size_t) dataBuffer));
             createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
         } catch (...) {
             releaseDataBuffer();
@@ -658,7 +657,7 @@ public:
         }
         // Concatenate shape of each array (concatenate array elements produced by each us4OEM)
         for (const auto &arrayShapes : partShapes) {
-            shapes.emplace_back(std::move(concatenate(arrayShapes)));
+            shapes.emplace_back(concatenate(arrayShapes));
         }
         size_t address = 0;
         for (ArrayId arrayId = 0; arrayId < nArrays; ++arrayId) {

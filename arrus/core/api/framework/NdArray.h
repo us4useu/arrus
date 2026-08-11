@@ -75,7 +75,7 @@ public:
         if (!vector.empty()) {
             std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
         }
-        return std::move(result);
+        return result;
     }
 
     template<typename T> static NdArray asarray(const std::vector<T> &vector,
@@ -85,7 +85,7 @@ public:
         if (!vector.empty()) {
             std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
         }
-        return std::move(result);
+        return result;
     }
 
     template<typename T> static NdArray asarray(const T *data, const Shape &shape, const std::string &name) {
@@ -93,7 +93,7 @@ public:
         devices::DeviceId placement{devices::DeviceType::CPU, 0};
         NdArray result{shape, dataType, placement, name};
         std::memcpy(result.ptr, (char *) data, result.sizeBytes);
-        return std::move(result);
+        return result;
     }
 
     NdArray() : ptr(nullptr), placement(devices::DeviceId(devices::DeviceType::CPU, 0)) {}
@@ -379,7 +379,7 @@ template<> inline NdArray::DataType NdArray::getDataType<int32>() { return DataT
 template<> inline NdArray::DataType NdArray::getDataType<float32>() { return DataType::FLOAT32; }
 template<> inline NdArray::DataType NdArray::getDataType<double>() { return DataType::FLOAT64; }
 
-template<typename T> NdArray asarray(std::vector<T> vec) { return std::move(NdArray::asarray<T>(vec)); }
+template<typename T> NdArray asarray(std::vector<T> vec) { return NdArray::asarray<T>(vec); }
 
 }// namespace arrus::framework
 

@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_HV_HV256IMPL_H
 #define ARRUS_CORE_DEVICES_US4R_HV_HV256IMPL_H
 
+#include <format>
 #include <memory>
 
 #include <idbar.h>
@@ -8,7 +9,6 @@
 #include <us4rExceptions.h>
 
 #include "arrus/common/asserts.h"
-#include "arrus/common/format.h"
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/us4r/HVModelId.h"
 #include "arrus/core/api/devices/us4r/Us4R.h"
@@ -36,7 +36,7 @@ public:
             try {
                 getIHV()->DisableHV();
             } catch( const std::exception &ee) {
-                logger->log(LogSeverity::ERROR, format("Exception while disabling HV: {}", ee.what()));
+                logger->log(LogSeverity::ERROR, std::format("Exception while disabling HV: {}", ee.what()));
             }
             throw;
         } catch (const ::us4us::AssertionException &) {
@@ -44,12 +44,12 @@ public:
             try {
                 getIHV()->DisableHV();
             } catch( const std::exception &ee) {
-                logger->log(LogSeverity::ERROR, format("Exception while disabling HV: {}", ee.what()));
+                logger->log(LogSeverity::ERROR, std::format("Exception while disabling HV: {}", ee.what()));
             }
             throw;
         } catch (const std::exception &e) {
             logger->log(LogSeverity::INFO,
-                        ::arrus::format("First attempt to set HV voltage failed with "
+                        std::format("First attempt to set HV voltage failed with "
                                         "message: '{}', trying once more.",
                                         e.what()));
             getIHV()->EnableHV();
@@ -80,7 +80,7 @@ public:
             getIHV()->DisableHV();
         } catch (std::exception &e) {
             logger->log(LogSeverity::INFO,
-                        ::arrus::format("First attempt to disable high voltage failed with "
+                        std::format("First attempt to disable high voltage failed with "
                                         "message: '{}', trying once more.",
                                         e.what()));
             getIHV()->DisableHV();

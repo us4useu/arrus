@@ -7,7 +7,7 @@
 #include <thread>
 #include <regex>
 
-#include <boost/algorithm/string.hpp>
+#include <std4us/string.h>
 #include <vector>
 
 #include "BlockingQueue.h"
@@ -41,7 +41,7 @@ public:
 
     static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
 
-    ~Us4RImpl() override;
+    ~Us4RImpl() noexcept override;
 
     Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSettings> probeSettings,
              ProbeAdapterSettings probeAdapterSettings, std::vector<HighVoltageSupplier::Handle> hv,
@@ -56,10 +56,10 @@ public:
 
     Device::RawHandle getDevice(const std::string &path) override {
         auto [root, tail] = getPathRoot(path);
-        boost::algorithm::trim(root);
-        boost::algorithm::trim(tail);
+        root = std4us::trim(root);
+        tail = std4us::trim(tail);
         if (!tail.empty()) {
-            throw IllegalArgumentException(arrus::format(
+            throw IllegalArgumentException(std::format(
                 "Us4R devices allows access only to the top-level devices (got relative path: '{}')", path));
         }
         DeviceId componentId = DeviceId::parse(root);
@@ -178,7 +178,7 @@ public:
     void setVcat(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, bool clip) override;
     void disableHpf() override;
     virtual Us4OEM::Variant getVariant() override;
-    std::vector<int64_t> getHVPSTuningInfo();
+    std::vector<int64_t> getHVPSTuningInfo() override;
 
 private:
     struct VoltageLogbook {

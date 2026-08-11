@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 4.2 FATAL_ERROR)
 project(arrus-cpp-examples)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 
 # TODO set path to us4r-lite headers and libraries
 set(ARRUS_INCLUDE_PATH "/path/to/set/include")

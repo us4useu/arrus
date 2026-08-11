@@ -3,13 +3,13 @@
 
 #include <unordered_set>
 #include <limits>
+#include <format>
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
 
 #include "arrus/core/api/devices/us4r/ProbeAdapterSettings.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/SettingsValidator.h"
 #include "arrus/core/common/collections.h"
-#include "arrus/common/format.h"
 #include "arrus/common/asserts.h"
 
 namespace arrus::devices {
@@ -62,7 +62,7 @@ public:
             // multiple of nRx
             expectDivisible("channel mapping",
                             (ChannelIdx) mapping.size(), nRxChannelsOem,
-                            arrus::format(" size (for Us4OEM: {})", us4oemOrdinal));
+                            std::format(" size (for Us4OEM: {})", us4oemOrdinal));
 
             auto nIt = mapping.size() / nRxChannelsOem;
             for(unsigned i = 0; i < nIt; ++i) {
@@ -74,7 +74,7 @@ public:
                 expectEqual(
                         "channel mapping",
                         (ChannelIdx) channelsSet.size(), nRxChannelsOem,
-                        arrus::format(
+                        std::format(
                                 " (number of unique channel indices "
                                 "for Us4OEM: {}, "
                                 "for input range [{}, {}))",
@@ -91,7 +91,7 @@ public:
                 expectTrue(
                         "channel mapping",
                         isSingleGroup,
-                        arrus::format(
+                        std::format(
                                 "(for Us4OEM:{}): "
                                 "Channels [{}, {}] should be in the single group "
                                 "of 32 elements (i*32, (i+1)*32), where i "

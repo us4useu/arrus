@@ -1,14 +1,12 @@
+#include <std4us/string.h>
+
 #include "arrus/core/devices/file/FileSettings.h"
 #include "arrus/core/devices/probe/ProbeModel.h"
-
-#include "arrus/common/format.h"
-
-
 namespace arrus::devices {
 std::ostream &operator<<(std::ostream &os, const FileSettings &settings) {
     os << "filepath: " << settings.getFilepath()  << ", "
        << "n frames: " << settings.getNFrames() << ", "
-       << "probe model: " << ::arrus::toString(settings.getProbeModel());
+       << "probe model: " << settings.getProbeModel();
     return os;
 }
 }

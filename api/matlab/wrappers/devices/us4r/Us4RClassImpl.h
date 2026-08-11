@@ -1,6 +1,7 @@
 #ifndef API_MATLAB_WRAPPERS_DEVICES_US4R_US4RCLASSIMPL_H
 #define API_MATLAB_WRAPPERS_DEVICES_US4R_US4RCLASSIMPL_H
 
+#include <format>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -11,7 +12,6 @@
 #include "api/matlab/wrappers/common.h"
 #include "api/matlab/wrappers/convert.h"
 #include "api/matlab/wrappers/devices/probe/ProbeModelConverter.h"
-#include "arrus/common/format.h"
 #include "arrus/core/api/arrus.h"
 
 namespace arrus::matlab::devices {
@@ -56,7 +56,7 @@ public:
         auto value = inputs[0];
         if(isArrayScalar(value)) {
             ::arrus::Voltage scalarValue = value[0];
-            ctx->logInfo(format("Us4R: setting voltage {}", scalarValue));
+            ctx->logInfo(std::format("Us4R: setting voltage {}", scalarValue));
             get(obj)->setVoltage(scalarValue);
         }
         else {
@@ -76,7 +76,7 @@ public:
             ::arrus::Voltage level2Plus = value[1][1];  // row 2, column 2
 
             std::vector<HVVoltage> voltages = {HVVoltage{level1Minus, level1Plus}, HVVoltage{level2Minus, level2Plus}};
-            ctx->logInfo(format(
+            ctx->logInfo(std::format(
                 "Us4R: setting voltage "
                 "level 1: -{}, +{}, "
                 "level 2: -{}, +{}",

@@ -26,11 +26,12 @@ function(create_core_test test_src)
         ${other_srcs}
     )
     target_link_libraries(${target_name}
-        GTest::GTest
-        Boost::Boost
-        fmt::fmt
-        Microsoft.GSL::GSL
-        Eigen3::Eigen3
+        GTest::gtest
+        GTest::gmock
+        GTest::gmock_main
+        Boost::boost
+        Eigen3::Eigen
+        std4us::std4us
         ${other_deps})
     target_include_directories(
         ${target_name}
@@ -43,7 +44,6 @@ function(create_core_test test_src)
     target_compile_options(${target_name} PRIVATE ${ARRUS_CPP_COMMON_COMPILE_OPTIONS})
     target_compile_definitions(${target_name} PRIVATE
         ARRUS_CORE_UNIT_TESTS
-        _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
         NOMINMAX
         ${compile_definitions})
     add_test(NAME ${test_src} COMMAND ${target_name})

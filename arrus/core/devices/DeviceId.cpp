@@ -1,10 +1,11 @@
 #include <boost/bimap.hpp>
-#include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+#include <format>
+#include <regex>
+#include <std4us/string.h>
 
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/common/exceptions.h"
-#include "arrus/common/format.h"
 #include "arrus/common/asserts.h"
 
 namespace arrus::devices {
@@ -74,9 +75,9 @@ DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
                 DeviceTypeEnumStringRepr::getInstance().keys();
         std::sort(availableKeys.begin(), availableKeys.end());
         const auto availableKeysMsg =
-                boost::algorithm::join(availableKeys,", ");
+                std4us::join(availableKeys, ", ");
         throw IllegalArgumentException(
-                arrus::format("Unrecognized device type: {}, "
+                std::format("Unrecognized device type: {}, "
                               "allowed types: {}", deviceTypeStr,
                               availableKeysMsg));
     }
@@ -89,32 +90,30 @@ std::string toString(const DeviceType deviceTypeEnum) {
 // DeviceId.
 DeviceId DeviceId::parse(const std::string &deviceId) {
     std::vector<std::string> deviceIdComponents;
-    boost::algorithm::split(deviceIdComponents, deviceId,
-                            boost::is_any_of(":"));
+    std4us::split(deviceIdComponents, deviceId, ":");
 
     if (deviceIdComponents.size() != 2) {
-        throw IllegalArgumentException(arrus::format(
-                "Device id should be have format: deviceType:ordinal "
+        throw IllegalArgumentException(std::format(
+                "Device id should be in the format of: deviceType:ordinal "
                 "(got: '{}')", deviceId
         ));
     }
-    auto deviceTypeStr = deviceIdComponents[0];
-    auto ordinalStr = deviceIdComponents[1];
-    boost::trim(deviceTypeStr);
-    boost::trim(ordinalStr);
+    auto deviceTypeStr = std4us::trim(deviceIdComponents[0]);
+    auto ordinalStr = std4us::trim(deviceIdComponents[1]);
     // Device Type.
     DeviceType deviceTypeEnum = parseToDeviceTypeEnum(deviceTypeStr);
 
     // Device Ordinal.
-    ARRUS_REQUIRES_TRUE_FOR_ARGUMENT(isDigitsOnly(ordinalStr),
-            arrus::format("Invalid device number: {}", ordinalStr)
+    // Requires only digits in the ordinal part.
+    ARRUS_REQUIRES_TRUE_FOR_ARGUMENT(std::regex_match(ordinalStr, std::regex("[0-9]+")),
+            std::format("Invalid device number: {}", ordinalStr)
     );
     Ordinal ordinal;
     ARRUS_REQUIRES_NO_THROW(
             ordinal = boost::lexical_cast<Ordinal>(ordinalStr),
             boost::bad_lexical_cast,
             arrus::IllegalArgumentException(
-                    arrus::format("Invalid device number: {}", ordinalStr)
+                    std::format("Invalid device number: {}", ordinalStr)
                     )
     );
     return DeviceId(deviceTypeEnum, ordinal);

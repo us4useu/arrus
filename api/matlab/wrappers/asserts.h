@@ -3,21 +3,21 @@
 
 #include <limits>
 #include <cmath>
+#include <format>
 
 #include "arrus/common/asserts.h"
-#include "arrus/common/format.h"
 #include "api/matlab/wrappers/common.h"
 
 #define ARRUS_MATLAB_REQUIRES_N_PARAMETERS(inputs, n, methodName) \
     ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
-        arrus::IllegalArgumentException(arrus::format( \
+        arrus::IllegalArgumentException(std::format( \
             "Function '{}' requires exactly {} parameters (got {})", \
                 (methodName), (n), (inputs).size())))
 
 
 #define ARRUS_MATLAB_REQUIRES_N_PARAMETERS_CLASS_METHOD(inputs, n, className, methodName) \
     ARRUS_REQUIRES_EQUAL((inputs).size(), (n),     \
-        arrus::IllegalArgumentException(arrus::format( \
+        arrus::IllegalArgumentException(std::format( \
             "Function '{}::{}' requires exactly {} parameters (got {})", \
                 (className), (methodName), (n), (inputs).size())))
 
@@ -52,7 +52,7 @@ do {                                                                    \
 
 #define ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE(value, dataType) \
     ARRUS_MATLAB_REQUIRES_DATA_TYPE_VALUE_EXCEPTION(value, dataType, \
-        arrus::IllegalArgumentException(arrus::format(            \
+        arrus::IllegalArgumentException(std::format(            \
             "Value {} should be in range [{}, {}]", value, min, max     \
         ));                                                             \
     )
@@ -67,7 +67,7 @@ do {                                                  \
 
 #define ARRUS_MATLAB_REQUIRES_INTEGER(value) \
     ARRUS_MATLAB_REQUIRES_INTEGER_EXCEPTION( \
-        value, arrus::IllegalArgumentException(arrus::format(            \
+        value, arrus::IllegalArgumentException(std::format(            \
             "Value {} should be integer", value)))
 
 
@@ -77,7 +77,7 @@ do {                                                                    \
     dataType max = std::numeric_limits<dataType>::max();     \
     for(auto value : list) {                                      \
         if (value < min || value > max) {                                   \
-            throw arrus::IllegalArgumentException(arrus::format(            \
+            throw arrus::IllegalArgumentException(std::format(            \
                 "Value {} should be in range [{}, {}], {}",  \
                 value, min, max, msg     \
             ));                                                             \
@@ -90,7 +90,7 @@ do {                                                  \
     double ignore;                                       \
     for(auto value : list) {                                               \
         if (std::modf(value, &ignore) != 0.0) {   \
-            throw arrus::IllegalArgumentException(arrus::format(            \
+            throw arrus::IllegalArgumentException(std::format(            \
                 "Value {} should be integer", value     \
             ));                                                             \
         }                                                    \
@@ -102,12 +102,12 @@ do {                                                    \
     double ignore;\
     for(auto value : list) {                                               \
         if (std::modf(value, &ignore) != 0.0) {   \
-            throw arrus::IllegalArgumentException(arrus::format(            \
+            throw arrus::IllegalArgumentException(std::format(            \
                 "Value {} should be binary", value     \
             ));                                                             \
         }                                               \
         if(value != 1 && value != 0) {                   \
-        throw arrus::IllegalArgumentException(arrus::format(            \
+        throw arrus::IllegalArgumentException(std::format(            \
                 "Value {} should be binary", value     \
             ));                                                         \
         }                                                    \

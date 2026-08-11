@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 #include <ostream>
 
-#include "arrus/common/format.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/core/devices/probe/ProbeSettingsValidator.h"
+
+#include <std4us/string.h>
 
 namespace {
 using namespace arrus;
@@ -28,10 +29,10 @@ struct TestProbeSettings {
     friend std::ostream &
     operator<<(std::ostream &os, const TestProbeSettings &settings) {
         os << "modelId: " << settings.modelId
-           << " numberOfElements: " << toString(settings.numberOfElements)
-           << " pitch: " << toString(settings.pitch)
-           << " txFrequencyRange: " << toString(settings.txFrequencyRange)
-           << " channelMapping: " << toString(settings.channelMapping);
+           << " numberOfElements: " << std4us::to_string(settings.numberOfElements)
+           << " pitch: " << std4us::to_string(settings.pitch)
+           << " txFrequencyRange: " << std4us::to_string(settings.txFrequencyRange)
+           << " channelMapping: " << std4us::to_string(settings.channelMapping);
         return os;
     }
 };
