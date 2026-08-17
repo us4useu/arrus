@@ -77,9 +77,9 @@ DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
         const auto availableKeysMsg =
                 std4us::join(availableKeys, ", ");
         throw IllegalArgumentException(
-                std::format("Unrecognized device type: {}, "
+                "Unrecognized device type: {}, "
                               "allowed types: {}", deviceTypeStr,
-                              availableKeysMsg));
+                              availableKeysMsg);
     }
 }
 
@@ -93,10 +93,9 @@ DeviceId DeviceId::parse(const std::string &deviceId) {
     std4us::split(deviceIdComponents, deviceId, ":");
 
     if (deviceIdComponents.size() != 2) {
-        throw IllegalArgumentException(std::format(
-                "Device id should be in the format of: deviceType:ordinal "
-                "(got: '{}')", deviceId
-        ));
+        throw IllegalArgumentException("Device id should be in the format of: deviceType:ordinal "
+                                      "(got: '{}')", deviceId
+        );
     }
     auto deviceTypeStr = std4us::trim(deviceIdComponents[0]);
     auto ordinalStr = std4us::trim(deviceIdComponents[1]);
@@ -109,13 +108,8 @@ DeviceId DeviceId::parse(const std::string &deviceId) {
             std::format("Invalid device number: {}", ordinalStr)
     );
     Ordinal ordinal;
-    ARRUS_REQUIRES_NO_THROW(
-            ordinal = boost::lexical_cast<Ordinal>(ordinalStr),
-            boost::bad_lexical_cast,
-            arrus::IllegalArgumentException(
-                    std::format("Invalid device number: {}", ordinalStr)
-                    )
-    );
+    ARRUS_REQUIRES_NO_THROW(ordinal = boost::lexical_cast<Ordinal>(ordinalStr), boost::bad_lexical_cast,
+                            arrus::IllegalArgumentException("Invalid device number: {}", ordinalStr));
     return DeviceId(deviceTypeEnum, ordinal);
 }
 

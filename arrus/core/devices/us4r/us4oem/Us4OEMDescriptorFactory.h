@@ -141,7 +141,7 @@ public:
                 35 // sample number TX start (i.e. TX delay = 0)
             };
         default:
-            throw arrus::IllegalArgumentException(std::format("Unsupported us4OEM version: {}", version));
+            throw arrus::IllegalArgumentException("Unsupported us4OEM version: {}", version);
         }
     }
 

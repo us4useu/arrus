@@ -54,7 +54,7 @@ namespace arrus::devices {
                         validateTx(pulse, txLimits2, firingStr);
                         break;
                     default:
-                        throw IllegalArgumentException(std::format("Unsupported amplitude level: {}", pulse.getAmplitudeLevel()));
+                        throw IllegalArgumentException("Unsupported amplitude level: {}", pulse.getAmplitudeLevel());
                     }
                 } else {
                     // custom waveform

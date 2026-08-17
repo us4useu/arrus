@@ -51,7 +51,7 @@ public:
         try {
             func = methods.at(method);
         } catch (const std::out_of_range &e) {
-            throw IllegalArgumentException(std::format("Class {} has no method with name {}.", classId, method));
+            throw IllegalArgumentException("Class {} has no method with name {}.", classId, method);
         }
         func(obj, outputs, inputs);
     }

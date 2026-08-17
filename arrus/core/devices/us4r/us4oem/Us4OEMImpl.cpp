@@ -49,11 +49,11 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> 
 
 Us4OEMImpl::~Us4OEMImpl() {
     try {
-        logger->log(LogSeverity::DEBUG, std::format("Destroying handle"));
+        logger->debug("Destroying handle");
     } catch (const std::exception &e) {
         std::cerr << std::format("Exception while calling us4oem destructor: {}", e.what()) << std::endl;
     }
-    logger->log(LogSeverity::DEBUG, std::format("Us4OEM handle destroyed."));
+    logger->debug("Us4OEM handle destroyed.");
 }
 
 bool Us4OEMImpl::isMaster() { return descriptor.isMaster(); }
@@ -210,9 +210,8 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
         auto const &sequence = sequences[sequenceId];
         for (OpId opId = 0; opId < ARRUS_SAFE_CAST(sequence.size(), OpId); ++opId, ++firingId) {
             auto const &op = sequence.at(opId);
-            logger->log(LogSeverity::TRACE,
-                        std::format("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId, op.isNOP(),
-                               std4us::to_string(op)));
+            logger->trace("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId, op.isNOP(),
+                          std4us::to_string(op));
             // TX
             auto txAperture = arrus::toBitset<Us4OEMDescriptor::N_TX_CHANNELS>(op.getTxAperture());
             // RX
@@ -294,10 +293,9 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
 
     if (startSample != (startSample / div) * div) {
         startSample = (startSample / div) * div;
-        this->logger->log(LogSeverity::WARNING,
-                          std::format("Decimation factor {} requires start offset to be multiple "
+        this->logger->warn("Decimation factor {} requires start offset to be multiple "
                                           "of {}. Offset adjusted to {}.",
-                                          ddc->getDecimationFactor(), div, startSample));
+                                          ddc->getDecimationFactor(), div, startSample);
     }
     // Start sample, after transforming to the system number of cycles.
     // The start sample should be provided to the us4r-api
@@ -530,7 +528,7 @@ float Us4OEMImpl::getTxRxTime(float rxTime) const {
         txrxTime = std::max(rxTime, descriptor.getSequenceReprogrammingTime());
     } else {
         throw IllegalArgumentException(
-            std::format("Unrecognized reprogramming mode: {}", static_cast<size_t>(reprogrammingMode)));
+            "Unrecognized reprogramming mode: {}", static_cast<size_t>(reprogrammingMode));
     }
     return txrxTime;
 }
@@ -657,10 +655,9 @@ std::pair<uint32_t, float> Us4OEMImpl::getTxStartSampleNumberAfeDemod(float ddcD
     if (rxOffset > txOffset + filterDelay) {
         //If so, do not adjust RX offset and log warning
         if(!this->isDecimationFactorAdjustmentLogged) {
-            this->logger->log(LogSeverity::INFO,
-                          std::format("Decimation factor {} causes RX data to start after the moment TX starts."
+            this->logger->info("Decimation factor {} causes RX data to start after the moment TX starts."
                                           " Delay TX by {} microseconds to align start of RX data with start of TX.",
-                                          ddcDecimationFactor, (float)(rxOffset - txOffset - filterDelay)/65.0f));
+                                          ddcDecimationFactor, (float)(rxOffset - txOffset - filterDelay)/65.0f);
             this->isDecimationFactorAdjustmentLogged = true;
         }
     } else {
@@ -718,9 +715,9 @@ void Us4OEMImpl::setAfeDemod(float demodulationFrequency, float decimationFactor
         expectedNumberOfCoeffs = 32 * decInt + 24;
     }
     if (static_cast<size_t>(expectedNumberOfCoeffs) != nCoefficients) {
-        throw IllegalArgumentException(std::format("Incorrect number of DDC FIR filter coefficients, should be {}, "
-                                              "actual: {}",
-                                              expectedNumberOfCoeffs, nCoefficients));
+        throw IllegalArgumentException("Incorrect number of DDC FIR filter coefficients, should be {}, "
+                                      "actual: {}",
+                                      expectedNumberOfCoeffs, nCoefficients);
     }
     enableAfeDemod();
     setAfeDemodConfig(static_cast<uint8_t>(decInt), static_cast<uint8_t>(nQuarters), firCoefficients,
@@ -866,7 +863,7 @@ void Us4OEMImpl::waitForIrq(unsigned int irq, std::optional<long long> timeout) 
 }
 
 void Us4OEMImpl::sync(std::optional<long long> timeout) {
-    logger->log(LogSeverity::TRACE, "Waiting for EVENTDONE IRQ");
+    logger->trace("Waiting for EVENTDONE IRQ");
     auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
     this->waitForIrq(eventDoneIrq, timeout);
 }
@@ -889,7 +886,7 @@ void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
 }
 
 void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
-    logger->log(LogSeverity::TRACE, "Waiting for HVPS Measurement done IRQ");
+    logger->trace("Waiting for HVPS Measurement done IRQ");
     auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
     this->waitForIrq(measurementDoneIrq, timeout);
 }
@@ -909,9 +906,9 @@ void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>
     std::vector<size_t> newProfiles(currentTxDelayProfileIds.size());
     for(const auto &[sequenceId, profileId] : profiles) {
         if(sequenceId > currentTxDelayProfileIds.size()) {
-            throw IllegalArgumentException(std::format("The sequence with id {} is out of the scope of the "
+            throw IllegalArgumentException("The sequence with id {} is out of the scope of the "
                                            "currently uploaded scheme (the number of uploaded sequences: {})",
-                                                  sequenceId, currentTxDelayProfileIds.size()));
+                                                  sequenceId, currentTxDelayProfileIds.size());
         }
         newProfiles.at(sequenceId) = profileId;
     }
@@ -939,7 +936,7 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     else if(sn.size() == OEM_PLUS_SN_2_ORDINAL_SIZE) {
         // us4OEM+
         if(! std::regex_match(sn, matches, pattern2OrdinalRegex) ) {
-            throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern2OrdinalStr));
+            throw ::arrus::IllegalStateException("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern2OrdinalStr);
         }
         const auto mountingType = matches[1].str();
         const auto number = matches[2].str();
@@ -954,13 +951,13 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
     }
     else if (sn.size() == OEM_PLUS_SN_4_ORDINAL_SIZE) {
         if(! std::regex_match(sn, matches, pattern4OrdinalRegex) ) {
-            throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern4OrdinalStr));
+            throw ::arrus::IllegalStateException("Unrecognized serial number: {}, should have the following pattern: {}.", sn, pattern4OrdinalStr);
         }
         const auto number = matches[2].str();
         variantStr = number.substr(10, 2);
     }
     else {
-        throw ::arrus::IllegalStateException(std::format("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn));
+        throw ::arrus::IllegalStateException("Unrecognized serial number: {}, should be empty (legacy) or have 12 or 14 characters.", sn);
     }
 
     const auto variantSymbol = variantStr.at(0);
@@ -974,7 +971,7 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
         return Us4OEM::Variant::PLUS_HF;
     }
     else {
-        throw IllegalStateException(std::format("Unknown variant for OEM with SN: {}", sn));
+        throw IllegalStateException("Unknown variant for OEM with SN: {}", sn);
     }
 }
 

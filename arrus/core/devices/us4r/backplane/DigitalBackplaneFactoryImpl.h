@@ -34,8 +34,7 @@ public:
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else {
-            throw IllegalArgumentException(
-                std::format("Unrecognized DBAR: {}, {}", manufacturer, name));
+            throw IllegalArgumentException("Unrecognized DBAR: {}, {}", manufacturer, name);
         }
     }
 
@@ -56,8 +55,7 @@ public:
             return std::nullopt;
         }
         else {
-            throw IllegalArgumentException(
-                std::format("Unrecognized high-voltage supplier: {}, {}", manufacturer, name));
+            throw IllegalArgumentException("Unrecognized high-voltage supplier: {}, {}", manufacturer, name);
         }
     }
 

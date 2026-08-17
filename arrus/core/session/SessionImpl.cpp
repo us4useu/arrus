@@ -29,7 +29,7 @@ using namespace arrus::devices;
     do {                                                                                                               \
         if (this->state != expectedState) {                                                                            \
             throw ::arrus::IllegalStateException(                                                                      \
-                std::format("Invalid session state, should be: {}", toString(expectedState)));                     \
+                "Invalid session state, should be: {}", toString(expectedState));                     \
         }                                                                                                              \
     } while (0)
 
@@ -37,7 +37,7 @@ using namespace arrus::devices;
     do {                                                                                                               \
         if (this->state == excludedState) {                                                                            \
             throw ::arrus::IllegalStateException(                                                                      \
-                std::format("Invalid session state, should not be: {}", toString(excludedState)));                 \
+                "Invalid session state, should not be: {}", toString(excludedState));                 \
         }                                                                                                              \
     } while (0)
 
@@ -68,15 +68,11 @@ SessionImpl::SessionImpl(
     arrus::devices::GpuFactory::Handle gpuFactory
     )
     : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)), gpuFactory(std::move(gpuFactory)) {
-    getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
-    getDefaultLogger()->log(
-        LogSeverity::DEBUG, std::format("ARRUS version: {}", ::arrus::version()));
+    getDefaultLogger()->info("Starting new ARRUS session.");
+    getDefaultLogger()->debug("ARRUS version: {}", ::arrus::version());
     // Debug info.
-    getDefaultLogger()->log(
-        LogSeverity::DEBUG, std::format("OS: {}", ::arrus::OS_NAME));
-    getDefaultLogger()->log(
-        LogSeverity::DEBUG,
-        std::format("Configuring session with the following settings {}", std4us::to_string(sessionSettings)));
+    getDefaultLogger()->debug("OS: {}", ::arrus::OS_NAME);
+    getDefaultLogger()->debug("Configuring session with the following settings {}", std4us::to_string(sessionSettings));
     configureDevices(sessionSettings);
 }
 
@@ -92,7 +88,7 @@ std::string SessionImpl::sanitizeDeviceId(const std::string &path) const {
     auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
     if(! tail.empty()) {
         throw IllegalArgumentException(
-            std::format("Invalid path '{}', top-level devices can be accessed only.", path));
+            "Invalid path '{}', top-level devices can be accessed only.", path);
     }
     return root;
 }
@@ -106,7 +102,7 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceI
             return aliases.at(deviceId);
         }
     } catch (const std::out_of_range &) {
-        throw IllegalArgumentException(std::format("Device unavailable: {}", deviceId.toString()));
+        throw IllegalArgumentException("Device unavailable: {}", deviceId.toString());
     }
 }
 
@@ -142,10 +138,8 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     for(size_t i = 0; i < sessionSettings.getNumberOfFiles(); ++i) {
         const FileSettings &settings = sessionSettings.getFileSettings(Ordinal(i));
         File::Handle file = fileFactory->getFile(Ordinal(i), settings);
-        getDefaultLogger()->log(
-            LogSeverity::INFO,
-            std::format("Connected with device: {}, details: {}", file->getDeviceId().toString(), file->getDescription())
-        );
+        getDefaultLogger()->info("Connected with device: {}, details: {}", 
+            file->getDeviceId().toString(), file->getDescription());
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), file.get());
         devices.emplace(file->getDeviceId(), std::move(file));
         ultrasoundOrdinal++;
@@ -156,9 +150,9 @@ SessionImpl::~SessionImpl() {
     try {
         this->close();
     } catch(const std::exception &e) {
-        getDefaultLogger()->log(LogSeverity::ERROR, std::format("Error while closing session: {}", e.what()));
+        getDefaultLogger()->error("Error while closing session: {}", e.what());
     } catch(...) {
-        getDefaultLogger()->log(LogSeverity::ERROR, "Unknown error on session close.");
+        getDefaultLogger()->error("Unknown error on session close.");
     }
 
 }
@@ -180,7 +174,7 @@ void SessionImpl::startScheme() {
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
     ultrasound->start();
     state = State::STARTED;
-    getDefaultLogger()->log(LogSeverity::INFO, "Scheme started.");
+    getDefaultLogger()->info("Scheme started.");
 }
 
 void SessionImpl::stopScheme() {
@@ -189,7 +183,7 @@ void SessionImpl::stopScheme() {
     ultrasound->stop();
     if(state != State::STOPPED) {
         state = State::STOPPED;
-        getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
+        getDefaultLogger()->info("Scheme stopped.");
     }
 }
 
@@ -227,10 +221,10 @@ void SessionImpl::close() {
     if (this->state == State::STARTED) {
         stopScheme();
     }
-    getDefaultLogger()->log(LogSeverity::INFO, std::format("Closing session."));
+    getDefaultLogger()->info("Closing session.");
     this->devices.clear();
     this->state = State::CLOSED;
-    getDefaultLogger()->log(LogSeverity::INFO, std::format("Session closed."));
+    getDefaultLogger()->info("Session closed.");
 }
 
 void SessionImpl::setParameters(const Parameters &params) {

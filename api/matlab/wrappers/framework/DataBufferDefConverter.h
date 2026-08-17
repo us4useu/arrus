@@ -34,13 +34,13 @@ public:
     static DataBufferSpec::Type getType(const std::string &typeStr) {
         try {
             return getTypeEnumMap().left.at(typeStr);
-        } catch (const std::out_of_range &e) { throw ::arrus::IllegalArgumentException("Unknown enum: " + typeStr); }
+        } catch (const std::out_of_range &e) { throw ::arrus::IllegalArgumentException("Unknown enum: {}", typeStr); }
     }
     static std::string getTypeStr(const DataBufferSpec::Type type) {
         try {
             return getTypeEnumMap().right.at(type);
         } catch (const std::out_of_range &e) {
-            throw ::arrus::IllegalArgumentException("Unsupported enum with value: " + std::to_string((int) type));
+            throw ::arrus::IllegalArgumentException("Unsupported enum with value: {}", std::to_string((int) type));
         }
     }
 

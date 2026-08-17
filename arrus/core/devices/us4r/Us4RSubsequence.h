@@ -300,14 +300,14 @@ private:
     void validate(SequenceId sequenceId, uint16 start, uint16 stop) {
         if(sequenceId >= sequences.size()) {
             throw IllegalStateException(
-                std::format("Sequence {} is outside of of the uploaded sequences (size: {})", sequenceId, sequences.size()));
+                "Sequence {} is outside of of the uploaded sequences (size: {})", sequenceId, sequences.size());
         }
         const auto &seq = sequences.at(sequenceId);
         const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
         if(stop > currentSequenceSize) {
             throw IllegalArgumentException(
-                std::format("The new sub-sequence [{}, {}] is outside of the scope of the sequence with id: {} "
-                             " [0, {})", start, stop, sequenceId, currentSequenceSize));
+                "The new sub-sequence [{}, {}] is outside of the scope of the sequence with id: {} "
+                " [0, {})", start, stop, sequenceId, currentSequenceSize);
         }
     }
 
@@ -339,7 +339,7 @@ private:
 
         if (end > parts.size()) {
             throw IllegalArgumentException(
-                std::format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})", end, parts.size()));
+                "The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})", end, parts.size());
         }
         auto b = std::begin(parts);
         // NEW ARRAY DEF (A SINGLE ARRAY SHOULD BE DEFINED)
