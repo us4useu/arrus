@@ -24,13 +24,13 @@ public:
             throw IllegalArgumentException("Only 'us4us' digital backplane is supported.");
         }
         if(name == "dbarlite")  {
-            return getDBARLite(us4oems, logger, 32);
+            return getDbarLiteHandle(us4oems, logger, 32);
         }
         if(name == "dbarlite_8bit")  {
-            return getDBARLite(us4oems, logger, 8);
+            return getDbarLiteHandle(us4oems, logger, 8);
         }
         else if(name == "us4rdbar") {
-            std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
+            std::unique_ptr<IDBAR> dbar(getUs4rDbar(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else {
@@ -45,10 +45,10 @@ public:
         Logger::SharedHandle arrusLogger = getLoggerFactory()->getLogger();
         ::us4us::us4r::Logger::SharedHandle logger = std::make_unique<Us4RLoggerWrapper>(arrusLogger);
         if(name == "hv256")  {
-            return getDBARLite(us4oems, logger, 32);
+            return getDbarLiteHandle(us4oems, logger, 32);
         }
         else if(name == "us4rpsc") {
-            std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
+            std::unique_ptr<IDBAR> dbar(getUs4rDbar(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else if(name == "us4oemhvps") {
@@ -59,17 +59,17 @@ public:
         }
     }
 
-    std::optional<DigitalBackplane::Handle> getDBARLite(const std::vector<IUs4OEM *> &us4oems, const ::us4us::us4r::Logger::SharedHandle &logger, uint8_t addrMode) const {
-        auto ver = us4oems[0]->GetOemVersion();
+    std::optional<DigitalBackplane::Handle> getDbarLiteHandle(const std::vector<IUs4OEM *> &us4oems, const ::us4us::us4r::Logger::SharedHandle &logger, uint8_t addrMode) const {
+        auto ver = us4oems[0]->getOemVersion();
         if(ver == 1) {
-            std::unique_ptr<IDBAR> dbar(GetDBARLite(dynamic_cast<II2CMaster *>(us4oems[0]), logger, addrMode));
+            std::unique_ptr<IDBAR> dbar(getDbarLite(dynamic_cast<II2CMaster *>(us4oems[0]), logger, addrMode));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else if(ver >= 2 && ver <= 5) {
             if(addrMode != 32) {
                 throw IllegalArgumentException("The DBARLite rev2 supports 32-bit addressing mode only.");
             }
-            std::unique_ptr<IDBAR> dbar(GetDBARLitePcie(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
+            std::unique_ptr<IDBAR> dbar(getDbarLitePcie(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
         else {

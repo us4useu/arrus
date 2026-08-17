@@ -63,7 +63,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
 
     if (this->hasIOBitstreamAdressing) {
         // Add empty IOBitstream, to use for TX/RX between probe switching.
-        getMasterOEM()->getIUs4OEM()->SetWaveformIODriveMode();
+        getMasterOEM()->getIUs4OEM()->setWaveformIoDriveMode();
         getMasterOEM()->addIOBitstream({0,}, {1,});
     }
     for (auto &bitstream : this->bitstreams) {
@@ -83,7 +83,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     for(auto &oem: this->us4oems) {
         // Register pulser IRQ handling procedure.
         if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
-            oem->getIUs4OEM()->SetPulserInterruptCallback(
+            oem->getIUs4OEM()->setPulserInterruptCallback(
                 [this]() {this->handlePulserInterrupt(); }
             );
         }
@@ -184,12 +184,12 @@ void Us4RImpl::setVoltage(const std::vector<std::optional<HVVoltage>> &voltages)
     try {
         if(this->state == State::STARTED) {
             // pause the TX/RX sequence execution
-            this->us4oems[0]->getIUs4OEM()->TriggerStop();
+            this->us4oems[0]->getIUs4OEM()->triggerStop();
         }
         setVoltageUnsafe(voltages);
         if(this->state == State::STARTED) {
             // resume
-            this->us4oems[0]->getIUs4OEM()->TriggerStart();
+            this->us4oems[0]->getIUs4OEM()->triggerStart();
         }
     } catch(const std::exception &e) {
         this->logger->error("Exception while setting voltage, stopping the system: {}", e.what());
@@ -510,8 +510,8 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
     }
     // Reset previously set properties for buffer handling.
     for(auto &us4oem: us4oems) {
-        us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
-        us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
+        us4oem->getIUs4OEM()->disableWaitOnReceiveOverflow();
+        us4oem->getIUs4OEM()->disableWaitOnTransferOverflow();
     }
     // Derive host buffer placement (CPU or GPU) from the scheme's DataBufferSpec.
     const auto &placement = currentScheme->getOutputBuffer().getPlacement();
@@ -550,12 +550,12 @@ void Us4RImpl::start() {
     }
     this->state = State::START_IN_PROGRESS;
     for (auto &us4oem : us4oems) {
-        us4oem->getIUs4OEM()->EnableRuntimeInterrupts();
+        us4oem->getIUs4OEM()->enableRuntimeInterrupts();
     }
-    //  EnableSequencer resets position of the us4oem sequencer.
+    //  enableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
         // Reset tx subsystem pointers.
-        us4oem->getIUs4OEM()->EnableTxRx();
+        us4oem->getIUs4OEM()->enableTxRx();
         // Reset sequencer pointers.
         // The sequencer pointer (the entry from which sequencer starts) should not be reset when
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
@@ -591,8 +591,8 @@ void Us4RImpl::stopDevice() {
         this->getMasterOEM()->stop();
         for (auto &us4oem : us4oems) {
             try {
-                us4oem->getIUs4OEM()->WaitForPendingTransfers();
-                us4oem->getIUs4OEM()->DisableRuntimeInterrupts();
+                us4oem->getIUs4OEM()->waitForPendingTransfers();
+                us4oem->getIUs4OEM()->disableRuntimeInterrupts();
             }
             catch (const std::exception &e) {
                 logger->warn("Error on waiting for pending interrupts and transfers: {}", e.what());
@@ -1106,12 +1106,12 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
         startFiring = endFiring + 1;
     }
     // Overflow handling
-    ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
-    ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
+    ius4oem->registerReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
+    ius4oem->registerTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
     // Work mode specific initialization
     if (workMode == ops::us4r::Scheme::WorkMode::SYNC) {
-        ius4oem->EnableWaitOnReceiveOverflow();
-        ius4oem->EnableWaitOnTransferOverflow();
+        ius4oem->enableWaitOnReceiveOverflow();
+        ius4oem->enableWaitOnTransferOverflow();
     }
 }
 
@@ -1145,7 +1145,7 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->markEntriesAsReadyForTransfer(startFiring, endFiring);
             }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
                 getMasterOEM()->syncTrigger();
@@ -1158,7 +1158,7 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
         return [this, startFiring, endFiring]() {
             std::unique_lock<std::mutex> guard(triggerMutex);
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->markEntriesAsReadyForTransfer(startFiring, endFiring);
             }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1171,7 +1171,7 @@ std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode wo
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->markEntriesAsReadyForReceive(startFiring, endFiring);
             }
         };
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
@@ -1181,7 +1181,7 @@ std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode wo
         return [this, startFiring, endFiring]() {
             std::unique_lock<std::mutex> guard(triggerMutex);
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                us4oems[i]->getIUs4OEM()->markEntriesAsReadyForReceive(startFiring, endFiring);
             }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1201,7 +1201,7 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                 outputBuffer->runOnOverflowCallback();
                 if(isMaster) {
 //                    std::unique_lock<std::mutex> guard(triggerMutex);
-                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
+                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->getSequencerCurrentIndex();
                     this->logger->trace("Detected RX data overflow, current sequencer index: {}.", currentIdx);
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
@@ -1218,17 +1218,17 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
                     const std::chrono::milliseconds timeout{10000};
                     ARRUS_ACTIVE_WAIT_TIMEOUT_P(
-                        getMasterOEM()->getIUs4OEM()->IsEntryReadyForReceive(pendingFiring.value()),
+                        getMasterOEM()->getIUs4OEM()->isEntryReadyForReceive(pendingFiring.value()),
                         timeout,
                         IllegalStateException("Timeout while waiting for the buffer element ready for receive"),
                         std::chrono::milliseconds{1}
                     );
                     // we are ready to call sync receive.
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                        us4oems[i]->getIUs4OEM()->SyncReceive();
+                        us4oems[i]->getIUs4OEM()->syncReceive();
 
                         if(i > 0) {
-                            us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
+                            us4oems[i]->getIUs4OEM()->waitForSequencerIdle();
                             logger->trace("OEM:{} returned to IDLE state.", i);
                         }
                     }
@@ -1272,7 +1272,7 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                 outputBuffer->runOnOverflowCallback();
                 if(isMaster) {
 //                    std::unique_lock<std::mutex> guard(triggerMutex);
-                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->GetSequencerCurrentIndex();
+                    const uint16_t currentIdx = getMasterOEM()->getIUs4OEM()->getSequencerCurrentIndex();
                     this->logger->trace("Detected transfer data overflow, current sequencer index: {}.", currentIdx);
                     // Find range for the current index (note: this could probably be simplified in the future, therefore O(n) approach here).
                     std::optional<uint16> pendingFiring = std::nullopt;
@@ -1289,18 +1289,18 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                     // NOTE: below we assume that the master OEM sequencer table entries are released last, the end firing is released last.
                     const std::chrono::milliseconds timeout{10000};
                     ARRUS_ACTIVE_WAIT_TIMEOUT_P(
-                        getMasterOEM()->getIUs4OEM()->IsEntryReadyForTransfer(pendingFiring.value()),
+                        getMasterOEM()->getIUs4OEM()->isEntryReadyForTransfer(pendingFiring.value()),
                         timeout,
                         IllegalStateException("Timeout while waiting for the buffer element ready for transfer"),
                         std::chrono::milliseconds{1}
                     );
                     // we are ready to call the sync transfer.
                     for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                        us4oems[i]->getIUs4OEM()->SyncTransfer();
+                        us4oems[i]->getIUs4OEM()->syncTransfer();
                         // Wait for IDLE state for non-triggering OEMs, to make sure that the trigger OEM will
                         // be released the last one.
                         if(i > 0) {
-                            us4oems[i]->getIUs4OEM()->WaitForSequencerIdle();
+                            us4oems[i]->getIUs4OEM()->waitForSequencerIdle();
                             logger->trace("OEM:{} returned to IDLE state.", i);
                         }
                     }
@@ -1386,7 +1386,7 @@ void Us4RImpl::setParameters(const Parameters &params) {
     // We need that to not stop/start the system when the state is actually stopped
     std::unique_lock<std::recursive_mutex> stateGuard(deviceStateMutex);
     if(this->state == State::STARTED) {
-        this->us4oems[0]->getIUs4OEM()->TriggerStop();
+        this->us4oems[0]->getIUs4OEM()->triggerStop();
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     try {
@@ -1398,13 +1398,13 @@ void Us4RImpl::setParameters(const Parameters &params) {
     } catch (...) {
         // Try resume.
         if(this->state == State::STARTED) {
-            this->us4oems[0]->getIUs4OEM()->TriggerStart();
+            this->us4oems[0]->getIUs4OEM()->triggerStart();
         }
         throw;
     }
     // Everything OK, resume.
     if(this->state == State::STARTED) {
-        this->us4oems[0]->getIUs4OEM()->TriggerStart();
+        this->us4oems[0]->getIUs4OEM()->triggerStart();
     }
 }
 
@@ -1522,7 +1522,7 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
     }
 
     for (auto &oem : us4oems) {
-        oem->getIUs4OEM()->SetSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
+        oem->getIUs4OEM()->setSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
     }
     currentSubsequenceParams = params;
     const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
@@ -1561,7 +1561,7 @@ void Us4RImpl::handlePulserInterrupt() {
 
         if(DVDDMasked) { //if DVDD interrput status is masked -> ignore if it occurs
             for(auto &oem: this->us4oems) {
-                auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
+                auto status = oem->getIUs4OEM()->getPulsersStatusRegister();
                 for(size_t n = 0; n<status.size(); ++n) {
                     if(status.at(n) & ~0b0000000000000100) { //bit 2 = DVDD interrupt
                         nonDVDDFaultDetected = true;
@@ -1579,7 +1579,7 @@ void Us4RImpl::handlePulserInterrupt() {
         }
     }
     for(auto &oem: this->us4oems) {
-        oem->getIUs4OEM()->LogPulsersInterruptRegister();
+        oem->getIUs4OEM()->logPulsersInterruptRegister();
     }
 }
 
@@ -1752,8 +1752,8 @@ void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
             settings->getLevel1MaxPowerThreshold()
         };
         for(const auto &us4oem: us4oems) {
-            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV0, thresholdsRail0);
-            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV1, thresholdsRail1);
+            us4oem->getIUs4OEM()->setCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV0, thresholdsRail0);
+            us4oem->getIUs4OEM()->setCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV1, thresholdsRail1);
         }
     }
 }

@@ -18,7 +18,7 @@
 namespace arrus::devices {
 
 /**
- * A simple wrapper over GetUs4OEM method available in Us4.
+ * A simple wrapper over getUs4Oem method available in Us4.
  */
 class IUs4OEMFactoryImpl : public IUs4OEMFactory {
 public:
@@ -29,7 +29,7 @@ public:
         Logger::SharedHandle arrusLogger = getLoggerFactory()->getLogger();
         ::us4us::us4r::Logger::SharedHandle logger = std::make_shared<Us4RLoggerWrapper>(arrusLogger);
         IUs4OEM::CallbacksMap msiCallbacks = buildMSICallbacks(index, callbacks);
-        return IUs4OEMHandle(GetUs4OEM(index, logger, msiCallbacks));
+        return IUs4OEMHandle(getUs4Oem(index, logger, msiCallbacks));
     }
 
     std::vector<IUs4OEMHandle> getModules(Ordinal nModules,

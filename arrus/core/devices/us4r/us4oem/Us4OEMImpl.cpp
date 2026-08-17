@@ -37,13 +37,13 @@ Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> 
       descriptor(std::move(descriptor)),
       channelMapping(std::move(channelMapping)), reprogrammingMode(reprogrammingMode),
       rxSettings(std::move(rxSettings)),
-      serialNumber([this]() { return this->ius4oem->GetSerialNumber(); }),
-      revision([this]() { return this->ius4oem->GetRevisionNumber(); }), acceptRxNops(acceptRxNops) {
+      serialNumber([this]() { return this->ius4oem->getSerialNumber(); }),
+      revision([this]() { return this->ius4oem->getRevisionNumber(); }), acceptRxNops(acceptRxNops) {
 
     INIT_ARRUS_DEVICE_LOGGER(logger, id.toString());
     setTestPattern(RxTestPattern::OFF);
     disableAfeDemod();
-    this->ius4oem->SetRxSettings(this->rxSettings, true);
+    this->ius4oem->setRxSettings(this->rxSettings, true);
     setCurrentSamplingFrequency(this->descriptor.getSamplingFrequency());
 }
 
@@ -60,24 +60,24 @@ bool Us4OEMImpl::isMaster() { return descriptor.isMaster(); }
 
 void Us4OEMImpl::startTrigger() {
     if (isMaster()) {
-        ius4oem->TriggerStart();
+        ius4oem->triggerStart();
     }
 }
 
 void Us4OEMImpl::stopTrigger() {
     if (isMaster()) {
-        ius4oem->TriggerStop();
+        ius4oem->triggerStop();
     }
 }
 
-uint16_t Us4OEMImpl::getAfe(uint8_t address) { return ius4oem->AfeReadRegister(0, address); }
+uint16_t Us4OEMImpl::getAfe(uint8_t address) { return ius4oem->afeReadRegister(0, address); }
 
 void Us4OEMImpl::setAfe(uint8_t address, uint16_t value) {
-    ius4oem->AfeWriteRegister(0, address, value);
-    ius4oem->AfeWriteRegister(1, address, value);
+    ius4oem->afeWriteRegister(0, address, value);
+    ius4oem->afeWriteRegister(1, address, value);
 }
 
-void Us4OEMImpl::enableAfeDemod() { ius4oem->AfeDemodEnable(); }
+void Us4OEMImpl::enableAfeDemod() { ius4oem->afeDemodEnable(); }
 
 void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const float *firCoeffs, uint16_t firLength,
                                    float freq, float gain) {
@@ -86,60 +86,60 @@ void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const fl
                             std::format("Digital Down Conversion gain should be one of: {}",
                                std4us::join(availableGains, ", ")));
     auto actualValue = DDC_GAIN_MAP.get(gain);
-    ius4oem->AfeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq, actualValue);
+    ius4oem->afeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq, actualValue);
 }
 
-void Us4OEMImpl::setAfeDemodDefault() { ius4oem->AfeDemodSetDefault(); }
+void Us4OEMImpl::setAfeDemodDefault() { ius4oem->afeDemodSetDefault(); }
 
-void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer) { ius4oem->AfeDemodSetDecimationFactor(integer); }
+void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer) { ius4oem->afeDemodSetDecimationFactor(integer); }
 
 void Us4OEMImpl::setAfeDemodDecimationFactor(uint8_t integer, uint8_t quarters) {
-    ius4oem->AfeDemodSetDecimationFactorQuarters(integer, quarters);
+    ius4oem->afeDemodSetDecimationFactorQuarters(integer, quarters);
 }
 
 void Us4OEMImpl::setAfeDemodFrequency(float frequency) {
     // Note: us4r-api expects frequency in Hz.
-    ius4oem->AfeDemodSetDemodFrequency(frequency / 1e6f);
-    ius4oem->AfeDemodFsweepDisable();
+    ius4oem->afeDemodSetDemodFrequency(frequency / 1e6f);
+    ius4oem->afeDemodFsweepDisable();
 }
 
 void Us4OEMImpl::setAfeDemodFrequency(float startFrequency, float stopFrequency) {
     // Note: us4r-api expects frequency in Hz.
-    ius4oem->AfeDemodSetDemodFrequency(startFrequency / 1e6f, stopFrequency / 1e6f);
-    ius4oem->AfeDemodFsweepEnable();
+    ius4oem->afeDemodSetDemodFrequency(startFrequency / 1e6f, stopFrequency / 1e6f);
+    ius4oem->afeDemodFsweepEnable();
 }
 
-float Us4OEMImpl::getAfeDemodStartFrequency() { return ius4oem->AfeDemodGetStartFrequency(); }
+float Us4OEMImpl::getAfeDemodStartFrequency() { return ius4oem->afeDemodGetStartFrequency(); }
 
-float Us4OEMImpl::getAfeDemodStopFrequency() { return ius4oem->AfeDemodGetStopFrequency(); }
+float Us4OEMImpl::getAfeDemodStopFrequency() { return ius4oem->afeDemodGetStopFrequency(); }
 
 void Us4OEMImpl::setAfeDemodFsweepROI(uint16_t startSample, uint16_t stopSample) {
-    ius4oem->AfeDemodSetFsweepROI(startSample, stopSample);
+    ius4oem->afeDemodSetFsweepRoi(startSample, stopSample);
 }
 
 void Us4OEMImpl::writeAfeFIRCoeffs(const int16_t *coeffs, uint16_t length) {
-    ius4oem->AfeDemodWriteFirCoeffs(coeffs, length);
+    ius4oem->afeDemodWriteFirCoeffs(coeffs, length);
 }
 
 void Us4OEMImpl::writeAfeFIRCoeffs(const float *coeffs, uint16_t length) {
-    ius4oem->AfeDemodWriteFirCoeffs(coeffs, length);
+    ius4oem->afeDemodWriteFirCoeffs(coeffs, length);
 }
 
 void Us4OEMImpl::setLnaHpfCornerFrequency(uint32_t frequency) {
-    ius4oem->AfeSetLnaHpfCornerFrequency(frequency);
+    ius4oem->afeSetLnaHpfCornerFrequency(frequency);
 }
 
-void Us4OEMImpl::disableLnaHpf() { ius4oem->AfeDisableLnaHpf(); }
+void Us4OEMImpl::disableLnaHpf() { ius4oem->afeDisableLnaHpf(); }
 
 void Us4OEMImpl::setAdcHpfCornerFrequency(uint32_t frequency) {
-    ius4oem->AfeSetAdcHpfCornerFrequency(frequency);
+    ius4oem->afeSetAdcHpfCornerFrequency(frequency);
 }
 
-void Us4OEMImpl::disableAdcHpf() { ius4oem->AfeDisableAdcHpf(); }
+void Us4OEMImpl::disableAdcHpf() { ius4oem->afeDisableAdcHpf(); }
 
 Interval<Voltage> Us4OEMImpl::getAcceptedVoltageRange() { return Interval<Voltage>{0, 90}; }
 
-void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
+void Us4OEMImpl::resetAfe() { ius4oem->afeSoftReset(); }
 
 Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
                                       uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
@@ -149,16 +149,16 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
     setTgcCurve(sequences);
-    ius4oem->ResetSequencer();
-    ius4oem->SetNumberOfFirings(ARRUS_SAFE_CAST(getNumberOfFirings(sequences), uint16_t));
-    ius4oem->ClearScheduledReceive();
-    ius4oem->ResetRuntimeCallbacks();
+    ius4oem->resetSequencer();
+    ius4oem->setNumberOfFirings(ARRUS_SAFE_CAST(getNumberOfFirings(sequences), uint16_t));
+    ius4oem->clearScheduledReceive();
+    ius4oem->resetRuntimeCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
     setTxTimeouts(txTimeouts);
     uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
-    // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
-    ius4oem->SetNTriggers(ARRUS_SAFE_CAST(getNumberOfTriggers(sequences, rxBufferSize), uint16_t));
+    // For us4OEM+ the method below must be called right after programming TX/RX, and before calling scheduleReceive.
+    ius4oem->setNTriggers(ARRUS_SAFE_CAST(getNumberOfTriggers(sequences, rxBufferSize), uint16_t));
     auto [bufferDef, rxTimeOffset] = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
     uploadTriggersIOBS(sequences, rxBufferSize, workMode);
     setAfeDemod(ddc);
@@ -169,9 +169,9 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
 }
 void Us4OEMImpl::setTxTimeouts(const std::vector<TxTimeout> &txTimeouts) {
     if(!txTimeouts.empty()) {
-        ius4oem->EnableTxTimeout();
+        ius4oem->enableTxTimeout();
         for(size_t n = 0; n < txTimeouts.size(); ++n) {
-            ius4oem->SetTxTimeout((uint8_t)n, txTimeouts[n]);
+            ius4oem->setTxTimeout((uint8_t)n, txTimeouts[n]);
         }
     }
 }
@@ -229,10 +229,10 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                     std::format("Total time required for a single TX/RX ({}) should not exceed PRI ({})",
                                            txrxTime, op.getPri()));
             // Upload
-            ius4oem->SetActiveChannelGroup(channelsGroups, firingId);
-            ius4oem->SetTxAperture(filteredTxAperture, firingId);
-            ius4oem->SetRxAperture(filteredRxAperture, firingId);
-            ius4oem->SetRxDelay(op.getRxDelay(), firingId);
+            ius4oem->setActiveChannelGroup(channelsGroups, firingId);
+            ius4oem->setTxAperture(filteredTxAperture, firingId);
+            ius4oem->setRxAperture(filteredRxAperture, firingId);
+            ius4oem->setRxDelay(op.getRxDelay(), firingId);
             // Delays
             size_t nProfiles = 0;
             if(!txDelays.empty()) {
@@ -253,7 +253,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             currentTxDelayProfileIds.at(sequenceId) = nProfiles;
             if(isOEMPlus()) {
                 auto waveform = op.getTxWaveform();
-                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
+                ius4oem->setCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
             }
             else {
                 // Legacy OEM.
@@ -261,20 +261,20 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                 ARRUS_REQUIRES_TRUE(
                     pulse.has_value(),
                     std::format("Couldn't get the correct TX pulse for the waveform declared in the firing {}", firingId));
-                ius4oem->SetTxFreqency(pulse.value().getCenterFrequency(), firingId);
+                ius4oem->setTxFreqency(pulse.value().getCenterFrequency(), firingId);
                 auto nTxHalfPeriods = static_cast<uint32>(pulse.value().getNPeriods()*2);
-                ius4oem->SetTxHalfPeriods(nTxHalfPeriods, firingId);
-                ius4oem->SetTxInvert(pulse.value().isInverse(), firingId);
+                ius4oem->setTxHalfPeriods(nTxHalfPeriods, firingId);
+                ius4oem->setTxInvert(pulse.value().isInverse(), firingId);
             }
-            ius4oem->SetRxTime(rxTime, firingId);
+            ius4oem->setRxTime(rxTime, firingId);
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
-                ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
+                ius4oem->setFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
         }
     }
     // Set the last profile as the current TX delay
     // (the last one is the one provided in the Sequence.ops.Tx.delays property).
-    ius4oem->SetTxDelays(currentTxDelayProfileIds);
+    ius4oem->setTxDelays(currentTxDelayProfileIds);
 }
 
 std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
@@ -306,7 +306,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
     const auto [sampleRxOffset, sampleRxOffsetTimeResidue] = getTxStartSampleNumberAfeDemod(ddc->getDecimationFactor());
     // Number of samples to acquire per channel.
     const size_t nSamples = endSample - startSample;
-    // Number of samples to be set on IUs4OEM::ScheduleReceive
+    // Number of samples to be set on IUs4OEM::scheduleReceive
     const size_t nSamplesRaw = nSamples * 2;
     // Number of bytes a single sample takes (e.g. RF: a single int16, IQ: a pair of int16)
     const size_t sampleSize = 2 * sizeof(RawDataType);
@@ -315,7 +315,7 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
                            std::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
-    ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
+    ius4oem->scheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
 
     return std::make_pair(nBytes, sampleRxOffsetTimeResidue);
@@ -332,13 +332,13 @@ size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, u
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
                            std::format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
-    ius4oem->ScheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
+    ius4oem->scheduleReceive(entryId, outputAddress, nSamplesRaw, sampleRxOffset + startSampleRaw,
                              op.getRxDecimationFactor() - 1, rxMapId, nullptr);
     return nBytes;
 }
 
 /**
- * Programs data acquisitions ("ScheduleReceive" part).
+ * Programs data acquisitions ("scheduleReceive" part).
  *
  * 'element' here means the result data frame of the given operations sequence (times nRepeats)
  * This method programs us4OEM sequencer to fill the us4OEM memory with the acquired data
@@ -487,10 +487,10 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                     //  or we have the MANUAL work mode, and we are hitting the last TX/RX in the TX/RX
                     //  (the IRQ = 4 is used to implement the synchronous version of the Us4r::trigger(sync=true))
                     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
-                    ius4oem->SetTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && useSequenceTriggerCapability,
+                    ius4oem->setTrigger(priMs, isCheckpoint || triggerSyncPerTxRx, entryId, isCheckpoint && useSequenceTriggerCapability,
                                         triggerSyncPerTxRx || (isCheckpoint && workMode == ops::us4r::Scheme::WorkMode::MANUAL));
                     if (op.getBitstreamId().has_value() && isMaster()) {
-                        ius4oem->SetFiringIOBS(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
+                        ius4oem->setFiringIobs(entryId, bitstreamOffsets.at(op.getBitstreamId().value()));
                     }
                 }
             }
@@ -539,7 +539,7 @@ Us4OEMRxMappingRegister Us4OEMImpl::setRxMappings(const TxParametersSequenceColl
     builder.add(sequences);
     auto mappingRegister = builder.build();
     for (auto const &[mapId, map] : mappingRegister.getMappings()) {
-        ius4oem->SetRxChannelMapping(map, mapId);
+        ius4oem->setRxChannelMapping(map, mapId);
     }
     return mappingRegister;
 }
@@ -561,7 +561,7 @@ void Us4OEMImpl::start() { this->startTrigger(); }
 
 void Us4OEMImpl::stop() { this->stopTrigger(); }
 
-void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
+void Us4OEMImpl::syncTrigger() { this->ius4oem->triggerSync(); }
 
 void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequences) {
     // Make sure all TGC curve are the same.
@@ -595,42 +595,42 @@ void Us4OEMImpl::enableSequencer(uint16 startEntry, bool dvddMask) {
     case Us4OEMSettings::ReprogrammingMode::SEQUENTIAL: txConfOnTrigger = false; break;
     case Us4OEMSettings::ReprogrammingMode::PARALLEL: txConfOnTrigger = true; break;
     }
-    this->ius4oem->EnableSequencer(txConfOnTrigger, startEntry, dvddMask);
+    this->ius4oem->enableSequencer(txConfOnTrigger, startEntry, dvddMask);
 }
 
 std::vector<uint8_t> Us4OEMImpl::getChannelMapping() { return channelMapping; }
 
-float Us4OEMImpl::getFPGATemperature() { return ius4oem->GetFPGATemp(); }
+float Us4OEMImpl::getFPGATemperature() { return ius4oem->getFpgaTemp(); }
 
-float Us4OEMImpl::getUCDTemperature() { return ius4oem->GetUCDTemp(); }
+float Us4OEMImpl::getUCDTemperature() { return ius4oem->getUcdTemp(); }
 
-float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->GetUCDExtTemp(); }
+float Us4OEMImpl::getUCDExternalTemperature() { return ius4oem->getUcdExtTemp(); }
 
-float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->GetUCDVOUT(rail); }
+float Us4OEMImpl::getUCDMeasuredVoltage(uint8_t rail) { return ius4oem->getUcdVout(rail); }
 
-float Us4OEMImpl::getMeasuredHVPVoltage() { return ius4oem->GetMeasuredHVPVoltage(); }
-float Us4OEMImpl::getMeasuredHVMVoltage() { return ius4oem->GetMeasuredHVMVoltage(); }
+float Us4OEMImpl::getMeasuredHVPVoltage() { return ius4oem->getMeasuredHvpVoltage(); }
+float Us4OEMImpl::getMeasuredHVMVoltage() { return ius4oem->getMeasuredHvmVoltage(); }
 
 void Us4OEMImpl::checkFirmwareVersion() {
     try {
-        ius4oem->CheckFirmwareVersion();
+        ius4oem->checkFirmwareVersion();
     } catch (const std::runtime_error &e) { throw arrus::IllegalStateException(e.what()); } catch (...) {
         throw arrus::IllegalStateException("Unknown exception while check firmware version.");
     }
 }
 
-uint32 Us4OEMImpl::getFirmwareVersion() { return ius4oem->GetFirmwareVersion(); }
+uint32 Us4OEMImpl::getFirmwareVersion() { return ius4oem->getFirmwareVersion(); }
 
-uint32 Us4OEMImpl::getTxFirmwareVersion() { return ius4oem->GetTxFirmwareVersion(); }
+uint32 Us4OEMImpl::getTxFirmwareVersion() { return ius4oem->getTxFirmwareVersion(); }
 
-uint32_t Us4OEMImpl::getOemVersion() { return ius4oem->GetOemVersion(); }
+uint32_t Us4OEMImpl::getOemVersion() { return ius4oem->getOemVersion(); }
 
 void Us4OEMImpl::checkState() { this->checkFirmwareVersion(); }
 
 void Us4OEMImpl::setTestPattern(RxTestPattern pattern) {
     switch (pattern) {
-    case RxTestPattern::RAMP: ius4oem->EnableTestPatterns(); break;
-    case RxTestPattern::OFF: ius4oem->DisableTestPatterns(); break;
+    case RxTestPattern::RAMP: ius4oem->enableTestPatterns(); break;
+    case RxTestPattern::OFF: ius4oem->disableTestPatterns(); break;
     default: throw IllegalArgumentException("Unrecognized test pattern");
     }
 }
@@ -676,7 +676,7 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
     return currentSamplingFrequency;
 }
 
-uint64_t Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
+uint64_t Us4OEMImpl::getFPGAWallclock() { return ius4oem->getFpgaWallclock(); }
 
 void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {
     if (ddc.has_value()) {
@@ -759,7 +759,7 @@ void Us4OEMImpl::setIOBitstreamForOffset(uint16 bitstreamOffset, const std::vect
     ARRUS_REQUIRES_EQUAL_IAE(levels.size(), periods.size());
     size_t nRegisters = static_cast<uint16_t>(levels.size());
     for (uint16_t i = 0; i < nRegisters; ++i) {
-        ius4oem->SetIOBSRegister(bitstreamOffset + i, levels[i], i == (nRegisters - 1), periods[i]);
+        ius4oem->setIobsRegister(bitstreamOffset + i, levels[i], i == (nRegisters - 1), periods[i]);
     }
 }
 
@@ -786,11 +786,11 @@ void Us4OEMImpl::setTxDelays(const std::vector<bool> &txAperture, const std::vec
         }
         delaysToBeApplied.at(ch) = delay;
     }
-    ius4oem->SetTxDelays(delaysToBeApplied, firingId, delaysId, ARRUS_SAFE_CAST(sequenceId, size_t));
+    ius4oem->setTxDelays(delaysToBeApplied, firingId, delaysId, ARRUS_SAFE_CAST(sequenceId, size_t));
 }
 
 void Us4OEMImpl::clearDMACallbacks() {
-    this->ius4oem->ResetDMACallbacks();
+    this->ius4oem->resetDmaCallbacks();
 }
 
 std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> Us4OEMImpl::filterAperture(
@@ -809,7 +809,7 @@ Us4OEMDescriptor Us4OEMImpl::getDescriptor() const {
 void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     // 2 means OEM+
     // this is the only type of OEM that currently can have a maxLength != nullopt
-    if(ius4oem->GetOemVersion() != 2 && maxLength.has_value()) {
+    if(ius4oem->getOemVersion() != 2 && maxLength.has_value()) {
         throw IllegalArgumentException("Currently it is possible to set maxLength value only for OEM+ (type 2)");
     }
     TxLimitsBuilder txBuilder{this->descriptor.getTxRxSequenceLimits().getTxRx().getTx2()};
@@ -841,21 +841,21 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
 }
 
 HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
-    auto m = ius4oem->GetHVPSMeasurements();
+    auto m = ius4oem->getHvpsMeasurements();
     HVPSMeasurementBuilder builder;
-    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP0Voltage);
-    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP0Current);
-    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP1Voltage);
-    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP1Current);
-    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.HVM0Voltage);
-    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.HVM0Current);
-    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.HVM1Voltage);
-    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.HVM1Current);
+    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.hvp0Voltage);
+    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.hvp0Current);
+    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.hvp1Voltage);
+    builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.hvp1Current);
+    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.hvm0Voltage);
+    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.hvm0Current);
+    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.hvm1Voltage);
+    builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.hvm1Current);
     return builder.build();
 }
 
 float Us4OEMImpl::setHVPSSyncMeasurement(uint16_t nSamples, float frequency) {
-    return ius4oem->SetHVPSSyncMeasurement(nSamples, frequency);
+    return ius4oem->setHvpsSyncMeasurement(nSamples, frequency);
 }
 
 void Us4OEMImpl::waitForIrq(unsigned int irq, std::optional<long long> timeout) {
@@ -871,16 +871,16 @@ void Us4OEMImpl::sync(std::optional<long long> timeout) {
 void Us4OEMImpl::setWaitForEventDone() {
     auto eventDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::EVENTDONE);
     irqEvents.at(eventDoneIrq).resetCounters();
-    ius4oem->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
+    ius4oem->registerCallback(IUs4OEM::MSINumber::EVENTDONE, [eventDoneIrq, this]() {
         this->irqEvents.at(eventDoneIrq).notifyOne();
     });
 }
 
 void Us4OEMImpl::setWaitForHVPSMeasurementDone() {
-    ius4oem->EnableHVPSMeasurementReadyIRQ();
+    ius4oem->enableHvpsMeasurementReadyIrq();
     auto measurementDoneIrq = static_cast<unsigned>(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE);
     irqEvents.at(measurementDoneIrq).resetCounters();
-    ius4oem->RegisterCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
+    ius4oem->registerCallback(IUs4OEM::MSINumber::HVPS_MEASUREMENT_DONE, [measurementDoneIrq, this]() {
         this->irqEvents.at(measurementDoneIrq).notifyOne();
     });
 }
@@ -892,14 +892,14 @@ void Us4OEMImpl::waitForHVPSMeasurementDone(std::optional<long long> timeout) {
 }
 
 float Us4OEMImpl::getActualTxFrequency(float frequency) {
-    return ius4oem->GetOCWSFrequency(frequency);
+    return ius4oem->getOcwsFrequency(frequency);
 }
 void Us4OEMImpl::setRxSettings(const RxSettings &settings) {
-    ius4oem->SetRxSettings(settings, false);
+    ius4oem->setRxSettings(settings, false);
 }
 
 std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
-    return ius4oem->GetTGCValueRange();
+    return ius4oem->getTgcValueRange();
 }
 
 void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) {
@@ -912,7 +912,7 @@ void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>
         }
         newProfiles.at(sequenceId) = profileId;
     }
-    ius4oem->SetTxDelays(newProfiles);
+    ius4oem->setTxDelays(newProfiles);
     currentTxDelayProfileIds = newProfiles;
 }
 
@@ -976,7 +976,7 @@ Us4OEM::Variant Us4OEMImpl::getVariant() {
 }
 
 int64_t Us4OEMImpl::getHVPSTuningInfo() {
-    return ius4oem->GetHVPSTuningTimestamp();
+    return ius4oem->getHvpsTuningTimestamp();
 }
 
 

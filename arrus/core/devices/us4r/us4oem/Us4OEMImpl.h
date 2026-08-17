@@ -117,7 +117,7 @@ public:
     void setAfeDemod(const std::optional<ops::us4r::DigitalDownConversion> &ddc);
     void setAfeDemod(float demodulationFrequency, float decimationFactor, const float *firCoefficients,
                      size_t nCoefficients, float gain) override;
-    void disableAfeDemod() override { ius4oem->AfeDemodDisable(); }
+    void disableAfeDemod() override { ius4oem->afeDemodDisable(); }
     float getCurrentSamplingFrequency() const override;
     uint64_t getFPGAWallclock() override;
     const char *getSerialNumber() override;

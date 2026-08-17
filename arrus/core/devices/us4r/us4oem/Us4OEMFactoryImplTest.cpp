@@ -173,7 +173,7 @@ std::optional<Us4RTxRxLimits> DEFAULT_US4R_LIMITS = std::nullopt;
 TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
+    ON_CALL(GET_MOCK_PTR(ius4oem), getOemVersion()).WillByDefault(::testing::Return(1));
 
     // Mapping includes groups of 32 channel, each has the same permutation
     std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
@@ -187,9 +187,9 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
             std::begin(channelMapping), std::end(channelMapping));
     Us4OEMFactoryImpl factory;
     // Expect
-    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
+    EXPECT_CALL(GET_MOCK_PTR(ius4oem), setRxChannelMapping(_, _)).Times(0);
     EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                SetRxChannelMapping(
+                setRxChannelMapping(
                         std::vector<uint8_t>(
                                 std::begin(channelMapping),
                                 std::begin(channelMapping) + 32), 0))
@@ -201,7 +201,7 @@ TEST(Us4OEMFactoryTest, WorksForConsistentMapping) {
 TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
+    ON_CALL(GET_MOCK_PTR(ius4oem), getOemVersion()).WillByDefault(::testing::Return(1));
 
     // Mapping includes groups of 32 channel, each has the same permutation
     std::vector<uint8_t> channelMapping = getRange<uint8_t>(0, 128, 1);
@@ -219,7 +219,7 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
             std::begin(channelMapping), std::end(channelMapping));
     Us4OEMFactoryImpl factory;
     // Expect
-    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetRxChannelMapping(_, _)).Times(0);
+    EXPECT_CALL(GET_MOCK_PTR(ius4oem), setRxChannelMapping(_, _)).Times(0);
     // Run
     factory.getUs4OEM(0, ius4oem, cfg.getUs4OEMSettings(), false, DEFAULT_US4R_LIMITS);
 }
@@ -228,7 +228,7 @@ TEST(Us4OEMFactoryTest, WorksForInconsistentMapping) {
 TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(1));
+    ON_CALL(GET_MOCK_PTR(ius4oem), getOemVersion()).WillByDefault(::testing::Return(1));
 
     std::vector<ChannelIdx> channelMapping = getRange<ChannelIdx>(0, 128, 1);
     TestUs4OEMSettings cfg;
@@ -239,14 +239,14 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
         InSequence seq;
         for(ChannelIdx i = 0; i < Us4OEMDescriptor::N_TX_CHANNELS; ++i) {
             EXPECT_CALL(GET_MOCK_PTR(ius4oem),
-                        SetTxChannelMapping(i, channelMapping[i]));
+                        setTxChannelMapping(i, channelMapping[i]));
         }
 
     }
     // No other calls should be made
-    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetTxChannelMapping(Lt(0), _))
+    EXPECT_CALL(GET_MOCK_PTR(ius4oem), setTxChannelMapping(Lt(0), _))
             .Times(0);
-    EXPECT_CALL(GET_MOCK_PTR(ius4oem), SetTxChannelMapping(Gt(127), _))
+    EXPECT_CALL(GET_MOCK_PTR(ius4oem), setTxChannelMapping(Gt(127), _))
             .Times(0);
 
     // Run
@@ -256,7 +256,7 @@ TEST(Us4OEMFactoryTest, WorksForTxChannelMapping) {
 TEST(Us4OEMFactoryTest, SetsAppropriateTxRxLimits) {
     // Given
     std::unique_ptr<IUs4OEM> ius4oem = std::make_unique<::testing::NiceMock<MockIUs4OEM>>();
-    ON_CALL(GET_MOCK_PTR(ius4oem), GetOemVersion()).WillByDefault(::testing::Return(2));
+    ON_CALL(GET_MOCK_PTR(ius4oem), getOemVersion()).WillByDefault(::testing::Return(2));
 
     // All parameters set
     Interval<float> pulseLengthLimits{1e-6f, 10e-6f};

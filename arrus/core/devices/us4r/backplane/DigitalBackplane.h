@@ -11,9 +11,9 @@ public:
 
     explicit DigitalBackplane(std::unique_ptr<IDBAR> dbar)
         : dbar(std::move(dbar)),
-          serialNumber([this](){return this->dbar->GetSerialNumber();}),
-          revision([this](){return this->dbar->GetRevisionNumber();}),
-          firmwareVersion([this]() {return this->dbar->GetFirmwareVersionString();})
+          serialNumber([this](){return this->dbar->getSerialNumber();}),
+          revision([this](){return this->dbar->getRevisionNumber();}),
+          firmwareVersion([this]() {return this->dbar->getFirmwareVersionString();})
     {}
 
     const char* getSerialNumber() {
@@ -29,11 +29,11 @@ public:
     }
 
     void enableExternalTrigger() {
-        dbar->EnableExternalTrigger();
+        dbar->enableExternalTrigger();
     }
 
     void enableInternalTrigger() {
-        dbar->EnableInternalTrigger();
+        dbar->enableInternalTrigger();
     }
 
     /**

@@ -30,6 +30,7 @@ function(create_core_test test_src)
         GTest::gmock
         GTest::gmock_main
         Boost::boost
+        Boost::log
         Eigen3::Eigen
         std4us::std4us
         ${other_deps})

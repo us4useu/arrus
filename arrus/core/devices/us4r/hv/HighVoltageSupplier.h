@@ -29,12 +29,12 @@ public:
         ARRUS_REQUIRES_TRUE(voltages.size() == 2 || voltages.size() == 1,
                             "The vector of voltages should have one or two values!");
         try {
-            getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(voltages);
+            getIHV()->enableHv();
+            getIHV()->setHvVoltage(voltages);
         } catch (const ::us4us::ValidationException &) {
             // Disable HV and Propage validation errors.
             try {
-                getIHV()->DisableHV();
+                getIHV()->disableHv();
             } catch( const std::exception &ee) {
                 logger->error("Exception while disabling HV: {}", ee.what());
             }
@@ -42,7 +42,7 @@ public:
         } catch (const ::us4us::AssertionException &) {
             // Disable HV and propagate validation errors.
             try {
-                getIHV()->DisableHV();
+                getIHV()->disableHv();
             } catch( const std::exception &ee) {
                 logger->error("Exception while disabling HV: {}", ee.what());
             }
@@ -51,8 +51,8 @@ public:
             logger->info("First attempt to set HV voltage failed with "
                          "message: '{}', trying once more.",
                          e.what());
-            getIHV()->EnableHV();
-            getIHV()->SetHVVoltage(voltages);
+            getIHV()->enableHv();
+            getIHV()->setHvVoltage(voltages);
         }
     }
 
@@ -60,28 +60,28 @@ public:
      * Returns the default measured voltage.
      * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
      */
-    unsigned char getVoltage() { return getIHV()->GetHVVoltage(); }
+    unsigned char getVoltage() { return getIHV()->getHvVoltage(); }
 
     /**
      * Returns the default measured voltage.
      * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
      */
-    float getMeasuredPVoltage() { return getIHV()->GetMeasuredHVPVoltage(); }
+    float getMeasuredPVoltage() { return getIHV()->getMeasuredHvpVoltage(); }
 
     /**
      * Returns the default measured voltage.
      * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
      */
-    float getMeasuredMVoltage() { return getIHV()->GetMeasuredHVMVoltage(); }
+    float getMeasuredMVoltage() { return getIHV()->getMeasuredHvmVoltage(); }
 
     void disable() {
         try {
-            getIHV()->DisableHV();
+            getIHV()->disableHv();
         } catch (std::exception &e) {
             logger->info("First attempt to disable high voltage failed with "
                          "message: '{}', trying once more.",
                          e.what());
-            getIHV()->DisableHV();
+            getIHV()->disableHv();
         }
     }
 
