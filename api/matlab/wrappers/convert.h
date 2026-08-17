@@ -67,7 +67,7 @@ template<typename T> T safeCastInt(const ::matlab::data::Array &arr, const size_
         auto min = (double)std::numeric_limits<T>::min();
         auto max = (double)std::numeric_limits<T>::max();
         if (v < min || v > max) {
-            arrus::IllegalArgumentException("Value {} should be in range [{}, {}]", v, min, max);
+            throw ::arrus::IllegalArgumentException("Value {} should be in range [{}, {}]", v, min, max);
         }
         return v;
     } else {

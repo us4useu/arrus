@@ -108,7 +108,7 @@ public:
             ::matlab::data::ArrayDimensions dimensions = {1, value.size()};
             return getArrayFactory().createArray(dimensions, std::begin(value), std::end(value));
         } catch (const std::exception &e) {
-            throw ::arrus::IllegalArgumentException("Exception while creating vector array '{}': {}", std::join(value, ", "), e.what());
+            throw ::arrus::IllegalArgumentException("Exception while creating vector array '{}': {}", std4us::join(value), e.what());
         }
     }
 

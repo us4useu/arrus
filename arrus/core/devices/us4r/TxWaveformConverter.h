@@ -37,7 +37,7 @@ public:
             return HVP1;
         case 0:
             return CLAMP;
-        default: throw IllegalArgumentException("Unrecognized waveform state: {}", apiState);
+        default: throw IllegalArgumentException("Unrecognized waveform state: {}", static_cast<int>(apiState));
         }
     }
 

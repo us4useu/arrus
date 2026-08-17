@@ -108,7 +108,7 @@ public:
      * @param fmt format string
      * @param args arguments for the format string - see std::format
      */
-    template<typename... Args> requires (std::formattable<Args, char> && ...)
+    template<typename... Args>
     void fatal(const std::string &fmt, Args... args) {
         log(LogSeverity::FATAL, fmt, args...);
     }
