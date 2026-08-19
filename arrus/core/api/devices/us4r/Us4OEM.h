@@ -200,6 +200,12 @@ public:
     virtual HVPSMeasurement getHVPSMeasurement() = 0;
 
     /**
+     * Returns the latest scalar HVPS voltage measurements for all
+     * (amplitude level, polarity) pairs.
+     */
+    virtual HVPSScalarMeasurement getHvpsMeasurement() = 0;
+
+    /**
      * Configures HVPS voltage/current measurement in Sync mode.
      *
      * :param nSamples: number of ADC samples to acquire.

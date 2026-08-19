@@ -39,12 +39,12 @@ class HVPSMeasurement:
     """
     def __init__(self, hvps_measurement_core):
         parameters = [
-            ("MINUS",0, "VOLTAGE"),
-            ("MINUS",0, "CURRENT"),
+            ("MINUS",2, "VOLTAGE"),
+            ("MINUS",2, "CURRENT"),
             ("MINUS",1, "VOLTAGE"),
             ("MINUS",1, "CURRENT"),
-            ("PLUS", 0, "VOLTAGE"),
-            ("PLUS", 0, "CURRENT"),
+            ("PLUS", 2, "VOLTAGE"),
+            ("PLUS", 2, "CURRENT"),
             ("PLUS", 1, "VOLTAGE"),
             ("PLUS", 1, "CURRENT"),
         ]
@@ -69,7 +69,7 @@ class HVPSMeasurement:
         The output shape is (polarity, level, unit, sample)
 
         polarity: 0: MINUS, 1: PLUS
-        level: 0 or 1
+        level: 1 or 2
         unit: 0: voltage, 1: current
         """
         return self._array
@@ -163,6 +163,23 @@ class Us4OEM(Device):
 
     def get_hvps_measurement(self) -> HVPSMeasurement:
         return HVPSMeasurement(self._handle.getHVPSMeasurement())
+
+    def get_hvps_scalar_measurement(self) -> dict:
+        """
+        Returns the latest scalar HVPS voltage measurements as a dict
+        keyed by ``(level, polarity)``, where ``level`` is 1 or 2 and
+        ``polarity`` is the string ``"MINUS"`` or ``"PLUS"``.
+        """
+        m = self._handle.getHvpsMeasurement()
+        polarities = (
+            ("MINUS", arrus.core.HVPSScalarMeasurement.MINUS),
+            ("PLUS", arrus.core.HVPSScalarMeasurement.PLUS),
+        )
+        return {
+            (level, name): m.getVoltage(level, value)
+            for level in (1, 2)
+            for name, value in polarities
+        }
 
     def set_hvps_sync_measurement(self, n_samples: int, frequency: float) -> float:
         return self._handle.setHVPSSyncMeasurement(n_samples, frequency)

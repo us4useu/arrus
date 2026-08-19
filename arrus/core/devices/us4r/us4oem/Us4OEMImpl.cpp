@@ -845,14 +845,25 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
 HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
     auto m = ius4oem->GetHVPSMeasurements();
     HVPSMeasurementBuilder builder;
-    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP0Voltage);
-    builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP0Current);
+    builder.set(2, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP0Voltage);
+    builder.set(2, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP0Current);
     builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP1Voltage);
     builder.set(1, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP1Current);
-    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.HVM0Voltage);
-    builder.set(0, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.HVM0Current);
+    builder.set(2, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.HVM0Voltage);
+    builder.set(2, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.HVM0Current);
     builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::VOLTAGE, m.HVM1Voltage);
     builder.set(1, HVPSMeasurement::Polarity::MINUS, HVPSMeasurement::Unit::CURRENT, m.HVM1Current);
+    return builder.build();
+}
+
+HVPSScalarMeasurement Us4OEMImpl::getHvpsMeasurement() {
+    // GetMeasuredVoltages returns values in the order: HVP0, HVP1, HVM0, HVM1.
+    auto v = ius4oem->GetMeasuredVoltages();
+    HVPSScalarMeasurementBuilder builder;
+    builder.set(2, HVPSScalarMeasurement::Polarity::PLUS, v.at(0));
+    builder.set(1, HVPSScalarMeasurement::Polarity::PLUS, v.at(1));
+    builder.set(2, HVPSScalarMeasurement::Polarity::MINUS, v.at(2));
+    builder.set(1, HVPSScalarMeasurement::Polarity::MINUS, v.at(3));
     return builder.build();
 }
 
