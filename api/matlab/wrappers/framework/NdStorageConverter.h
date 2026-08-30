@@ -1,5 +1,5 @@
-#ifndef API_MATLAB_WRAPPERS_FRAMEWORK_NDARRAYCONVERTER_H
-#define API_MATLAB_WRAPPERS_FRAMEWORK_NDARRAYCONVERTER_H
+#ifndef API_MATLAB_WRAPPERS_FRAMEWORK_NDSTORAGECONVERTER_H
+#define API_MATLAB_WRAPPERS_FRAMEWORK_NDSTORAGECONVERTER_H
 
 
 #include "api/matlab/wrappers/MexContext.h"
@@ -16,27 +16,27 @@ namespace arrus::matlab::framework {
 using namespace ::arrus::framework;
 using namespace ::arrus::matlab::converters;
 
-class NdArrayConverter {
+class NdStorageConverter {
 public:
-    inline static const std::string MATLAB_FULL_NAME = "arrus.framework.NdArray";
+    inline static const std::string MATLAB_FULL_NAME = "arrus.framework.NdStorage";
 
-    static NdArrayConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
+    static NdStorageConverter from(const MexContext::SharedHandle &ctx, const MatlabElementRef &object) {
         const auto placement = ARRUS_MATLAB_GET_CPP_SCALAR(ctx, std::string, placement, object);
         const auto name = ARRUS_MATLAB_GET_CPP_SCALAR(ctx, std::string, name, object);
-        const auto value = ctx->createNdArray(getMatlabProperty(ctx, object, "value"), placement, name);
-        return NdArrayConverter{
+        const auto value = ctx->createNdStorage(getMatlabProperty(ctx, object, "value"), placement, name);
+        return NdStorageConverter{
             ctx, value
         };
     }
 
-    static NdArrayConverter from(const MexContext::SharedHandle &ctx, const NdArray &array) {
-        return NdArrayConverter{ctx, array};
+    static NdStorageConverter from(const MexContext::SharedHandle &ctx, const NdStorage &array) {
+        return NdStorageConverter{ctx, array};
     }
 
-    NdArrayConverter(const MexContext::SharedHandle &ctx, const NdArray &value)
+    NdStorageConverter(const MexContext::SharedHandle &ctx, const NdStorage &value)
         : ctx(ctx), value(value) {}
 
-    [[nodiscard]] ::arrus::framework::NdArray toCore() const { return value; }
+    [[nodiscard]] ::arrus::framework::NdStorage toCore() const { return value; }
 
     [[nodiscard]] ::matlab::data::Array toMatlab() const {
         const auto name = value.getPlacement().toString();
@@ -53,11 +53,11 @@ public:
 
 private:
     MexContext::SharedHandle ctx;
-    ::arrus::framework::NdArray value;
+    ::arrus::framework::NdStorage value;
 };
 
 }// namespace arrus::matlab::framework
 
 
 
-#endif//API_MATLAB_WRAPPERS_FRAMEWORK_NDARRAYCONVERTER_H
+#endif//API_MATLAB_WRAPPERS_FRAMEWORK_NDSTORAGECONVERTER_H

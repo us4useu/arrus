@@ -431,12 +431,12 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly30psWithDynamicDe
 
     const auto delaysProfile1 = ::arrus::concat<float>({delays10, delays11, delays12});
 
-    NdArray::Shape shape{txrxs.size(), nChannels};
+    NdStorage::Shape shape{txrxs.size(), nChannels};
     DeviceId placement{DeviceType::Us4R, 0};
 
-    std::vector<NdArray> profiles = {
-        NdArray::asarray<float>(delaysProfile0, shape, placement, "delays0"),
-        NdArray::asarray<float>(delaysProfile1, shape, placement, "delays1")
+    std::vector<NdStorage> profiles = {
+        NdStorage::asarray<float>(delaysProfile0, shape, placement, "delays0"),
+        NdStorage::asarray<float>(delaysProfile1, shape, placement, "delays1")
     };
 
     std::unordered_map<std::string, ops::us4r::DelayProfiles> delayProfiles;

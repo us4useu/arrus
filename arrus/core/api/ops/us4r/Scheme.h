@@ -58,7 +58,7 @@ public:
     ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
            WorkMode workMode, std::optional<DigitalDownConversion> ddc,
-           const std::vector<arrus::framework::NdArray> &constants);
+           const std::vector<arrus::framework::NdStorage> &constants);
 
     /**
      * Scheme constructor. This scheme turns off hardware IQ demodulator.
@@ -98,7 +98,7 @@ public:
      */
     ARRUS_CPP_EXPORT
     Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const framework::DataBufferSpec &outputBuffer,
-           WorkMode workMode, const std::vector<framework::NdArray> &constants)
+           WorkMode workMode, const std::vector<framework::NdStorage> &constants)
         : Scheme(std::move(txRxSequence), rxBufferSize, outputBuffer, workMode, std::nullopt, constants) {}
 
     ARRUS_CPP_EXPORT
@@ -128,7 +128,7 @@ public:
     ARRUS_CPP_EXPORT
     const std::optional<DigitalDownConversion> &getDigitalDownConversion() const;
     ARRUS_CPP_EXPORT
-    const std::vector<arrus::framework::NdArray> &getConstants() const;
+    const std::vector<arrus::framework::NdStorage> &getConstants() const;
 
 private:
     friend class SchemeBuilder;
@@ -145,9 +145,9 @@ public:
     ARRUS_CPP_EXPORT
     SchemeBuilder& addSequence(TxRxSequence sequence);
     ARRUS_CPP_EXPORT
-    SchemeBuilder& addConstant(arrus::framework::NdArray constants);
+    SchemeBuilder& addConstant(arrus::framework::NdStorage constants);
     ARRUS_CPP_EXPORT
-    SchemeBuilder& setConstants(const std::vector<arrus::framework::NdArray> &constants);
+    SchemeBuilder& setConstants(const std::vector<arrus::framework::NdStorage> &constants);
     ARRUS_CPP_EXPORT
     SchemeBuilder& withOutputBufferDefinition(framework::DataBufferSpec spec);
     ARRUS_CPP_EXPORT

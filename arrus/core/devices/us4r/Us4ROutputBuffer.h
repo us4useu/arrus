@@ -35,7 +35,7 @@ class Us4ROutputBuffer;
  */
 class Us4ROutputBufferArrayDef {
 public:
-    Us4ROutputBufferArrayDef(framework::NdArrayDef definition, size_t address, std::vector<size_t> oemSizes)
+    Us4ROutputBufferArrayDef(framework::NdStorageDef definition, size_t address, std::vector<size_t> oemSizes)
         : definition(std::move(definition)), address(address), oemSizes(std::move(oemSizes)) {
         size_t oemAddress = 0;
         for (const auto size : this->oemSizes) {
@@ -45,7 +45,7 @@ public:
     }
 
     size_t getAddress() const { return address; }
-    const framework::NdArrayDef &getDefinition() const { return definition; }
+    const framework::NdStorageDef &getDefinition() const { return definition; }
     size_t getSize() const { return definition.getSize(); }
     /*** Returns address of data produced by the given OEM, relative to the beginning of the element. */
     size_t getOEMAddress(Ordinal oem) const { return address + oemAddresses[oem]; }
@@ -56,7 +56,7 @@ public:
     }
 
 private:
-    framework::NdArrayDef definition;
+    framework::NdStorageDef definition;
     /** Array address, relative to the beginning of the parent element */
     size_t address;
     std::vector<size_t> oemSizes;
@@ -72,11 +72,11 @@ public:
     using Accumulator = uint16;
     using SharedHandle = std::shared_ptr<Us4ROutputBufferElement>;
 
-    Us4ROutputBufferElement(size_t position, Tuple<framework::NdArray> arrays, Accumulator filledAccumulator)
+    Us4ROutputBufferElement(size_t position, Tuple<framework::NdStorage> arrays, Accumulator filledAccumulator)
         : position(position), arrays(arrays), filledAccumulator(filledAccumulator) {
         const auto &arr = arrays.getValues();
         size = std::accumulate(std::begin(arr), std::end(arr), size_t(0),
-                               [](const auto &s, const framework::NdArray &b) { return s + b.nbytes(); });
+                               [](const auto &s, const framework::NdStorage &b) { return s + b.nbytes(); });
     }
 
     void release() override {
@@ -109,12 +109,12 @@ public:
 
     int16 *getAddressUnsafe() { return getAddressUnsafe(0); }
 
-    framework::NdArray &getData(ArrayId id) override {
+    framework::NdStorage &getData(ArrayId id) override {
         validateState();
         return arrays.getMutable(id);
     }
 
-    framework::NdArray &getData() override { return getData(0); }
+    framework::NdStorage &getData() override { return getData(0); }
 
     /**
      * Returns the size of the given element in bytes (equal to the size of all sub-arrays).
@@ -164,7 +164,7 @@ public:
 private:
     std::mutex mutex;
     size_t position;
-    Tuple<framework::NdArray> arrays;
+    Tuple<framework::NdStorage> arrays;
     /** A pattern of the filled accumulator, which indicates that the hole element is ready. */
     Accumulator filledAccumulator;
     /** Size of the whole element (i.e. the sum of all arrays). */
@@ -202,7 +202,7 @@ public:
     using Handle = std::unique_ptr<Us4ROutputBuffer>;
     using SharedHandle = std::shared_ptr<Us4ROutputBuffer>;
     static constexpr size_t ALIGNMENT = 4096;
-    static constexpr framework::NdArrayDef::DataType ARRAY_DATA_TYPE = framework::NdArrayDef::DataType::INT16;
+    static constexpr framework::NdStorageDef::DataType ARRAY_DATA_TYPE = framework::NdStorageDef::DataType::INT16;
     using DataType = int16;
     using Accumulator = Us4ROutputBufferElement::Accumulator;
     using Elements = std::vector<Us4ROutputBufferElement::SharedHandle>;
@@ -556,7 +556,7 @@ private:
     void createElements(const Tuple<Us4ROutputBufferArrayDef> &arrayDefinitions, uint16 elementReadyPattern,
                         unsigned nElements, size_t elementSizeBytes) {
         for (unsigned i = 0; i < nElements; ++i) {
-            std::vector<framework::NdArray> arraysVector;
+            std::vector<framework::NdStorage> arraysVector;
             for (const Us4ROutputBufferArrayDef &arrayDef : arrayDefinitions.getValues()) {
                 size_t elementOffset = i * elementSizeBytes;
                 size_t arrayOffset = elementOffset + arrayDef.getAddress();
@@ -568,10 +568,10 @@ private:
                                                ? DeviceType::GPU
                                                : DeviceType::CPU;
                 DeviceId deviceId(placementType, 0);
-                framework::NdArray array{arrayAddress, def.getShape(), def.getDataType(), deviceId};
+                framework::NdStorage array{arrayAddress, def.getShape(), def.getDataType(), deviceId};
                 arraysVector.emplace_back(std::move(array));
             }
-            Tuple<framework::NdArray> arrays = Tuple<framework::NdArray>{arraysVector};
+            Tuple<framework::NdStorage> arrays = Tuple<framework::NdStorage>{arraysVector};
             elements.push_back(std::make_shared<Us4ROutputBufferElement>(i, arrays, elementReadyPattern));
         }
     }
@@ -633,9 +633,9 @@ public:
 
         std::vector<Us4ROutputBufferArrayDef> result;
         // Array -> shape
-        std::vector<framework::NdArrayDef::Shape> shapes;
+        std::vector<framework::NdStorageDef::Shape> shapes;
         // Array -> OEM -> shape
-        std::vector<std::vector<framework::NdArrayDef::Shape>> partShapes(nArrays);
+        std::vector<std::vector<framework::NdStorageDef::Shape>> partShapes(nArrays);
         // Array -> OEM -> size
         std::vector<std::vector<size_t>> oemSizes(nArrays);
         for (auto &v : partShapes) {
@@ -662,7 +662,7 @@ public:
         }
         size_t address = 0;
         for (ArrayId arrayId = 0; arrayId < nArrays; ++arrayId) {
-            framework::NdArrayDef definition{shapes.at(arrayId), Us4ROutputBuffer::ARRAY_DATA_TYPE};
+            framework::NdStorageDef definition{shapes.at(arrayId), Us4ROutputBuffer::ARRAY_DATA_TYPE};
             result.emplace_back(definition, address, oemSizes.at(arrayId));
             address += definition.getSize();
         }
@@ -680,12 +680,12 @@ private:
      * Concatenates shapes. If shape is empty (empty array), skip.
      * @param parts: parts of a given array of a given OEM
      */
-    framework::NdArrayDef::Shape concatenate(const std::vector<framework::NdArrayDef::Shape> &parts) {
+    framework::NdStorageDef::Shape concatenate(const std::vector<framework::NdStorageDef::Shape> &parts) {
         // Find first non-empty shape and use it as a starting point.
         auto start = std::find_if(std::begin(parts), std::end(parts), [](const auto &shape) { return !shape.empty(); });
         if (start == std::end(parts)) {
             // all parts empty, return empty shape
-            return framework::NdArrayDef::Shape{};
+            return framework::NdStorageDef::Shape{};
         }
         size_t pos = std::distance(std::begin(parts), start);
         auto ref = start->getValues();
@@ -698,7 +698,7 @@ private:
                                     "Each us4OEM buffer element should have the same number of channels.");
             ref[sampAx] += static_cast<unsigned>(part.get(sampAx));
         }
-        return framework::NdArray::Shape{ref};
+        return framework::NdStorage::Shape{ref};
     }
     Tuple<Us4ROutputBufferArrayDef> arrayDefs;
     unsigned noems{0};

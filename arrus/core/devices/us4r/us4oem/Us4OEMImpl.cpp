@@ -143,7 +143,7 @@ void Us4OEMImpl::resetAfe() { ius4oem->AfeSoftReset(); }
 Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequence> &sequences,
                                       uint16 rxBufferSize, ops::us4r::Scheme::WorkMode workMode,
                                       const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                                      const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
+                                      const std::vector<std::vector<arrus::framework::NdStorage>> &txDelays,
                                       const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
@@ -193,7 +193,7 @@ Us4OEMImpl::Us4OEMChannelsGroupsMask Us4OEMImpl::getActiveChannelGroups(const Us
 
 void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
                                const std::optional<DigitalDownConversion> &ddc,
-                               const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
+                               const std::vector<std::vector<arrus::framework::NdStorage>> &txDelays,
                                const Us4OEMRxMappingRegister &rxMappingRegister) {
     using SequenceId = uint16;
     using OpId = uint16;
@@ -409,7 +409,7 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
                     }
                 }
             }
-            framework::NdArray::Shape shape;
+            framework::NdStorage::Shape shape;
             if (isDDCOn) {
                 shape = {totalSamples, 2, descriptor.getNRxChannels()};
             } else {
@@ -417,7 +417,7 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
             }
             if (batchId == 0) {
                 // Gather element layout.
-                builder.add(Us4OEMBufferArrayDef{arrayStartAddress, framework::NdArrayDef{shape, DataType}, parts});
+                builder.add(Us4OEMBufferArrayDef{arrayStartAddress, framework::NdStorageDef{shape, DataType}, parts});
                 arrayStartAddress = outputAddress;
             }
         }

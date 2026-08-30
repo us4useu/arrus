@@ -32,7 +32,7 @@ protected:
                 return a + b.getSize();
             });
         const auto DATA_TYPE = Us4ROutputBuffer::ARRAY_DATA_TYPE;
-        NdArrayDef definition{{totalSize/NdArrayDef::getDataTypeSize(DATA_TYPE)}, DATA_TYPE};
+        NdStorageDef definition{{totalSize/NdStorageDef::getDataTypeSize(DATA_TYPE)}, DATA_TYPE};
         Us4OEMBufferArrayDef def{0, definition, parts};
         Us4OEMBufferElement element{0, totalSize, 0};
         builder.add(def);

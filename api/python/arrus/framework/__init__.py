@@ -7,8 +7,8 @@ from arrus.framework.constant import Constant
 
 
 _NUMPY_TO_CUPY_DTYPE = {
-    arrus.core.NdArrayDef.DataType_INT16: np.int16,
-    arrus.core.NdArrayDef.DataType_UINT8: np.uint8,
+    arrus.core.NdStorageDef.DataType_INT16: np.int16,
+    arrus.core.NdStorageDef.DataType_UINT8: np.uint8,
 }
 
 
@@ -97,7 +97,7 @@ class DataBufferElement:
         arrays = []
         for i in range(element.getNumberOfArrays()):
             ndarray = element.getData(i)
-            if ndarray.getDataType() != arrus.core.NdArrayDef.DataType_INT16:
+            if ndarray.getDataType() != arrus.core.NdStorageDef.DataType_INT16:
                 raise ValueError("Currently output data type int16 is supported only.")
             addr = arrus.core.castToInt(ndarray.getInt16())
             shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())

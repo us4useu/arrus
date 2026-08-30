@@ -17,7 +17,7 @@ public:
     using OEMSequences = std::vector<us4r::TxRxParametersSequence>;
     using SequenceByOEM = std::vector<us4r::TxRxParametersSequence>;
     using FCMByOEM = std::vector<FrameChannelMapping::RawHandle>;
-    using DelayProfilesByOEM = std::unordered_map<Ordinal, std::vector<framework::NdArray>>;
+    using DelayProfilesByOEM = std::unordered_map<Ordinal, std::vector<framework::NdStorage>>;
 
 
     AdapterToUs4OEMMappingConverter(ProbeAdapterSettings settings, const Ordinal noems,
@@ -26,7 +26,7 @@ public:
         : settings(std::move(settings)), noems(noems), splitter{std::move(oemMappings), frameMetadataOEM, nRxChannelsOEM} {}
 
     std::pair<SequenceByOEM, DelayProfilesByOEM> convert(SequenceId id, const us4r::TxRxParametersSequence &seq,
-                                                         const std::vector<framework::NdArray> &txDelayProfiles) {
+                                                         const std::vector<framework::NdStorage> &txDelayProfiles) {
         // Validate input sequence
         ProbeAdapterTxRxValidator validator(format("Adapter to OEMs conversion, sequence: {}", id),
                                             settings.getNumberOfChannels());
@@ -43,7 +43,7 @@ public:
         // us4oem, op number -> aperture/delays
         std::unordered_map<Ordinal, std::vector<BitMask>> txApertures, rxApertures;
         std::unordered_map<Ordinal, std::vector<std::vector<float>>> txDelaysList;
-        std::unordered_map<Ordinal, std::vector<framework::NdArray>> txDelayProfilesList;
+        std::unordered_map<Ordinal, std::vector<framework::NdStorage>> txDelayProfilesList;
         std::unordered_map<Ordinal, std::vector<std::unordered_set<ChannelIdx>>> maskedChannelsTx;
         std::unordered_map<Ordinal, std::vector<std::unordered_set<ChannelIdx>>> maskedChannelsRx;
         // Here is an assumption, that each operation has the same size rx aperture, except RX nops.
@@ -63,7 +63,7 @@ public:
         frameChannel = Eigen::MatrixXi(nFrames, rxApertureSize);
         frameChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
-        framework::NdArray::Shape txDelaysProfileShape = {seq.size(), Us4OEMDescriptor::N_TX_CHANNELS};
+        framework::NdStorage::Shape txDelaysProfileShape = {seq.size(), Us4OEMDescriptor::N_TX_CHANNELS};
 
         // Initialize helper arrays.
         for (Ordinal oem = 0; oem < noems; ++oem) {
@@ -74,10 +74,10 @@ public:
             maskedChannelsRx.emplace(oem, std::vector<std::unordered_set<ChannelIdx>>(nOps));
 
             // Profiles.
-            std::vector<framework::NdArray> txDelayProfilesForModule;
+            std::vector<framework::NdStorage> txDelayProfilesForModule;
             size_t nProfiles = txDelayProfiles.size();
             for (size_t i = 0; i < nProfiles; ++i) {
-                framework::NdArray emptyArray(txDelaysProfileShape, txDelayProfiles[i].getDataType(),
+                framework::NdStorage emptyArray(txDelaysProfileShape, txDelayProfiles[i].getDataType(),
                                               txDelayProfiles[i].getPlacement(), txDelayProfiles[i].getName());
                 txDelayProfilesForModule.push_back(std::move(emptyArray));
             }

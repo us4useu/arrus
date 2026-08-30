@@ -126,7 +126,7 @@ void FrameChannelMappingBuilder::setNumberOfFrames(const std::vector<uint32> &nF
 void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
     // TODO for some reason the below slicing does not work properly with Eigen 3.4.0, therefore a manual slice
     // is performed here
-    // which might not be efficient; consider replacing that in the future with custom NdArray implementation.
+    // which might not be efficient; consider replacing that in the future with custom NdStorage implementation.
     // this->frameMapping = this->frameMapping(Eigen::seq(start, end), Eigen::all);
     // this->channelMapping = this->channelMapping(Eigen::seq(start, end), Eigen::all);
     // this->us4oemMapping = this->us4oemMapping(Eigen::seq(start, end), Eigen::all);

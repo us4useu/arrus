@@ -6,7 +6,7 @@
 #include "arrus/common/utils.h"
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/framework/NdStorage.h"
 #include "arrus/core/devices/us4r/validators/ProbeTxRxValidator.h"
 
 namespace arrus::devices::us4r {
@@ -30,8 +30,8 @@ public:
                   std::inserter(this->rxProbeMask, std::begin(this->rxProbeMask)));
     }
 
-    std::pair<TxRxParametersSequence, std::vector<NdArray>>
-    convert(SequenceId id, const TxRxParametersSequence &sequence, const std::vector<NdArray> &txDelayProfiles) {
+    std::pair<TxRxParametersSequence, std::vector<NdStorage>>
+    convert(SequenceId id, const TxRxParametersSequence &sequence, const std::vector<NdStorage> &txDelayProfiles) {
         // Validate input sequence
         ProbeTxRxValidator validator(format("Probe to adapter conversion, sequence: {}", id), probeTx.getModel(),
                                      probeRx.getModel());
@@ -43,10 +43,10 @@ public:
         TxRxParametersSequenceBuilder seqBuilder;
         seqBuilder.setCommon(sequence);
         // std::vector<TxRxParameters> adapterSeq;
-        std::vector<NdArray> adapterTxDelayProfiles;
-        NdArray::Shape outputProfileShape = {nOps, adapterNChannels};
+        std::vector<NdStorage> adapterTxDelayProfiles;
+        NdStorage::Shape outputProfileShape = {nOps, adapterNChannels};
         for (auto &inputTxDelayProfile : txDelayProfiles) {
-            NdArray emptyArray(outputProfileShape, inputTxDelayProfile.getDataType(),
+            NdStorage emptyArray(outputProfileShape, inputTxDelayProfile.getDataType(),
                                inputTxDelayProfile.getPlacement(), inputTxDelayProfile.getName());
             adapterTxDelayProfiles.push_back(emptyArray);
         }

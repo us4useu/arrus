@@ -10,7 +10,7 @@ namespace arrus::devices {
 class FileBuffer: public arrus::framework::DataBuffer {
 public:
 
-    FileBuffer(size_t nElements, const arrus::framework::NdArray::Shape& shape) {
+    FileBuffer(size_t nElements, const arrus::framework::NdStorage::Shape& shape) {
         for(size_t i = 0; i < nElements; ++i) {
             elements.push_back(std::make_shared<FileBufferElement>(i, shape));
         }

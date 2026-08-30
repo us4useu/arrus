@@ -8,13 +8,13 @@ namespace arrus::devices {
 class FileBufferElement: public arrus::framework::BufferElement {
 public:
 
-    FileBufferElement(size_t position, const arrus::framework::NdArray::Shape& shape) {
+    FileBufferElement(size_t position, const arrus::framework::NdStorage::Shape& shape) {
         this->size = shape.product(); // The number of int16 elements.
         this->data = new int16_t[size];
-        this->ndarray = arrus::framework::NdArray{
+        this->ndarray = arrus::framework::NdStorage{
             this->data,
             shape,
-            arrus::framework::NdArray::DataType::INT16,
+            arrus::framework::NdStorage::DataType::INT16,
             DeviceId(DeviceType::CPU, 0)
         };
         this->dataView = this->ndarray.view();
@@ -70,15 +70,15 @@ public:
         this->dataView = ndarray.slice(i, begin, end);
     }
 
-    framework::NdArray &getData() override { return dataView; }
-    framework::NdArray &getData(ArrayId) override {
+    framework::NdStorage &getData() override { return dataView; }
+    framework::NdStorage &getData(ArrayId) override {
         throw ArrusException("get data (ordinal) for file device is not implemented.");
     }
     uint16 getNumberOfArrays() const override {
         return 1;
     }
 
-    arrus::framework::NdArray &getAllData() {return ndarray; }
+    arrus::framework::NdStorage &getAllData() {return ndarray; }
     size_t getSize() override { return size*sizeof(int16_t); }
     size_t getPosition() override { return position; }
     State getState() const override { return state; }
@@ -89,14 +89,14 @@ private:
     std::condition_variable readyForRead;
     int16_t *data{nullptr};
     size_t size;
-    // NdArray: view of the above data pointer.
-    arrus::framework::NdArray ndarray{
+    // NdStorage: view of the above data pointer.
+    arrus::framework::NdStorage ndarray{
         data,
-        arrus::framework::NdArray::Shape{},
-        arrus::framework::NdArray::DataType::INT16,
+        arrus::framework::NdStorage::Shape{},
+        arrus::framework::NdStorage::DataType::INT16,
         DeviceId{DeviceType::CPU, 0}
     };
-    arrus::framework::NdArray dataView;
+    arrus::framework::NdStorage dataView;
     size_t position;
     State state{arrus::framework::BufferElement::State::FREE};
     bool isClosed{false};

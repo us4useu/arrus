@@ -18,7 +18,7 @@ using namespace arrus;
 using namespace arrus::devices;
 using namespace arrus::devices::us4r;
 using namespace arrus::ops::us4r;
-using ::arrus::framework::NdArray;
+using ::arrus::framework::NdStorage;
 
 class A2OConverterTest : public ::testing::Test {
 protected:

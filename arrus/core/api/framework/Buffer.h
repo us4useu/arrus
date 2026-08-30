@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <functional>
-#include "NdArray.h"
+#include "NdStorage.h"
 
 namespace arrus::framework {
 
@@ -29,25 +29,25 @@ public:
      * is kept for backward compatibility, and always gives the access
      * to the first element of the tuple.
      *
-     * @return NdArray with data
+     * @return NdStorage with data
      */
-    virtual NdArray& getData(ArrayId id) = 0;
+    virtual NdStorage& getData(ArrayId id) = 0;
 
     /**
      * Returns output data, with the ordinal 0.
      *
      * See also getData(ArrayId ordinal).
      *
-     * @return NdArray with data
+     * @return NdStorage with data
      */
-    virtual NdArray& getData() = 0;
+    virtual NdStorage& getData() = 0;
 
     /**
      * Returns the size of this buffer element.
      *
      * NOTE: the size is equal to the sum of the sizes of all subelements
-     * (e.g. in case of an element that stores a tuple of NdArrays, this
-     * method will return the sum of all NdArrays in that tuple).
+     * (e.g. in case of an element that stores a tuple of NdStorages, this
+     * method will return the sum of all NdStorages in that tuple).
      *
      * @return size of the whole element in bytes
      */

@@ -246,7 +246,7 @@ def convert_to_core_parameters(params: Dict[str, Any]):
 
 
 def convert_constants_to_arrus_ndarray(py_constants):
-    result = arrus.core.ArrusNdArrayVector()
+    result = arrus.core.ArrusNdStorageVector()
     for py_const in py_constants:
         value = py_const.value
         if not isinstance(value, np.ndarray):

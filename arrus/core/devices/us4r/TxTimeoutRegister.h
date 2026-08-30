@@ -9,7 +9,7 @@
 
 #include "TxWaveformConverter.h"
 #include "arrus/core/api/common/types.h"
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/framework/NdStorage.h"
 
 #include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/common/hash.h"

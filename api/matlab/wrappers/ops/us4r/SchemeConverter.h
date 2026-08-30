@@ -6,7 +6,7 @@
 #include "api/matlab/wrappers/convert.h"
 #include "api/matlab/wrappers/framework/DataBufferDefConverter.h"
 #include "api/matlab/wrappers/ops/us4r/DigitalDownConversionConverter.h"
-#include "api/matlab/wrappers/framework/NdArrayConverter.h"
+#include "api/matlab/wrappers/framework/NdStorageConverter.h"
 #include "arrus/core/api/arrus.h"
 
 #include <boost/bimap.hpp>
@@ -60,7 +60,7 @@ public:
             getWorkMode(ARRUS_MATLAB_GET_CPP_SCALAR(ctx, std::string, workMode, object)),
             ARRUS_MATLAB_GET_CPP_OPTIONAL_OBJECT(ctx, DigitalDownConversion, DigitalDownConversionConverter,
                                                  digitalDownConversion, object),
-            ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, ::arrus::framework::NdArray, NdArrayConverter, constants, object),
+            ARRUS_MATLAB_GET_CPP_OBJECT_VECTOR(ctx, ::arrus::framework::NdStorage, NdStorageConverter, constants, object),
         };
     }
 
@@ -74,7 +74,7 @@ public:
     SchemeConverter(MexContext::SharedHandle ctx, TxRxSequence txRxSequence, uint16 rxBufferSize,
                     const framework::DataBufferSpec &outputBuffer, Scheme::WorkMode workMode,
                     std::optional<DigitalDownConversion> digitalDownConversion,
-                    std::vector<::arrus::framework::NdArray> constants)
+                    std::vector<::arrus::framework::NdStorage> constants)
         : ctx(std::move(ctx)), txRxSequence(std::move(txRxSequence)), rxBufferSize(rxBufferSize),
           outputBuffer(outputBuffer), workMode(workMode), digitalDownConversion(std::move(digitalDownConversion)),
           constants(std::move(constants)) {}
@@ -107,7 +107,7 @@ private:
     ::arrus::framework::DataBufferSpec outputBuffer;
     Scheme::WorkMode workMode;
     std::optional<DigitalDownConversion> digitalDownConversion;
-    std::vector<::arrus::framework::NdArray> constants;
+    std::vector<::arrus::framework::NdStorage> constants;
 };
 }// namespace arrus::matlab::ops::us4r
 

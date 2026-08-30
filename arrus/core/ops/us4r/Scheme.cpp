@@ -15,7 +15,7 @@ public:
 
     Impl(std::vector<TxRxSequence> txRxSequences, uint16 rxBufferSize,
          const DataBufferSpec &outputBuffer, WorkMode workMode,
-         std::optional<DigitalDownConversion> ddc, const std::vector<NdArray> &constants)
+         std::optional<DigitalDownConversion> ddc, const std::vector<NdStorage> &constants)
         : txRxSequences(std::move(txRxSequences)), rxBufferSize(rxBufferSize), outputBuffer(outputBuffer), workMode(workMode),
           ddc(std::move(ddc)), constants(constants) {}
 
@@ -36,7 +36,7 @@ public:
     [[nodiscard]] const DataBufferSpec &getOutputBuffer() const { return outputBuffer; }
     [[nodiscard]] WorkMode getWorkMode() const { return workMode; }
     [[nodiscard]] const std::optional<DigitalDownConversion> &getDigitalDownConversion() const { return ddc; }
-    [[nodiscard]] const std::vector<NdArray> &getConstants() const { return constants; }
+    [[nodiscard]] const std::vector<NdStorage> &getConstants() const { return constants; }
     std::vector<TxRxSequence> const &getTxRxSequences() const { return txRxSequences; }
 
 private:
@@ -46,7 +46,7 @@ private:
     DataBufferSpec outputBuffer;
     WorkMode workMode{WorkMode::HOST};
     std::optional<DigitalDownConversion> ddc;
-    std::vector<NdArray> constants;
+    std::vector<NdStorage> constants;
 };
 
 Scheme::Scheme() {
@@ -55,7 +55,7 @@ Scheme::Scheme() {
 
 // Scheme
 Scheme::Scheme(TxRxSequence txRxSequence, uint16 rxBufferSize, const DataBufferSpec &outputBuffer, WorkMode workMode,
-               std::optional<DigitalDownConversion> ddc, const std::vector<NdArray> &constants) {
+               std::optional<DigitalDownConversion> ddc, const std::vector<NdStorage> &constants) {
     std::vector<TxRxSequence> sequences = {std::move(txRxSequence)};
     this->impl = UniqueHandle<Impl>::create(
         std::move(sequences), rxBufferSize, outputBuffer, workMode, std::move(ddc), constants
@@ -70,7 +70,7 @@ Scheme &Scheme::operator=(Scheme &&o) noexcept = default;
 const TxRxSequence & Scheme::getTxRxSequence() const {return impl->getTxRxSequence(); }
 const TxRxSequence & Scheme::getTxRxSequence(size_t ordinal) const {return impl->getTxRxSequence(ordinal); }
 const std::vector<TxRxSequence> &Scheme::getTxRxSequences() const {return impl->getTxRxSequences();}
-const std::vector<NdArray> & Scheme::getConstants() const {return impl->getConstants(); }
+const std::vector<NdStorage> & Scheme::getConstants() const {return impl->getConstants(); }
 const std::optional<DigitalDownConversion> & Scheme::getDigitalDownConversion() const { return impl->getDigitalDownConversion(); }
 Scheme::WorkMode Scheme::getWorkMode() const { return impl->getWorkMode(); }
 uint16 Scheme::getRxBufferSize() const { return impl->getRxBufferSize(); }
@@ -88,12 +88,12 @@ SchemeBuilder & SchemeBuilder::addSequence(TxRxSequence sequence) {
     return *this;
 }
 
-SchemeBuilder & SchemeBuilder::addConstant(::arrus::framework::NdArray constant) {
+SchemeBuilder & SchemeBuilder::addConstant(::arrus::framework::NdStorage constant) {
     this->scheme.impl->constants.push_back(std::move(constant));
     return *this;
 }
 
-SchemeBuilder & SchemeBuilder::setConstants(const std::vector<::arrus::framework::NdArray> &constants) {
+SchemeBuilder & SchemeBuilder::setConstants(const std::vector<::arrus::framework::NdStorage> &constants) {
     this->scheme.impl->constants = constants;
     return *this;
 }

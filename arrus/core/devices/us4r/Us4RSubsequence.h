@@ -104,7 +104,7 @@ public:
                 const auto refArray = buffer.getArrayDef(sequenceId);
                 arrays.push_back(Us4OEMBufferArrayDef{
                     refArray.getAddress(),
-                    framework::NdArrayDef({0}, refArray.getDefinition().getDataType()),
+                    framework::NdStorageDef({0}, refArray.getDefinition().getDataType()),
                     {}
                 });
             }
@@ -355,7 +355,7 @@ private:
             std::begin(newParts), std::end(newParts), 0,
             [](const auto &a, const auto &b){return a + b.getNSamples();});
         auto newShape = updateShape(oldShape, newNSamples);
-        auto newDefinition = framework::NdArrayDef{newShape, arrayDef.getDefinition().getDataType()};
+        auto newDefinition = framework::NdStorageDef{newShape, arrayDef.getDefinition().getDataType()};
         // Calculate new address of the array.
         // The new address is the current address + offset caused by the start part.
         auto newAddress = std::begin(newParts)->getAddress();
@@ -371,12 +371,12 @@ private:
         auto emptyArrayShape = refArrayDef.getDefinition().getShape();
         emptyArrayShape.getMutable(0) = 0;// The number of samples.
         return Us4OEMBufferArrayDef {refArrayDef.getAddress(),
-            framework::NdArrayDef{emptyArrayShape, refArrayDef.getDefinition().getDataType()},
+            framework::NdStorageDef{emptyArrayShape, refArrayDef.getDefinition().getDataType()},
             {}
         };
     }
 
-    static framework::NdArray::Shape updateShape(const framework::NdArray::Shape &currentShape, unsigned int totalNSamples) {
+    static framework::NdStorage::Shape updateShape(const framework::NdStorage::Shape &currentShape, unsigned int totalNSamples) {
         if(totalNSamples == 0 || currentShape.empty()) { // Return empty array shape in case there are no samples acquired
             return {0,};
         }

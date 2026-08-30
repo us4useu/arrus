@@ -629,7 +629,7 @@ std::tuple<
 >
 Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 bufferSize, Scheme::WorkMode workMode,
                           const std::optional<DigitalDownConversion> &ddc,
-                          const std::vector<NdArray> &txDelayProfiles) {
+                          const std::vector<NdStorage> &txDelayProfiles) {
     // NOTE: assuming all OEMs are of the same version (legacy or OEM+)
     auto oemDescriptor = getMasterOEM()->getDescriptor();
     // Convert to intermediate representation (TxRxParameters).
@@ -649,7 +649,7 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         },
         rxDelays
     };
-    // Group TX delay profiles by sequence name. Also, validates NdArray names.
+    // Group TX delay profiles by sequence name. Also, validates NdStorage names.
     const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
     sequenceNumberOfTxDelayProfiles.clear();
     for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
@@ -692,13 +692,13 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
 
     // Sequence ordinal number -> OEM -> profile id -> TX delays (2D array (n firings, n channels)).
     // NOTE: if for the given tx sequence and OEM there is no TX delays profile, an empty array should be stored.
-    vector<vector<vector<NdArray>>> oemDelaysByOEMBySequence(noems);
+    vector<vector<vector<NdStorage>>> oemDelaysByOEMBySequence(noems);
 
     // Convert probe sequence -> OEM
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         const auto &s = seqs.at(sId);
         const auto &profiles = mapGetValueOrNone(txDelayProfilesBySequence, s.getName())
-                                  .value_or(vector<NdArray>{});
+                                  .value_or(vector<NdStorage>{});
 
         auto [as, adapterDelays] = probe2Adapter.at(sId).convert(sId, s, profiles);
         auto [oemSeqs, oemDelays] = adapter2OEM.at(sId).convert(sId, as, adapterDelays);
@@ -1653,13 +1653,13 @@ Us4OEM::Variant Us4RImpl::getVariant() {
 
 // Dynamic TX delays setting.
 std::unordered_map<std::string, Us4RImpl::DelayProfiles>
-Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, const std::vector<NdArray> &txDelayProfiles) {
-    // sequence name -> (param ordinal number, NdArray); this structure will be used in order to sort and
+Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, const std::vector<NdStorage> &txDelayProfiles) {
+    // sequence name -> (param ordinal number, NdStorage); this structure will be used in order to sort and
     // check if there are no gaps between constant ordinal numbers.
-    using OrderedArray = std::pair<size_t, NdArray>;
+    using OrderedArray = std::pair<size_t, NdStorage>;
     std::unordered_map<std::string, std::vector<OrderedArray>> arraysBySequence;
     // Actual result map.
-    std::unordered_map<std::string, std::vector<NdArray>> result;
+    std::unordered_map<std::string, std::vector<NdStorage>> result;
 
     std::unordered_set<std::string> sequenceNames;
     for (const auto& s : sequences) {

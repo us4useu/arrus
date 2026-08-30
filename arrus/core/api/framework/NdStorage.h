@@ -1,5 +1,5 @@
-#ifndef ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
-#define ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
+#ifndef ARRUS_CORE_API_FRAMEWORK_ND_STORAGE_H
+#define ARRUS_CORE_API_FRAMEWORK_ND_STORAGE_H
 
 #include <cstring>
 #include <sstream>
@@ -10,7 +10,7 @@
 
 namespace arrus::framework {
 
-class NdArrayDef {
+class NdStorageDef {
 public:
     /** A list of currently supported data types of the output buffer.*/
     enum class DataType { BOOL, UINT8, INT8, UINT16, INT16, UINT32, INT32, FLOAT32, FLOAT64 };
@@ -33,7 +33,7 @@ public:
     /** Array shape. */
     using Shape = Tuple<size_t>;
 
-    NdArrayDef(Shape shape, DataType dataType) : shape(std::move(shape)), dataType(dataType) {}
+    NdStorageDef(Shape shape, DataType dataType) : shape(std::move(shape)), dataType(dataType) {}
 
     DataType getDataType() const { return dataType; }
 
@@ -55,50 +55,50 @@ private:
  * CPU:0 placement means that the data is located in host computer's RAM.
  *
  */
-class NdArray {
+class NdStorage {
 public:
     /** A list of currently supported data types of the output buffer.*/
-    using DataType = NdArrayDef::DataType;
-    using Shape = NdArrayDef::Shape;
+    using DataType = NdStorageDef::DataType;
+    using Shape = NdStorageDef::Shape;
 
     static size_t getDataTypeSize(DataType type) {
-        return NdArrayDef::getDataTypeSize(type);
+        return NdStorageDef::getDataTypeSize(type);
     }
 
     template<typename T> static DataType getDataType() { throw IllegalArgumentException("Unsupported data type."); }
 
-    template<typename T> static NdArray asarray(const std::vector<T> &vector) {
+    template<typename T> static NdStorage asarray(const std::vector<T> &vector) {
         Shape shape = {vector.size()};
         DataType dataType = getDataType<T>();
         devices::DeviceId placement{devices::DeviceType::CPU, 0};
-        NdArray result{shape, dataType, placement};
+        NdStorage result{shape, dataType, placement};
         if (!vector.empty()) {
             std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
         }
         return std::move(result);
     }
 
-    template<typename T> static NdArray asarray(const std::vector<T> &vector,
+    template<typename T> static NdStorage asarray(const std::vector<T> &vector,
                     const Shape &shape, const ::arrus::devices::DeviceId &placement, const std::string &name) {
         DataType dataType = getDataType<T>();
-        NdArray result{shape, dataType, placement, name};
+        NdStorage result{shape, dataType, placement, name};
         if (!vector.empty()) {
             std::memcpy(result.ptr, (char *) vector.data(), result.sizeBytes);
         }
         return std::move(result);
     }
 
-    template<typename T> static NdArray asarray(const T *data, const Shape &shape, const std::string &name) {
+    template<typename T> static NdStorage asarray(const T *data, const Shape &shape, const std::string &name) {
         DataType dataType = getDataType<T>();
         devices::DeviceId placement{devices::DeviceType::CPU, 0};
-        NdArray result{shape, dataType, placement, name};
+        NdStorage result{shape, dataType, placement, name};
         std::memcpy(result.ptr, (char *) data, result.sizeBytes);
         return std::move(result);
     }
 
-    NdArray() : ptr(nullptr), placement(devices::DeviceId(devices::DeviceType::CPU, 0)) {}
+    NdStorage() : ptr(nullptr), placement(devices::DeviceId(devices::DeviceType::CPU, 0)) {}
 
-    NdArray(Shape shape, DataType dataType, devices::DeviceId placement, std::string name = "")
+    NdStorage(Shape shape, DataType dataType, devices::DeviceId placement, std::string name = "")
         : shape(std::move(shape)), dataType(dataType), placement(std::move(placement)), isView(false),
           name(std::move(name)) {
 
@@ -107,12 +107,12 @@ public:
         std::memset((char *) (this->ptr), 0, this->sizeBytes);
     }
 
-    NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement)
+    NdStorage(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement)
         : ptr(ptr), shape(std::move(shape)), dataType(dataType), placement(placement), isView(true) {
         this->sizeBytes = this->shape.product() * getDataTypeSize(this->dataType);
     }
 
-    NdArray(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement, std::string name,
+    NdStorage(void *ptr, Shape shape, DataType dataType, const devices::DeviceId &placement, std::string name,
             bool isView)
         : shape(std::move(shape)), dataType(dataType), placement(placement), isView(isView), name(std::move(name)) {
         this->sizeBytes = this->shape.product() * getDataTypeSize(this->dataType);
@@ -124,7 +124,7 @@ public:
         }
     }
 
-    NdArray(const NdArray &other)
+    NdStorage(const NdStorage &other)
         : shape(std::move(other.shape)), dataType(other.dataType), placement(other.placement), isView(other.isView),
           name(other.name), sizeBytes(other.sizeBytes) {
         if (other.isView) {
@@ -135,14 +135,14 @@ public:
         }
     }
 
-    NdArray(NdArray &&other)
+    NdStorage(NdStorage &&other)
         : ptr(other.ptr), shape(std::move(other.shape)), dataType(other.dataType), placement(other.placement),
           isView(other.isView), name(other.name), sizeBytes(other.sizeBytes) {
         other.ptr = nullptr;
         other.sizeBytes = 0;
     }
 
-    NdArray &operator=(NdArray &&rhs) noexcept {
+    NdStorage &operator=(NdStorage &&rhs) noexcept {
         if (this == &rhs) {
             return *this;
         }
@@ -164,9 +164,9 @@ public:
         return *this;
     }
 
-    NdArrayDef getDef() { return NdArrayDef{shape, dataType}; }
+    NdStorageDef getDef() { return NdStorageDef{shape, dataType}; }
 
-    NdArray &operator=(const NdArray &rhs) noexcept {
+    NdStorage &operator=(const NdStorage &rhs) noexcept {
         if (this == &rhs) {
             return *this;
         }
@@ -192,12 +192,12 @@ public:
         return *this;
     }
 
-    NdArray zerosLike() const {
-        NdArray array(this->shape, this->dataType, this->placement, this->name);
+    NdStorage zerosLike() const {
+        NdStorage array(this->shape, this->dataType, this->placement, this->name);
         return array;
     }
 
-    virtual ~NdArray() {
+    virtual ~NdStorage() {
         if (!isView && this->ptr != nullptr && this->sizeBytes > 0) {
             // NOTE: migration to new framework API: the non-view ndarrays will have the char* ptr property.
             delete[] (char *) ptr;
@@ -268,7 +268,7 @@ public:
 
     template<typename T> void set(size_t i, T value) {
         if (!this->isView) {
-            throw IllegalArgumentException("The NdArray value setter can be used only for non-view NdArrays.");
+            throw IllegalArgumentException("The NdStorage value setter can be used only for non-view NdStorages.");
         }
         T *dst = (char *) ptr + i * sizeof(T);
         *dst = value;
@@ -288,12 +288,12 @@ public:
 
     DataType getDataType() const { return dataType; }
 
-    NdArray view() const { return NdArray{ptr, shape, dataType, placement}; }
+    NdStorage view() const { return NdStorage{ptr, shape, dataType, placement}; }
 
     /**
     * Returns a view to this array limited to begin:end on the index i.
     */
-    NdArray slice(size_t i, int begin, int end) const {
+    NdStorage slice(size_t i, int begin, int end) const {
         size_t multiplier = 1;
         for (size_t j = shape.size() - 1; j > i; --j) {
             multiplier *= shape[j];
@@ -302,14 +302,14 @@ public:
             end = (int) shape[i];
         }
         Shape newShape = shape.set(i, end - begin);
-        return NdArray{((int16_t *) ptr) + multiplier * begin, newShape, dataType, placement};
+        return NdStorage{((int16_t *) ptr) + multiplier * begin, newShape, dataType, placement};
     }
 
     /**
      * Returns a view to this array with axis=0 set to the given value.
      * For example, to get the jth row: array.row(j).
      */
-    NdArray row(size_t value) const {
+    NdStorage row(size_t value) const {
         if(shape.size() != 2) {
             throw IllegalArgumentException("Only 2D arrays are supported");
         }
@@ -320,7 +320,7 @@ public:
         }
         const Shape newShape = {nColumns};
         const size_t offsetBytes = value * nColumns * getDataTypeSize(dataType);
-        return NdArray{(char *) ptr + offsetBytes, newShape, dataType, placement};
+        return NdStorage{(char *) ptr + offsetBytes, newShape, dataType, placement};
     }
 
     const devices::DeviceId &getPlacement() const { return placement; }
@@ -369,18 +369,18 @@ private:
 };
 
 // Specialziations.
-template<> inline NdArray::DataType NdArray::getDataType<bool>() { return DataType::BOOL; }
-template<> inline NdArray::DataType NdArray::getDataType<uint8>() { return DataType::UINT8; }
-template<> inline NdArray::DataType NdArray::getDataType<int8>() { return DataType::INT8; }
-template<> inline NdArray::DataType NdArray::getDataType<uint16>() { return DataType::UINT16; }
-template<> inline NdArray::DataType NdArray::getDataType<int16>() { return DataType::INT16; }
-template<> inline NdArray::DataType NdArray::getDataType<uint32>() { return DataType::UINT32; }
-template<> inline NdArray::DataType NdArray::getDataType<int32>() { return DataType::INT32; }
-template<> inline NdArray::DataType NdArray::getDataType<float32>() { return DataType::FLOAT32; }
-template<> inline NdArray::DataType NdArray::getDataType<double>() { return DataType::FLOAT64; }
+template<> inline NdStorage::DataType NdStorage::getDataType<bool>() { return DataType::BOOL; }
+template<> inline NdStorage::DataType NdStorage::getDataType<uint8>() { return DataType::UINT8; }
+template<> inline NdStorage::DataType NdStorage::getDataType<int8>() { return DataType::INT8; }
+template<> inline NdStorage::DataType NdStorage::getDataType<uint16>() { return DataType::UINT16; }
+template<> inline NdStorage::DataType NdStorage::getDataType<int16>() { return DataType::INT16; }
+template<> inline NdStorage::DataType NdStorage::getDataType<uint32>() { return DataType::UINT32; }
+template<> inline NdStorage::DataType NdStorage::getDataType<int32>() { return DataType::INT32; }
+template<> inline NdStorage::DataType NdStorage::getDataType<float32>() { return DataType::FLOAT32; }
+template<> inline NdStorage::DataType NdStorage::getDataType<double>() { return DataType::FLOAT64; }
 
-template<typename T> NdArray asarray(std::vector<T> vec) { return std::move(NdArray::asarray<T>(vec)); }
+template<typename T> NdStorage asarray(std::vector<T> vec) { return std::move(NdStorage::asarray<T>(vec)); }
 
 }// namespace arrus::framework
 
-#endif//ARRUS_CORE_API_FRAMEWORK_ND_ARRAY_H
+#endif//ARRUS_CORE_API_FRAMEWORK_ND_STORAGE_H

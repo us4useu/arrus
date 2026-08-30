@@ -121,7 +121,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
 
     Us4OEMBufferArrayDef arrayDefOEM0{
         0,
-        framework::NdArrayDef{{4 * 4096, 1}, arrus::framework::NdArrayDef::DataType::INT16},
+        framework::NdStorageDef{{4 * 4096, 1}, arrus::framework::NdStorageDef::DataType::INT16},
         {Us4OEMBufferArrayPart{
              0,
              4096,
@@ -153,7 +153,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyASingleInputSequence) {
 
     Us4OEMBufferArrayDef arrayDefOEM1{
         0,
-        framework::NdArrayDef{{4 * 4096, 1}, arrus::framework::NdArrayDef::DataType::INT16},
+        framework::NdStorageDef{{4 * 4096, 1}, arrus::framework::NdStorageDef::DataType::INT16},
         {Us4OEMBufferArrayPart{
              0,
              4096,
@@ -381,7 +381,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     Us4OEMBufferArrayDef arrayDefOEM0Seq0{
         // OEM 0
         0,
-        framework::NdArrayDef{{2 * 4096, 1}, arrus::framework::NdArrayDef::DataType::INT16},
+        framework::NdStorageDef{{2 * 4096, 1}, arrus::framework::NdStorageDef::DataType::INT16},
         {
             Us4OEMBufferArrayPart{
                 0,
@@ -402,7 +402,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     Us4OEMBufferArrayDef arrayDefOEM1Seq0{
         // OEM 1
         0,
-        framework::NdArrayDef{{2 * 4096, 1}, arrus::framework::NdArrayDef::DataType::INT16},
+        framework::NdStorageDef{{2 * 4096, 1}, arrus::framework::NdStorageDef::DataType::INT16},
         {Us4OEMBufferArrayPart{
              0,
              4096,
@@ -421,7 +421,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     // Output array: sequence 1
     Us4OEMBufferArrayDef arrayDefOEM0Seq1{ // OEM 0
         0,
-        framework::NdArrayDef{{1 * 4096, 1}, arrus::framework::NdArrayDef::DataType::INT16},
+        framework::NdStorageDef{{1 * 4096, 1}, arrus::framework::NdStorageDef::DataType::INT16},
         {Us4OEMBufferArrayPart{
             0,
             4096,
@@ -432,7 +432,7 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
 
     Us4OEMBufferArrayDef arrayDefOEM1Seq1{ // OEM 1
         0,
-        framework::NdArrayDef{{0 * 4096, 1}, arrus::framework::NdArrayDef::DataType::INT16},
+        framework::NdStorageDef{{0 * 4096, 1}, arrus::framework::NdStorageDef::DataType::INT16},
         {Us4OEMBufferArrayPart{
             0,
             0,

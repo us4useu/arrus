@@ -21,7 +21,7 @@ class Us4OEMApertureSplitter {
 public:
     using SequenceByOEM = std::vector<::arrus::devices::us4r::TxRxParametersSequence>;
     using SequenceBuilderByOEM = std::vector<::arrus::devices::us4r::TxRxParametersSequenceBuilder>;
-    using DelayProfileByOEM = std::unordered_map<Ordinal, std::vector<framework::NdArray>>;
+    using DelayProfileByOEM = std::unordered_map<Ordinal, std::vector<framework::NdStorage>>;
 
     struct Result {
         // recaculated sequences
@@ -30,7 +30,7 @@ public:
         Eigen::Tensor<FrameChannelMapping::FrameNumber, 3> physicalFrame;
         // a mapping (module, input op index, rx channel) -> output frame rx channel
         Eigen::Tensor<int8, 3> physicalChannel;
-        std::unordered_map<Ordinal, std::vector<framework::NdArray>> delayProfiles;
+        std::unordered_map<Ordinal, std::vector<framework::NdStorage>> delayProfiles;
         LogicalToPhysicalOp logicalToPhysicalMap;
     };
 
@@ -81,7 +81,7 @@ public:
                                                                     maxRxApertureSize);
         // (module, logical frame, logical rx channel) -> physical rx channel
         Eigen::Tensor<int8, 3> opDestChannel(sequences.size(), numberOfFrames, maxRxApertureSize);
-        std::unordered_map<Ordinal, std::vector<arrus::framework::NdArray>> outputTxDelayProfiles;
+        std::unordered_map<Ordinal, std::vector<arrus::framework::NdStorage>> outputTxDelayProfiles;
         std::vector<size_t> srcOpIdx;// srcOpIdx[output op idx] = input op idx (before splitting into sub-apertures)
 
         opDestOp.setZero();
@@ -241,13 +241,13 @@ public:
         } else {
             for (size_t seqIdx = 0; seqIdx < result.size(); ++seqIdx) {
                 size_t nOps = result[seqIdx].size();
-                framework::NdArray::Shape shape{nOps, Us4OEMDescriptor::N_TX_CHANNELS};
-                framework::NdArray::DataType dataType = framework::NdArray::DataType::FLOAT32;
-                std::vector<::arrus::framework::NdArray> outputProfiles;
+                framework::NdStorage::Shape shape{nOps, Us4OEMDescriptor::N_TX_CHANNELS};
+                framework::NdStorage::DataType dataType = framework::NdStorage::DataType::FLOAT32;
+                std::vector<::arrus::framework::NdStorage> outputProfiles;
                 for (auto &profile : delayProfiles.at(static_cast<uint16_t>(seqIdx))) {
                     const DeviceId &placement = profile.getPlacement();
                     const std::string &name = profile.getName();
-                    ::arrus::framework::NdArray outputProfile(shape, dataType, placement, name);
+                    ::arrus::framework::NdStorage outputProfile(shape, dataType, placement, name);
                     for (size_t opIdx = 0; opIdx < nOps; ++opIdx) {
                         for (size_t ch = 0; ch < shape.get(1); ++ch) {
                             outputProfile.set(opIdx, ch, profile.get<float>(srcOpIdx[opIdx], ch));

@@ -13,7 +13,7 @@
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/session/Metadata.h"
 #include "arrus/core/api/devices/FileSettings.h"
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/framework/NdStorage.h"
 #include "arrus/core/devices/file/FileBuffer.h"
 #include "arrus/core/devices/file/FileBufferElement.h"
 #include "arrus/core/api/common/Parameters.h"
@@ -69,7 +69,7 @@ private:
     std::thread consumerThread;
     FileSettings settings;
     std::vector<Frame> dataset;
-    arrus::framework::NdArray::Shape frameShape;
+    arrus::framework::NdStorage::Shape frameShape;
     std::optional<ops::us4r::Scheme> currentScheme;
     float currentFs;
     std::shared_ptr<FileBuffer> buffer;

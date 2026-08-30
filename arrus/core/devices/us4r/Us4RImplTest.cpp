@@ -145,11 +145,11 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
 //    EXPECT_EQ(buffer0->getNumberOfElements(), 1);
 //    auto &element0 = buffer0->getElement(0);
 //    unsigned nSamples = 4096;
-//    EXPECT_EQ(element0.getShape(), NdArray::Shape({2 * 2 * 2 * nSamples, 32}));// 2 TX/RXs, 2 OEMs, 2 subapertures
+//    EXPECT_EQ(element0.getShape(), NdStorage::Shape({2 * 2 * 2 * nSamples, 32}));// 2 TX/RXs, 2 OEMs, 2 subapertures
 //    auto us4oemBuffer00 = buffer0->getUs4oemBuffer(0);
 //    auto us4oemBuffer01 = buffer0->getUs4oemBuffer(1);
 //    // OEM 0 layout
-//    NdArray::Shape expectedShape0 = {4 * nSamples, 32};
+//    NdStorage::Shape expectedShape0 = {4 * nSamples, 32};
 //    size_t expectedSize0 = expectedShape0.product() * sizeof(int16);
 //    std::vector<uint16> timeoutIds;
 //    EXPECT_EQ(us4oemBuffer00.getNumberOfElements(), 1);
@@ -172,11 +172,11 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
 //    // Buffer 1
 //    EXPECT_EQ(buffer1->getNumberOfElements(), 1);
 //    auto &element1 = buffer1->getElement(0);
-//    EXPECT_EQ(element1.getShape(), NdArray::Shape({2 * 2 * 2 * nSamples, 32}));// 2 TX/RXs, 2 OEMs, 2 subapertures
+//    EXPECT_EQ(element1.getShape(), NdStorage::Shape({2 * 2 * 2 * nSamples, 32}));// 2 TX/RXs, 2 OEMs, 2 subapertures
 //    auto us4oemBuffer10 = buffer1->getUs4oemBuffer(0);
 //    auto us4oemBuffer11 = buffer1->getUs4oemBuffer(1);
 //    // OEM 0 layout
-//    NdArray::Shape expectedShape1 = {4 * nSamples, 32};
+//    NdStorage::Shape expectedShape1 = {4 * nSamples, 32};
 //    size_t expectedSize1 = expectedShape1.product() * sizeof(int16);
 //    EXPECT_EQ(us4oemBuffer10.getNumberOfElements(), 1);
 //    EXPECT_EQ(us4oemBuffer10.getElement(0).getViewSize(), expectedSize1);
@@ -199,11 +199,11 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
 //    // Buffer 2
 //    EXPECT_EQ(buffer2->getNumberOfElements(), 1);
 //    auto &element2 = buffer2->getElement(0);
-//    EXPECT_EQ(element2.getShape(), NdArray::Shape({3 * 2 * 2 * nSamples, 32}));// 3 TX/RXs, 2 OEMs, 2 subapertures
+//    EXPECT_EQ(element2.getShape(), NdStorage::Shape({3 * 2 * 2 * nSamples, 32}));// 3 TX/RXs, 2 OEMs, 2 subapertures
 //    auto us4oemBuffer20 = buffer2->getUs4oemBuffer(0);
 //    auto us4oemBuffer21 = buffer2->getUs4oemBuffer(1);
 //    // OEM 0 layout
-//    NdArray::Shape expectedShape2 = {6 * nSamples, 32};
+//    NdStorage::Shape expectedShape2 = {6 * nSamples, 32};
 //    size_t expectedSize2 = expectedShape2.product() * sizeof(int16);
 //    EXPECT_EQ(us4oemBuffer20.getNumberOfElements(), 1);
 //    EXPECT_EQ(us4oemBuffer20.getElement(0).getViewSize(), expectedSize2);

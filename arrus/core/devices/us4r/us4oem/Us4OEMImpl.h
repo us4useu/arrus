@@ -21,7 +21,7 @@
 #include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/devices/us4r/Us4OEMSettings.h"
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/framework/NdStorage.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/TxRxParameters.h"
@@ -60,7 +60,7 @@ public:
     using RawHandle = PtrHandle<Us4OEMImpl>;
     using FiringId = uint16;
     using RawDataType = int16;
-    static constexpr framework::NdArray::DataType DataType = framework::NdArray::DataType::INT16;
+    static constexpr framework::NdStorage::DataType DataType = framework::NdStorage::DataType::INT16;
 
     static bool isOEMPlus(uint32_t version)  {
         return version >= 2;
@@ -89,7 +89,7 @@ public:
     Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
                               ops::us4r::Scheme::WorkMode workMode,
                               const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                              const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
+                              const std::vector<std::vector<arrus::framework::NdStorage>> &txDelays,
                               const std::vector<TxTimeout> &txTimeouts) override;
 
     float getSamplingFrequency() override;
@@ -197,7 +197,7 @@ private:
     Us4OEMChannelsGroupsMask getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture);
     void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                       const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
+                       const std::vector<std::vector<arrus::framework::NdStorage>> &txDelays,
                        const Us4OEMRxMappingRegister &rxMappingRegister);
     std::pair<size_t, float> scheduleReceiveDDC(size_t outputAddress,
                                                 uint32 startSample, uint32 endSample, uint16 entryId,

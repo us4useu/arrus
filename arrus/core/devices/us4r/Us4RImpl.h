@@ -35,7 +35,7 @@ namespace arrus::devices {
 class Us4RImpl : public Us4R {
 public:
     using Us4OEMs = std::vector<Us4OEMImplBase::Handle>;
-    using DelayProfiles = std::vector<::arrus::framework::NdArray>;
+    using DelayProfiles = std::vector<::arrus::framework::NdStorage>;
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
@@ -201,7 +201,7 @@ private:
     >
     uploadSequences(const std::vector<ops::us4r::TxRxSequence> &sequences, uint16_t bufferSize,
                     ops::us4r::Scheme::WorkMode workMode, const std::optional<ops::us4r::DigitalDownConversion> &ddc,
-                    const std::vector<framework::NdArray> &txDelayProfiles);
+                    const std::vector<framework::NdStorage> &txDelayProfiles);
     us4r::TxRxParameters createBitstreamSequenceSelectPreamble(const ops::us4r::TxRxSequence &sequence);
     std::vector<us4r::TxRxParametersSequence>
     convertToInternalSequences(
@@ -260,7 +260,7 @@ private:
      */
     std::unordered_map<std::string, DelayProfiles>
     groupTxDelaysBySequence(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences,
-                            const std::vector<::arrus::framework::NdArray> &txDelayProfiles);
+                            const std::vector<::arrus::framework::NdStorage> &txDelayProfiles);
 
     std::tuple<std::string, std::string, size_t> parseTxDelaysConstantName(const std::string &name) const;
     std::tuple<std::string, std::string> parseTxDelaysParamName(const std::string &name) const;

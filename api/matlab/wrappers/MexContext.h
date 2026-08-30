@@ -111,12 +111,12 @@ public:
         }
     }
 
-    ::matlab::data::Array createArray(const ::arrus::framework::NdArray &array) {
+    ::matlab::data::Array createArray(const ::arrus::framework::NdStorage &array) {
         try {
             switch(array.getDataType()) {
-            case ::arrus::framework::NdArray::DataType::INT16:
+            case ::arrus::framework::NdStorage::DataType::INT16:
                 return createTypedArray<::arrus::int16>(array);
-            case ::arrus::framework::NdArray::DataType::FLOAT32:
+            case ::arrus::framework::NdStorage::DataType::FLOAT32:
                 return createTypedArray<::arrus::float64>(array);
             default:
                 throw IllegalArgumentException(format("Unhandled arrus data type: {}",
@@ -128,7 +128,7 @@ public:
     }
 
     template<typename T>
-    ::matlab::data::Array createTypedArray(const ::arrus::framework::NdArray &array) {
+    ::matlab::data::Array createTypedArray(const ::arrus::framework::NdStorage &array) {
         ::matlab::data::ArrayDimensions dims = array.getShape().getValues();
         // Note: C-contiguous shape to F-shape (just reverse orders).
         std::reverse(std::begin(dims), std::end(dims));
@@ -139,7 +139,7 @@ public:
     }
 
     template<typename T>
-    ::matlab::data::Array createTypedArray(const std::vector<T> &array, const framework::NdArray::Shape &shape) {
+    ::matlab::data::Array createTypedArray(const std::vector<T> &array, const framework::NdStorage::Shape &shape) {
         ::matlab::data::ArrayDimensions dims = shape.getValues();
         // Note: C-contiguous shape to F-shape (just reverse orders).
         std::reverse(std::begin(dims), std::end(dims));
@@ -152,14 +152,14 @@ public:
         return getArrayFactory().createArray(dims, start, end);
     }
 
-    ::arrus::framework::NdArray createNdArray(const ::matlab::data::Array &array,
+    ::arrus::framework::NdStorage createNdStorage(const ::matlab::data::Array &array,
                                               const std::string &placement, const std::string &name) {
         try {
             switch(array.getType()) {
             case ::matlab::data::ArrayType::SINGLE:
-                return createTypedNdArrayCastFloat(array, placement, name);
+                return createTypedNdStorageCastFloat(array, placement, name);
             case ::matlab::data::ArrayType::DOUBLE:
-                return createTypedNdArrayCastFloat(array, placement, name);
+                return createTypedNdStorageCastFloat(array, placement, name);
             default:
                 throw IllegalArgumentException(format("Unhandled arrus data type: {}",
                                                       std::to_string(size_t(array.getType()))));
@@ -169,12 +169,12 @@ public:
         }
     }
 
-    ::arrus::framework::NdArray createTypedNdArrayCastFloat(
+    ::arrus::framework::NdStorage createTypedNdStorageCastFloat(
         const ::matlab::data::TypedArray<double> &array, const std::string &placement,
         const std::string &name) {
 
         if(array.isEmpty()) {
-            return ::arrus::framework::NdArray();
+            return ::arrus::framework::NdStorage();
         }
         ::matlab::data::ArrayDimensions dims = array.getDimensions();
         if(array.getMemoryLayout() == ::matlab::data::MemoryLayout::COLUMN_MAJOR) {
@@ -182,7 +182,7 @@ public:
             std::reverse(std::begin(dims), std::end(dims));
         }
 
-        const auto shape = ::arrus::framework::NdArrayDef::Shape(dims);
+        const auto shape = ::arrus::framework::NdStorageDef::Shape(dims);
         const auto p = ::arrus::devices::DeviceId::parse(placement);
 
         // TODO: we are doing double copy here..., so this is not the most optimal way to upload constants,
@@ -192,7 +192,7 @@ public:
             std::begin(array), std::end(array), std::begin(values),
             [](const auto v){return (float)v; }
         );
-        return ::arrus::framework::NdArray::asarray<float>(values, shape, p, name);
+        return ::arrus::framework::NdStorage::asarray<float>(values, shape, p, name);
     }
 
 private:

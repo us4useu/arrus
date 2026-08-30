@@ -167,7 +167,7 @@ public:
         // shape
         size_t nFrames = fcm->getNumberOfLogicalFrames();
         size_t nChannels = fcm->getNumberOfLogicalChannels();
-        framework::NdArray::Shape fcmArrayShape = {nFrames, nChannels};
+        framework::NdStorage::Shape fcmArrayShape = {nFrames, nChannels};
         size_t fcmArraySize = fcmArrayShape.product();
 
 

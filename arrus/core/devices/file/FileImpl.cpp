@@ -67,7 +67,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> FileImpl::u
     nRx += seq.getOps()[0].getRx().getPadding().first;
     nRx += seq.getOps()[0].getRx().getPadding().second;
     size_t nValues = this->currentScheme->getDigitalDownConversion().has_value() ? 2 : 1;// I/Q or raw data.
-    this->frameShape = NdArray::Shape{1, nTx, nRx, nSamples, nValues};
+    this->frameShape = NdStorage::Shape{1, nTx, nRx, nSamples, nValues};
     this->txBegin = 0;
     this->txEnd = (int) nTx;
     // Check if the frame size from the dataset corresponds corresponds to the given frame shape.

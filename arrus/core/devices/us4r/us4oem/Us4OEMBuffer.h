@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "arrus/core/api/common/types.h"
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/framework/NdStorage.h"
 #include "arrus/core/common/collections.h"
 
 namespace arrus::devices {
@@ -53,13 +53,13 @@ using Us4OEMBufferElementParts = std::vector<Us4OEMBufferArrayParts>;
 
 class Us4OEMBufferArrayDef {
 public:
-    Us4OEMBufferArrayDef(size_t address, framework::NdArrayDef definition, Us4OEMBufferArrayParts parts)
+    Us4OEMBufferArrayDef(size_t address, framework::NdStorageDef definition, Us4OEMBufferArrayParts parts)
         : address(address), definition(std::move(definition)), parts(std::move(parts)) {}
 
     /** Array address, relative to the buffer element address */
     size_t getAddress() const { return address; }
 
-    const framework::NdArrayDef &getDefinition() const { return definition; }
+    const framework::NdStorageDef &getDefinition() const { return definition; }
     const Us4OEMBufferArrayParts &getParts() const { return parts; }
 
     /** The number of bytes this OEM produces. */
@@ -73,7 +73,7 @@ public:
 
 private:
     size_t address;
-    framework::NdArrayDef definition;
+    framework::NdStorageDef definition;
     Us4OEMBufferArrayParts parts;
 };
 
@@ -170,7 +170,7 @@ public:
 
 private:
     std::vector<Us4OEMBufferElement> elements;
-    /** Array id -> array defintion (NdArray defintion + parts) */
+    /** Array id -> array defintion (NdStorage defintion + parts) */
     std::vector<Us4OEMBufferArrayDef> arrayDefs;
 };
 

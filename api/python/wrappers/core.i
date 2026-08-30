@@ -282,7 +282,7 @@ using namespace ::arrus;
 // ------------------------------------------ FRAMEWORK
 
 %{
-#include "arrus/core/api/framework/NdArray.h"
+#include "arrus/core/api/framework/NdStorage.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBuffer.h"
@@ -303,8 +303,8 @@ namespace arrus {
     %template(IntervalVoltage) Interval<Voltage>;
 };
 
-%ignore arrus::framework::NdArray::NdArray;
-%include "arrus/core/api/framework/NdArray.h"
+%ignore arrus::framework::NdStorage::NdStorage;
+%include "arrus/core/api/framework/NdStorage.h"
 
 %include "arrus/core/api/devices/us4r/FrameChannelMapping.h"
 %include "arrus/core/api/framework/DataBufferSpec.h"
@@ -568,7 +568,7 @@ using namespace arrus::ops::us4r;
 
 namespace std {
 %template(TxRxVector) vector<arrus::ops::us4r::TxRx>;
-%template(ArrusNdArrayVector) vector<arrus::framework::NdArray>;
+%template(ArrusNdStorageVector) vector<arrus::framework::NdStorage>;
 %template(SliceVector) vector<arrus::Slice>;
 %template(OptionalFloatVector) vector<std::optional<float>>;
 };
@@ -584,16 +584,16 @@ void VectorFloatPushBack(std::vector<float> &vector, double value) {
 }
 
 void Arrus2dArrayVectorPushBack(
-    std::vector<arrus::framework::NdArray> &arrays,
+    std::vector<arrus::framework::NdStorage> &arrays,
     size_t nRows, size_t nCols, std::vector<float> values, const std::string &placementName, size_t placementOrdinal,
     const std::string &arrayName
 ) {
-    ::arrus::framework::NdArray::Shape shape = {nRows, nCols};
+    ::arrus::framework::NdStorage::Shape shape = {nRows, nCols};
     ::arrus::devices::DeviceId placement(::arrus::devices::parseToDeviceTypeEnum(placementName), placementOrdinal);
-    ::arrus::framework::NdArray array(
+    ::arrus::framework::NdStorage array(
         (void*)values.data(),
         shape,
-        ::arrus::framework::NdArray::DataType::FLOAT32,
+        ::arrus::framework::NdStorage::DataType::FLOAT32,
         placement,
         arrayName,
         false // is view => copy
