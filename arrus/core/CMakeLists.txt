@@ -167,7 +167,11 @@ set(SRC_FILES
     devices/us4r/us4oem/Us4OEMBuffer.h
     api/ops/us4r/Scheme.h
     api/framework/Buffer.h
-    api/framework/NdArray.h
+    api/framework/NdStorage.h
+    api/framework/DType.h
+    api/framework/DeviceRef.h
+    api/framework/Shape.h
+    api/framework/NdArrayType.h
     api/session/UploadResult.h
     api/framework/DataBufferSpec.h
     api/framework/Buffer.h
@@ -287,6 +291,8 @@ if (ARRUS_RUN_TESTS)
     find_package(GTest REQUIRED)
 
     set(ARRUS_CORE_DEVICES_TESTS_SRCS devices/DeviceId.cpp common/logging.cpp)
+    # core::framework type-descriptor tests (header-only headers under api/framework/)
+    create_core_test(framework/NdArrayTypeTest.cpp)
     # core::devices test
     create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/utilsTest.cpp)
