@@ -54,4 +54,5 @@ message Us4RSettings {
   }
   bool mask_dvdd_failure_check = 20;
   HVPSFuseSettings hvps_fuse = 21;
+  uint32 hv_voltage_precision_factor = 22;
 }
