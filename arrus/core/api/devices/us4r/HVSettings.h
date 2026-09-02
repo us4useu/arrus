@@ -18,6 +18,7 @@ public:
 
 private:
     HVModelId modelId;
+    int hvVoltagePrecisionFactor{1};
 };
 
 }
