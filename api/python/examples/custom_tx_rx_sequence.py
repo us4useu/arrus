@@ -42,8 +42,7 @@ def main():
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
     with arrus.Session("us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hvps_precision_multiplier(1)
-        us4r.set_hv_voltage(5.0)
+        us4r.set_hv_voltage(5.5) # voltage_precision_factor = 8 in prototxt for increased precision
 
         n_elements = us4r.get_probe_model().n_elements
         # Full transmit aperture, full receive aperture.

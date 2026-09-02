@@ -505,7 +505,7 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     if (us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();
         auto &name = us4r.hv().model_id().name();
-        auto &voltagePrecisionFactor = us4r.hv().voltage_precision_factor(); // 0 - default value
+        auto voltagePrecisionFactor = static_cast<uint8_t>(us4r.hv().voltage_precision_factor()); // 0 - default value
         ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
         ARRUS_REQUIRES_NON_EMPTY_IAE(name);
         hvSettings = HVSettings(HVModelId(manufacturer, name), voltagePrecisionFactor);

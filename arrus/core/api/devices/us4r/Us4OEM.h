@@ -235,7 +235,7 @@ public:
     virtual int64_t getHVPSTuningInfo() = 0;
 
     /**
-     * Sets HVPS precision multiplier (1,2,4,8)
+     * Sets HVPS precision multiplier (0,1,2,3)
      * :param multiplier: multiplier value
      */
     virtual void setHVPSPrecisionMultiplier(uint8_t multiplier) = 0;

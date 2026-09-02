@@ -9,16 +9,20 @@ namespace arrus::devices {
 
 class HVSettings {
 public:
-    explicit HVSettings(HVModelId modelId)
-    : modelId(std::move(modelId)) {}
+    explicit HVSettings(HVModelId modelId, uint8_t voltagePrecisionFactor = 0)
+    : modelId(std::move(modelId)), hvVoltagePrecisionFactor(voltagePrecisionFactor) {}
 
     const HVModelId &getModelId() const {
         return modelId;
     }
 
+    const uint8_t getVoltagePrecisionFactor() const {
+        return hvVoltagePrecisionFactor;
+    }
+
 private:
     HVModelId modelId;
-    int hvVoltagePrecisionFactor{1};
+    uint8_t hvVoltagePrecisionFactor{1};
 };
 
 }
