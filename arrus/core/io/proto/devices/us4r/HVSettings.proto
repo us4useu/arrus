@@ -8,4 +8,5 @@ message HVSettings {
         string name = 2;
     }
     Id model_id = 1;
+    uint32 voltage_precision_factor = 2;
 }
