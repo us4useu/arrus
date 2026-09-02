@@ -122,7 +122,7 @@ public:
     float getCurrentSamplingFrequency() const override;
     void checkState() const override;
     void checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tolerance, int retries, HVModelId hvModel, bool isHVPS);
-    unsigned char getVoltage() override;
+    float getVoltage() override;
     float getMeasuredPVoltage() override;
     float getMeasuredMVoltage() override;
     float getMeasuredHVPVoltage(uint8_t oemId) override;
@@ -269,6 +269,7 @@ private:
     std::function<void()> createReceiveReleaseCallback(ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring);
     /** Sets fuse settings on all us4R OEMs. */
     void setHVPSFuseSettings(const std::optional<HVPSFuseSettings> &settings);
+    void setHVPSPrecisionMultiplier(uint8_t multiplier);
 
     std::recursive_mutex deviceStateMutex;
     std::mutex triggerMutex;

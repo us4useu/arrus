@@ -187,8 +187,8 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
 
     ::arrus::Interval<float> txFreqRange{static_cast<float>(proto.tx_frequency_range().begin()),
                                          static_cast<float>(proto.tx_frequency_range().end())};
-    ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
-                                          static_cast<uint8>(proto.voltage_range().end())};
+    ::arrus::Interval<float> voltageRange{static_cast<float>(proto.voltage_range().begin()),
+                                           static_cast<float>(proto.voltage_range().end())};
     std::optional<Lens> lens = proto.has_lens() ? std::make_optional(readProbeLens(proto.lens())): std::nullopt;
     std::optional<MatchingLayer> matchingLayer = proto.has_matching_layer()? std::make_optional(readMatchingLayer(proto.matching_layer())): std::nullopt;
     return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius, lens, matchingLayer);

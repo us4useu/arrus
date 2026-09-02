@@ -159,7 +159,8 @@ public:
 
     void setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) override;
 
-    int64_t getHVPSTuningInfo() override; 
+    int64_t getHVPSTuningInfo() override;
+    void setHVPSPrecisionMultiplier(uint8_t multiplier) override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;

@@ -981,5 +981,9 @@ int64_t Us4OEMImpl::getHVPSTuningInfo() {
     return ius4oem->GetHVPSTuningTimestamp();
 }
 
+void Us4OEMImpl::setHVPSPrecisionMultiplier(uint8_t multiplier) {
+    ius4oem->SetHVPSPrecisionMultiplier(multiplier);
+}
+
 
 }// namespace arrus::devices

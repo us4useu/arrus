@@ -205,4 +205,11 @@ class Us4OEM(Device):
         """
         return self._handle.getHVPSTuningInfo()
 
+    def set_hvps_precision_multiplier(self, multiplier: int):
+        """
+        Sets HVPS precision multiplier (1,2,4,8)
+        :param multiplier: multiplier value
+        """
+        self._handle.setHVPSPrecisionMultiplier(multiplier)
+
 

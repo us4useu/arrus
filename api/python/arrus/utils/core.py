@@ -270,18 +270,18 @@ def convert_constants_to_arrus_ndarray(py_constants):
     return result
 
 
-def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
+def convert_to_hv_voltages(values: List[Union[float, Tuple[float, float]]]):
     result = []
     for v in values:
         if isinstance(v, tuple):
             vm, vp = v
-            if not isinstance(vm, int) or not isinstance(vp, int):
-                raise ValueError("Voltages are expected to be integers")
-        elif isinstance(v, int):
+            if not isinstance(vm, float) or not isinstance(vp, float):
+                raise ValueError("Voltages are expected to be floats")
+        elif isinstance(v, float):
             vm, vp = v, v
         else:
-            raise ValueError("Voltages are expected to be integers "
-                             "or pair of integers.")
+            raise ValueError("Voltages are expected to be floats "
+                             "or pair of floats.")
         assert_hv_voltage_correct(vm)
         assert_hv_voltage_correct(vp)
         result.append(arrus.core.HVVoltage(vm, vp))
@@ -289,7 +289,7 @@ def convert_to_hv_voltages(values: List[Union[int, Tuple[int, int]]]):
 
 
 def assert_hv_voltage_correct(value):
-    min_v, max_v = 0, 255  # 255 -- max uint8 (expected by C++ API)
+    min_v, max_v = 0, 90.0  # 255 -- max uint8 (expected by C++ API)
     if not (min_v <= value <= max_v):
         raise ValueError("Voltages are expected to be values in range "
                          f"[{min_v}, {max_v}]")

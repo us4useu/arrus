@@ -405,7 +405,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
     
 }
 
-unsigned char Us4RImpl::getVoltage() {
+float Us4RImpl::getVoltage() {
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     return hv[0]->getVoltage();
 }
@@ -1743,6 +1743,12 @@ std::vector<int64_t> Us4RImpl::getHVPSTuningInfo() {
         result.push_back(us4oem->getHVPSTuningInfo());
     }
     return result;
+}
+
+void Us4RImpl::setHVPSPrecisionMultiplier(uint8_t multiplier) {
+    for(auto &us4oem: us4oems) {
+        us4oem->setHVPSPrecisionMultiplier(multiplier);
+    }
 }
 
 void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
