@@ -201,7 +201,7 @@ public:
 
     /**
      * Returns the latest scalar HVPS voltage measurements for all
-     * (amplitude level, polarity) pairs.
+     * (HV rail, polarity) pairs.
      */
     virtual HVPSScalarMeasurement getHvpsMeasurement() = 0;
 

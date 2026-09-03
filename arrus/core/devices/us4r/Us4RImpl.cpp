@@ -407,12 +407,12 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
             auto m = oem->getHvpsMeasurement();
             logger->log(LogSeverity::INFO,
                         format("OEM:{} measured HVPS voltages [V]: "
-                               "level 1: P={}, M={}, level2: P={}, M={}",
+                               "rail 0: P={}, M={}, rail 1: P={}, M={}",
                                oem->getDeviceId().getOrdinal(),
+                               m.getVoltage(0, HVPSScalarMeasurement::Polarity::PLUS),
+                               m.getVoltage(0, HVPSScalarMeasurement::Polarity::MINUS),
                                m.getVoltage(1, HVPSScalarMeasurement::Polarity::PLUS),
-                               m.getVoltage(1, HVPSScalarMeasurement::Polarity::MINUS),
-                               m.getVoltage(2, HVPSScalarMeasurement::Polarity::PLUS),
-                               m.getVoltage(2, HVPSScalarMeasurement::Polarity::MINUS)));
+                               m.getVoltage(1, HVPSScalarMeasurement::Polarity::MINUS)));
         }
     }
 }
