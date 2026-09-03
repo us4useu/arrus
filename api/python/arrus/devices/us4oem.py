@@ -36,6 +36,9 @@ SAFE_STATE_INTERRUPTS = frozenset({
 class HVPSMeasurement:
     """
     HVPS measurement.
+
+    NOTE: this class assumes us4OEM HV rail numbering instead of amplitude level numbering
+    (mapping: rail 0 -> level 2, rail 1 -> level 1).
     """
     def __init__(self, hvps_measurement_core):
         parameters = [
@@ -51,25 +54,25 @@ class HVPSMeasurement:
         self._values = {}
         self._array = []
         for p in parameters:
-            polarity, level, unit = p
+            polarity, rail, unit = p
             polarity = self._polarity_str2enum(polarity)
             unit = self._unit_str2enum(unit)
-            m = list(hvps_measurement_core.get(level, polarity, unit))
+            m = list(hvps_measurement_core.get(rail, polarity, unit))
             self._values[p] = m
             self._array.append(m)
         self._array = np.stack(self._array)
         self._array = self._array.reshape(2, 2, 2, -1)
 
-    def get(self, polarity: str, level: int, unit: str):
-        return self._values[(polarity.upper(), level, unit.upper())]
+    def get(self, polarity: str, rail: int, unit: str):
+        return self._values[(polarity.upper(), rail, unit.upper())]
 
     def get_array(self) -> np.ndarray:
         """
         Returns the measurement as numpy array.
-        The output shape is (polarity, level, unit, sample)
+        The output shape is (polarity, rail, unit, sample)
 
         polarity: 0: MINUS, 1: PLUS
-        level: 0 or 1
+        rail: 0 (i.e. TX amplitude level 2) or 1 (i.e. TX amplitude level 1)
         unit: 0: voltage, 1: current
         """
         return self._array
@@ -163,6 +166,24 @@ class Us4OEM(Device):
 
     def get_hvps_measurement(self) -> HVPSMeasurement:
         return HVPSMeasurement(self._handle.getHVPSMeasurement())
+
+    def get_hvps_scalar_measurement(self) -> dict:
+        """
+        Returns the latest scalar HVPS voltage measurements as a dict
+        keyed by ``(rail, polarity)``, where ``rail`` is 0 (i.e. TX amplitude
+        level 2) or 1 (i.e. TX amplitude level 1) and ``polarity`` is the
+        string ``"MINUS"`` or ``"PLUS"``.
+        """
+        m = self._handle.getHvpsMeasurement()
+        polarities = (
+            ("MINUS", arrus.core.HVPSScalarMeasurement.MINUS),
+            ("PLUS", arrus.core.HVPSScalarMeasurement.PLUS),
+        )
+        return {
+            (rail, name): m.getVoltage(rail, value)
+            for rail in (0, 1)
+            for name, value in polarities
+        }
 
     def set_hvps_sync_measurement(self, n_samples: int, frequency: float) -> float:
         return self._handle.setHVPSSyncMeasurement(n_samples, frequency)

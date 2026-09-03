@@ -79,6 +79,8 @@ public:
 
     HVPSMeasurement getHVPSMeasurement() override = 0;
 
+    HVPSScalarMeasurement getHvpsMeasurement() override = 0;
+
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override = 0;
 
     virtual void clearDMACallbacks() = 0;

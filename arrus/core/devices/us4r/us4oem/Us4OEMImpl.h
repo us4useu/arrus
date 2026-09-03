@@ -134,6 +134,8 @@ public:
 
     HVPSMeasurement getHVPSMeasurement() override;
 
+    HVPSScalarMeasurement getHvpsMeasurement() override;
+
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override;
 
     void setMaximumPulseLength(std::optional<float> maxLength) override;

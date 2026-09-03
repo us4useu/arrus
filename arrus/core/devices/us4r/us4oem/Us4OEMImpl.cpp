@@ -856,6 +856,17 @@ HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
     return builder.build();
 }
 
+HVPSScalarMeasurement Us4OEMImpl::getHvpsMeasurement() {
+    // GetMeasuredVoltages returns values in the order: HVP0, HVP1, HVM0, HVM1.
+    auto v = ius4oem->GetMeasuredVoltages();
+    HVPSScalarMeasurementBuilder builder;
+    builder.set(0, HVPSScalarMeasurement::Polarity::PLUS, v.at(0));
+    builder.set(1, HVPSScalarMeasurement::Polarity::PLUS, v.at(1));
+    builder.set(0, HVPSScalarMeasurement::Polarity::MINUS, v.at(2));
+    builder.set(1, HVPSScalarMeasurement::Polarity::MINUS, v.at(3));
+    return builder.build();
+}
+
 float Us4OEMImpl::setHVPSSyncMeasurement(uint16_t nSamples, float frequency) {
     return ius4oem->SetHVPSSyncMeasurement(nSamples, frequency);
 }
