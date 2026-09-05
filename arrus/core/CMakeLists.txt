@@ -399,3 +399,6 @@ add_executable(custom-tx-waveform-example examples/CustomTxWaveform.cpp)
 target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core)
 target_include_directories(custom-tx-waveform-example PRIVATE ${ARRUS_ROOT_DIR})
 
+add_executable(minimal-acquisition examples/MinimalAcquisition.cpp)
+target_link_libraries(minimal-acquisition PRIVATE arrus-core)
+target_include_directories(minimal-acquisition PRIVATE ${ARRUS_ROOT_DIR})
