@@ -223,3 +223,4 @@ cmake-build-release/
 # Merge conflict markers
 *.orig
 *.bkp
+.claude/settings.local.json
