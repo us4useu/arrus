@@ -104,10 +104,13 @@ int main() noexcept {
                 // (64 B = 32ch x int16), which is why a 1024-row capture yields 1023 sample rows.
                 // This raw consumer does not skip it; a real pipeline handles frame metadata itself.
                 //
-                // BYTE ORDER: on this Ethernet bench the samples arrive big-endian. Whether that is
-                // a genuine eth-vs-PCIe difference (and so us4r-api's to correct) was open at the
-                // time of writing. Un-swapping here is DIAGNOSTIC, to prove the payload is an intact
-                // ramp - it is not an assertion about the contract.
+                // BYTE ORDER: us4OEM DDR4 holds samples big-endian (JESD-native). Over PCIe the
+                // Altera DMA IP swapped to little-endian in hardware; the Ethernet path has no
+                // equivalent, so us4r-api restores LE in software as it copies.
+                // This check is deliberately agnostic about which side did the swap: it tests the
+                // NATIVE read first and only falls back to a byte-swapped read, then reports which
+                // orientation produced a clean ramp. That way it stays honest against either an
+                // older library (no swap) or a fixed one, and cannot double-swap.
                 auto bswap = [](short v) -> short {
                     unsigned short u = (unsigned short) v;
                     return (short) (unsigned short) ((u << 8) | (u >> 8));
@@ -116,34 +119,59 @@ int main() noexcept {
                 for (size_t ch = 0; ch < nChannels; ++ch) std::cout << " " << data.get<short>(0, ch);
                 std::cout << std::endl;
 
-                // Per-channel: does the byte-swapped stream form a clean +1 ramp over rows 1..N-1?
-                size_t chClean = 0; long badTotal = 0;
-                bool haveBad = false;
-                size_t firstBadCh = 0, firstBadRow = 0; int firstBadGot = 0, firstBadWant = 0;
-                for (size_t ch = 0; ch < nChannels; ++ch) {
-                    long badHere = 0;
-                    for (size_t j = 2; j < nRows; ++j) {
-                        int prev = (int)(unsigned short) bswap(data.get<short>(j - 1, ch));
-                        int cur  = (int)(unsigned short) bswap(data.get<short>(j, ch));
-                        int want = (prev + 1) & 0xFFFF;
-                        if (cur != want) {
-                            ++badHere;
-                            if (!haveBad) {
-                                haveBad = true;
-                                firstBadCh = ch; firstBadRow = j; firstBadGot = cur; firstBadWant = want;
+                // Score both orientations over rows 1..N-1: how many channels form a clean +1 ramp.
+                auto scoreRamp = [&](bool swapped, size_t &firstBadCh, size_t &firstBadRow,
+                                     int &firstBadGot, int &firstBadWant, long &deviations) {
+                    size_t clean = 0;
+                    bool haveBad = false;
+                    deviations = 0;
+                    for (size_t ch = 0; ch < nChannels; ++ch) {
+                        long badHere = 0;
+                        for (size_t j = 2; j < nRows; ++j) {
+                            short a = data.get<short>(j - 1, ch), b = data.get<short>(j, ch);
+                            if (swapped) { a = bswap(a); b = bswap(b); }
+                            int want = (((int) (unsigned short) a) + 1) & 0xFFFF;
+                            int cur = (int) (unsigned short) b;
+                            if (cur != want) {
+                                ++badHere;
+                                if (!haveBad) {
+                                    haveBad = true;
+                                    firstBadCh = ch; firstBadRow = j;
+                                    firstBadGot = cur; firstBadWant = want;
+                                }
                             }
                         }
+                        if (badHere == 0) ++clean; else deviations += badHere;
                     }
-                    if (badHere == 0) ++chClean; else badTotal += badHere;
+                    return clean;
+                };
+                size_t nbCh = 0, nbRow = 0, sbCh = 0, sbRow = 0;
+                int nbGot = 0, nbWant = 0, sbGot = 0, sbWant = 0;
+                long nativeDev = 0, swappedDev = 0;
+                size_t nativeClean = scoreRamp(false, nbCh, nbRow, nbGot, nbWant, nativeDev);
+                size_t swappedClean = scoreRamp(true, sbCh, sbRow, sbGot, sbWant, swappedDev);
+
+                std::cout << "RAMP native  : " << nativeClean << "/" << nChannels
+                          << " channels clean, " << nativeDev << " deviations" << std::endl;
+                std::cout << "RAMP swapped : " << swappedClean << "/" << nChannels
+                          << " channels clean, " << swappedDev << " deviations" << std::endl;
+                if (nativeClean == nChannels) {
+                    std::cout << "VERDICT: samples are correct as delivered (native little-endian)."
+                              << std::endl;
+                } else if (swappedClean == nChannels) {
+                    std::cout << "VERDICT: samples need a 16-bit byte swap - the delivered buffer is "
+                                 "big-endian." << std::endl;
+                } else {
+                    std::cout << "VERDICT: NEITHER orientation yields a clean ramp - payload is not "
+                                 "an intact ramp." << std::endl;
+                    std::cout << "  native  first deviation ch=" << nbCh << " row=" << nbRow
+                              << " got=" << nbGot << " want=" << nbWant << std::endl;
+                    std::cout << "  swapped first deviation ch=" << sbCh << " row=" << sbRow
+                              << " got=" << sbGot << " want=" << sbWant << std::endl;
                 }
-                std::cout << "UNSWAPPED: channels forming a clean +1 ramp: " << chClean << "/"
-                          << nChannels << "   total deviations: " << badTotal << std::endl;
-                if (haveBad)
-                    std::cout << "UNSWAPPED: first deviation ch=" << firstBadCh << " row=" << firstBadRow
-                              << " got=" << firstBadGot << " want=" << firstBadWant << std::endl;
-                std::cout << "UNSWAPPED ch0 rows 1..8:";
+                std::cout << "ch0 rows 1..8 native :";
                 for (size_t j = 1; j <= 8 && j < nRows; ++j)
-                    std::cout << " " << (int)(unsigned short) bswap(data.get<short>(j, 0));
+                    std::cout << " " << (int) (unsigned short) data.get<short>(j, 0);
                 std::cout << std::endl;
 
                 // All channels equal within a row - SAMPLE ROWS ONLY (row 0 is the header; including
