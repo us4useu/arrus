@@ -395,10 +395,21 @@ int main(int argc, char **argv) noexcept {
                 const uint64_t f0 = frames.load();
                 try {
                     session->startScheme();
-                    std::this_thread::sleep_for(std::chrono::seconds(3));
+                    std::string restartProbe;
+                    for (int i = 0; i < 12; ++i) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                        if (probeMode) {
+                            try {
+                                auto *impl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(0));
+                                uint32_t v = impl->getIUs4OEM()->SequencerReadRegister(probeAddr);
+                                char buf[32]; std::snprintf(buf, sizeof buf, " 0x%x", v); restartProbe += buf;
+                            } catch (const std::exception &) { restartProbe += " ERR"; }
+                        }
+                    }
                     const uint64_t f1 = frames.load();
                     session->stopScheme();
-                    restartResult = std::to_string(f1 - f0) + " frames in 3 s after stop+start without re-upload";
+                    restartResult = std::to_string(f1 - f0) + " frames in 3 s after stop+start without re-upload"
+                                    + (probeMode ? " (probe during restart:" + restartProbe + ")" : std::string());
                 } catch (const std::exception &e) {
                     restartResult = std::string("restart threw: ") + e.what();
                 }
