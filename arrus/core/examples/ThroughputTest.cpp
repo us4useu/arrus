@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <tuple>
+#include <thread>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -193,6 +194,10 @@ int main(int argc, char **argv) noexcept {
     // what ARRUS's overflow callback would do if the board's overflow event reached the host - and
     // report whether frames resume. Implies holding the point (no early stall exit).
     const bool kickMode = std::getenv("THROUGHPUT_KICK") != nullptr;
+    // THROUGHPUT_RESTART: after the point, stop the scheme and start it again WITHOUT re-uploading,
+    // then count frames for 3 s. Tells a latched board state (stays silent) from a load-dependent one
+    // (runs again once the offered load was removed).
+    const bool restartMode = std::getenv("THROUGHPUT_RESTART") != nullptr;
     const uint64_t checkEvery = 100;
 
     try {
@@ -385,6 +390,19 @@ int main(int argc, char **argv) noexcept {
             }
             auto tEnd = std::chrono::steady_clock::now();
             session->stopScheme();
+            std::string restartResult;
+            if (restartMode) {
+                const uint64_t f0 = frames.load();
+                try {
+                    session->startScheme();
+                    std::this_thread::sleep_for(std::chrono::seconds(3));
+                    const uint64_t f1 = frames.load();
+                    session->stopScheme();
+                    restartResult = std::to_string(f1 - f0) + " frames in 3 s after stop+start without re-upload";
+                } catch (const std::exception &e) {
+                    restartResult = std::string("restart threw: ") + e.what();
+                }
+            }
             res.carrierAfter = readCarrierChanges();
             // An ECB read right after a heavy run can fail (reply lost under load). That must not
             // throw away the point we just measured: record the failure and keep the numbers.
@@ -430,6 +448,7 @@ int main(int argc, char **argv) noexcept {
             std::cout << "  slots:";
             for (auto &c : slotCount) std::cout << " " << c.load();
             std::cout << "\n";
+            if (restartMode) std::cout << "  restart: " << restartResult << "\n";
             if (kickMode) {
                 std::cout << "  kick: " << (kicked ? "SyncReceive+SyncTransfer at " + std::to_string(kickTime) + " s after "
                                                       + std::to_string(kickFrames) + " frames -> " + kickResult
