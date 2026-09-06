@@ -33,6 +33,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <cstdlib>
+#include <cstdio>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -129,6 +130,9 @@ void printTable(const std::vector<PointResult> &results, size_t bytesPerFrame) {
 }// namespace
 
 int main(int argc, char **argv) noexcept {
+    // Line-buffer stdout: a session-teardown crash (seen as rc=139 after "Closing session") must
+    // not take an already-measured point down with it when output is redirected to a file.
+    std::setvbuf(stdout, nullptr, _IOLBF, 0);
     using namespace ::arrus::session;
     using namespace ::arrus::devices;
     using namespace ::arrus::ops::us4r;
