@@ -221,11 +221,20 @@ public:
 
         Accumulator elementReadyPattern = createElementReadyPattern(arrayDefs, noems);
         elementSize = calculateElementSize(arrayDefs);
+        // Elements are laid out at a fixed pitch of elementSize rounded up to the transfer page plus one
+        // extra page. The Ethernet bridge (us4OEM over RoCE) places frame k at frame0 + k*pitch on its
+        // own and writes a 128-byte metadata page after every frame, so the element pitch must include
+        // that page and the whole footprint (nElements * pitch) must be mapped; the receiver refuses
+        // to start otherwise. PCIe DMA writes exactly the transfer length and is unaffected by the
+        // padding. NOTE: the bridge addresses per TRANSFER, so elements with more than one transfer
+        // (multi-firing sequences) are not yet laid out for it - see Us4OEMDataTransferRegistrar.
+        elementStride = alignUp(elementSize, TRANSFER_PAGE_SIZE) + TRANSFER_PAGE_SIZE;
         try {
-            dataBufferSize = elementSize * nElements;
+            dataBufferSize = elementStride * nElements;
             getDefaultLogger()->log(
                 LogSeverity::DEBUG,
-                format("Allocating {} ({}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize, nElements, useP2pDma));
+                format("Allocating {} ({} at pitch {}, {}) bytes of memory, useP2pDma={}", dataBufferSize, elementSize,
+                       elementStride, nElements, useP2pDma));
 
             if (useP2pDma) {
                 auto &cuda = CudaRuntime::instance();
@@ -267,7 +276,7 @@ public:
                 dataBuffer = reinterpret_cast<DataType *>(mallocChunked(dataBufferSize, ALLOC_CHUNK_SIZE));
             }
             getDefaultLogger()->log(LogSeverity::DEBUG, format("Allocated address: {}", (size_t) dataBuffer));
-            createElements(arrayDefs, elementReadyPattern, nElements, elementSize);
+            createElements(arrayDefs, elementReadyPattern, nElements, elementStride);
         } catch (...) {
             releaseDataBuffer();
             dataBuffer = nullptr;
@@ -317,6 +326,8 @@ public:
      * Returns a total size of the buffer, the number of bytes.
      */
     [[nodiscard]] size_t getElementSize() const override { return elementSize; }
+    /** Distance in bytes between the starts of consecutive elements (>= getElementSize()). */
+    [[nodiscard]] size_t getElementStride() const { return elementStride; }
 
     /**
      * Signals the readiness of new data acquired by the n-th Us4OEM module.
@@ -423,6 +434,12 @@ private:
     // The value was determined heuristically in a way so to avoid allocation time overhead and to make sure
     // that the watchdog thread is possibly not blocked by the address space lock too long.
     static constexpr size_t ALLOC_CHUNK_SIZE = 512 * 1024 * 1024; // 512 MiB
+    /** Page the Ethernet bridge rounds every frame up to, and the size of its per-frame metadata page. */
+    static constexpr size_t TRANSFER_PAGE_SIZE = 128;
+
+    static size_t alignUp(size_t value, size_t alignment) {
+        return (value + alignment - 1) / alignment * alignment;
+    }
 
     void releaseDataBuffer() {
         if (dataBuffer == nullptr) {
@@ -579,6 +596,7 @@ private:
     std::mutex mutex;
     /** A size of a single element IN number of BYTES. */
     size_t elementSize;
+    size_t elementStride{0};
     /** Total size of dataBuffer in bytes. */
     size_t dataBufferSize{0};
     /**  Total size in the number of elements. */
