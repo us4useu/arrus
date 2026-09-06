@@ -198,6 +198,8 @@ int main(int argc, char **argv) noexcept {
     // then count frames for 3 s. Tells a latched board state (stays silent) from a load-dependent one
     // (runs again once the offered load was removed).
     const bool restartMode = std::getenv("THROUGHPUT_RESTART") != nullptr;
+    // THROUGHPUT_RESTART_WAIT=<s>: idle time between the stop and the restart (default 0).
+    const double restartWaitS = std::getenv("THROUGHPUT_RESTART_WAIT") ? std::strtod(std::getenv("THROUGHPUT_RESTART_WAIT"), nullptr) : 0.0;
     const uint64_t checkEvery = 100;
 
     try {
@@ -266,6 +268,8 @@ int main(int argc, char **argv) noexcept {
             std::vector<std::tuple<double, uint32_t, uint64_t>> probeSamples;  // (t, value, frames so far)
             unsigned probeErrors = 0;
             bool kicked = false; double kickTime = 0; uint64_t kickFrames = 0; std::string kickResult;
+            std::atomic<bool> restartPhase{false};
+            std::atomic<int> firstAfterRestart{-1};
             for (auto &c : slotCount) c.store(0);
             bool overflowed = false;
             std::chrono::steady_clock::time_point tStart, tOverflow;
@@ -293,6 +297,10 @@ int main(int argc, char **argv) noexcept {
                 bytes.fetch_add(ptr->getSize(), std::memory_order_relaxed);
                 if (ptr->getPosition() < slotCount.size()) {
                     slotCount[ptr->getPosition()].fetch_add(1, std::memory_order_relaxed);
+                }
+                if (restartPhase.load(std::memory_order_relaxed)) {
+                    int expected = -1;
+                    firstAfterRestart.compare_exchange_strong(expected, (int) ptr->getPosition());
                 }
                 lastFrameNs.store(std::chrono::steady_clock::now().time_since_epoch().count(),
                                   std::memory_order_relaxed);
@@ -393,7 +401,11 @@ int main(int argc, char **argv) noexcept {
             std::string restartResult;
             if (restartMode) {
                 const uint64_t f0 = frames.load();
+                std::vector<uint64_t> slotsBefore;
+                for (auto &c : slotCount) slotsBefore.push_back(c.load());
                 try {
+                    if (restartWaitS > 0) std::this_thread::sleep_for(std::chrono::duration<double>(restartWaitS));
+                    restartPhase.store(true);
                     session->startScheme();
                     std::string restartProbe;
                     for (int i = 0; i < 12; ++i) {
@@ -408,7 +420,12 @@ int main(int argc, char **argv) noexcept {
                     }
                     const uint64_t f1 = frames.load();
                     session->stopScheme();
-                    restartResult = std::to_string(f1 - f0) + " frames in 3 s after stop+start without re-upload"
+                    std::string slotsDelta;
+                    for (size_t i = 0; i < slotCount.size(); ++i)
+                        slotsDelta += " " + std::to_string(slotCount[i].load() - slotsBefore[i]);
+                    restartResult = std::to_string(f1 - f0) + " frames in 3 s after stop+" + std::to_string((int) restartWaitS) + " s idle+start without re-upload"
+                                    + "; first element after restart: " + std::to_string(firstAfterRestart.load())
+                                    + "; slots after restart:" + slotsDelta
                                     + (probeMode ? " (probe during restart:" + restartProbe + ")" : std::string());
                 } catch (const std::exception &e) {
                     restartResult = std::string("restart threw: ") + e.what();
