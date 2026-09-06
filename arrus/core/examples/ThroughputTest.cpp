@@ -198,6 +198,9 @@ int main(int argc, char **argv) noexcept {
     // then count frames for 3 s. Tells a latched board state (stays silent) from a load-dependent one
     // (runs again once the offered load was removed).
     const bool restartMode = std::getenv("THROUGHPUT_RESTART") != nullptr;
+    // THROUGHPUT_KEEP=N: keep copies of the last N delivered frames and, after the point, print each
+    // one's header row and where its ramp breaks - to inspect the frames just before a board park.
+    const unsigned keepN = std::getenv("THROUGHPUT_KEEP") ? (unsigned) std::strtoul(std::getenv("THROUGHPUT_KEEP"), nullptr, 10) : 0;
     // THROUGHPUT_RESTART_WAIT=<s>: idle time between the stop and the restart (default 0).
     const double restartWaitS = std::getenv("THROUGHPUT_RESTART_WAIT") ? std::strtod(std::getenv("THROUGHPUT_RESTART_WAIT"), nullptr) : 0.0;
     const uint64_t checkEvery = 100;
@@ -269,6 +272,9 @@ int main(int argc, char **argv) noexcept {
             unsigned probeErrors = 0;
             bool kicked = false; double kickTime = 0; uint64_t kickFrames = 0; std::string kickResult;
             std::atomic<bool> restartPhase{false};
+            struct KeptFrame { uint64_t n; size_t pos; std::vector<int16_t> data; size_t rows, chans; };
+            std::vector<KeptFrame> kept(keepN);
+            std::mutex keptMutex;
             std::atomic<int> firstAfterRestart{-1};
             for (auto &c : slotCount) c.store(0);
             bool overflowed = false;
@@ -297,6 +303,14 @@ int main(int argc, char **argv) noexcept {
                 bytes.fetch_add(ptr->getSize(), std::memory_order_relaxed);
                 if (ptr->getPosition() < slotCount.size()) {
                     slotCount[ptr->getPosition()].fetch_add(1, std::memory_order_relaxed);
+                }
+                if (keepN > 0) {
+                    auto &d = ptr->getData();
+                    size_t nr = (size_t) d.getShape()[0], nc = (size_t) d.getShape()[1];
+                    std::lock_guard<std::mutex> g(keptMutex);
+                    auto &k = kept[n % keepN];
+                    k.n = n; k.pos = ptr->getPosition(); k.rows = nr; k.chans = nc;
+                    k.data.assign(d.get<int16_t>(), d.get<int16_t>() + nr * nc);
                 }
                 if (restartPhase.load(std::memory_order_relaxed)) {
                     int expected = -1;
@@ -477,6 +491,27 @@ int main(int argc, char **argv) noexcept {
             for (auto &c : slotCount) std::cout << " " << c.load();
             std::cout << "\n";
             if (restartMode) std::cout << "  restart: " << restartResult << "\n";
+            if (keepN > 0) {
+                std::vector<KeptFrame> ks;
+                { std::lock_guard<std::mutex> g(keptMutex); ks = kept; }
+                std::sort(ks.begin(), ks.end(), [](const KeptFrame &a, const KeptFrame &b) { return a.n < b.n; });
+                for (auto &k : ks) {
+                    if (k.data.empty()) continue;
+                    std::cout << "  kept frame #" << k.n << " slot " << k.pos << " header:";
+                    for (size_t c = 0; c < k.chans; ++c) std::cout << " " << k.data[c];
+                    // ramp breaks on channel 0: rows where value != previous + 1 (rows 2..)
+                    std::string breaks; unsigned nb = 0;
+                    for (size_t r = 2; r < k.rows; ++r) {
+                        int prev = (uint16_t) k.data[(r - 1) * k.chans], cur = (uint16_t) k.data[r * k.chans];
+                        if (cur != ((prev + 1) & 0xFFFF)) {
+                            if (nb < 6) breaks += " row " + std::to_string(r) + ":" + std::to_string(prev) + "->" + std::to_string(cur);
+                            ++nb;
+                        }
+                    }
+                    std::cout << " | ch0 row1=" << (uint16_t) k.data[k.chans] << " row" << (k.rows - 1) << "="
+                              << (uint16_t) k.data[(k.rows - 1) * k.chans] << " ramp breaks=" << nb << breaks << "\n";
+                }
+            }
             if (kickMode) {
                 std::cout << "  kick: " << (kicked ? "SyncReceive+SyncTransfer at " + std::to_string(kickTime) + " s after "
                                                       + std::to_string(kickFrames) + " frames -> " + kickResult
