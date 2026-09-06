@@ -226,8 +226,9 @@ public:
         // own and writes a 128-byte metadata page after every frame, so the element pitch must include
         // that page and the whole footprint (nElements * pitch) must be mapped; the receiver refuses
         // to start otherwise. PCIe DMA writes exactly the transfer length and is unaffected by the
-        // padding. NOTE: the bridge addresses per TRANSFER, so elements with more than one transfer
-        // (multi-firing sequences) are not yet laid out for it - see Us4OEMDataTransferRegistrar.
+        // padding. NOTE: the bridge addresses per TRANSFER at that same pitch, while the transfers of
+        // one element (one per firing) are placed contiguously inside it, so elements with more than
+        // one transfer (multi-firing sequences) are not yet laid out for that transport.
         elementStride = alignUp(elementSize, TRANSFER_PAGE_SIZE) + TRANSFER_PAGE_SIZE;
         try {
             dataBufferSize = elementStride * nElements;

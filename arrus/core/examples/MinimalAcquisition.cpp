@@ -105,8 +105,8 @@ int main() noexcept {
                 // This raw consumer does not skip it; a real pipeline handles frame metadata itself.
                 //
                 // BYTE ORDER: us4OEM DDR4 holds samples big-endian (JESD-native). Over PCIe the
-                // Altera DMA IP swapped to little-endian in hardware; the Ethernet path has no
-                // equivalent, so us4r-api restores LE in software as it copies.
+                // Altera DMA IP swapped to little-endian in hardware; over Ethernet the swap is done
+                // either by the bitstream (announced in status bit 11) or by us4r-api in software.
                 // This check is deliberately agnostic about which side did the swap: it tests the
                 // NATIVE read first and only falls back to a byte-swapped read, then reports which
                 // orientation produced a clean ramp. That way it stays honest against either an

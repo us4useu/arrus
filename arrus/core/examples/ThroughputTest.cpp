@@ -15,16 +15,26 @@
 // nothing but count and release; any work in it would become part of the measurement.
 //
 // Usage:
-//   throughput-test <prototxt> <nSamples> <bufferDepth> <secondsPerPoint> <pri_us> [pri_us ...]
+//   throughput-test <prototxt> <nSamples> <rxDepth> <hostDepth> <secondsPerPoint> <pri_us> [pri_us ...]
 //
-// nSamples must be a multiple of 64 (Us4OEMTxRxValidator) and within {64, 65472} on OEM+.
+// Diagnostic switches (environment; all off by default, each documented where it is read):
+//   THROUGHPUT_HOLD          keep the scheme running for the full window after frames stop
+//   THROUGHPUT_CHECK         ramp-check every 100th frame (correctness run, not a clean throughput run)
+//   THROUGHPUT_PLACEMENT=GPU host buffer on GPU:0 (excludes CHECK and KEEP: they read from the host)
+//   THROUGHPUT_MODE=SYNC     WorkMode::SYNC instead of ASYNC
+//   THROUGHPUT_PROBE_ADDR=<hex sequencer word index>   poll that register every 100 ms
+//   THROUGHPUT_KICK          after a 1 s gap call SyncReceive+SyncTransfer once
+//   THROUGHPUT_RESTART[_WAIT=<s>]  after the point, stop and start again without re-uploading
+//   THROUGHPUT_KEEP=N        keep the last N frames and print their header row and ramp breaks
+//
+// nSamples must be a multiple of 64 (Us4OEMTxRxValidator) and within {64, 16384} on OEM+.
 // The sample range starts at 1, not 0, so that ScheduleReceive start = sampleTxStart + 1 = 36,
 // the ACQ_RX_DELAY measured as correct on this bench (see MinimalAcquisition.cpp).
 //
 // PRI FLOOR: ARRUS rejects any op whose txrxTime exceeds the PRI. In the default SEQUENTIAL
 // reprogramming mode txrxTime = max(minRxTime, nSamples/fs) + reprogrammingTime, i.e. on an
 // OEM+ v3 (fs = 120 MHz, 35 us reprogramming, 20 us minRxTime):
-//     1024 samples ->  55 us      16384 samples -> ~172 us      65472 samples -> ~581 us
+//     1024 samples ->  55 us      4096 samples -> ~69 us      16384 samples -> ~172 us
 // A rejected PRI is reported as such and the sweep continues.
 
 #include <algorithm>
@@ -174,8 +184,10 @@ int main(int argc, char **argv) noexcept {
     // host, which is not possible on a discrete-GPU allocation, so the two are mutually exclusive.
     const char *placementEnv = std::getenv("THROUGHPUT_PLACEMENT");
     const bool gpuPlacement = placementEnv != nullptr && std::string(placementEnv) == "GPU";
-    if (gpuPlacement && checkMode) {
-        std::cerr << "THROUGHPUT_CHECK cannot read a GPU-placed buffer from the host; unset one of them.\n";
+    const unsigned keepN = std::getenv("THROUGHPUT_KEEP") ? (unsigned) std::strtoul(std::getenv("THROUGHPUT_KEEP"), nullptr, 10) : 0;
+    if (gpuPlacement && (checkMode || keepN > 0)) {
+        std::cerr << "THROUGHPUT_CHECK / THROUGHPUT_KEEP read the buffer from the host, which a GPU-placed buffer "
+                     "does not allow; unset one of them.\n";
         return 2;
     }
     const DeviceId placement(gpuPlacement ? DeviceType::GPU : DeviceType::CPU, 0);
@@ -198,9 +210,9 @@ int main(int argc, char **argv) noexcept {
     // then count frames for 3 s. Tells a latched board state (stays silent) from a load-dependent one
     // (runs again once the offered load was removed).
     const bool restartMode = std::getenv("THROUGHPUT_RESTART") != nullptr;
-    // THROUGHPUT_KEEP=N: keep copies of the last N delivered frames and, after the point, print each
-    // one's header row and where its ramp breaks - to inspect the frames just before a board park.
-    const unsigned keepN = std::getenv("THROUGHPUT_KEEP") ? (unsigned) std::strtoul(std::getenv("THROUGHPUT_KEEP"), nullptr, 10) : 0;
+    // THROUGHPUT_KEEP=N (parsed above): keep copies of the last N delivered frames and, after the
+    // point, print each one's header row and where its ramp breaks - to inspect the frames just
+    // before a board park. The copy runs inside the callback, so a KEEP run is not a clean one.
     // THROUGHPUT_RESTART_WAIT=<s>: idle time between the stop and the restart (default 0).
     const double restartWaitS = std::getenv("THROUGHPUT_RESTART_WAIT") ? std::strtod(std::getenv("THROUGHPUT_RESTART_WAIT"), nullptr) : 0.0;
     const uint64_t checkEvery = 100;
@@ -319,8 +331,8 @@ int main(int argc, char **argv) noexcept {
                 lastFrameNs.store(std::chrono::steady_clock::now().time_since_epoch().count(),
                                   std::memory_order_relaxed);
                 if (checkMode && (n % checkEvery) == 0) {
-                    // Native little-endian (the receiver restores LE): after the row-0 header, ch0
-                    // should be a clean +1 ramp. Check all channels over rows 2..N-1.
+                    // Samples arrive little-endian (swapped by the bitstream or by the receiver):
+                    // after the row-0 header every channel should be a clean +1 ramp over rows 2..N-1.
                     auto &d = ptr->getData();
                     size_t nr = (size_t) d.getShape()[0], nc = (size_t) d.getShape()[1];
                     bool clean = true;
@@ -374,7 +386,7 @@ int main(int argc, char **argv) noexcept {
                             uint32_t v = impl->getIUs4OEM()->SequencerReadRegister(probeAddr);
                             probeSamples.emplace_back(std::chrono::duration<double>(now - tStart).count(), v,
                                                       frames.load());
-                        } catch (const std::exception &e) {
+                        } catch (const std::exception &) {
                             probeErrors++;
                         }
                         lock.lock();
