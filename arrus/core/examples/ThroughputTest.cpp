@@ -176,6 +176,11 @@ int main(int argc, char **argv) noexcept {
         return 2;
     }
     const DeviceId placement(gpuPlacement ? DeviceType::GPU : DeviceType::CPU, 0);
+    // THROUGHPUT_MODE=SYNC: let the sequencer wait for the host instead of skipping un-released
+    // entries (ARRUS enables wait-on-overflow only in SYNC). Default stays ASYNC.
+    const char *modeEnv = std::getenv("THROUGHPUT_MODE");
+    const bool syncMode = modeEnv != nullptr && std::string(modeEnv) == "SYNC";
+    const Scheme::WorkMode workMode = syncMode ? Scheme::WorkMode::SYNC : Scheme::WorkMode::ASYNC;
     const uint64_t checkEvery = 100;
 
     try {
@@ -201,7 +206,7 @@ int main(int argc, char **argv) noexcept {
 
         std::cout << "throughput sweep: nSamples=" << nSamples << " (" << bytesPerFrame
                   << " B/frame), rxDepth=" << rxDepth << ", hostDepth=" << hostDepth << ", "
-                  << secondsPerPoint << " s/point, mode=ASYNC, placement=" << placement.toString() << "\n";
+                  << secondsPerPoint << " s/point, mode=" << (syncMode ? "SYNC" : "ASYNC") << ", placement=" << placement.toString() << "\n";
 
         std::vector<PointResult> results;
         for (unsigned priUs : pris) {
@@ -230,7 +235,7 @@ int main(int argc, char **argv) noexcept {
                                (float) priUs * 1e-6f);
             TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 1);
             DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, hostDepth, placement};
-            Scheme scheme(seq, (::arrus::uint16) rxDepth, outputBuffer, Scheme::WorkMode::ASYNC);
+            Scheme scheme(seq, (::arrus::uint16) rxDepth, outputBuffer, workMode);
 
             std::mutex mutex;
             std::condition_variable cv;
