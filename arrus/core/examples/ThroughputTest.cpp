@@ -67,6 +67,10 @@ struct PointResult {
     double secondsToOverflow = -1.0;
     float fpgaTempBefore = 0.0f;
     float fpgaTempAfter = 0.0f;
+    // Steady-state (post-burst) tail: frames/bytes accumulated after the pre-armed burst drains.
+    uint64_t ssFrames = 0;
+    uint64_t ssBytes = 0;
+    double ssSeconds = 0.0;
     bool stalled = false;
     double secondsToStall = -1.0;
     uint64_t expectedFrames = 0;
@@ -223,6 +227,11 @@ int main(int argc, char **argv) noexcept {
             bool overflowed = false;
             std::chrono::steady_clock::time_point tStart, tOverflow;
             std::atomic<int64_t> lastFrameNs{0};   // steady_clock ns of the most recent frame
+            // Snapshot taken once, at burstCutoff into the run, to measure the post-burst tail.
+            const double burstCutoff = 2.0;  // s; the pre-armed table drains well within this
+            bool snapTaken = false;
+            uint64_t snapFrames = 0, snapBytes = 0;
+            std::chrono::steady_clock::time_point snapTime;
 
             UploadResult uploadResult;
             try {
@@ -290,6 +299,11 @@ int main(int argc, char **argv) noexcept {
                                                                    + std::chrono::milliseconds(250)),
                                       [&] { return overflowed; })) break;
                     auto now = std::chrono::steady_clock::now();
+                    if (!snapTaken &&
+                        std::chrono::duration<double>(now - tStart).count() >= burstCutoff) {
+                        snapFrames = frames.load(); snapBytes = bytes.load();
+                        snapTime = now; snapTaken = true;
+                    }
                     if (now >= deadline) break;
                     int64_t last = lastFrameNs.load(std::memory_order_relaxed);
                     if (!holdMode && frames.load() > 0 && last > 0
@@ -319,6 +333,11 @@ int main(int argc, char **argv) noexcept {
             auto endPoint = overflowed ? tOverflow : (stalled ? tStall : tEnd);
             res.secondsRun = std::chrono::duration<double>(endPoint - tStart).count();
             res.expectedFrames = (uint64_t) (res.secondsRun * 1e6 / (double) priUs);
+            if (snapTaken) {
+                res.ssFrames = res.frames - snapFrames;
+                res.ssBytes = res.bytes - snapBytes;
+                res.ssSeconds = std::chrono::duration<double>(endPoint - snapTime).count();
+            }
             if (stalled) res.secondsToStall = std::chrono::duration<double>(tStall - tStart).count();
             if (overflowed) {
                 res.secondsToOverflow = std::chrono::duration<double>(tOverflow - tStart).count();
@@ -327,6 +346,11 @@ int main(int argc, char **argv) noexcept {
 
             std::cout << "PRI " << priUs << " us: " << res.frames << " frames in " << std::fixed
                       << std::setprecision(2) << res.secondsRun << " s"
+                      << (res.ssSeconds > 0.1
+                            ? ("  [steady " + std::to_string((long) (res.ssFrames / res.ssSeconds))
+                               + " fps, "
+                               + std::to_string((long) (res.ssBytes / res.ssSeconds / 1e6)) + " MB/s]")
+                            : std::string())
                       << (overflowed ? "  OVERFLOW" : (stalled ? "  STALL" : ""))
                       << ((res.carrierBefore >= 0 && res.carrierAfter != res.carrierBefore) ? "  LINK-FLAP" : "")
                       << (checkMode ? ("  content " + std::to_string(checkClean.load()) + "/"
