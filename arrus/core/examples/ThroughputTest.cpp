@@ -160,7 +160,7 @@ int main(int argc, char **argv) noexcept {
     // Diagnostic hold: when set, a point runs the full window with the scheme left started even if
     // frames stop, so an external observer (NIC counters) can see whether the sequencer keeps
     // producing. Off by default - it defeats the normal early-STALL behaviour.
-    const bool holdMode = std::getenv("THROUGHPUT_HOLD") != nullptr;
+    const bool holdMode = std::getenv("THROUGHPUT_HOLD") != nullptr || std::getenv("THROUGHPUT_KICK") != nullptr;
     // THROUGHPUT_CHECK: ramp-check every Nth delivered frame. This puts work INSIDE the callback, so
     // a checked run is a correctness run, not a clean throughput run. It confirms each sampled frame
     // is an intact per-frame ramp (catches a mis-folded address delivering wrong/garbled bytes). It
@@ -189,6 +189,10 @@ int main(int argc, char **argv) noexcept {
     const char *probeEnv = std::getenv("THROUGHPUT_PROBE_ADDR");
     const bool probeMode = probeEnv != nullptr;
     const uint32_t probeAddr = probeMode ? (uint32_t) std::strtoul(probeEnv, nullptr, 16) : 0;
+    // THROUGHPUT_KICK: once no frame has arrived for 1 s, call SyncReceive()+SyncTransfer() once -
+    // what ARRUS's overflow callback would do if the board's overflow event reached the host - and
+    // report whether frames resume. Implies holding the point (no early stall exit).
+    const bool kickMode = std::getenv("THROUGHPUT_KICK") != nullptr;
     const uint64_t checkEvery = 100;
 
     try {
@@ -256,6 +260,7 @@ int main(int argc, char **argv) noexcept {
             std::vector<std::atomic<uint64_t>> slotCount(hostDepth);
             std::vector<std::tuple<double, uint32_t, uint64_t>> probeSamples;  // (t, value, frames so far)
             unsigned probeErrors = 0;
+            bool kicked = false; double kickTime = 0; uint64_t kickFrames = 0; std::string kickResult;
             for (auto &c : slotCount) c.store(0);
             bool overflowed = false;
             std::chrono::steady_clock::time_point tStart, tOverflow;
@@ -354,6 +359,22 @@ int main(int argc, char **argv) noexcept {
                     }
                     if (now >= deadline) break;
                     int64_t last = lastFrameNs.load(std::memory_order_relaxed);
+                    if (kickMode && !kicked && frames.load() > 0 && last > 0
+                        && now.time_since_epoch().count() - last > 1'000'000'000LL) {
+                        kicked = true;
+                        kickTime = std::chrono::duration<double>(now - tStart).count();
+                        kickFrames = frames.load();
+                        lock.unlock();
+                        try {
+                            auto *impl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(0));
+                            impl->getIUs4OEM()->SyncReceive();
+                            impl->getIUs4OEM()->SyncTransfer();
+                            kickResult = "ok";
+                        } catch (const std::exception &e) {
+                            kickResult = std::string("threw: ") + e.what();
+                        }
+                        lock.lock();
+                    }
                     if (!holdMode && frames.load() > 0 && last > 0
                         && now.time_since_epoch().count() - last > 2'000'000'000LL) {
                         stalled = true;
@@ -409,6 +430,12 @@ int main(int argc, char **argv) noexcept {
             std::cout << "  slots:";
             for (auto &c : slotCount) std::cout << " " << c.load();
             std::cout << "\n";
+            if (kickMode) {
+                std::cout << "  kick: " << (kicked ? "SyncReceive+SyncTransfer at " + std::to_string(kickTime) + " s after "
+                                                      + std::to_string(kickFrames) + " frames -> " + kickResult
+                                                      + ", frames after kick: " + std::to_string(res.frames - kickFrames)
+                                                  : std::string("not needed (no 1 s gap)")) << "\n";
+            }
             if (probeMode) {
                 unsigned hist[16] = {0};
                 std::cout << "  probe 0x" << std::hex << probeAddr << std::dec << ": " << probeSamples.size()
