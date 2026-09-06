@@ -238,6 +238,10 @@ int main(int argc, char **argv) noexcept {
             std::atomic<uint64_t> bytes{0};
             std::atomic<uint64_t> checked{0};
             std::atomic<uint64_t> checkClean{0};
+            // Deliveries per host-buffer element: a transport that loses whole frames shows whether
+            // the loss is uniform or tied to particular slots (e.g. the last slot of the ring).
+            std::vector<std::atomic<uint64_t>> slotCount(hostDepth);
+            for (auto &c : slotCount) c.store(0);
             bool overflowed = false;
             std::chrono::steady_clock::time_point tStart, tOverflow;
             std::atomic<int64_t> lastFrameNs{0};   // steady_clock ns of the most recent frame
@@ -262,6 +266,9 @@ int main(int argc, char **argv) noexcept {
                 // Count and release. Nothing else - anything here is inside the measurement.
                 uint64_t n = frames.fetch_add(1, std::memory_order_relaxed);
                 bytes.fetch_add(ptr->getSize(), std::memory_order_relaxed);
+                if (ptr->getPosition() < slotCount.size()) {
+                    slotCount[ptr->getPosition()].fetch_add(1, std::memory_order_relaxed);
+                }
                 lastFrameNs.store(std::chrono::steady_clock::now().time_since_epoch().count(),
                                   std::memory_order_relaxed);
                 if (checkMode && (n % checkEvery) == 0) {
@@ -372,6 +379,9 @@ int main(int argc, char **argv) noexcept {
                                       : std::string())
                       << "  (expected ~" << res.expectedFrames << ")  FPGA " << std::setprecision(1)
                       << res.fpgaTempBefore << "->" << res.fpgaTempAfter << " C\n";
+            std::cout << "  slots:";
+            for (auto &c : slotCount) std::cout << " " << c.load();
+            std::cout << "\n";
         }
 
         printTable(results, bytesPerFrame);
