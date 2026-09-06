@@ -192,7 +192,15 @@ int main(int argc, char **argv) noexcept {
 
             // Thermal guard: sustained high-rate acquisition heats the OEM. Read the FPGA die
             // temperature before every point and stop the whole sweep above 80 C.
-            res.fpgaTempBefore = ultrasound->getUs4OEM(0)->getFPGATemperature();
+            try {
+                res.fpgaTempBefore = ultrasound->getUs4OEM(0)->getFPGATemperature();
+            } catch (const std::exception &e) {
+                std::cout << "PRI " << priUs << " us: pre-run temperature read failed (" << e.what()
+                          << ") - skipping point\n";
+                res.rejected = true; res.rejectReason = std::string("ECB: ") + e.what();
+                results.push_back(res);
+                continue;
+            }
             if (res.fpgaTempBefore > 80.0f) {
                 std::cout << "ABORT: FPGA at " << res.fpgaTempBefore << " C before PRI " << priUs
                           << " us - stopping sweep to let the board cool.\n";
@@ -295,7 +303,14 @@ int main(int argc, char **argv) noexcept {
             auto tEnd = std::chrono::steady_clock::now();
             session->stopScheme();
             res.carrierAfter = readCarrierChanges();
-            res.fpgaTempAfter = ultrasound->getUs4OEM(0)->getFPGATemperature();
+            // An ECB read right after a heavy run can fail (reply lost under load). That must not
+            // throw away the point we just measured: record the failure and keep the numbers.
+            try {
+                res.fpgaTempAfter = ultrasound->getUs4OEM(0)->getFPGATemperature();
+            } catch (const std::exception &e) {
+                res.fpgaTempAfter = -1.0f;
+                std::cout << "  (post-run temperature read failed: " << e.what() << ")\n";
+            }
 
             res.frames = frames.load();
             res.bytes = bytes.load();
