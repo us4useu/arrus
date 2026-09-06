@@ -404,5 +404,6 @@ target_link_libraries(minimal-acquisition PRIVATE arrus-core)
 target_include_directories(minimal-acquisition PRIVATE ${ARRUS_ROOT_DIR})
 
 add_executable(throughput-test examples/ThroughputTest.cpp)
-target_link_libraries(throughput-test PRIVATE arrus-core)
+# The register probe reaches Us4OEMImpl, so the harness needs arrus-core's private header deps.
+target_link_libraries(throughput-test PRIVATE arrus-core Us4::US4OEM Boost::Boost protobuf::libprotobuf fmt::fmt Eigen3::Eigen3 Microsoft.GSL::GSL)
 target_include_directories(throughput-test PRIVATE ${ARRUS_ROOT_DIR})

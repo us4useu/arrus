@@ -34,6 +34,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
+#include <tuple>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -42,6 +43,7 @@
 #include <vector>
 
 #include "arrus/core/api/arrus.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 
 namespace {
 
@@ -181,6 +183,12 @@ int main(int argc, char **argv) noexcept {
     const char *modeEnv = std::getenv("THROUGHPUT_MODE");
     const bool syncMode = modeEnv != nullptr && std::string(modeEnv) == "SYNC";
     const Scheme::WorkMode workMode = syncMode ? Scheme::WorkMode::SYNC : Scheme::WorkMode::ASYNC;
+    // THROUGHPUT_PROBE_ADDR=<hex>: read that sequencer register every 100 ms during each point, from
+    // this thread and through the session's own ECB client (never a second client on the bus), and
+    // print the time series of value changes plus a histogram of the low nibble (a state code).
+    const char *probeEnv = std::getenv("THROUGHPUT_PROBE_ADDR");
+    const bool probeMode = probeEnv != nullptr;
+    const uint32_t probeAddr = probeMode ? (uint32_t) std::strtoul(probeEnv, nullptr, 16) : 0;
     const uint64_t checkEvery = 100;
 
     try {
@@ -246,6 +254,8 @@ int main(int argc, char **argv) noexcept {
             // Deliveries per host-buffer element: a transport that loses whole frames shows whether
             // the loss is uniform or tied to particular slots (e.g. the last slot of the ring).
             std::vector<std::atomic<uint64_t>> slotCount(hostDepth);
+            std::vector<std::tuple<double, uint32_t, uint64_t>> probeSamples;  // (t, value, frames so far)
+            unsigned probeErrors = 0;
             for (auto &c : slotCount) c.store(0);
             bool overflowed = false;
             std::chrono::steady_clock::time_point tStart, tOverflow;
@@ -322,9 +332,21 @@ int main(int argc, char **argv) noexcept {
                 std::unique_lock<std::mutex> lock(mutex);
                 while (!overflowed) {
                     if (cv.wait_until(lock, std::min(deadline, std::chrono::steady_clock::now()
-                                                                   + std::chrono::milliseconds(250)),
+                                                                   + std::chrono::milliseconds(probeMode ? 100 : 250)),
                                       [&] { return overflowed; })) break;
                     auto now = std::chrono::steady_clock::now();
+                    if (probeMode) {
+                        lock.unlock();
+                        try {
+                            auto *impl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(0));
+                            uint32_t v = impl->getIUs4OEM()->SequencerReadRegister(probeAddr);
+                            probeSamples.emplace_back(std::chrono::duration<double>(now - tStart).count(), v,
+                                                      frames.load());
+                        } catch (const std::exception &e) {
+                            probeErrors++;
+                        }
+                        lock.lock();
+                    }
                     if (!snapTaken &&
                         std::chrono::duration<double>(now - tStart).count() >= burstCutoff) {
                         snapFrames = frames.load(); snapBytes = bytes.load();
@@ -387,6 +409,23 @@ int main(int argc, char **argv) noexcept {
             std::cout << "  slots:";
             for (auto &c : slotCount) std::cout << " " << c.load();
             std::cout << "\n";
+            if (probeMode) {
+                unsigned hist[16] = {0};
+                std::cout << "  probe 0x" << std::hex << probeAddr << std::dec << ": " << probeSamples.size()
+                          << " reads, " << probeErrors << " failed; value changes (t s: value @frames):";
+                uint32_t prev = 0xFFFFFFFFu;
+                for (auto &smp : probeSamples) {
+                    hist[std::get<1>(smp) & 0xF]++;
+                    if (std::get<1>(smp) != prev) {
+                        std::cout << " " << std::fixed << std::setprecision(1) << std::get<0>(smp) << ":0x" << std::hex
+                                  << std::get<1>(smp) << std::dec << "@" << std::get<2>(smp);
+                        prev = std::get<1>(smp);
+                    }
+                }
+                std::cout << "\n  probe low-nibble histogram:";
+                for (int i = 0; i < 16; ++i) if (hist[i]) std::cout << " " << i << ":" << hist[i];
+                std::cout << "\n";
+            }
         }
 
         printTable(results, bytesPerFrame);
