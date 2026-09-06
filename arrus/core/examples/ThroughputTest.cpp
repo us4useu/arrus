@@ -166,6 +166,16 @@ int main(int argc, char **argv) noexcept {
     // so two folded frames that overlap can still look like a clean ramp; the receiver's
     // PSN-generation lap detection is what guards that, tested on its side.
     const bool checkMode = std::getenv("THROUGHPUT_CHECK") != nullptr;
+    // THROUGHPUT_PLACEMENT=GPU: allocate the host buffer on GPU:0 (cudaMalloc on a discrete GPU) so an
+    // RDMA-capable transport can land frames in VRAM directly. The ramp check reads the buffer from the
+    // host, which is not possible on a discrete-GPU allocation, so the two are mutually exclusive.
+    const char *placementEnv = std::getenv("THROUGHPUT_PLACEMENT");
+    const bool gpuPlacement = placementEnv != nullptr && std::string(placementEnv) == "GPU";
+    if (gpuPlacement && checkMode) {
+        std::cerr << "THROUGHPUT_CHECK cannot read a GPU-placed buffer from the host; unset one of them.\n";
+        return 2;
+    }
+    const DeviceId placement(gpuPlacement ? DeviceType::GPU : DeviceType::CPU, 0);
     const uint64_t checkEvery = 100;
 
     try {
@@ -191,7 +201,7 @@ int main(int argc, char **argv) noexcept {
 
         std::cout << "throughput sweep: nSamples=" << nSamples << " (" << bytesPerFrame
                   << " B/frame), rxDepth=" << rxDepth << ", hostDepth=" << hostDepth << ", "
-                  << secondsPerPoint << " s/point, mode=ASYNC\n";
+                  << secondsPerPoint << " s/point, mode=ASYNC, placement=" << placement.toString() << "\n";
 
         std::vector<PointResult> results;
         for (unsigned priUs : pris) {
@@ -219,7 +229,7 @@ int main(int argc, char **argv) noexcept {
             txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange),
                                (float) priUs * 1e-6f);
             TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 1);
-            DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, hostDepth};
+            DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, hostDepth, placement};
             Scheme scheme(seq, (::arrus::uint16) rxDepth, outputBuffer, Scheme::WorkMode::ASYNC);
 
             std::mutex mutex;
