@@ -191,11 +191,22 @@ int main(int argc, char **argv) noexcept {
         return 2;
     }
     const DeviceId placement(gpuPlacement ? DeviceType::GPU : DeviceType::CPU, 0);
-    // THROUGHPUT_MODE=SYNC: let the sequencer wait for the host instead of skipping un-released
-    // entries (ARRUS enables wait-on-overflow only in SYNC). Default stays ASYNC.
+    // THROUGHPUT_MODE selects the work mode; default ASYNC (see the note at the top of the file).
+    //   SYNC - the sequencer waits for the host instead of skipping un-released entries (ARRUS
+    //          enables wait-on-overflow only in SYNC).
+    //   HOST - the host is in the trigger loop: releasing a batch re-arms the entries AND issues
+    //          syncTrigger, so the sequencer fires the next batch of rxDepth entries only once the
+    //          host has consumed the previous one. The measured rate is then the host round trip,
+    //          not the data path - which is the point of measuring it.
     const char *modeEnv = std::getenv("THROUGHPUT_MODE");
-    const bool syncMode = modeEnv != nullptr && std::string(modeEnv) == "SYNC";
-    const Scheme::WorkMode workMode = syncMode ? Scheme::WorkMode::SYNC : Scheme::WorkMode::ASYNC;
+    const std::string modeName = modeEnv != nullptr ? std::string(modeEnv) : std::string("ASYNC");
+    Scheme::WorkMode workMode = Scheme::WorkMode::ASYNC;
+    if (modeName == "SYNC") workMode = Scheme::WorkMode::SYNC;
+    else if (modeName == "HOST") workMode = Scheme::WorkMode::HOST;
+    else if (modeName != "ASYNC") {
+        std::cerr << "THROUGHPUT_MODE must be ASYNC, SYNC or HOST (got " << modeName << ")\n";
+        return 2;
+    }
     // THROUGHPUT_PROBE_ADDR=<hex>: read that sequencer register every 100 ms during each point, from
     // this thread and through the session's own ECB client (never a second client on the bus), and
     // print the time series of value changes plus a histogram of the low nibble (a state code).
@@ -219,7 +230,14 @@ int main(int argc, char **argv) noexcept {
 
     try {
         // INFO, not TRACE: at thousands of frames per second TRACE logging would dominate.
-        arrus::useDefaultLoggerFactory()->setClogLevel(arrus::LogSeverity::INFO);
+        // THROUGHPUT_LOG=TRACE|DEBUG overrides for a diagnostic run.
+        {
+            const char *lv = std::getenv("THROUGHPUT_LOG");
+            arrus::LogSeverity sev = arrus::LogSeverity::INFO;
+            if (lv && std::string(lv) == "TRACE") sev = arrus::LogSeverity::TRACE;
+            else if (lv && std::string(lv) == "DEBUG") sev = arrus::LogSeverity::DEBUG;
+            arrus::useDefaultLoggerFactory()->setClogLevel(sev);
+        }
 
         auto settings = ::arrus::io::readSessionSettings(cfgPath);
         auto session = ::arrus::session::createSession(settings);
@@ -240,7 +258,7 @@ int main(int argc, char **argv) noexcept {
 
         std::cout << "throughput sweep: nSamples=" << nSamples << " (" << bytesPerFrame
                   << " B/frame), rxDepth=" << rxDepth << ", hostDepth=" << hostDepth << ", "
-                  << secondsPerPoint << " s/point, mode=" << (syncMode ? "SYNC" : "ASYNC") << ", placement=" << placement.toString() << "\n";
+                  << secondsPerPoint << " s/point, mode=" << modeName << ", placement=" << placement.toString() << "\n";
 
         std::vector<PointResult> results;
         for (unsigned priUs : pris) {
