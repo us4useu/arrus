@@ -22,7 +22,7 @@
 //   THROUGHPUT_HOLD          keep the scheme running for the full window after frames stop
 //   THROUGHPUT_CHECK         ramp-check every 100th frame (correctness run, not a clean throughput run)
 //   THROUGHPUT_PLACEMENT=GPU host buffer on GPU:0 (excludes CHECK and KEEP: they read from the host)
-//   THROUGHPUT_MODE=SYNC     WorkMode::SYNC instead of ASYNC
+//   THROUGHPUT_MODE=ASYNC|SYNC   work mode other than the default HOST
 //   THROUGHPUT_PROBE_ADDR=<hex sequencer word index>   poll that register every 100 ms
 //   THROUGHPUT_KICK          after a 1 s gap call SyncReceive+SyncTransfer once
 //   THROUGHPUT_RESTART[_WAIT=<s>]  after the point, stop and start again without re-uploading
@@ -136,9 +136,10 @@ void printTable(const std::vector<PointResult> &results, size_t bytesPerFrame) {
         std::cout << "\n";
     }
     std::cout << "\n(frame = " << bytesPerFrame << " bytes; target/s is the sequencer rate implied by PRI;\n"
-              << " deliv% = frames delivered / frames the sequencer must have fired in run[s] - in ASYNC the\n"
-              << " sequencer is deterministic, so a shortfall WITHOUT an overflow is host-side receiver loss,\n"
-              << " which does not fire ARRUS's sequencer-overflow callback.)\n";
+              << " deliv% = frames delivered / frames the sequencer would fire in run[s] at this PRI. In ASYNC\n"
+              << " the sequencer is deterministic, so a shortfall WITHOUT an overflow is host-side receiver\n"
+              << " loss; in HOST the host paces the sequencer, so a shortfall simply means the host round\n"
+              << " trip is slower than the PRI and deliv% is not a loss figure.)\n";
 }
 
 }// namespace
@@ -192,7 +193,7 @@ int main(int argc, char **argv) noexcept {
         return 2;
     }
     const DeviceId placement(gpuPlacement ? DeviceType::GPU : DeviceType::CPU, 0);
-    // THROUGHPUT_MODE selects the work mode; default ASYNC (see the note at the top of the file).
+    // THROUGHPUT_MODE selects the work mode; default HOST (see the note at the top of the file).
     //   SYNC - the sequencer waits for the host instead of skipping un-released entries (ARRUS
     //          enables wait-on-overflow only in SYNC).
     //   HOST - the host is in the trigger loop: releasing a batch re-arms the entries AND issues
