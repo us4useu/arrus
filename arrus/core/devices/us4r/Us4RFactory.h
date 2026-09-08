@@ -3,6 +3,7 @@
 
 #include "arrus/core/api/devices/us4r/Us4R.h"
 #include "arrus/core/api/devices/us4r/Us4RSettings.h"
+#include "arrus/core/api/devices/GpuSettings.h"
 
 namespace arrus::devices {
 

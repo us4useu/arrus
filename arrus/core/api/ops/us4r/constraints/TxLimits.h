@@ -9,7 +9,7 @@ namespace arrus::ops::us4r {
 class TxLimitsBuilder;
 
 /**
- * RX op limits.
+ * TX op limits.
  *
  * The instance of this class defines what constraints are applied on the RX op parameters.
  */

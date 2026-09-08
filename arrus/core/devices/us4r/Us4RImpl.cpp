@@ -73,7 +73,7 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     for (size_t i = 0; i < this->channelsMask.size(); ++i) {
         const auto &mask = this->channelsMask.at(i);
         if (mask.empty()) {
-            this->logger->log(LogSeverity::INFO, format("No channel masking applied on Probe:{}", i));
+            this->logger->log(LogSeverity::DEBUG, format("No channel masking applied on Probe:{}", i));
         } else {
             this->logger->log(LogSeverity::INFO,
                               format("The following 'Probe:{}' channels will be masked: {}", i, arrus::toString(mask)));
@@ -142,9 +142,12 @@ void Us4RImpl::checkVoltage(Voltage voltageMinus, Voltage voltagePlus, float tol
     }
 
     //log last measured voltages
-    for(size_t i = 0; i < voltages.size(); i++) {
-        logger->log(LogSeverity::INFO, ::arrus::format(voltages[i].name + " = {} V", voltages[i].voltage));
+    std::string measurementLog = "Recently measured voltages: ";
+    for(size_t i = 0; i < voltages.size(); ++i) {
+        // the number of voltages is of voltages to be logged here is small
+        measurementLog += ::arrus::format(voltages[i].name + " = {} V; ", voltages[i].voltage);
     }
+    logger->log(LogSeverity::INFO, measurementLog);
 
     if (fail) {
         disableHV();
@@ -326,8 +329,8 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
                                       minVoltage, maxVoltage)));
         }
     }
-    
-    
+
+
     // Convert to IHV voltages.
     // NOTE!
     // The voltages are expected to be in the order: amplitude level 1 (HV 1), amplitude level 2 (HV 0)
@@ -351,6 +354,10 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     // Set voltages.
     if (isHVPS) {
+        // Set the over-current / over-power settings if specified by the user
+        //
+        setHVPSFuseSettings(hvpsFuseSettings);
+
         std::vector<std::future<void>> futures;
         for (uint8_t n = 0; n < hv.size(); n++) {
             futures.push_back(std::async(
@@ -394,13 +401,11 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
-    
-    // Set the over-current / over-power settings if specified by the user
-    setHVPSFuseSettings(hvpsFuseSettings);
 
+    
 }
 
-unsigned char Us4RImpl::getVoltage() {
+float Us4RImpl::getVoltage() {
     ARRUS_REQUIRES_TRUE(!hv.empty(), "No HV have been set.");
     return hv[0]->getVoltage();
 }
@@ -509,11 +514,22 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
         us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
         us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
     }
+    // Derive host buffer placement (CPU or GPU) from the scheme's DataBufferSpec.
+    const auto &placement = currentScheme->getOutputBuffer().getPlacement();
+    const auto placementType = placement.getDeviceType();
+    const auto placementOrdinal = placement.getOrdinal();
+    if (!((placementType == DeviceType::CPU || placementType == DeviceType::GPU) && placementOrdinal == 0)) {
+        throw IllegalArgumentException(
+            format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
+                   placement.toString()));
+    }
+    const bool useP2pDma = (placementType == DeviceType::GPU);
     // Create output buffer.
     Us4ROutputBufferBuilder builder;
     buffer = builder.setStopOnOverflow(stopOnOverflow)
                           .setNumberOfElements(hostBufNElements)
                           .setLayoutTo(buffers)
+                          .setUseP2pDma(useP2pDma)
                           .build();
     registerOutputBuffer(buffer.get(), buffers, workMode);
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
@@ -522,7 +538,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
 
 void Us4RImpl::start() {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
-    logger->log(LogSeverity::INFO, "Starting us4r.");
+    logger->log(LogSeverity::DEBUG, "Starting us4r.");
     if (this->buffer == nullptr) {
         throw ::arrus::IllegalArgumentException("Call upload function first.");
     }
@@ -540,7 +556,7 @@ void Us4RImpl::start() {
     //  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
         // Reset tx subsystem pointers.
-        us4oem->getIUs4OEM()->EnableTransmit();
+        us4oem->getIUs4OEM()->EnableTxRx();
         // Reset sequencer pointers.
         // The sequencer pointer (the entry from which sequencer starts) should not be reset when
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
@@ -550,9 +566,14 @@ void Us4RImpl::start() {
         us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t), maskDVDDInterrupt);
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
+        // external trigger
         this->digitalBackplane.value()->enableExternalTrigger();
+        this->getMasterOEM()->syncTrigger();
     }
-    this->getMasterOEM()->start();
+    else {
+        // Internal trigger.
+        this->getMasterOEM()->start();
+    }
     this->state = State::STARTED;
 }
 
@@ -561,7 +582,7 @@ void Us4RImpl::stop() { this->stopDevice(); }
 void Us4RImpl::stopDevice() {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STARTED) {
-        logger->log(LogSeverity::INFO, "Device Us4R is already stopped.");
+        logger->log(LogSeverity::DEBUG, "Device Us4R is already stopped.");
     } else {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
@@ -585,15 +606,15 @@ void Us4RImpl::stopDevice() {
     this->state = State::STOPPED;
 }
 
-Us4RImpl::~Us4RImpl() {
+Us4RImpl::~Us4RImpl() noexcept {
     try {
-        getDefaultLogger()->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
+        logger->log(LogSeverity::DEBUG, "Closing connection with Us4R.");
         this->stopDevice();
         // TODO: the below should be part of session handler
         if (this->buffer) {
             cleanupBuffers();
         }
-        getDefaultLogger()->log(LogSeverity::INFO, "Connection to Us4R closed.");
+        logger->log(LogSeverity::INFO, "Connection to Us4R closed.");
     } catch (const std::exception &e) {
         std::cerr << "Exception while destroying handle to the Us4R device: " << e.what() << std::endl;
     }
@@ -868,10 +889,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     }
 
     // TODO try avoid converting from samples to time then back to samples?
-    uint16 maxNSamples = int16(roundf(maxT * nominalFs));
+    auto maxNSamples = uint32(roundf(maxT * nominalFs));
     // Note: the last TGC sample should be applied before the reception ends.
     // This is to avoid using the same TGC curve between triggers.
-    auto values = ::arrus::getRange<uint16>(offset, maxNSamples, tgcT);
+    auto values = ::arrus::getRange<uint32>(offset, maxNSamples, tgcT);
     values.push_back(maxNSamples);// TODO(jrozb91) To reconsider (not a full TGC sampling time)
     std::vector<float> time;
     for (auto v : values) {
@@ -960,8 +981,8 @@ void Us4RImpl::checkState() const {
 void Us4RImpl::setStopOnOverflow(bool value) {
     std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     if (this->state != State::STOPPED) {
-        logger->log(LogSeverity::INFO,
-                    "The StopOnOverflow property can be set "
+        logger->log(LogSeverity::WARNING,
+                    "The StopOnOverflow property should be set "
                     "only when the device is stopped.");
     }
     this->stopOnOverflow = value;
@@ -1338,7 +1359,7 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
-    logger->log(LogSeverity::INFO, format("Setting {}", params.toString()));
+    logger->log(LogSeverity::DEBUG, format("Setting {}", params.toString()));
     std::vector<std::pair<size_t, size_t>> values;
     // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
     // and just interpret the string as sequence ordinal number?
@@ -1536,14 +1557,14 @@ float Us4RImpl::getActualTxFrequency(float frequency) {
 
 void Us4RImpl::handlePulserInterrupt() {
     if (this->state == State::STOPPED) {
-        logger->log(LogSeverity::INFO, format("System already stopped."));
+        logger->log(LogSeverity::DEBUG, format("System already stopped."));
         this->disableHV();
     }
     else {
         //..
         auto DVDDMasked = this->maskDVDDInterrupt;
         bool nonDVDDFaultDetected = false;
-        
+
         if(DVDDMasked) { //if DVDD interrput status is masked -> ignore if it occurs
             for(auto &oem: this->us4oems) {
                 auto status = oem->getIUs4OEM()->GetPulsersStatusRegister();
@@ -1716,28 +1737,36 @@ Us4RImpl::getSequenceNameToOrdinalMap(const Scheme& scheme) const {
     return result;
 }
 
+std::vector<int64_t> Us4RImpl::getHVPSTuningInfo() {
+    std::vector<int64_t> result;
+    for(auto &us4oem: us4oems) {
+        result.push_back(us4oem->getHVPSTuningInfo());
+    }
+    return result;
+}
+
+void Us4RImpl::setHVPSPrecisionMultiplier(uint8_t multiplier) {
+    for(auto &us4oem: us4oems) {
+        us4oem->setHVPSPrecisionMultiplier(multiplier);
+    }
+}
+
 void Us4RImpl::setHVPSFuseSettings(const optional<HVPSFuseSettings> &settings) {
     if(settings.has_value()) {
+        // NOTE: level 1 -> rail 1; level 2 -> rail 0.
+        auto thresholdsRail0 = ::us4us::us4r::HvpsFuseCustomThresholds{
+            settings->getLevel2StaticVoltageMargin(),
+            settings->getLevel2MaxCurrentThreshold(),
+            settings->getLevel2MaxPowerThreshold()
+        };
+        auto thresholdsRail1 = ::us4us::us4r::HvpsFuseCustomThresholds{
+            settings->getLevel1StaticVoltageMargin(),
+            settings->getLevel1MaxCurrentThreshold(),
+            settings->getLevel1MaxPowerThreshold()
+        };
         for(const auto &us4oem: us4oems) {
-            // NOTE: level 1 -> rail 1; level 2 -> rail 0.
-            if(settings->getLevel1MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1PowerThreshold(settings->getLevel1MaxPowerThreshold().value());
-            }
-            if(settings->getLevel1MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1CurrentThreshold(settings->getLevel1MaxCurrentThreshold().value());
-            }
-            if(settings->getLevel1StaticVoltageMargin().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV1StaticVoltageMargin(settings->getLevel1StaticVoltageMargin().value());
-            }
-            if(settings->getLevel2MaxPowerThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0PowerThreshold(settings->getLevel2MaxPowerThreshold().value());
-            }
-            if(settings->getLevel2MaxCurrentThreshold().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0CurrentThreshold(settings->getLevel2MaxCurrentThreshold().value());
-            }
-            if(settings->getLevel2StaticVoltageMargin().has_value()) {
-                us4oem->getIUs4OEM()->SetCustomHvpsFuseHV0StaticVoltageMargin(settings->getLevel2StaticVoltageMargin().value());
-            }
+            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV0, thresholdsRail0);
+            us4oem->getIUs4OEM()->SetCustomHvpsFuseThresholds(::us4us::us4r::HvpsRails::HV1, thresholdsRail1);
         }
     }
 }

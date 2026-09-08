@@ -5,6 +5,7 @@
 #include <ius4oem.h>
 
 #include "arrus/core/api/devices/DeviceId.h"
+#include "arrus/core/api/devices/us4r/Us4RSettings.h"
 
 namespace arrus::devices {
 
@@ -17,8 +18,10 @@ using Ius4OEMRawHandle = IUs4OEM*;
 
 class IUs4OEMFactory {
 public:
-    virtual IUs4OEMHandle getIUs4OEM(unsigned index) = 0;
-    virtual std::vector<IUs4OEMHandle> getModules(Ordinal nModules) = 0;
+    virtual IUs4OEMHandle getIUs4OEM(unsigned index,
+                                     const Us4OEMInterruptCallbacksMap &callbacks = {}) = 0;
+    virtual std::vector<IUs4OEMHandle> getModules(Ordinal nModules,
+                                                  const Us4OEMInterruptCallbacksMap &callbacks = {}) = 0;
     virtual ~IUs4OEMFactory() = default;
 };
 

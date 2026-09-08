@@ -72,7 +72,7 @@ SessionImpl::SessionImpl(
     : us4rFactory(std::move(us4RFactory)), fileFactory(std::move(fileFactory)), gpuFactory(std::move(gpuFactory)) {
     getDefaultLogger()->log(LogSeverity::INFO, "Starting new ARRUS session.");
     getDefaultLogger()->log(
-        LogSeverity::INFO, arrus::format("ARRUS version: {}", ::arrus::version()));
+        LogSeverity::DEBUG, arrus::format("ARRUS version: {}", ::arrus::version()));
     // Debug info.
     getDefaultLogger()->log(
         LogSeverity::DEBUG, arrus::format("OS: {}", ::arrus::OS_NAME));
@@ -116,6 +116,19 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const DeviceId &deviceI
 void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
     // Ultrasound systems:
     Ordinal ultrasoundOrdinal = 0;
+
+    // Processing devices.
+    // NOTE: this limitation will be alleviated in ARRUS 0.15.0.
+    ARRUS_REQUIRES_TRUE(sessionSettings.getNumberOfGpus() <= 1,
+                        "Currently ARRUS support a single GPU configuration only.");
+
+    for(size_t i = 0; i < sessionSettings.getNumberOfGpus(); ++i) {
+        const GpuSettings &settings = sessionSettings.getGpuSettings(Ordinal(i));
+        Gpu::Handle gpu = gpuFactory->getGpu(Ordinal(i), settings);
+        aliases.emplace(DeviceId(DeviceType::GPU, Ordinal(i)), gpu.get());
+        devices.emplace(gpu->getDeviceId(), std::move(gpu));
+    }
+
     // - Us4R:
     for(size_t i = 0; i < sessionSettings.getNumberOfUs4Rs(); ++i) {
         const Us4RSettings &settings = sessionSettings.getUs4RSettings(Ordinal(i));
@@ -139,18 +152,6 @@ void SessionImpl::configureDevices(const SessionSettings &sessionSettings) {
         aliases.emplace(DeviceId(DeviceType::Ultrasound, ultrasoundOrdinal), file.get());
         devices.emplace(file->getDeviceId(), std::move(file));
         ultrasoundOrdinal++;
-    }
-
-    // Processing devices.
-    // NOTE: this limitation will be alleviated in ARRUS 0.15.0.
-    ARRUS_REQUIRES_TRUE(sessionSettings.getNumberOfGpus() <= 1,
-                        "Currently ARRUS support a single GPU configuration only.");
-
-    for(size_t i = 0; i < sessionSettings.getNumberOfGpus(); ++i) {
-        const GpuSettings &settings = sessionSettings.getGpuSettings(Ordinal(i));
-        Gpu::Handle gpu = gpuFactory->getGpu(Ordinal(i), settings);
-        aliases.emplace(DeviceId(DeviceType::GPU, Ordinal(i)), gpu.get());
-        devices.emplace(gpu->getDeviceId(), std::move(gpu));
     }
 }
 
@@ -182,14 +183,17 @@ void SessionImpl::startScheme() {
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
     ultrasound->start();
     state = State::STARTED;
+    getDefaultLogger()->log(LogSeverity::INFO, "Scheme started.");
 }
 
 void SessionImpl::stopScheme() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     auto ultrasound = (::arrus::devices::Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
     ultrasound->stop();
-    state = State::STOPPED;
-    getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
+    if(state != State::STOPPED) {
+        state = State::STOPPED;
+        getDefaultLogger()->log(LogSeverity::INFO, "Scheme stopped.");
+    }
 }
 
 void SessionImpl::run(bool sync, std::optional<long long> timeout) {
@@ -221,7 +225,6 @@ void SessionImpl::run(bool sync, std::optional<long long> timeout) {
 void SessionImpl::close() {
     std::lock_guard<std::recursive_mutex> guard(stateMutex);
     if (this->state == State::CLOSED) {
-        getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Session already closed."));
         return;
     }
     if (this->state == State::STARTED) {
@@ -230,6 +233,7 @@ void SessionImpl::close() {
     getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Closing session."));
     this->devices.clear();
     this->state = State::CLOSED;
+    getDefaultLogger()->log(LogSeverity::INFO, arrus::format("Session closed."));
 }
 
 void SessionImpl::setParameters(const Parameters &params) {

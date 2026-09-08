@@ -68,6 +68,7 @@ HighVoltageSupplierFactoryImpl::getHighVoltageSupplier(
         std::vector<HighVoltageSupplier::Handle> hvs;
 
         for(auto us4oem: us4oems) {
+            us4oem->SetHVPSPrecisionMultiplier(settings.getVoltagePrecisionFactor());
             IHV *hv = us4oem->getHVPS();
             // NOTE: us4oemhvps is owned by the Us4OEMPlus class.
             hvs.push_back(std::make_unique<HighVoltageSupplierView>(id, settings.getModelId(), hv));

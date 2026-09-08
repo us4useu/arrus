@@ -22,7 +22,7 @@ using float64 = double;
 
 using ChannelIdx = uint16;
 typedef std::vector<bool> BitMask;
-using Voltage = uint8;
+using Voltage = float;
 using BitstreamId = uint16;
 using TxTimeoutId = uint8;
 using TxTimeout = uint16_t; // [us]

@@ -97,6 +97,25 @@ Devices
 .. doxygenclass:: arrus::devices::Us4RSettings
     :members:
 
+.. doxygenclass:: arrus::devices::ProbeAdapterSettings
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::devices::ProbeSettings
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::devices::us4r::IOSettings
+    :project: arrus
+    :members:
+
+.. doxygenclass:: arrus::devices::us4r::IOSettingsBuilder
+    :project: arrus
+    :members:
+
+.. doxygenenum:: arrus::devices::us4r::IOCapability
+    :project: arrus
+
 .. doxygenclass:: arrus::devices::Us4RTxRxLimits
     :members:
 
@@ -162,3 +181,15 @@ Data buffers consists of multiple elements.
     :members:
 
 
+Logging
+=======
+
+.. doxygenclass:: arrus::Logging
+    :project: arrus
+    :members:
+
+.. doxygenfunction:: setLoggerFactory(const std::shared_ptr<LoggerFactory>& factory);
+    :project: arrus
+    
+.. doxygenfunction:: useDefaultLoggerFactory()
+    :project: arrus

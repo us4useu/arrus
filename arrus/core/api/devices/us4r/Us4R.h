@@ -52,7 +52,7 @@ public:
      *
      * @param voltage voltage to set [V]
      */
-    virtual void setVoltage(unsigned char voltage) = 0;
+    virtual void setVoltage(float voltage) = 0;
 
     /**
      * Sets HV voltage.
@@ -72,7 +72,7 @@ public:
      *
      * @return hv voltage value configured on device [V]
      */
-    virtual unsigned char getVoltage()  = 0;
+    virtual float getVoltage()  = 0;
 
     /**
      * Returns measured HV voltage (plus).
@@ -460,6 +460,17 @@ public:
      * Returns system variant (LEGACY/PLUS_32RX. etc.).
      */
     virtual Us4OEM::Variant getVariant() = 0;
+
+    /**
+     * Returns HVPS tuning info (unix format timestamps (number of seconds) for each OEM if previously tuned)
+     */
+    virtual std::vector<int64_t> getHVPSTuningInfo() = 0;
+
+    /**
+     * Sets HVPS precision multiplier (0,1,2,3)
+     * @param multiplier: multiplier value
+     */
+    virtual void setHVPSPrecisionMultiplier(uint8_t multiplier) = 0;
 
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;

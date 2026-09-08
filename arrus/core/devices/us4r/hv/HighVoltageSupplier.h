@@ -61,7 +61,7 @@ public:
      * Returns the default measured voltage.
      * For the OEM HVPS, this is the voltage measured on the rail 0 / amplitude 2.
      */
-    unsigned char getVoltage() { return getIHV()->GetHVVoltage(); }
+    float getVoltage() { return getIHV()->GetHVVoltage(); }
 
     /**
      * Returns the default measured voltage.

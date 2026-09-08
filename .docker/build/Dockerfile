@@ -49,12 +49,14 @@ RUN chmod +x install_cmake.sh && ./install_cmake.sh $TARGETPLATFORM
 
 # Swig
 RUN apt-get update && apt-get install -yq --no-install-recommends libpcre3-dev \
- && wget https://downloads.sourceforge.net/project/swig/swig/swig-4.0.2/swig-4.0.2.tar.gz \
+ && wget https://github.com/us4useu/swig/releases/download/v4.0.2/swig-4.0.2.tar.gz -O swig-4.0.2.tar.gz \
  && tar -xvf swig-4.0.2.tar.gz && cd swig-4.0.2 \
  && ./configure && make && make install
 
 # Python dependencies and conan
-RUN python${PYTHON_VERSION} -m pip install virtualenv setuptools==67.8.0 wheel==0.36.2 Jinja2==3.0.3 sphinx==3.3.1 sphinx_rtd_theme==0.5.0 six==1.16.0 breathe==4.33.1 docutils==0.16 "git+https://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain" pydevops-us4us==0.3.0 && python${PYTHON_VERSION} -m pip install conan==1.66.0
+RUN python${PYTHON_VERSION} -m pip install setuptools==67.8.0 wheel==0.36.2 "setuptools_scm<8" \
+ && python${PYTHON_VERSION} -m pip install virtualenv Jinja2==3.0.3 sphinx==3.3.1 sphinx_rtd_theme==0.5.0 six==1.16.0 breathe==4.33.1 docutils==0.16 "git+https://github.com/pjarosik/matlabdomain@master#egg=sphinxcontrib-matlabdomain" pydevops-us4us==0.3.0 \
+ && python${PYTHON_VERSION} -m pip install conan==1.66.0
 
 # Set Git user mail and name (needed to automatically publish docs on github pages).
 RUN git config --global user.email "dev@us4us.eu" && git config --global user.name "us4us developer"

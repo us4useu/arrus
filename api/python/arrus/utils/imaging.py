@@ -383,7 +383,7 @@ class ProcessingRunner:
         CLOSED = 2
 
     def __init__(self, input_buffer, metadata, processing, use_memory_pool: bool = True,
-                 gpu_memory_limit_percentage: float = 0.95):
+                 gpu_memory_limit_percentage: float = 0.95, use_p2p_dma: bool = False):
         import cupy as cp
         self.cp = cp
         self._log_gpu_info()
@@ -393,6 +393,7 @@ class ProcessingRunner:
         # Set GPU memory limit if provided
         if use_memory_pool and gpu_memory_limit_percentage:
             self._set_gpu_memory_limit_percentage(gpu_memory_limit_percentage)
+        self.use_p2p_dma = use_p2p_dma
 
         # Input buffer, stored in the host PC memory.
         self.host_input_buffer = input_buffer
@@ -422,7 +423,8 @@ class ProcessingRunner:
         self._ops, self._target_pos, self._inputs = self._sort_graph_nodes(
             self.graph, self.source_node_name
         )
-        self._register_buffer(self.host_input_buffer, lambda element: element.array)
+        if not use_p2p_dma:
+            self._register_buffer(self.host_input_buffer, lambda element: element.array)
         self._register_buffer(self.output_buffer, lambda element: element.data)
         self.host_input_buffer.append_on_new_data_callback(self.process)
         self._state = ProcessingRunner.State.READY
@@ -541,6 +543,7 @@ class ProcessingRunner:
             gpu_input_buffer,
             data_stream=self.data_stream,
             processing_stream=self.processing_stream,
+            source_buffer_placement="GPU:0" if self.use_p2p_dma else "CPU:0",
             name=f"{gpu_input_buffer.name}Enqueue",
         )
         out_buffer_enqueue = EnqueueGPUtoCPU(
@@ -559,14 +562,16 @@ class ProcessingRunner:
             if t_name == "Output":
                 new_deps[(out_buffer_enqueue.name, t_input_nr)] = (s_name, s_input_nr)
             else:
-                # Determine if the target node is connected to some sequence
+                # Check if the source node is just the Tx/Rx sequence name.
+                # If so, replace the Tx/Rx sequence with the EnqueueToGPU operator
                 input_nr = metadata_nr_by_sequence_name.get(s_name, None)
                 if input_nr is not None:
                     # Target/Input:InputNr <- InputBufferEnqueue/Output:{input_nr}
                     new_deps[(t_name, t_input_nr)] = (in_buffer_enqueue.name, input_nr)
                     input_processing_op_names.append(t_name)
                 else:
-                    # pass through
+                    # if it's an ordinanry graph operator, just
+                    # copy it to the new graph.
                     new_deps[(t_name, t_input_nr)] = (s_name, s_input_nr)
         # TODO prepend the last Pipeline/ != Output with ReleaseBufferElement
         new_graph = Graph(new_op_by_name.values(), new_deps)
@@ -613,13 +618,10 @@ class ProcessingRunner:
         n_ops = len(sequence)
 
         # (source, output) -> *(target, input)
-        def get_n_outputs(op_name):
-            if op_name == "Outputs":
-                return 0
-            return len(output_nrs_by_op_name[op_name])
+        def get_n_outputs(op):
+            return op.n_outputs
 
-        target_pos = [[list() for _ in range(get_n_outputs(op.name))]
-                      for op in sequence]
+        target_pos = [[list() for _ in range(get_n_outputs(op))] for op in sequence]
         t_inputs = [0]*n_ops
         for (t_name, t_input_nr), (s_name, s_output_nr) in deps.items():
             t_pos = op_position[t_name]
@@ -682,7 +684,8 @@ class ProcessingRunner:
             if self._state == ProcessingRunner.State.CLOSED:
                 # Already closed.
                 return
-            self._unregister_buffer(self.host_input_buffer, lambda element: element.array)
+            if not self.use_p2p_dma:
+                self._unregister_buffer(self.host_input_buffer, lambda element: element.array)
             if hasattr(self, "output_buffer") and self.output_buffer:
                 self._unregister_buffer(self.output_buffer, lambda element: element.data)
             for op in self._ops:
@@ -706,9 +709,17 @@ class ProcessingRunner:
 
     def _log_gpu_info(self):
         ngpus = self.cp.cuda.runtime.getDeviceCount()
-        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
-        arrus.logging.log(arrus.logging.INFO, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
-        arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {ngpus}")
+        arrus.logging.log(arrus.logging.DEBUG, f"NVIDIA CUDA Toolkit version: {self.cp.cuda.runtime.runtimeGetVersion()}")
+        arrus.logging.log(arrus.logging.DEBUG, f"NVIDIA CUDA driver version: {self.cp.cuda.runtime.driverGetVersion()}")
+        gpu_names = [self.cp.cuda.runtime.getDeviceProperties(i)["name"].decode("utf-8")
+                     for i in range(ngpus)]
+        if gpu_names:
+            gpu_names = ", ".join(gpu_names)
+            arrus.logging.log(arrus.logging.INFO, f"Detected NVIDIA GPU(s): {gpu_names}. "
+                                               f"CUDA version: {self.cp.cuda.runtime.runtimeGetVersion()}")
+        else:
+            arrus.logging.log(arrus.logging.INFO, f"No NVIDIA GPU detected")
+
         for i in range(ngpus):
             props = self.cp.cuda.runtime.getDeviceProperties(i)
             free_mem, total_mem = self.cp.cuda.runtime.memGetInfo()
@@ -833,7 +844,7 @@ class Operation:
         """
         Returns the number of outputs of this operation.
 
-        I most cases this will be equal 1; since v0.14.0 we started supporting
+        In most cases this will be equal 1; since v0.14.0 we started supporting
         multi-output operations. To implement multi-output operation correctly, you have
         to override this method and return the actual number of arrays this Operation actually returns.
         :return:
@@ -857,12 +868,23 @@ def _get_op_context_param_name(op_name: str, param_name: str):
 
 class EnqueueToGPU(Operation):
 
-    def __init__(self, buffer, data_stream, processing_stream, name=None):
+    def __init__(self, buffer, data_stream, processing_stream,
+                 source_buffer_placement, name=None):
         super().__init__(name)
         self.buffer = buffer
         self.data_stream = data_stream
         self.processing_stream = processing_stream
         self._current_pos = 0
+        placement = arrus.devices.device.parse_device_id(source_buffer_placement)
+        if placement.device_type == arrus.devices.gpu.DEVICE_TYPE:
+            import cupy as cp
+            self._cp = cp
+            self._copy = self._copy_device_to_device
+        elif placement.device_type == arrus.devices.cpu.DEVICE_TYPE:
+            self._copy = self._copy_host_to_device
+        else:
+            raise ValueError(
+                f"Unsupported source buffer placement: {source_buffer_placement}")
 
     def prepare(self, const_metadata):
         return const_metadata
@@ -870,14 +892,24 @@ class EnqueueToGPU(Operation):
     def _release_element_callback(self, element):
         element.release()
 
+    @property
+    def n_outputs(self):
+        return self.buffer.n_arrays
+
+    def _copy_device_to_device(self, gpu_array, src_array):
+        with self.data_stream:
+            self._cp.copyto(gpu_array, src_array)
+
+    def _copy_host_to_device(self, gpu_array, src_array):
+        gpu_array.set(src_array, stream=self.data_stream)
+
     def process(self, element):
         """
         :param element: input host buffer element
         """
         element = element[0]
         gpu_element = self.buffer.acquire(self._current_pos)
-        gpu_array = gpu_element.data
-        gpu_array.set(element.array, stream=self.data_stream)
+        self._copy(gpu_element.data, element.array)
         data_ready_event = self.data_stream.record()
         self.data_stream.launch_host_func(self._release_element_callback, element)
         self._current_pos = (self._current_pos+1) % self.buffer.n_elements

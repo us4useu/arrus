@@ -90,6 +90,9 @@ public:
     /** Sets the TX delay profiles to the given sequences */
     virtual void setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) = 0;
 
+    virtual int64_t getHVPSTuningInfo() = 0;
+    virtual void setHVPSPrecisionMultiplier(uint8_t multiplier) = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };

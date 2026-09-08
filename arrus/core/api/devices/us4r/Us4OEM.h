@@ -230,6 +230,17 @@ public:
     virtual float getActualTxFrequency(float frequency) = 0;
 
     /**
+     * Returns HVPS tuning info (timestamp if previously tuned)
+     */
+    virtual int64_t getHVPSTuningInfo() = 0;
+
+    /**
+     * Sets HVPS precision multiplier (0,1,2,3)
+     * :param multiplier: multiplier value
+     */
+    virtual void setHVPSPrecisionMultiplier(uint8_t multiplier) = 0;
+
+    /**
      * Returns the variant of OEM.
      */
     virtual Variant getVariant() = 0;

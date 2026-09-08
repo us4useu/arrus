@@ -187,8 +187,8 @@ ProbeModel readProbeModel(const proto::ProbeModel &proto) {
 
     ::arrus::Interval<float> txFreqRange{static_cast<float>(proto.tx_frequency_range().begin()),
                                          static_cast<float>(proto.tx_frequency_range().end())};
-    ::arrus::Interval<uint8> voltageRange{static_cast<uint8>(proto.voltage_range().begin()),
-                                          static_cast<uint8>(proto.voltage_range().end())};
+    ::arrus::Interval<float> voltageRange{static_cast<float>(proto.voltage_range().begin()),
+                                           static_cast<float>(proto.voltage_range().end())};
     std::optional<Lens> lens = proto.has_lens() ? std::make_optional(readProbeLens(proto.lens())): std::nullopt;
     std::optional<MatchingLayer> matchingLayer = proto.has_matching_layer()? std::make_optional(readMatchingLayer(proto.matching_layer())): std::nullopt;
     return ProbeModel(id, nElements, pitch, txFreqRange, voltageRange, curvatureRadius, lens, matchingLayer);
@@ -505,9 +505,10 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
     if (us4r.has_hv()) {
         auto &manufacturer = us4r.hv().model_id().manufacturer();
         auto &name = us4r.hv().model_id().name();
+        auto voltagePrecisionFactor = static_cast<uint8_t>(us4r.hv().voltage_precision_factor()); // 0 - default value
         ARRUS_REQUIRES_NON_EMPTY_IAE(manufacturer);
         ARRUS_REQUIRES_NON_EMPTY_IAE(name);
-        hvSettings = HVSettings(HVModelId(manufacturer, name));
+        hvSettings = HVSettings(HVModelId(manufacturer, name), voltagePrecisionFactor);
     }
     if (us4r.has_digital_backplane()) {
         auto &manufacturer = us4r.digital_backplane().model_id().manufacturer();
@@ -690,7 +691,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
             }
         }
         d = readProtoTxt<ap::Dictionary>(dictionaryPathStr);
-        logger->log(LogSeverity::INFO, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
+        logger->log(LogSeverity::DEBUG, ::arrus::format("Using dictionary file: {}", dictionaryPathStr));
     } else {
         // Read default dictionary.
         try {
@@ -700,7 +701,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
                                                            "dictionary. Message: {}",
                                                            e.what()));
         }
-        logger->log(LogSeverity::INFO, "Using default dictionary.");
+        logger->log(LogSeverity::DEBUG, "Using default dictionary.");
     }
     DictionaryProtoValidator dictionaryValidator("dictionary");
     dictionaryValidator.validate(d);

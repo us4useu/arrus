@@ -6,6 +6,27 @@ import traceback
 from arrus.framework.constant import Constant
 
 
+_NUMPY_TO_CUPY_DTYPE = {
+    arrus.core.NdArrayDef.DataType_INT16: np.int16,
+    arrus.core.NdArrayDef.DataType_UINT8: np.uint8,
+}
+
+
+def _is_gpu_placement(ndarray):
+    return (ndarray.getPlacement().getDeviceType()
+            == arrus.core.DeviceType_GPU)
+
+
+def _wrap_gpu_memory(address, nbytes, shape, dtype, owner):
+    """
+    Build a cupy ndarray view over an externally-owned GPU memory region.
+    """
+    import cupy as cp
+    mem = cp.cuda.UnownedMemory(address, nbytes, owner=owner)
+    memptr = cp.cuda.MemoryPointer(mem, 0)
+    return cp.ndarray(shape, dtype=dtype, memptr=memptr)
+
+
 class OnNewDataCallback(arrus.core.OnNewDataCallbackWrapper):
 
     def __init__(self, callback_fn):
@@ -65,8 +86,11 @@ class DataBufferElement:
     def _create_element_array(self, element):
         ndarray = element.getData(0)
         addr = arrus.core.castUint8ToInt(ndarray.getUint8())
+        size = element.getSize()  # Number of bytes
+        shape = (size,)
+        if _is_gpu_placement(ndarray):
+            return _wrap_gpu_memory(addr, size, shape, np.uint8, owner=self)
         ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_uint8))
-        shape = (element.getSize(), )  # Number of bytes
         return np.ctypeslib.as_array(ctypes_ptr, shape=shape)
 
     def _create_np_arrays(self, element):
@@ -76,9 +100,13 @@ class DataBufferElement:
             if ndarray.getDataType() != arrus.core.NdArrayDef.DataType_INT16:
                 raise ValueError("Currently output data type int16 is supported only.")
             addr = arrus.core.castToInt(ndarray.getInt16())
-            ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
             shape = arrus.utils.core.convert_from_tuple(ndarray.getShape())
-            arr = np.ctypeslib.as_array(ctypes_ptr, shape=shape)
+            if _is_gpu_placement(ndarray):
+                nbytes = int(np.prod(shape)) * np.dtype(np.int16).itemsize
+                arr = _wrap_gpu_memory(addr, nbytes, shape, np.int16, owner=self)
+            else:
+                ctypes_ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_int16))
+                arr = np.ctypeslib.as_array(ctypes_ptr, shape=shape)
             arrays.append(arr)
         return arrays
 

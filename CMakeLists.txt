@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21.0)
 project(arrus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 # Version
-set(PROJECT_VERSION 0.14.0)
+set(PROJECT_VERSION 0.14.1)
 set(ARRUS_PROJECT_VERSION "${PROJECT_VERSION}")
 string(TIMESTAMP CURRENT_YEAR "%Y")
 
@@ -65,7 +65,8 @@ if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")
             _WIN32
             # warnings occurs in boost bimap implementation headers
             _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
-            _CRT_SECURE_NO_WARNINGS)
+            _CRT_SECURE_NO_WARNINGS
+            NOMINMAX)
 else("${ARRUS_BUILD_PLATFORM}" STREQUAL "linux")
     set(ARRUS_CPP_COMMON_COMPILE_OPTIONS "")
     set(ARRUS_CPP_STRICT_COMPILE_OPTIONS "-Wall -Wextra -pedantic -Werror -Wno-psabi")
@@ -83,7 +84,7 @@ set(ARRUS_DOCS_INSTALL_DIR docs)
 ################################################################################
 # Common dependencies
 ################################################################################
-find_package(Us4 0.15.0 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
+find_package(Us4 0.15.1 EXACT REQUIRED US4OEM HV256 DBARLite DBARLitePcie)
 find_package(Boost REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Protobuf REQUIRED)

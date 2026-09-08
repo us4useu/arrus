@@ -69,7 +69,8 @@ public:
             // Get IUs4OEM handles only, without initializing them.
             // This is in order to enable internal trigger before
             // OEMs are initialized.
-            auto ius4oemHandles = getIUS4OEMs((Ordinal)(us4OEMSettings.size()), settings.isAllowDuplicateOEMIds());
+            auto ius4oemHandles = getIUS4OEMs((Ordinal)(us4OEMSettings.size()), settings.isAllowDuplicateOEMIds(),
+                                              settings.getInterruptCallbacks());
 
             // initialization
             std::vector<IUs4OEM*> ius4oems;
@@ -117,9 +118,10 @@ public:
     }
 
 private:
-    std::vector<IUs4OEMHandle> getIUS4OEMs(Ordinal nOEMs, bool allowDuplicateIds) {
+    std::vector<IUs4OEMHandle> getIUS4OEMs(Ordinal nOEMs, bool allowDuplicateIds,
+                                           const Us4OEMInterruptCallbacksMap &callbacks = {}) {
         ARRUS_REQUIRES_AT_LEAST(nOEMs, 1, "At least one us4oem should be configured.");
-        std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nOEMs);
+        std::vector<IUs4OEMHandle> ius4oems = ius4oemFactory->getModules(nOEMs, callbacks);
         // OEM initial validation
         validateOEMIds(ius4oems, allowDuplicateIds);
         // Modifies input list - sorts ius4oems by ID in ascending order.
