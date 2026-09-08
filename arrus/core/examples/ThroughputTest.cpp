@@ -3,11 +3,12 @@
 // SCOPE: bench diagnostic for the Ethernet/Holoscan port. Assumes a session with no HV and no
 // physical probe (see us4r_eth_bench.prototxt). Not a general example.
 //
-// Runs a continuous acquisition in WorkMode::ASYNC - the sequencer free-runs at the programmed
-// PRI and an overflow is reported as an error rather than applying backpressure. That is the
-// only mode in which the host is not in the trigger loop: HOST and the MANUAL modes handshake
-// with the host once per batch (isWaitForSoftMode), so in those the ECB round-trip, not the data
-// path, would set the ceiling.
+// Defaults to WorkMode::HOST, where the host is in the trigger loop: the sequencer fires the next
+// batch only once the host has consumed the previous one, so the ECB round trip sets the ceiling
+// (~1500-1660 fps here, independent of frame size) rather than the data path. On the Ethernet
+// bench that is the mode that delivers every frame. THROUGHPUT_MODE=ASYNC selects the free-running
+// mode instead, which reaches a higher peak but loses the pre-armed lap at every scheme start and
+// parks the sequencer above ~2.6 GB/s.
 //
 // For each requested PRI it uploads a fresh scheme (PRI is baked into every sequencer entry by
 // SetTrigger, so it cannot be changed in place), runs for a fixed time, and records frames and
@@ -199,11 +200,15 @@ int main(int argc, char **argv) noexcept {
     //          host has consumed the previous one. The measured rate is then the host round trip,
     //          not the data path - which is the point of measuring it.
     const char *modeEnv = std::getenv("THROUGHPUT_MODE");
-    const std::string modeName = modeEnv != nullptr ? std::string(modeEnv) : std::string("ASYNC");
-    Scheme::WorkMode workMode = Scheme::WorkMode::ASYNC;
+    // Default is HOST on this bench: over Ethernet it is the only mode that delivers every frame -
+    // no start-of-scheme lap loss and no sequencer park - at the cost of a ~1500-1660 fps ceiling
+    // set by the host round trip. ASYNC reaches a higher peak but loses a lap at every scheme start
+    // and parks above ~2.6 GB/s; use THROUGHPUT_MODE=ASYNC deliberately when measuring that.
+    const std::string modeName = modeEnv != nullptr ? std::string(modeEnv) : std::string("HOST");
+    Scheme::WorkMode workMode = Scheme::WorkMode::HOST;
     if (modeName == "SYNC") workMode = Scheme::WorkMode::SYNC;
-    else if (modeName == "HOST") workMode = Scheme::WorkMode::HOST;
-    else if (modeName != "ASYNC") {
+    else if (modeName == "ASYNC") workMode = Scheme::WorkMode::ASYNC;
+    else if (modeName != "HOST") {
         std::cerr << "THROUGHPUT_MODE must be ASYNC, SYNC or HOST (got " << modeName << ")\n";
         return 2;
     }
