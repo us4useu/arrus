@@ -1257,6 +1257,17 @@ std::function<void()> Us4RImpl::createOnReceiveOverflowCallback(Scheme::WorkMode
                     this->logger->log(LogSeverity::WARNING, "Rx data overflow ...");
                     outputBuffer->runOnOverflowCallback();
                 }
+                // Release the interrupt at its source, AFTER handling it. Each interrupt on the OEM
+                // is a latch: until it is cleared the source stays asserted, so the next dispatch -
+                // of ANY interrupt, since the dispatcher acts on the highest-priority pending one -
+                // re-runs this handler, and over Ethernet the latch outlives the process, so a
+                // session that overflowed stops the next one. The SYNC branch above clears it as
+                // part of resuming; these modes stop instead, but the source still has to be
+                // released. It must FOLLOW the stop: SyncReceive also resumes the sequencer, so
+                // clearing first would restart the board for the moment before stop() lands.
+                for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                    us4oems[i]->getIUs4OEM()->SyncReceive();
+                }
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("RX overflow callback exception: {}", e.what()));
             } catch (...) { logger->log(LogSeverity::ERROR, "RX overflow callback exception: unknown"); }
@@ -1328,6 +1339,12 @@ std::function<void()> Us4RImpl::createOnTransferOverflowCallback(Scheme::WorkMod
                 } else {
                     outputBuffer->runOnOverflowCallback();
                     this->logger->log(LogSeverity::WARNING, "Host data overflow ...");
+                }
+                // Release the source after handling, for the reasons given in
+                // createOnReceiveOverflowCallback; SyncTransfer also resumes the sequencer, so it
+                // has to follow the stop rather than precede it.
+                for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                    us4oems[i]->getIUs4OEM()->SyncTransfer();
                 }
             } catch (const std::exception &e) {
                 logger->log(LogSeverity::ERROR, format("Host overflow callback exception: ", e.what()));
