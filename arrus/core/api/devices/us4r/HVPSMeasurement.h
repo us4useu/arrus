@@ -22,8 +22,9 @@ public:
     enum Unit { VOLTAGE, CURRENT };
     enum Polarity { MINUS, PLUS };
     using AmplitudeLevel = uint8;
+    using RailNumber = AmplitudeLevel;
 
-    const std::vector<float> &get(AmplitudeLevel rail, Polarity polarity, Unit unit) const {
+    const std::vector<float> &get(RailNumber rail, Polarity polarity, Unit unit) const {
         return measurements.at(rail).at(polarity).at(unit);
     }
 private:
@@ -37,6 +38,7 @@ private:
 class HVPSMeasurementBuilder {
 public:
     using AmplitudeLevel = HVPSMeasurement::AmplitudeLevel;
+    using RailNumber = HVPSMeasurement::RailNumber;
     using Polarity = HVPSMeasurement::Polarity;
     using Unit = HVPSMeasurement::Unit;
 
@@ -44,7 +46,7 @@ public:
         measurements = std::vector{2, std::vector{2, std::vector{2, std::vector<float>{}}}};
     }
 
-    void set(AmplitudeLevel rail, Polarity polarity, Unit unit, std::vector<float> measurement) {
+    void set(RailNumber rail, Polarity polarity, Unit unit, std::vector<float> measurement) {
         measurements[rail][polarity][unit] = std::move(measurement);
     }
 
@@ -66,8 +68,9 @@ class HVPSScalarMeasurement {
 public:
     enum Polarity { MINUS, PLUS };
     using AmplitudeLevel = uint8;
+    using RailNumber = AmplitudeLevel;
 
-    float getVoltage(AmplitudeLevel rail, Polarity polarity) const {
+    float getVoltage(RailNumber rail, Polarity polarity) const {
         return measurements.at(rail).at(polarity);
     }
 private:
@@ -81,13 +84,14 @@ private:
 class HVPSScalarMeasurementBuilder {
 public:
     using AmplitudeLevel = HVPSScalarMeasurement::AmplitudeLevel;
+    using RailNumber = HVPSScalarMeasurement::RailNumber;
     using Polarity = HVPSScalarMeasurement::Polarity;
 
     explicit HVPSScalarMeasurementBuilder() {
         measurements = std::vector{2, std::vector{2, 0.0f}};
     }
 
-    void set(AmplitudeLevel rail, Polarity polarity, float value) {
+    void set(RailNumber rail, Polarity polarity, float value) {
         measurements.at(rail).at(polarity) = value;
     }
 
