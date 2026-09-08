@@ -63,8 +63,37 @@ class HVPSMeasurement:
         self._array = np.stack(self._array)
         self._array = self._array.reshape(2, 2, 2, -1)
 
-    def get(self, polarity: str, rail: int, unit: str):
+    # TX amplitude level -> us4OEM HV rail number.
+    _LEVEL_TO_RAIL = {2: 0, 1: 1}
+
+    def get(self, polarity: str, rail: int = None, unit: str = None, level: int = None):
+        """
+        Returns the measurement for the given polarity, HV rail and unit.
+
+        :param polarity: "PLUS" or "MINUS"
+        :param rail: us4OEM HV rail number: 0 or 1. For backward compatibility,
+          a TX amplitude level (1 or 2) is also accepted here.
+        :param level: TX amplitude level: 1 or 2 -- an alternative way to
+          address the HV rail (mapping: level 2 -> rail 0, level 1 -> rail 1).
+          Kept for backward compatibility, use the `rail` parameter instead.
+        """
+        if level is not None:
+            if rail is not None:
+                raise ValueError("Exactly one of 'rail' and 'level' parameters "
+                                 "should be provided.")
+            rail = self._level2rail(level)
+        elif rail is not None:
+            # Note: rail 1 and level 1 point to the same rail, level 2 -> rail 0.
+            rail = self._LEVEL_TO_RAIL.get(rail, rail)
+        else:
+            raise ValueError("One of 'rail' and 'level' parameters should be "
+                             "provided.")
         return self._values[(polarity.upper(), rail, unit.upper())]
+
+    def _level2rail(self, level: int) -> int:
+        if level not in self._LEVEL_TO_RAIL:
+            raise ValueError(f"Unsupported TX amplitude level: {level}")
+        return self._LEVEL_TO_RAIL[level]
 
     def get_array(self) -> np.ndarray:
         """
@@ -174,7 +203,7 @@ class Us4OEM(Device):
         level 2) or 1 (i.e. TX amplitude level 1) and ``polarity`` is the
         string ``"MINUS"`` or ``"PLUS"``.
         """
-        m = self._handle.getHvpsMeasurement()
+        m = self._handle.getHVPSScalarMeasurement()
         polarities = (
             ("MINUS", arrus.core.HVPSScalarMeasurement.MINUS),
             ("PLUS", arrus.core.HVPSScalarMeasurement.PLUS),

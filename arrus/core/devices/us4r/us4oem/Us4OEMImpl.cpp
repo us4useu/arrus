@@ -856,7 +856,7 @@ HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
     return builder.build();
 }
 
-HVPSScalarMeasurement Us4OEMImpl::getHvpsMeasurement() {
+HVPSScalarMeasurement Us4OEMImpl::getHVPSScalarMeasurement() {
     // GetMeasuredVoltages returns values in the order: HVP0, HVP1, HVM0, HVM1.
     auto v = ius4oem->GetMeasuredVoltages();
     HVPSScalarMeasurementBuilder builder;

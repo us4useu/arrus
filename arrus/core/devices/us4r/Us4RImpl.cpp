@@ -404,7 +404,7 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
 
     if(isHVPS) {
         for(auto &oem: us4oems) {
-            auto m = oem->getHvpsMeasurement();
+            auto m = oem->getHVPSScalarMeasurement();
             logger->log(LogSeverity::INFO,
                         format("OEM:{} measured HVPS voltages [V]: "
                                "rail 0: P={}, M={}, rail 1: P={}, M={}",

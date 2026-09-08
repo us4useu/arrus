@@ -37,40 +37,33 @@ arrus.set_clog_level(arrus.logging.INFO)
 arrus.add_log_file("test.log", arrus.logging.INFO)
 
 
+
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
-    with arrus.Session("us4r.prototxt", medium=medium) as sess:
+    with arrus.Session("/home/pjarosik/us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
-        us4r.set_hv_voltage(5)
+        us4r.set_hv_voltage(20)
 
         n_elements = us4r.get_probe_model().n_elements
         # Full transmit aperture, full receive aperture.
+        tx_aperture = np.zeros(n_elements, dtype=bool)
+        tx_aperture[:192] = True
         seq = TxRxSequence(
             ops=[
                 TxRx(
-                    Tx(aperture=[True]*n_elements,
+                    Tx(aperture=tx_aperture,
                        excitation=Pulse(center_frequency=6e6, n_periods=2,
                                         inverse=False),
                        # Custom delays 1.
-                       delays=[0]*n_elements),
+                       delays=[0.0]*192),
+                       # delays=[0]*n_elements),
                     Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 4096),
+                       sample_range=(0, 1024),
                        downsampling_factor=1),
                     pri=200e-6
                 ),
-                TxRx(
-                    Tx(aperture=[True]*n_elements,
-                       excitation=Pulse(center_frequency=6e6, n_periods=2,
-                                        inverse=False),
-                       # Custom delays 2.
-                       delays=np.linspace(0, 1e-6, n_elements)),
-                    Rx(aperture=[True]*n_elements,
-                       sample_range=(0, 4096),
-                       downsampling_factor=1),
-                    pri=200e-6
-                ),
-            ],
+            ]*2,
             # Turn off TGC.
             tgc_curve=[],  # [dB]
             # Time between consecutive acquisitions, i.e. 1/frame rate.
@@ -78,6 +71,7 @@ def main():
         )
         # Declare the complete scheme to execute on the devices.
         scheme = Scheme(
+            work_mode="HOST",
             # Run the provided sequence.
             tx_rx_sequence=seq,
             # Processing pipeline to perform on the GPU device.
@@ -93,9 +87,9 @@ def main():
         )
         # Upload the scheme on the us4r-lite device.
         buffer, metadata = sess.upload(scheme)
-        us4r.set_tgc(arrus.ops.tgc.LinearTgc(start=34, slope=2e2))
+        us4r.set_tgc([14.0]*3)
         # Created 2D image display.
-        display = Display2D(metadata=metadata, value_range=(-100, 100))
+        display = Display2D(metadata=metadata, value_range=(-100, 100), input_timeout=3)
         # Start the scheme.
         sess.start_scheme()
         # Start the 2D display.

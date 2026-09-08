@@ -203,7 +203,7 @@ public:
      * Returns the latest scalar HVPS voltage measurements for all
      * (HV rail, polarity) pairs.
      */
-    virtual HVPSScalarMeasurement getHvpsMeasurement() = 0;
+    virtual HVPSScalarMeasurement getHVPSScalarMeasurement() = 0;
 
     /**
      * Configures HVPS voltage/current measurement in Sync mode.

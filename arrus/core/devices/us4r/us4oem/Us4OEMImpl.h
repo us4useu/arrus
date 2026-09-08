@@ -134,7 +134,7 @@ public:
 
     HVPSMeasurement getHVPSMeasurement() override;
 
-    HVPSScalarMeasurement getHvpsMeasurement() override;
+    HVPSScalarMeasurement getHVPSScalarMeasurement() override;
 
     float setHVPSSyncMeasurement(uint16_t nSamples, float frequency) override;
 
