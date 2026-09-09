@@ -402,7 +402,31 @@ void Us4RImpl::setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &vol
     // TODO(jrozb91) what about checking voltages on rail 1 / amplitude 1? (voltages[1] is the amplitude 2 / HV 0)
     checkVoltage(voltages.at(1)->getVoltageMinus(), voltages.at(1)->getVoltagePlus(), tolerance, retries, hvModel, isOEMPlus);
 
-    
+    if(isHVPS) {
+        for(auto &oem: us4oems) {
+            try {
+                auto m = oem->getHVPSScalarMeasurement();
+                logger->log(LogSeverity::INFO,
+                            format("OEM:{} measured HVPS voltages [V]: "
+                                   "rail 0: P={}, M={}, rail 1: P={}, M={}",
+                                   oem->getDeviceId().getOrdinal(),
+                                   m.getVoltage(0, HVPSScalarMeasurement::Polarity::PLUS),
+                                   m.getVoltage(0, HVPSScalarMeasurement::Polarity::MINUS),
+                                   m.getVoltage(1, HVPSScalarMeasurement::Polarity::PLUS),
+                                   m.getVoltage(1, HVPSScalarMeasurement::Polarity::MINUS)));
+            }
+            catch (const std::exception &e) {
+                logger->log(LogSeverity::WARNING,
+                            format("Error on reading HVPS measurements for OEM:{}: {}",
+                                   oem->getDeviceId().getOrdinal(), e.what()));
+            }
+            catch (...) {
+                logger->log(LogSeverity::WARNING,
+                            format("Error on reading HVPS measurements for OEM:{}: unknown",
+                                   oem->getDeviceId().getOrdinal()));
+            }
+        }
+    }
 }
 
 unsigned char Us4RImpl::getVoltage() {
