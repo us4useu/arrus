@@ -30,6 +30,7 @@ us4r: {
             manufacturer: "us4us"
             name: "us4oemhvps"
         }
+        voltage_precision_factor: 3
     }
 
     tx_rx_limits: {
