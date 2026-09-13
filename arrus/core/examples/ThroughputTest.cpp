@@ -663,35 +663,56 @@ int main(int argc, char **argv) noexcept {
             session->stopScheme();
             std::string restartResult;
             if (restartMode) {
-                const uint64_t f0 = frames.load();
-                std::vector<uint64_t> slotsBefore;
-                for (auto &c : slotCount) slotsBefore.push_back(c.load());
-                try {
-                    if (restartWaitS > 0) std::this_thread::sleep_for(std::chrono::duration<double>(restartWaitS));
-                    restartPhase.store(true);
-                    session->startScheme();
-                    std::string restartProbe;
-                    for (int i = 0; i < 12; ++i) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                        if (probeMode) {
-                            try {
-                                auto *impl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(0));
-                                uint32_t v = impl->getIUs4OEM()->SequencerReadRegister(probeAddr);
-                                char buf[32]; std::snprintf(buf, sizeof buf, " 0x%x", v); restartProbe += buf;
-                            } catch (const std::exception &) { restartProbe += " ERR"; }
+                // THROUGHPUT_RESTART_COUNT=<k> (default 1): repeat the stop/start k times in this one
+                // session - no re-upload, no Initialize between them - and report the per-slot
+                // deltas of each. Used to read the per-lap egress capacity N after each re-arm
+                // (2026-09-13: N re-rolled 8 -> 6 across a single restart with no reset anywhere).
+                static const int restartCount = [] {
+                    const char *v = std::getenv("THROUGHPUT_RESTART_COUNT");
+                    return v != nullptr ? std::max(1, std::atoi(v)) : 1;
+                }();
+                for (int r = 0; r < restartCount; ++r) {
+                    const uint64_t f0 = frames.load();
+                    std::vector<uint64_t> slotsBefore;
+                    for (auto &c : slotCount) slotsBefore.push_back(c.load());
+                    // Re-arm the "first element after restart" latch per restart, or every line from
+                    // the second restart on would repeat the first restart's value.
+                    firstAfterRestart.store(-1);
+                    try {
+                        if (restartWaitS > 0) std::this_thread::sleep_for(std::chrono::duration<double>(restartWaitS));
+                        restartPhase.store(true);
+                        session->startScheme();
+                        std::string restartProbe;
+                        for (int i = 0; i < 12; ++i) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                            if (probeMode) {
+                                try {
+                                    auto *impl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(0));
+                                    uint32_t v = impl->getIUs4OEM()->SequencerReadRegister(probeAddr);
+                                    char buf[32]; std::snprintf(buf, sizeof buf, " 0x%x", v); restartProbe += buf;
+                                } catch (const std::exception &) { restartProbe += " ERR"; }
+                            }
                         }
+                        const uint64_t f1 = frames.load();
+                        session->stopScheme();
+                        std::string slotsDelta;
+                        int slotsDone = 0;
+                        for (size_t i = 0; i < slotCount.size(); ++i) {
+                            const uint64_t d = slotCount[i].load() - slotsBefore[i];
+                            slotsDelta += " " + std::to_string(d);
+                            if (d > 0) ++slotsDone;
+                        }
+                        const std::string line = std::to_string(f1 - f0) + " frames in 3 s after stop+" + std::to_string((int) restartWaitS) + " s idle+start without re-upload"
+                                        + "; first element after restart: " + std::to_string(firstAfterRestart.load())
+                                        + "; slots after restart:" + slotsDelta + " (N=" + std::to_string(slotsDone) + ")"
+                                        + (probeMode ? " (probe during restart:" + restartProbe + ")" : std::string());
+                        if (restartCount > 1) std::cout << "  restart " << (r + 1) << "/" << restartCount << ": " << line << "\n";
+                        restartResult = line;
+                    } catch (const std::exception &e) {
+                        restartResult = std::string("restart threw: ") + e.what();
+                        std::cout << "  restart " << (r + 1) << ": " << restartResult << "\n";
+                        break;
                     }
-                    const uint64_t f1 = frames.load();
-                    session->stopScheme();
-                    std::string slotsDelta;
-                    for (size_t i = 0; i < slotCount.size(); ++i)
-                        slotsDelta += " " + std::to_string(slotCount[i].load() - slotsBefore[i]);
-                    restartResult = std::to_string(f1 - f0) + " frames in 3 s after stop+" + std::to_string((int) restartWaitS) + " s idle+start without re-upload"
-                                    + "; first element after restart: " + std::to_string(firstAfterRestart.load())
-                                    + "; slots after restart:" + slotsDelta
-                                    + (probeMode ? " (probe during restart:" + restartProbe + ")" : std::string());
-                } catch (const std::exception &e) {
-                    restartResult = std::string("restart threw: ") + e.what();
                 }
             }
             res.carrierAfter = readCarrierChanges();
