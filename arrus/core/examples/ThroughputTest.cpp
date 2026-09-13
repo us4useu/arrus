@@ -1,7 +1,14 @@
 // Sustained-throughput sweep for the us4OEM data path through ARRUS.
 //
-// SCOPE: bench diagnostic for the Ethernet/Holoscan port. Assumes a session with no HV and no
-// physical probe (see us4r_eth_bench.prototxt). Not a general example.
+// SCOPE: bench diagnostic for the Ethernet/Holoscan port. Assumes no physical probe
+// (see us4r_eth_bench.prototxt). Not a general example.
+//
+// HV IS REQUIRED ON STANDARD/AFE58JD18 BOARDS - this file used to assume otherwise. Measured
+// 2026-09-11: with HV absent their eight STHV pulsers all assert HVM0|HVM1 reference-voltage
+// faults (0x1028 = 0x0C00); those INT outputs are open-collector and wired-OR onto tx_int,
+// which Sequencer_IP_oemplus.vhd:987 uses to gate the trigger generator. No hardware trigger is
+// generated, so the run delivers one frame and stalls - silently, with no error. HF/AFE58JD48
+// boards do not fault with HV off, which is why this bench ran HV-less for a week.
 //
 // Defaults to WorkMode::HOST, where the host is in the trigger loop: the sequencer fires the next
 // batch only once the host has consumed the previous one, so the ECB round trip sets the ceiling
@@ -27,6 +34,10 @@
 //   THROUGHPUT_KICK          after a 1 s gap call SyncReceive+SyncTransfer once
 //   THROUGHPUT_RESTART[_WAIT=<s>]  after the point, stop and start again without re-uploading
 //   THROUGHPUT_KEEP=N        keep the last N frames and print their header row and ramp breaks
+//   THROUGHPUT_PARKTRACE     count the WAIT_FOR_SOFT (int3 / SEQ_IRQ_1) park interrupt PER BOARD.
+//                            Needs US4R_ETH_CTRL_EVT_MASK to arm event bit 19 (e.g. 0x3fff0000):
+//                            the library default 0x18600000 does NOT include it, and an unarmed
+//                            mask looks exactly like the interrupt not existing.
 //
 // nSamples must be a multiple of 64 (Us4OEMTxRxValidator) and within {64, 16384} on OEM+.
 // The sample range starts at 1, not 0, so that ScheduleReceive start = sampleTxStart + 1 = 36,
@@ -40,6 +51,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <map>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
@@ -181,6 +193,10 @@ int main(int argc, char **argv) noexcept {
     // so two folded frames that overlap can still look like a clean ramp; the receiver's
     // PSN-generation lap detection is what guards that, tested on its side.
     const bool checkMode = std::getenv("THROUGHPUT_CHECK") != nullptr;
+    // THROUGHPUT_HSDUMP: dump the per-entry HS handshake flags on every board at the stall.
+    const bool hsDump = std::getenv("THROUGHPUT_HSDUMP") != nullptr;
+    static std::atomic<int> checkStride{0};  // stride the last checked frame actually used
+    static std::atomic<int> checkRestarts{0};  // ramp restarts seen = (OEM blocks - 1)
     // THROUGHPUT_PLACEMENT=GPU: allocate the host buffer on GPU:0 (cudaMalloc on a discrete GPU) so an
     // RDMA-capable transport can land frames in VRAM directly. The ramp check reads the buffer from the
     // host, which is not possible on a discrete-GPU allocation, so the two are mutually exclusive.
@@ -216,6 +232,16 @@ int main(int argc, char **argv) noexcept {
     // THROUGHPUT_PROBE_ADDR=<hex>: read that sequencer register every 100 ms during each point, from
     // this thread and through the session's own ECB client (never a second client on the bus), and
     // print the time series of value changes plus a histogram of the low nibble (a state code).
+    // THROUGHPUT_SWTRIG: pulse IUs4OEM::SWTrigger() on every poll iteration. SWTrigger drives the
+    // TOP-LEVEL sw_trigger PIO (qsys 0x2140), which enters the trigger path at the SAME edge
+    // detector the sequencer's own TRIGGER_OUT uses - so it traverses the WHOLE external loop:
+    // edge detect, 650-cycle stretch, ext_trigger_out, the physical cable, trigger_in, the capture
+    // register and the mux. The sequencer's internal soft_trigger CSR bypasses all of that, which
+    // is why MANUAL mode working told us nothing about the loop. Frames arriving under SWTRIG means
+    // the loop is intact and the fault is the generator alone; none arriving means the loop is
+    // broken and the generator is exonerated.
+    const bool swTrigMode = std::getenv("THROUGHPUT_SWTRIG") != nullptr;
+    long swTrigCount = 0, swTrigErrors = 0;
     const char *probeEnv = std::getenv("THROUGHPUT_PROBE_ADDR");
     const bool probeMode = probeEnv != nullptr;
     const uint32_t probeAddr = probeMode ? (uint32_t) std::strtoul(probeEnv, nullptr, 16) : 0;
@@ -255,6 +281,92 @@ int main(int argc, char **argv) noexcept {
         // explicitly. Costs nothing in data volume or timing but lets a delivered frame be checked
         // for structural integrity - the direct risk after an address-fold change in the receiver.
         ultrasound->setTestPattern(::arrus::devices::Us4OEM::RxTestPattern::RAMP);
+        // ...and turn it OFF again on every exit path. Nothing else does: Us4OEMImpl's destructor
+        // does not, and the next session's constructor-time DisableTestPatterns() only runs when
+        // there is a next session. Without this, every run left AFE_TX_TRIG_MUX_SEL (control bit
+        // 12) set and eight AFEs generating a ramp into nothing between sessions - measured
+        // 2026-09-13 (control.data 0x1234 after every session, 0x0234 after an explicit disable).
+        struct TestPatternOff {
+            ::arrus::devices::Us4R *us4r;
+            ~TestPatternOff() {
+                try { us4r->setTestPattern(::arrus::devices::Us4OEM::RxTestPattern::OFF); }
+                catch (const std::exception &e) { std::cerr << "testpat: OFF at exit failed: " << e.what() << "\n"; }
+                catch (...) {}
+            }
+        } testPatternOff{ultrasound};
+
+        // THROUGHPUT_PARKTRACE: does the WAIT_FOR_SOFT park interrupt arrive on EVERY board, or only
+        // on the master? A per-board release keyed on the park event would rest entirely on that,
+        // and it has only ever been observed on the master - so measure it before anyone designs
+        // against it. Registered directly on IUs4OEM because Us4OEMInterrupt (the public ARRUS enum)
+        // does not expose WAIT_FOR_SOFT.
+        std::vector<std::shared_ptr<std::atomic<long>>> parkCounts, doneCounts;
+        const bool parkTrace = std::getenv("THROUGHPUT_PARKTRACE") != nullptr;
+        if (parkTrace) {
+            const auto nOems = ultrasound->getNumberOfUs4OEMs();
+            for (unsigned o = 0; o < nOems; ++o) {
+                auto counter = std::make_shared<std::atomic<long>>(0);
+                parkCounts.push_back(counter);
+                auto doneCounter = std::make_shared<std::atomic<long>>(0);
+                doneCounts.push_back(doneCounter);
+                try {
+                    auto *oemImpl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM((::arrus::devices::Ordinal) o));
+                    oemImpl->getIUs4OEM()->RegisterCallback(IUs4OEM::MSINumber::WAIT_FOR_SOFT,
+                                                            [counter]() { counter->fetch_add(1, std::memory_order_relaxed); });
+                    // CONTROL: EVENTDONE (int4) registered the SAME way, at the same time. If this
+                    // one counts and WAIT_FOR_SOFT does not, late registration works and int3 is
+                    // specifically not being delivered. If NEITHER counts, the registration path
+                    // itself is what does not work post-construction, and nothing can be concluded
+                    // about int3 at all.
+                    oemImpl->getIUs4OEM()->RegisterCallback(IUs4OEM::MSINumber::EVENTDONE,
+                                                            [doneCounter]() { doneCounter->fetch_add(1, std::memory_order_relaxed); });
+                } catch (const std::exception &e) {
+                    std::cout << "parktrace: OEM " << o << " callback registration failed: " << e.what() << std::endl;
+                }
+            }
+            const char *m = std::getenv("US4R_ETH_CTRL_EVT_MASK");
+            const char *evt = std::getenv("US4R_ETH_CTRL_EVT");
+            std::cout << "parktrace: armed on " << (unsigned) nOems << " OEM(s), US4R_ETH_CTRL_EVT_MASK="
+                      << (m ? m : "(unset - event bit 19 is NOT in the 0x18600000 default, expect zero counts)")
+                      << ", US4R_ETH_CTRL_EVT=" << (evt ? evt : "(unset - dispatch may be off)")
+                      << std::endl;
+        }
+
+        // THROUGHPUT_TESTPAT_OFF=1: issue IUs4OEM::DisableTestPatterns() on every OEM and exit
+        // without HV, upload or acquisition. One-off board maintenance (2026-09-13, Mateusz's
+        // authorisation): a probe left AFE_TX_TRIG_MUX_SEL (control bit 12) set on board 1 and the
+        // board has idled at ~83 C since; nothing in an ordinary ARRUS session clears that bit.
+        // The read-back of control.data is done from outside (EcbProbe 0x2000), not here.
+        if (const char *tp = std::getenv("THROUGHPUT_TESTPAT_OFF"); tp != nullptr && std::string(tp) == "1") {
+            for (::arrus::devices::Ordinal o = 0; o < ultrasound->getNumberOfUs4OEMs(); ++o) {
+                auto *oemImpl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(o));
+                oemImpl->getIUs4OEM()->DisableTestPatterns();
+                std::cout << "testpat: DisableTestPatterns() issued on OEM " << (int) o << "\n";
+            }
+            std::cout << "testpat: done, exiting without acquisition\n";
+            return 0;
+        }
+        // THROUGHPUT_HV=<volts>: energise the OEM's internal HVPS before uploading. REQUIRED on the
+        // standard/AFE58JD18 boards for any run that depends on HARDWARE triggers - without HV
+        // references the pulsers assert HVM0|HVM1, hold the wired-OR tx_int low, and the trigger
+        // generator is gated: you get one frame (PRELOAD) and a silent stall. 10 V was measured
+        // sufficient to clear all eight; lower was not explored.
+        // Needs a config with an `hv:` block (us4r_eth_bench_hv.prototxt) - setVoltage() throws
+        // "No HV have been set." otherwise. Sets TX amplitude 2 only; see that file's header for
+        // the strictly-increasing rule if both amplitudes are ever needed.
+        if (const char *hvEnv = std::getenv("THROUGHPUT_HV")) {
+            const int hvVolts = std::atoi(hvEnv);
+            if (hvVolts > 0) {
+                try {
+                    ultrasound->setVoltage((::arrus::Voltage) hvVolts);
+                    std::cout << "hv: set to " << hvVolts << " V" << std::endl;
+                } catch (const std::exception &e) {
+                    std::cout << "hv: setVoltage(" << hvVolts << ") FAILED: " << e.what()
+                              << "  (is the config's hv: block present?)" << std::endl;
+                    throw;
+                }
+            }
+        }
 
         ::arrus::BitMask aperture(nElements, true);
         std::vector<float> delays(nElements, 0.0f);
@@ -272,7 +384,13 @@ int main(int argc, char **argv) noexcept {
             res.priUs = priUs;
 
             // Thermal guard: sustained high-rate acquisition heats the OEM. Read the FPGA die
-            // temperature before every point and stop the whole sweep above 80 C.
+            // temperature before every point and stop the whole sweep above the limit: 80 C by
+            // default, THROUGHPUT_TMAX overrides. 80 is this test's own conservative number, not a
+            // vendor limit (Arria 10 Tj max is 100 C); the limit in force is printed on abort.
+            static const float tMax = [] {
+                const char *v = std::getenv("THROUGHPUT_TMAX");
+                return v != nullptr ? std::strtof(v, nullptr) : 80.0f;
+            }();
             try {
                 res.fpgaTempBefore = ultrasound->getUs4OEM(0)->getFPGATemperature();
             } catch (const std::exception &e) {
@@ -282,9 +400,9 @@ int main(int argc, char **argv) noexcept {
                 results.push_back(res);
                 continue;
             }
-            if (res.fpgaTempBefore > 80.0f) {
+            if (res.fpgaTempBefore > tMax) {
                 std::cout << "ABORT: FPGA at " << res.fpgaTempBefore << " C before PRI " << priUs
-                          << " us - stopping sweep to let the board cool.\n";
+                          << " us (limit " << tMax << " C) - stopping sweep to let the board cool.\n";
                 break;
             }
 
@@ -304,7 +422,10 @@ int main(int argc, char **argv) noexcept {
             // Deliveries per host-buffer element: a transport that loses whole frames shows whether
             // the loss is uniform or tied to particular slots (e.g. the last slot of the ring).
             std::vector<std::atomic<uint64_t>> slotCount(hostDepth);
-            std::vector<std::tuple<double, uint32_t, uint64_t>> probeSamples;  // (t, value, frames so far)
+            // (t, per-OEM values, frames so far). PER OEM, not just board 0: the whole point on a
+            // multi-board scheme is which board's sequencer is in a different state from the other.
+            std::vector<std::tuple<double, std::vector<uint32_t>, uint64_t>> probeSamples;
+            std::string hsDumpText;
             unsigned probeErrors = 0;
             bool kicked = false; double kickTime = 0; uint64_t kickFrames = 0; std::string kickResult;
             std::atomic<bool> restartPhase{false};
@@ -356,18 +477,58 @@ int main(int argc, char **argv) noexcept {
                                   std::memory_order_relaxed);
                 if (checkMode && (n % checkEvery) == 0) {
                     // Samples arrive little-endian (swapped by the bitstream or by the receiver):
-                    // after the row-0 header every channel should be a clean +1 ramp over rows 2..N-1.
+                    // after the row-0 header every channel should be a clean ramp over rows 2..N-1.
+                    // DERIVE THE STRIDE, NEVER ASSUME IT. This check hardcoded prev+1 until
+                    // 2026-09-11 and reported 0/50 on the standard/AFE58JD18 boards, whose ramp
+                    // steps by 4 - a total-corruption verdict on data that was intact. The stride
+                    // is a property of the AFE variant, so the only safe reading is the modal
+                    // first difference of channel 0 in this very frame.
                     auto &d = ptr->getData();
                     size_t nr = (size_t) d.getShape()[0], nc = (size_t) d.getShape()[1];
-                    bool clean = true;
-                    for (size_t ch = 0; ch < nc && clean; ++ch)
+                    int stride = 1;
+                    if (nr > 3) {
+                        std::map<int, long> hist;
+                        for (size_t j = 3; j < nr; ++j) {
+                            int a = (int) (unsigned short) d.get<short>(j - 1, 0);
+                            int b = (int) (unsigned short) d.get<short>(j, 0);
+                            ++hist[(b - a) & 0xFFFF];
+                        }
+                        long bestN = -1;
+                        for (const auto &kv : hist) if (kv.second > bestN) { bestN = kv.second; stride = kv.first; }
+                    }
+                    // A MULTI-OEM ELEMENT IS BLOCKS OF ROWS, ONE PER OEM, AND THE AFE RAMP RESTARTS
+                    // AT EACH BOUNDARY. Measured 2026-09-11 on a 2-OEM scheme: 2048 rows, ch0
+                    // running 52,56,60,... and ending at 4140 - one OEM's worth of ramp, not two.
+                    // A strict "every step matches the stride" test therefore calls a perfectly
+                    // intact two-board frame corrupt. Accept a step that RESTARTS (value drops),
+                    // and only a few of them; anything else must follow the stride. Random
+                    // corruption still fails: it produces forward jumps, or far too many restarts.
+                    // COUNT the anomalies per channel, do not fail on the first. A multi-OEM
+                    // element is one block of rows per OEM, and each block carries its OWN header
+                    // rows and restarts its ramp - so a 2-OEM frame has a handful of legitimate
+                    // non-ramp steps in the middle that no amount of stride derivation removes.
+                    // Only row 0..1 of the FIRST block is skipped by starting at j=2; the second
+                    // block's header sits mid-frame. Budget a few anomalies per boundary and
+                    // report the worst channel's count, so the number is visible rather than a
+                    // bare verdict. Real corruption is nowhere near this budget: a garbled frame
+                    // deviates on hundreds or thousands of rows, not three.
+                    const int maxAnomalies = 3;  // ~1 restart + up to 2 header rows per boundary
+                    bool clean = stride != 0;
+                    int worst = 0;
+                    for (size_t ch = 0; ch < nc; ++ch) {
+                        int anomalies = 0;
                         for (size_t j = 2; j < nr; ++j) {
                             int prev = (int) (unsigned short) d.get<short>(j - 1, ch);
                             int cur = (int) (unsigned short) d.get<short>(j, ch);
-                            if (cur != ((prev + 1) & 0xFFFF)) { clean = false; break; }
+                            if (cur != ((prev + stride) & 0xFFFF)) ++anomalies;
                         }
+                        if (anomalies > worst) worst = anomalies;
+                    }
+                    if (worst > maxAnomalies) clean = false;
+                    checkRestarts.store(worst, std::memory_order_relaxed);
                     checked.fetch_add(1, std::memory_order_relaxed);
                     if (clean) checkClean.fetch_add(1, std::memory_order_relaxed);
+                    checkStride.store(stride, std::memory_order_relaxed);
                 }
                 ptr->release();
             };
@@ -406,10 +567,14 @@ int main(int argc, char **argv) noexcept {
                     if (probeMode) {
                         lock.unlock();
                         try {
-                            auto *impl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(0));
-                            uint32_t v = impl->getIUs4OEM()->SequencerReadRegister(probeAddr);
-                            probeSamples.emplace_back(std::chrono::duration<double>(now - tStart).count(), v,
-                                                      frames.load());
+                            std::vector<uint32_t> vs;
+                            for (unsigned o = 0; o < ultrasound->getNumberOfUs4OEMs(); ++o) {
+                                auto *impl = dynamic_cast<Us4OEMImpl *>(
+                                    ultrasound->getUs4OEM((::arrus::devices::Ordinal) o));
+                                vs.push_back(impl->getIUs4OEM()->SequencerReadRegister(probeAddr));
+                            }
+                            probeSamples.emplace_back(std::chrono::duration<double>(now - tStart).count(),
+                                                      vs, frames.load());
                         } catch (const std::exception &) {
                             probeErrors++;
                         }
@@ -438,10 +603,58 @@ int main(int argc, char **argv) noexcept {
                         }
                         lock.lock();
                     }
+                    if (swTrigMode) {
+                        lock.unlock();
+                        try {
+                            auto *impl = dynamic_cast<Us4OEMImpl *>(ultrasound->getUs4OEM(0));
+                            impl->getIUs4OEM()->SWTrigger();
+                            ++swTrigCount;
+                        } catch (const std::exception &) { ++swTrigErrors; }
+                        lock.lock();
+                    }
                     if (!holdMode && frames.load() > 0 && last > 0
                         && now.time_since_epoch().count() - last > 2'000'000'000LL) {
                         stalled = true;
                         tStall = std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(last));
+                        // THROUGHPUT_HSDUMP: read the HS handshake flags ONCE, here, at the moment
+                        // the stall is declared. The sequencer SETS each entry's HS bit after
+                        // executing it and software must clear it; in HOST mode the release does
+                        // that. If the ring has filled because releases are not reaching the board,
+                        // the entries read NOT-ready and the board stops feeding it. Read once, not
+                        // per poll: 2 calls x nEntries x nOEMs is a lot of ECB round trips and
+                        // polling it would perturb the thing being measured.
+                        if (hsDump) {
+                            lock.unlock();
+                            try {
+                                for (unsigned o = 0; o < ultrasound->getNumberOfUs4OEMs(); ++o) {
+                                    auto *impl = dynamic_cast<Us4OEMImpl *>(
+                                        ultrasound->getUs4OEM((::arrus::devices::Ordinal) o));
+                                    std::string line = "  hsdump oem" + std::to_string(o) + " entries 0.."
+                                                     + std::to_string(rxDepth - 1) + " (R=ready-for-receive, "
+                                                       "T=ready-for-transfer, . = NOT ready):";
+                                    for (unsigned e = 0; e < rxDepth; ++e) {
+                                        bool r = impl->getIUs4OEM()->IsEntryReadyForReceive((uint16_t) e);
+                                        bool t = impl->getIUs4OEM()->IsEntryReadyForTransfer((uint16_t) e);
+                                        line += std::string(" ") + std::to_string(e) + ":"
+                                              + (r ? "R" : ".") + (t ? "T" : ".");
+                                    }
+                                    hsDumpText += line + "\n";
+                                    // Decode the pulser IRQ state on each board at the stall.
+                                    // LogPulsersInterruptRegister exists on IUs4OEM and is called
+                                    // from NOWHERE in either tree - the same way this morning's
+                                    // one-firing stall (eight pulsers asserting HVM0|HVM1, pulling
+                                    // the wired-OR tx_int low and gating the trigger generator)
+                                    // stayed undiagnosed: the decoder was there and nobody called
+                                    // it. A board stuck in transmission with a live pulser fault is
+                                    // that same shape. It logs rather than returns, so the output
+                                    // lands in the session log, not here.
+                                    impl->getIUs4OEM()->LogPulsersInterruptRegister();
+                                }
+                            } catch (const std::exception &e) {
+                                hsDumpText += std::string("  hsdump failed: ") + e.what() + "\n";
+                            }
+                            lock.lock();
+                        }
                         break;
                     }
                 }
@@ -519,7 +732,9 @@ int main(int argc, char **argv) noexcept {
                       << (overflowed ? "  OVERFLOW" : (stalled ? "  STALL" : ""))
                       << ((res.carrierBefore >= 0 && res.carrierAfter != res.carrierBefore) ? "  LINK-FLAP" : "")
                       << (checkMode ? ("  content " + std::to_string(checkClean.load()) + "/"
-                                          + std::to_string(checked.load()) + " clean")
+                                          + std::to_string(checked.load()) + " clean (stride "
+                                          + std::to_string(checkStride.load()) + ", "
+                                          + std::to_string(checkRestarts.load()) + " max anomalies/ch)")
                                       : std::string())
                       << "  (expected ~" << res.expectedFrames << ")  FPGA " << std::setprecision(1)
                       << res.fpgaTempBefore << "->" << res.fpgaTempAfter << " C\n";
@@ -535,17 +750,33 @@ int main(int argc, char **argv) noexcept {
                     if (k.data.empty()) continue;
                     std::cout << "  kept frame #" << k.n << " slot " << k.pos << " header:";
                     for (size_t c = 0; c < k.chans; ++c) std::cout << " " << k.data[c];
-                    // ramp breaks on channel 0: rows where value != previous + 1 (rows 2..)
-                    std::string breaks; unsigned nb = 0;
+                    // Ramp breaks on channel 0. DERIVE THE STRIDE - this printed "+1" until
+                    // 2026-09-11 and reported 2046 breaks on an intact stride-4 frame. A restart
+                    // (value drops) is a per-OEM block boundary, not a break; it is counted
+                    // separately so a multi-OEM frame does not read as corrupt.
+                    int kStride = 1;
+                    if (k.rows > 3) {
+                        std::map<int, long> kh;
+                        for (size_t r = 3; r < k.rows; ++r) {
+                            int a = (uint16_t) k.data[(r - 1) * k.chans], b = (uint16_t) k.data[r * k.chans];
+                            ++kh[(b - a) & 0xFFFF];
+                        }
+                        long bn = -1;
+                        for (const auto &kv : kh) if (kv.second > bn) { bn = kv.second; kStride = kv.first; }
+                    }
+                    std::string breaks; unsigned nb = 0, nrest = 0;
                     for (size_t r = 2; r < k.rows; ++r) {
                         int prev = (uint16_t) k.data[(r - 1) * k.chans], cur = (uint16_t) k.data[r * k.chans];
-                        if (cur != ((prev + 1) & 0xFFFF)) {
+                        if (cur == ((prev + kStride) & 0xFFFF)) continue;
+                        if (cur < prev) { ++nrest; continue; }
+                        {
                             if (nb < 6) breaks += " row " + std::to_string(r) + ":" + std::to_string(prev) + "->" + std::to_string(cur);
                             ++nb;
                         }
                     }
-                    std::cout << " | ch0 row1=" << (uint16_t) k.data[k.chans] << " row" << (k.rows - 1) << "="
-                              << (uint16_t) k.data[(k.rows - 1) * k.chans] << " ramp breaks=" << nb << breaks << "\n";
+                    std::cout << " | ch0 stride=" << kStride << " row1=" << (uint16_t) k.data[k.chans]
+                              << " row" << (k.rows - 1) << "=" << (uint16_t) k.data[(k.rows - 1) * k.chans]
+                              << " block restarts=" << nrest << " ramp breaks=" << nb << breaks << "\n";
                 }
             }
             if (kickMode) {
@@ -554,20 +785,54 @@ int main(int argc, char **argv) noexcept {
                                                       + ", frames after kick: " + std::to_string(res.frames - kickFrames)
                                                   : std::string("not needed (no 1 s gap)")) << "\n";
             }
+            if (swTrigMode) {
+                std::cout << "  swtrig: " << swTrigCount << " SWTrigger() call(s), " << swTrigErrors
+                          << " threw; frames this point: " << res.frames << "\n";
+            }
+            if (!hsDumpText.empty()) { std::cout << hsDumpText; }
+            if (parkTrace) {
+                std::cout << "  parktrace: WAIT_FOR_SOFT(int3) per OEM:";
+                for (size_t o = 0; o < parkCounts.size(); ++o) {
+                    std::cout << " oem" << o << "=" << parkCounts[o]->load();
+                }
+                std::cout << " | CONTROL EVENTDONE(int4):";
+                for (size_t o = 0; o < doneCounts.size(); ++o) {
+                    std::cout << " oem" << o << "=" << doneCounts[o]->load();
+                }
+                std::cout << "\n";
+            }
             if (probeMode) {
                 unsigned hist[16] = {0};
                 std::cout << "  probe 0x" << std::hex << probeAddr << std::dec << ": " << probeSamples.size()
-                          << " reads, " << probeErrors << " failed; value changes (t s: value @frames):";
-                uint32_t prev = 0xFFFFFFFFu;
+                          << " reads, " << probeErrors << " failed; value changes (t s: oem0/oem1/... @frames):";
+                std::vector<uint32_t> prev;
                 for (auto &smp : probeSamples) {
-                    hist[std::get<1>(smp) & 0xF]++;
-                    if (std::get<1>(smp) != prev) {
-                        std::cout << " " << std::fixed << std::setprecision(1) << std::get<0>(smp) << ":0x" << std::hex
-                                  << std::get<1>(smp) << std::dec << "@" << std::get<2>(smp);
-                        prev = std::get<1>(smp);
+                    const auto &vs = std::get<1>(smp);
+                    if (!vs.empty()) hist[vs[0] & 0xF]++;
+                    if (vs != prev) {
+                        std::cout << " " << std::fixed << std::setprecision(1) << std::get<0>(smp) << ":";
+                        for (size_t o = 0; o < vs.size(); ++o) {
+                            if (o) std::cout << " | ";
+                            if (probeAddr == 0x50002) {
+                                // Sequencer STATUS (sequencer2RegsDef.h / guide 4.37):
+                                //   [13:0] CURRENT_INDEX, [14] BUSY, [30:17] LAST_INDEX.
+                                // LAST_INDEX is the last entry FULLY executed. CURRENT_INDEX with
+                                // BUSY=1 is the entry executing now; with BUSY=0 it is the entry
+                                // LOADED and awaiting the next trigger. So last==current with
+                                // BUSY=0 means PARKED AND UNRELEASED, while current==last+1 with
+                                // BUSY=0 means released and waiting for a trigger that has not come.
+                                std::cout << "oem" << o << " last=" << ((vs[o] >> 17) & 0x3FFF)
+                                          << " cur=" << (vs[o] & 0x3FFF)
+                                          << " busy=" << ((vs[o] >> 14) & 1);
+                            } else {
+                                std::cout << "oem" << o << " 0x" << std::hex << vs[o] << std::dec;
+                            }
+                        }
+                        std::cout << " @" << std::get<2>(smp);
+                        prev = vs;
                     }
                 }
-                std::cout << "\n  probe low-nibble histogram:";
+                std::cout << "\n  probe low-nibble histogram (oem0):";
                 for (int i = 0; i < 16; ++i) if (hist[i]) std::cout << " " << i << ":" << hist[i];
                 std::cout << "\n";
             }

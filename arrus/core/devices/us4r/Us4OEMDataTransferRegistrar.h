@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEMDATATRANSFERREGISTRAR_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEMDATATRANSFERREGISTRAR_H
 
+#include <cstdlib>
 #include "arrus/common/compiler.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/common/logging.h"
@@ -292,7 +293,18 @@ public:
                         }
                     }
                     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(transferIdx);
-                    ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
+                    // ARRUS_EGRESS_ONLY_FIRING=<k> (diagnostic, eth bench 2026-09-13): request egress
+                    // on firing k ALONE; every other entry still acquires but never asks for a
+                    // transfer. Separates two shapes of the "first N of 8 entries egress" fault: if
+                    // it is POSITIONAL, entry 7 alone delivers nothing at N=7; if it is FIRST-N
+                    // REQUESTERS, entry 7 alone is the first requester and delivers every lap.
+                    static const int onlyFiring = [] {
+                        const char *v = std::getenv("ARRUS_EGRESS_ONLY_FIRING");
+                        return v != nullptr ? std::atoi(v) : -1;
+                    }();
+                    if (onlyFiring < 0 || (int) transferLastFiring == onlyFiring) {
+                        ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
+                    }
                     ++localIdx; ++transferIdx;
                 }
             }

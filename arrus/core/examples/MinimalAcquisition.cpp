@@ -2,11 +2,21 @@
 // Derived from arrus/core/examples/PwiExample.cpp, reduced for a bring-up bench.
 //
 // SCOPE: this is a BENCH DIAGNOSTIC for the Ethernet/Holoscan port, not a general example.
-// It assumes a session with no HV and no physical probe, and the frame-inspection block below
+// It assumes no physical probe, and the frame-inspection block below
 // is tied to the CURRENT, UNFINISHED state of the Ethernet data path (see FRAME LAYOUT).
 // Once us4r-api strips the header and normalises byte order, that block must be revisited.
 //
-// Differences from PwiExample that matter on a bench with no HV and no probe:
+// HV IS NOT OPTIONAL ON EVERY BOARD - THIS FILE USED TO CLAIM IT WAS. Measured 2026-09-11: with
+// HV absent, the STANDARD/AFE58JD18 boards' eight STHV pulsers ALL assert HVM0|HVM1 reference-
+// voltage faults (status 0x1028 = 0x0C00). Those INT outputs are open-collector and wired-OR
+// onto tx_int, which Sequencer_IP_oemplus.vhd:987 uses to gate the trigger generator - so no
+// hardware trigger is ever produced. The symptom is NOT an error: you get exactly one frame
+// (PRELOAD fires one acquisition, bypassing the trigger process) and then a silent stall.
+// Setting HV clears all eight to 0x0 and the sequence runs. The HF/AFE58JD48 boards do NOT
+// fault with HV off - they ran continuous acquisition on this bench for a week - so whether
+// this example works without HV is a property of the BOARD VARIANT, not of the example.
+//
+// Differences from PwiExample that matter on a bring-up bench:
 //   - no setVoltage() call (throws "No HV have been set." with no hv: block)
 //   - one TX/RX instead of two
 //   - the RX test pattern is switched on explicitly (see setTestPattern below)
@@ -25,9 +35,11 @@
 // SetRxDelay (the separate TIME register, fed by Us4RImpl::getRxDelay) is a different
 // axis and does not bear on this - left as ARRUS computes it.
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
+#include <map>
 #include <iostream>
 #include <mutex>
 #include <utility>
@@ -48,7 +60,9 @@ int main() noexcept {
         auto ultrasound = (::arrus::devices::Us4R *) session->getDevice("/Ultrasound:0");
         auto probe = ultrasound->getProbe(0);
 
-        // NOTE: no setVoltage() - there is no HV in this configuration.
+        // NOTE: no setVoltage() - there is no hv: block in this configuration. On STANDARD/JD18
+        // boards that leaves the pulsers asserting a fault and NO hardware trigger is generated:
+        // one frame, then a silent stall. See the HV note at the top of this file.
 
         // ARRUS calls DisableTestPatterns during init, so without this the AFE returns real
         // (unsignalled) noise - which cannot distinguish a correct transfer from a corrupt one.
@@ -71,12 +85,20 @@ int main() noexcept {
 
         TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 1);
         DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, 2};
-        Scheme scheme(seq, 2, outputBuffer, Scheme::WorkMode::HOST);
+        // MIN_MODE=MANUAL drives the acquisition with SOFTWARE triggers (session->run) instead of
+        // the board's hardware trigger generator. On ARIUS_std_seed2 the generator emits nothing -
+        // armed, correctly programmed, silent - so this separates "the generator is broken" from
+        // "nothing downstream of it works", and if it succeeds it is a usable acquisition path.
+        const char *minMode = std::getenv("MIN_MODE");
+        const bool manualMode = minMode != nullptr && std::string(minMode) == "MANUAL";
+        Scheme scheme(seq, 2, outputBuffer,
+                      manualMode ? Scheme::WorkMode::MANUAL : Scheme::WorkMode::HOST);
 
         auto result = session->upload(scheme);
 
         std::mutex mutex;
         std::condition_variable cv;
+        std::atomic<int> nFrames{0};
         // Tracked separately: an overflow also ends the wait, but it is NOT a successful capture
         // and must not be reported as one.
         bool frameReceived = false;
@@ -120,7 +142,25 @@ int main() noexcept {
                 std::cout << std::endl;
 
                 // Score both orientations over rows 1..N-1: how many channels form a clean +1 ramp.
-                auto scoreRamp = [&](bool swapped, size_t &firstBadCh, size_t &firstBadRow,
+                // RAMP STRIDE IS NOT ALWAYS 1. It depends on the AFE part and the bitstream
+                // variant: an AFE58JD48 on the HF build steps by 1, an AFE58JD18 on the STANDARD
+                // build steps by 4. Hardcoding +1 reports a perfectly good capture as corrupt,
+                // which it did on 2026-09-08 and cost a false alarm. Derive the stride from the
+                // data (modal delta on channel 0) and then demand every channel match it - that
+                // still fails on genuinely corrupt data, because corruption has no modal delta
+                // that all 32 channels agree on.
+                auto modalStride = [&](bool swapped) -> int {
+                    std::map<int, long> hist;
+                    for (size_t j = 2; j < nRows; ++j) {
+                        short a = data.get<short>(j - 1, 0), b = data.get<short>(j, 0);
+                        if (swapped) { a = bswap(a); b = bswap(b); }
+                        ++hist[(((int) (unsigned short) b) - ((int) (unsigned short) a)) & 0xFFFF];
+                    }
+                    int best = 1; long bestN = -1;
+                    for (const auto &kv : hist) if (kv.second > bestN) { bestN = kv.second; best = kv.first; }
+                    return best;
+                };
+                auto scoreRamp = [&](bool swapped, int stride, size_t &firstBadCh, size_t &firstBadRow,
                                      int &firstBadGot, int &firstBadWant, long &deviations) {
                     size_t clean = 0;
                     bool haveBad = false;
@@ -130,7 +170,7 @@ int main() noexcept {
                         for (size_t j = 2; j < nRows; ++j) {
                             short a = data.get<short>(j - 1, ch), b = data.get<short>(j, ch);
                             if (swapped) { a = bswap(a); b = bswap(b); }
-                            int want = (((int) (unsigned short) a) + 1) & 0xFFFF;
+                            int want = (((int) (unsigned short) a) + stride) & 0xFFFF;
                             int cur = (int) (unsigned short) b;
                             if (cur != want) {
                                 ++badHere;
@@ -148,13 +188,16 @@ int main() noexcept {
                 size_t nbCh = 0, nbRow = 0, sbCh = 0, sbRow = 0;
                 int nbGot = 0, nbWant = 0, sbGot = 0, sbWant = 0;
                 long nativeDev = 0, swappedDev = 0;
-                size_t nativeClean = scoreRamp(false, nbCh, nbRow, nbGot, nbWant, nativeDev);
-                size_t swappedClean = scoreRamp(true, sbCh, sbRow, sbGot, sbWant, swappedDev);
+                const int nativeStride = modalStride(false), swappedStride = modalStride(true);
+                size_t nativeClean = scoreRamp(false, nativeStride, nbCh, nbRow, nbGot, nbWant, nativeDev);
+                size_t swappedClean = scoreRamp(true, swappedStride, sbCh, sbRow, sbGot, sbWant, swappedDev);
 
                 std::cout << "RAMP native  : " << nativeClean << "/" << nChannels
-                          << " channels clean, " << nativeDev << " deviations" << std::endl;
+                          << " channels clean, " << nativeDev << " deviations"
+                          << " (stride " << nativeStride << ")" << std::endl;
                 std::cout << "RAMP swapped : " << swappedClean << "/" << nChannels
-                          << " channels clean, " << swappedDev << " deviations" << std::endl;
+                          << " channels clean, " << swappedDev << " deviations"
+                          << " (stride " << swappedStride << ")" << std::endl;
                 if (nativeClean == nChannels) {
                     std::cout << "VERDICT: samples are correct as delivered (native little-endian)."
                               << std::endl;
@@ -197,6 +240,7 @@ int main() noexcept {
             } catch (const std::exception &e) {
                 std::cout << "Callback exception: " << e.what() << std::endl;
             }
+            ++nFrames;
             {
                 std::lock_guard<std::mutex> lock(mutex);
                 frameReceived = true;
@@ -216,6 +260,28 @@ int main() noexcept {
         auto buffer = std::static_pointer_cast<DataBuffer>(result.getBuffer());
         buffer->registerOnNewDataCallback(callback);
         buffer->registerOnOverflowCallback(overflowCallback);
+
+        if (manualMode) {
+            const int nRuns = 10;
+            int issued = 0;
+            for (int i = 0; i < nRuns; ++i) {
+                try {
+                    session->run(true, 2000);
+                    ++issued;
+                } catch (const std::exception &e) {
+                    std::cout << "run " << i << " threw: " << e.what() << std::endl;
+                    break;
+                }
+            }
+            const int got = nFrames.load();
+            std::cout << "MANUAL: " << issued << "/" << nRuns << " sync runs returned, frames = "
+                      << got << std::endl;
+            session->stopScheme();
+            std::cout << (got >= nRuns ? "RESULT: MANUAL (software) triggering WORKS."
+                                       : "RESULT: MANUAL triggering did NOT deliver every frame.")
+                      << std::endl;
+            return got > 1 ? 0 : 1;
+        }
 
         session->startScheme();
         bool signalled = false;
