@@ -568,11 +568,30 @@ void Us4RImpl::start() {
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
         // external trigger
         this->digitalBackplane.value()->enableExternalTrigger();
-        this->getMasterOEM()->syncTrigger();
+        // NOTE this branch never runs on the Ethernet bench: it needs a digital backplane, and
+        // DigitalBackplaneFactoryImpl returns nullopt for the OEM's internal HVPS (us4oemhvps),
+        // which is the only HV model the bench configs use.
+        this->syncTriggerAllOEMs();
     }
     else {
         // Internal trigger.
         this->getMasterOEM()->start();
+    }
+    // Baselines for the counter-gated HS resume (see the release callback).
+    hsRxIrqBase.assign(us4oems.size(), 0);
+    hsTxIrqBase.assign(us4oems.size(), 0);
+    for (size_t i = 0; i < us4oems.size(); ++i) {
+        hsRxIrqBase[i] = us4oems[i]->getIUs4OEM()->GetIRQCounter(IUs4OEM::MSINumber::RXDMAOVERFLOW);
+        hsTxIrqBase[i] = us4oems[i]->getIUs4OEM()->GetIRQCounter(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
+    }
+    hsTxPulses = 0; hsRxPulses = 0;
+    {
+        const char *v = std::getenv("ARRUS_HOST_HS_RESUME");
+        std::ostringstream ss;
+        ss << "ARRUS_HOST_HS_RESUME=" << (v ? v : "unset") << " (unset=2=counter-gated [default], 1=ungated, 0=off); "
+           << "IRQ counter baselines at start (int5 rx/int6 tx):";
+        for (size_t i = 0; i < us4oems.size(); ++i) ss << " oem" << i << "=" << hsRxIrqBase[i] << "/" << hsTxIrqBase[i];
+        logger->log(LogSeverity::INFO, ss.str());
     }
     this->state = State::STARTED;
 }
@@ -589,7 +608,29 @@ void Us4RImpl::stopDevice() {
         if (this->digitalBackplane.has_value() && isExternalTrigger) {
             this->digitalBackplane.value()->enableInternalTrigger();
         }
+        // PCIe parity: stop the MASTER ONLY. AriusConsole/StreamingTest.cpp calls
+        // _us4oem[0]->TriggerStop() and PCIe's TriggerStop is one line, _sequencer->Stop() - so the
+        // slaves' sequencers were never stopped and their PCIEDMA_AVBS_REQ bits stayed set across
+        // every stop, for the life of the PCIe product. That is the ORIGINAL behaviour, not a defect.
+        //
+        // This was briefly per-board (2026-09-11) because the Ethernet port had hung per-board
+        // teardown - receiver stop, data-plane disable, the park flush - on TriggerStop, which PCIe
+        // made master-only. us4r-api has since mirrored that teardown onto DisableRuntimeInterrupts,
+        // which ARRUS already calls for EVERY board in the loop below, and made it idempotent. So the
+        // per-board Ethernet teardown still happens; it no longer needs a per-board TriggerStop.
         this->getMasterOEM()->stop();
+        {
+            std::ostringstream ss;
+            ss << "HS resume pulses issued this scheme: SyncTransfer=" << hsTxPulses.load()
+               << " SyncReceive=" << hsRxPulses.load() << "; IRQ counters now (int5 rx/int6 tx):";
+            for (size_t i = 0; i < us4oems.size(); ++i) {
+                try {
+                    ss << " oem" << i << "=" << us4oems[i]->getIUs4OEM()->GetIRQCounter(IUs4OEM::MSINumber::RXDMAOVERFLOW)
+                       << "/" << us4oems[i]->getIUs4OEM()->GetIRQCounter(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
+                } catch (const std::exception &) { ss << " oem" << i << "=?"; }
+            }
+            logger->log(LogSeverity::INFO, ss.str());
+        }
         for (auto &us4oem : us4oems) {
             try {
                 us4oem->getIUs4OEM()->WaitForPendingTransfers();
@@ -802,7 +843,9 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
 }
 
 void Us4RImpl::trigger(bool sync, std::optional<long long> timeout) {
-    this->getMasterOEM()->syncTrigger();
+    // The public manual-trigger entry point (Session::run). Used by the MANUAL work modes; HOST and
+    // ASYNC never reach it.
+    this->syncTriggerAllOEMs();
     if(sync) {
         this->sync(timeout);
     }
@@ -1114,8 +1157,26 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     // Overflow handling
     ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
     ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
-    // Work mode specific initialization
-    if (workMode == ops::us4r::Scheme::WorkMode::SYNC) {
+    // Work mode specific initialization.
+    // HOST enables these too, matching the PCIe path: in AriusConsole/StreamingTest.cpp both the
+    // mode=="sync" and the mode=="host" branches call EnableWaitOnReceiveOverflow /
+    // EnableWaitOnTransferOverflow for EVERY board - host is sync PLUS the park, not an alternative
+    // to it. These set HSRXDMA_STOP_EN / HSPCIEDMA_STOP_EN (CONFIG bits 6,7), the HARDWARE
+    // back-pressure: at 1 the sequencer stops and waits for the host to clear the handshake, at 0 it
+    // ignores an uncleared handshake and continues. Leaving them off made HOST a combination PCIe
+    // never ran - a software park with no hardware back-pressure behind it.
+    // ARRUS_HOST_NO_STOP_EN=1 (DIAGNOSTIC): leave the stop bits OFF in HOST, i.e. PCIe parity
+    // minus D2. Measured 2026-09-13 with them ON: HOST runs ~40 laps, then the board laps the
+    // slower host, hits a slot whose transfer handshake it has not released, stops as the bit
+    // specifies (int6=1), and never resumes even after the host releases everything. This switch
+    // asks whether the stop itself is the failure - if the run continues with the bits off, the
+    // resume-after-HS-clear is what is broken, not the back-pressure.
+    static const bool hostNoStopEn = [] {
+        const char *v = std::getenv("ARRUS_HOST_NO_STOP_EN");
+        return v != nullptr && v[0] == '1';
+    }();
+    if (workMode == ops::us4r::Scheme::WorkMode::SYNC
+        || (workMode == ops::us4r::Scheme::WorkMode::HOST && !hostNoStopEn)) {
         ius4oem->EnableWaitOnReceiveOverflow();
         ius4oem->EnableWaitOnTransferOverflow();
     }
@@ -1153,8 +1214,65 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
             }
+            // HS RESUME (default ON, counter-gated). With the hardware back-pressure on (HS1/HS2_STOP_EN,
+            // D2), a board that laps the host stops on an uncleared transfer handshake and raises
+            // int6. Clearing the handshake above is necessary but not sufficient: BLOCK_CLR below
+            // resumes a WAIT_FOR_SOFT park, and an HS stop is resumed by SyncReceive/SyncTransfer -
+            // which SYNC mode issues and HOST never did except from an overflow callback that had
+            // already stopped the device. Measured 2026-09-13: HOST ran ~40 laps, stopped on
+            // int6=1, and never resumed although every handshake was subsequently cleared. With
+            // this resume, 7108 frames / 888 laps in 10 s. Issued on every board, slaves first,
+            // before the park release.
+            //
+            // ARRUS_HOST_HS_RESUME=2 (DEFAULT): pulse a bit only if ITS hardware IRQ counter changed
+            //   since the last release (GetIRQCounter int5 rx / int6 tx, baselines re-read after
+            //   each clear). Two ECB reads per board per release.
+            // ARRUS_HOST_HS_RESUME=1: pulse on every release, UNGATED. Diagnostic only - us4r-api's
+            //   tree (us4oembase.cpp:1165-1170, measured 2026-09-07) records that a pulse to a board
+            //   that is not stopped raises both overflow flags and re-triggers the pre-armed table;
+            //   the ungated arm issued ~1776 pulses in 10 s for ~365 stops.
+            // ARRUS_HOST_HS_RESUME=0: off (the pre-fix behaviour, for comparison).
+            // An earlier gate on sequencer STATUS was wrong: in HOST every release is at a park,
+            // and a park reads exactly like a stop.
+            static const int hsResume = [] {
+                const char *v = std::getenv("ARRUS_HOST_HS_RESUME");
+                return v != nullptr ? std::atoi(v) : 2;
+            }();
+            if (hsResume > 0 && this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
+                for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
+                    auto *oem = us4oems[i]->getIUs4OEM();
+                    if (hsResume == 2) {
+                        // Counter-gated: pulse a bit only if ITS stop counter advanced since the last
+                        // release. A sequencer-STATUS gate cannot do this - in HOST every release
+                        // happens at a park, and a park reads exactly the stopped signature, so it
+                        // passed on every lap (~888 pulses on a fix_1-sized run, not ~365).
+                        const uint32_t rx = oem->GetIRQCounter(IUs4OEM::MSINumber::RXDMAOVERFLOW);
+                        const uint32_t tx = oem->GetIRQCounter(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
+                        // The baseline is re-read AFTER the clear, and the test is "changed", not
+                        // "grew": correct whether the count is monotonic (nothing writes IC_CTRL, so
+                        // that is the expectation) or decremented by the acknowledge - in both cases
+                        // the only writer between two releases other than the hardware is this clear.
+                        if (tx != hsTxIrqBase[i]) {
+                            oem->SyncTransfer(); ++hsTxPulses;
+                            hsTxIrqBase[i] = oem->GetIRQCounter(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
+                        }
+                        if (rx != hsRxIrqBase[i]) {
+                            oem->SyncReceive(); ++hsRxPulses;
+                            hsRxIrqBase[i] = oem->GetIRQCounter(IUs4OEM::MSINumber::RXDMAOVERFLOW);
+                        }
+                        continue;
+                    }
+                    oem->SyncTransfer(); ++hsTxPulses;
+                    oem->SyncReceive();  ++hsRxPulses;
+                }
+            }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
-                getMasterOEM()->syncTrigger();
+                // MASTER ONLY, because under PCIe parity only the master parks: SetTrigger's
+                // syncReq is set on the master's last entry alone (Us4OEMImpl.cpp, pcieStylePark),
+                // so the slaves have no WAIT_FOR_SOFT to release and a BLOCK_CLR to them would have
+                // nothing to clear. This briefly released every board, which was correct only while
+                // every board parked - the two revert together. See syncTriggerAllOEMs.
+                syncTriggerAllOEMs();
             }
         };
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R

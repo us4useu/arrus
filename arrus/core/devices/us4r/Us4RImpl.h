@@ -1,10 +1,13 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4RIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_US4RIMPL_H
 
+#include <atomic>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
 #include <thread>
+#include <chrono>
+#include <cstdlib>
 #include <regex>
 
 #include <boost/algorithm/string.hpp>
@@ -236,6 +239,100 @@ private:
 
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
+
+    // HS-resume gate baselines (ARRUS_HOST_HS_RESUME=2): the interrupt controller's per-IRQ hardware
+    // counters for int5 (HS1/receive stop) and int6 (HS2/transfer stop), per OEM, as read at scheme
+    // start. Monotonic and never decremented, so "advanced since the last release" is an exact
+    // per-bit "a stop is pending on THIS handshake" - the only signal that separates a stop from an
+    // ordinary park, which reads identically in sequencer STATUS.
+    std::vector<uint32_t> hsRxIrqBase, hsTxIrqBase;
+    // Resume pulses actually issued by the release callback (both arms), logged at stop: the arm
+    // is labelled by this number, not by the switch value.
+    std::atomic<uint32_t> hsTxPulses{0}, hsRxPulses{0};
+
+    /**
+     * Releases the WAIT_FOR_SOFT park after a HOST-mode element: BLOCK_CLR on the MASTER only by
+     * default, matching PCIe (StreamingTest.cpp releases _us4oem[0] alone), because under the
+     * PCIe-parity programming in Us4OEMImpl::uploadTriggersIOBS only the master's last entry parks.
+     * A slave has no park to clear, and its triggers come from the master's trigger_out.
+     *
+     * TriggerSync writes CTRL.BLOCK_CLR on the board it is called on; BLOCK_CLR resumes a sequencer
+     * that stopped because WAIT_FOR_SOFT was set in its current entry (FPGA guide Table 4.35).
+     *
+     * Diagnostic switches, all default off: ARRUS_SYNC_ALL_OEMS=1 releases every board, slaves
+     * first and master last (needed only if every board parks, as before the parity change - then
+     * a master-only release left the slaves parked forever, measured 2026-09-11);
+     * ARRUS_SYNC_PARK_DELAY_US adds a slave-to-master gap; ARRUS_SYNC_MASTER_ONLY=1 forces the
+     * default path ahead of the others; ARRUS_SYNC_SKIP_RELEASE_CLR=1 issues no release at all.
+     *
+     * DO NOT confuse this with TriggerStart/TriggerStop, which are master-only for a different
+     * reason: there is one trigger generator and its trigger_out feeds every module's trigger_in.
+     */
+    void syncTriggerAllOEMs() {
+        // DIAGNOSTIC, default off: ARRUS_SYNC_PARK_DELAY_US delays the release. The open question
+        // (2026-09-11) is whether a BLOCK_CLR issued BEFORE a board has parked is lost, which would
+        // make two-board HOST race - the release fires on element completion, i.e. when both boards
+        // have DELIVERED, which is not the same event as both having PARKED. A delay is NOT the fix;
+        // it only tests the hypothesis. If a delay removes the stall, the real fix is to wait for the
+        // park rather than to sleep.
+        static const long parkDelayUs = [] {
+            const char *v = std::getenv("ARRUS_SYNC_PARK_DELAY_US");
+            return v != nullptr ? std::strtol(v, nullptr, 10) : 0L;
+        }();
+        // ARRUS_SYNC_MASTER_ONLY=1 restores the pre-2026-09-11 master-only behaviour, to isolate
+        // whether the per-board change caused a given symptom. Diagnostic only: master-only is
+        // WRONG on a multi-board system (BLOCK_CLR is per-sequencer), so this must not be used to
+        // "fix" anything - only to attribute.
+        static const bool masterOnly = [] {
+            const char *v = std::getenv("ARRUS_SYNC_MASTER_ONLY");
+            return v != nullptr && v[0] == '1';
+        }();
+        if (masterOnly) {
+            getMasterOEM()->syncTrigger();
+            return;
+        }
+        // The delay, when set, goes BETWEEN the slaves' releases and the master's - that is the
+        // ordering under test. The master is the board that resumes GENERATING, so if its BLOCK_CLR
+        // takes effect before a slave's has arrived, it can fire a trigger that slave is not yet
+        // listening for and that slave falls permanently behind. Releasing master last orders the
+        // WRITES; it does not order their ARRIVAL, since each is a separate ~0.5 ms ECB round trip
+        // on a different NIC. A delay here is a DIAGNOSTIC: if it removes the drift, the fix is to
+        // confirm each slave has resumed before releasing the master, not to sleep.
+        // PCIe parity: the release goes to the MASTER ONLY, because only the master parks.
+        // AriusConsole/StreamingTest.cpp's mode=="host" loop releases with
+        // _us4oem[0]->TriggerSync() - one call, board 0 - and that is consistent with its one park
+        // on board 0's last entry. Releasing every board was correct only while every board parked;
+        // it reverts together with that, and fixing one without the other would leave N releases
+        // chasing 1 park.
+        // (The per-board path is kept below under ARRUS_SYNC_ALL_OEMS for A/B against this one.)
+        // ARRUS_SYNC_SKIP_RELEASE_CLR=1 (DIAGNOSTIC): issue NO BLOCK_CLR from the release path at
+        // all. Tests the hypothesis that a BLOCK_CLR landing on a sequencer that is NOT parked -
+        // which under PCIe-style last-entry parking is every release until the final one - disturbs
+        // the in-flight egress. If, with this set, all N frames of the first lap arrive and the
+        // sequencer parks cleanly at the last entry with BUSY=0, that hypothesis is confirmed.
+        static const bool skipReleaseClr = [] {
+            const char *v = std::getenv("ARRUS_SYNC_SKIP_RELEASE_CLR");
+            return v != nullptr && v[0] == '1';
+        }();
+        if (skipReleaseClr) {
+            return;
+        }
+        static const bool releaseAllOEMs = [] {
+            const char *v = std::getenv("ARRUS_SYNC_ALL_OEMS");
+            return v != nullptr && v[0] == '1';
+        }();
+        if (!releaseAllOEMs) {
+            getMasterOEM()->syncTrigger();
+            return;
+        }
+        for (int i = (int) us4oems.size() - 1; i >= 1; --i) {
+            us4oems[i]->syncTrigger();
+        }
+        if (parkDelayUs > 0 && us4oems.size() > 1) {
+            std::this_thread::sleep_for(std::chrono::microseconds(parkDelayUs));
+        }
+        us4oems[0]->syncTrigger();
+    }
     std::vector<float> interpolateToSystemTGC(const std::vector<float> &t, const std::vector<float> &y) const;
     void handlePulserInterrupt();
 

@@ -64,10 +64,16 @@ void Us4OEMImpl::startTrigger() {
 }
 
 void Us4OEMImpl::stopTrigger() {
+    // MASTER ONLY, matching startTrigger() above and matching PCIe: StreamingTest.cpp calls
+    // _us4oem[0]->TriggerStop(), and PCIe's TriggerStop is one line - _sequencer->Stop() - which
+    // touches only that board's own sequencer. The Ethernet port's per-board teardown now rides on
+    // DisableRuntimeInterrupts (us4r-api build stop-hook-2026-09-11bb), which Us4RImpl calls for
+    // every board, so it no longer depends on this call reaching the slaves.
     if (isMaster()) {
         ius4oem->TriggerStop();
     }
 }
+
 
 uint16_t Us4OEMImpl::getAfe(uint8_t address) { return ius4oem->AfeReadRegister(0, address); }
 
@@ -456,6 +462,20 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
 
     bool triggerSyncPerBatch = isWaitForSoftMode(workMode);
     bool triggerSyncPerTxRx = workMode == ops::us4r::Scheme::WorkMode::MANUAL_OP;
+    // HOST mode parks the way the PCIe path did: ONE park, on the LAST entry of the WHOLE
+    // programming, on the MASTER ONLY.
+    //
+    // PCIe reference (AriusConsole/StreamingTest.cpp, v0.15.x): the per-board setup loop writes
+    // SetTrigger(pri|fri, 0, eventIdx) - syncReq 0 on EVERY entry of EVERY board - and the
+    // mode=="host" branch adds exactly one line, _us4oem[0]->SetTrigger(pri, 1, nEventsTotal-1):
+    // board 0 by hand inside a loop over boards, and the last entry of the entire sequence. This
+    // code previously parked the last entry of EVERY BUFFER ELEMENT on EVERY board, i.e. 8 parks
+    // per board at rxBufferSize=8 against PCIe's one - which is what made two-board HOST need N
+    // independent releases arriving over N NICs, with the boards free to drift apart between them.
+    //
+    // MANUAL modes are deliberately NOT changed. PCIe has no MANUAL mode, so there is nothing to
+    // match; stopping after each batch is the point of MANUAL and per-batch parking implements it.
+    const bool pcieStylePark = workMode == ops::us4r::Scheme::WorkMode::HOST;
 
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS
@@ -471,7 +491,10 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
                     bool isLastOp = opId == seq.size() - 1;
                     bool isLastRepeat = repeatId == seq.getNRepeats() - 1;
                     bool isLastSequence = seqId == sequences.size() - 1;
-                    bool isCheckpoint = triggerSyncPerBatch && isLastOp && isLastRepeat && isLastSequence;
+                    bool isLastBatch = batchId == rxBufferSize - 1;
+                    bool isCheckpoint = triggerSyncPerBatch && isLastOp && isLastRepeat && isLastSequence
+                        // PCIe parity, HOST only: one park, last entry overall, master only.
+                        && (!pcieStylePark || (isLastBatch && isMaster()));
                     float pri = op.getPri();
                     if (isLastOp) {
                         auto lastPriExtension = lastPriExtensions.at(seqId);
