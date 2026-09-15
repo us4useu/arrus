@@ -542,7 +542,19 @@ int main(int argc, char **argv) noexcept {
                     if (worst > maxAnomalies) clean = false;
                     checkRestarts.store(worst, std::memory_order_relaxed);
                     checked.fetch_add(1, std::memory_order_relaxed);
-                    if (clean) checkClean.fetch_add(1, std::memory_order_relaxed);
+                    if (clean) {
+                        checkClean.fetch_add(1, std::memory_order_relaxed);
+                    } else {
+                        // Name the FIRST failing element with its numbers: a 1-in-2150 failure in a
+                        // 1 h soak (2026-09-15) was unreadable because only the last frame's worst
+                        // count survived. Printing from the callback is acceptable for a failure.
+                        static std::atomic<int> reported{0};
+                        if (reported.fetch_add(1) < 3) {
+                            std::cout << "content: element " << n << " (slot " << ptr->getPosition() << ") NOT clean: stride "
+                                      << stride << ", worst channel " << worst << " non-ramp steps, budget " << maxAnomalies
+                                      << " (" << nOemsInElement << " OEM x " << nTx << " firings)\n";
+                        }
+                    }
                     checkStride.store(stride, std::memory_order_relaxed);
                 }
                 ptr->release();
