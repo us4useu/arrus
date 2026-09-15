@@ -131,6 +131,27 @@ public:
         return state == State::READY;
     }
 
+    /** True when some, but not all, producers have signalled this element (a frame is missing). */
+    bool isPartiallyFilled() {
+        std::unique_lock<std::mutex> guard(mutex);
+        return accumulator != 0 && accumulator != filledAccumulator;
+    }
+
+    /**
+     * Abandons the element: whatever arrived is discarded, the accumulator is cleared and the
+     * release functions run exactly as a consumer release would, so the producers move on.
+     * HOST-mode stall recovery (a frame lost on the transport, e.g. a link drop) - see
+     * Us4ROutputBuffer::releaseLost.
+     */
+    void releaseLost() {
+        std::unique_lock<std::mutex> guard(mutex);
+        this->accumulator = 0;
+        this->state = State::FREE;
+        guard.unlock();
+        receiveReleaseFunction();
+        releaseFunction();
+    }
+
     void signal(Ordinal n) {
         std::unique_lock<std::mutex> guard(mutex);
         Accumulator us4oemPattern = 1ul << n;
@@ -354,6 +375,8 @@ public:
             throw e;
         }
         if (element->isElementReady()) {
+            lastReadyElement = elementNr;
+            ++completedElements;
             guard.unlock();
             elements[elementNr]->releaseReceive();
             onNewDataCallback(elements[elementNr]);
@@ -391,6 +414,50 @@ public:
         for (auto &element : elements) {
             element->resetState();
         }
+        lastReadyElement = elements.empty() ? 0 : elements.size() - 1;
+        completedElements = 0;
+        lostElements = 0;
+    }
+
+    /** Number of elements completed (callback fired) since the last resetState(). */
+    uint64_t getCompletedElements() {
+        std::unique_lock<std::mutex> guard(mutex);
+        return completedElements;
+    }
+
+    /**
+     * HOST-mode stall recovery: the oldest incomplete element - a partially filled one, else the
+     * one after the last completed - is abandoned and released so the producers continue.
+     * Returns the element index, or -1 when the buffer is not running or the head is complete
+     * (then the consumer, not the transport, is what is slow). Measured need (2026-09-15): a 1 s
+     * 40G link drop on one board loses one UC frame; without this the element never completes,
+     * nothing is released, and every board parks forever.
+     */
+    int releaseLost() {
+        std::unique_lock<std::mutex> guard(mutex);
+        if (this->state != State::RUNNING || elements.empty()) {
+            return -1;
+        }
+        int idx = -1;
+        for (size_t i = 0; i < elements.size(); ++i) {
+            if (elements[i]->isPartiallyFilled()) { idx = (int) i; break; }
+        }
+        if (idx < 0) {
+            idx = (int) ((lastReadyElement + 1) % elements.size());
+            if (elements[idx]->isElementReady()) {
+                return -1;
+            }
+        }
+        ++lostElements;
+        lastReadyElement = idx;// the producers move on to the next element; so does the head
+        guard.unlock();
+        elements[idx]->releaseLost();
+        return idx;
+    }
+
+    uint64_t getLostElements() {
+        std::unique_lock<std::mutex> guard(mutex);
+        return lostElements;
     }
 
     void registerReleaseFunction(size_t element, std::function<void()> &releaseFunction) {
@@ -604,6 +671,9 @@ private:
     int16 *dataBuffer{nullptr};
     /** Host buffer elements */
     std::vector<Us4ROutputBufferElement::SharedHandle> elements;
+    size_t lastReadyElement{0};
+    uint64_t completedElements{0};
+    uint64_t lostElements{0};
     /** Array offsets, in bytes. The is an offset relative to the beginning of each element. */
     std::vector<size_t> arrayOffsets;
     /** OEM data offset, relative to the beginning of array, in bytes. */

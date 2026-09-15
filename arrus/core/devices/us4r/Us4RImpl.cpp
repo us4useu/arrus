@@ -532,6 +532,7 @@ void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode wor
                           .setUseP2pDma(useP2pDma)
                           .build();
     registerOutputBuffer(buffer.get(), buffers, workMode);
+    this->hostModeScheme = workMode == ops::us4r::Scheme::WorkMode::HOST;
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
     oemBuffers = std::move(buffers);
 }
@@ -598,6 +599,60 @@ void Us4RImpl::start() {
         logger->log(LogSeverity::INFO, ss.str());
     }
     this->state = State::STARTED;
+    startStallWatchdog();
+}
+
+void Us4RImpl::startStallWatchdog() {
+    // ARRUS_HOST_STALL_MS (default 2000; 0 = off): in HOST mode, if no element completes for this
+    // long while the device is running, the oldest incomplete element is abandoned and released
+    // (Us4ROutputBuffer::releaseLost) so the boards continue. Measured cause (2026-09-15): a 1 s
+    // 40G link drop on one board loses one UC frame; the element then never completes, nothing is
+    // released, and every board sits parked at its WAIT_FOR_SOFT forever. Each release is logged
+    // at WARNING with a running count; stop() logs the total. Not for ASYNC/SYNC/MANUAL, where the
+    // board does not wait for the host.
+    static const long stallMs = [] {
+        const char *v = std::getenv("ARRUS_HOST_STALL_MS");
+        return v != nullptr ? std::strtol(v, nullptr, 10) : 2000L;
+    }();
+    if (!hostModeScheme || stallMs <= 0) {
+        return;
+    }
+    stallWatchdogRun = true;
+    stallWatchdog = std::thread([this, stallMs = stallMs] {
+        uint64_t lastCompleted = buffer->getCompletedElements();
+        auto lastProgress = std::chrono::steady_clock::now();
+        while (stallWatchdogRun) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            if (!stallWatchdogRun) break;
+            const uint64_t completed = buffer->getCompletedElements();
+            const auto now = std::chrono::steady_clock::now();
+            if (completed != lastCompleted) {
+                lastCompleted = completed;
+                lastProgress = now;
+                continue;
+            }
+            if (now - lastProgress < std::chrono::milliseconds(stallMs)) continue;
+            const int idx = buffer->releaseLost();
+            lastProgress = now;
+            if (idx >= 0) {
+                logger->log(LogSeverity::WARNING,
+                            ::arrus::format("HOST stall: no element completed for {} ms - element {} released as LOST "
+                                            "({} lost so far, {} completed). A frame did not reach the host (link drop?).",
+                                            stallMs, idx, buffer->getLostElements(), completed));
+            }
+        }
+    });
+}
+
+void Us4RImpl::stopStallWatchdog() {
+    if (stallWatchdog.joinable()) {
+        stallWatchdogRun = false;
+        stallWatchdog.join();
+        const auto lost = buffer ? buffer->getLostElements() : 0;
+        if (lost > 0) {
+            logger->log(LogSeverity::WARNING, ::arrus::format("HOST stall watchdog: {} element(s) released as lost this run.", lost));
+        }
+    }
 }
 
 void Us4RImpl::stop() { this->stopDevice(); }
@@ -609,6 +664,7 @@ void Us4RImpl::stopDevice() {
     } else {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        stopStallWatchdog();
         if (this->digitalBackplane.has_value() && isExternalTrigger) {
             this->digitalBackplane.value()->enableInternalTrigger();
         }

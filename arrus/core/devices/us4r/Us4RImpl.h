@@ -386,6 +386,13 @@ private:
     // Buffers.
     std::vector<Us4OEMBuffer> oemBuffers;
     std::shared_ptr<Us4ROutputBuffer> buffer;
+    // HOST-mode stall watchdog (ARRUS_HOST_STALL_MS): releases an element the transport never
+    // completed so the boards continue instead of parking forever. See startStallWatchdog().
+    bool hostModeScheme{false};
+    std::thread stallWatchdog;
+    std::atomic<bool> stallWatchdogRun{false};
+    void startStallWatchdog();
+    void stopStallWatchdog();
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
     // Other.
     std::vector<Bitstream> bitstreams;
