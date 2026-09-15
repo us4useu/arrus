@@ -460,25 +460,23 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     auto workMode = scheme.getWorkMode();
     unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
-    // Ethernet port: the host buffer must have exactly rx_buffer_size elements. Over PCIe a deeper
-    // host buffer works by re-pointing each lap's DMA descriptors at the next group of host elements
-    // (Us4OEMDataTransferRegistrar strategies 1 and 2); over Ethernet the bridge's page ring IS the
-    // host ring and is programmed once at arm, and the re-scheduling path is not wired for the port:
-    // measured 2026-09-15 with rx 2 / host 4, every board delivered 3 elements and then parked for
-    // good. Refuse it with the reason rather than stall. The transport is recognised by the same
-    // variable us4r-api selects it with (US4R_ETH_DEVICES); a typed query is the better test once
-    // the library exposes one.
+    // A transport whose transfer ring is the host ring (the Ethernet port: one transfer index = one
+    // bridge page = one host element, as many pages as transfers, armed once) cannot serve a host
+    // buffer deeper than the rx buffer: over PCIe that works by re-pointing each lap's DMA descriptors
+    // at the next group of host elements (Us4OEMDataTransferRegistrar strategies 1 and 2), which the
+    // port has no equivalent for yet. Measured 2026-09-15 with rx 2 / host 4: every board delivered
+    // three elements and then parked for good. Refuse it with the reason rather than stall.
     {
-        static const bool ethernetPort = [] {
-            const char *v = std::getenv("US4R_ETH_DEVICES");
-            return v != nullptr && *v != '\0';
-        }();
-        if (ethernetPort && hostBufferSize != rxBufferSize) {
+        bool ringIsHostRing = false;
+        for (auto &us4oem : us4oems) {
+            ringIsHostRing = ringIsHostRing || us4oem->getIUs4OEM()->TransferRingDepthIsHostRing();
+        }
+        if (ringIsHostRing && hostBufferSize != rxBufferSize) {
             throw ::arrus::IllegalArgumentException(::arrus::format(
-                "Over the Ethernet port the output buffer must have exactly rx_buffer_size elements: got "
-                "output n_elements = {0}, rx_buffer_size = {1}. The bridge's page ring is the host ring; a deeper "
-                "host buffer (PCIe's per-lap descriptor re-scheduling) is not supported on this transport yet - "
-                "set both to the same value (e.g. rx_buffer_size = {0}).",
+                "On this transport (transfer ring = host ring) the output buffer must have exactly rx_buffer_size "
+                "elements: got output n_elements = {0}, rx_buffer_size = {1}. A deeper host buffer (PCIe's per-lap "
+                "descriptor re-scheduling) is not supported here yet - set both to the same value (e.g. "
+                "rx_buffer_size = {0}).",
                 hostBufferSize, rxBufferSize));
         }
     }
