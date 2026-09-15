@@ -9,8 +9,10 @@
 #include "arrus/core/common/collections.h"
 #include "arrus/common/utils.h"
 #include "arrus/common/format.h"
+#include "arrus/core/devices/us4r/HostParkMode.h"
 #include "us4r_api_version.h"
 #include <chrono>
+#include <cmath>
 #include <future>
 #include <memory>
 #include <thread>
@@ -474,6 +476,16 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
           oemSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
     currentScheme = scheme;
+    {
+        // Element period for the HOST stall watchdog's clamp: one pass over every sequence, all repeats.
+        double us = 0.0;
+        for (const auto &seq : scheme.getTxRxSequences()) {
+            double seqUs = 0.0;
+            for (const auto &op : seq.getOps()) { seqUs += op.getPri() * 1e6; }
+            us += seqUs * seq.getNRepeats();
+        }
+        this->elementPeriodUs = us;
+    }
     currentRxTimeOffset = rxTimeOffset;
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(), buffers);
     // Reset sub-sequence factory and params.
@@ -591,7 +603,9 @@ void Us4RImpl::start() {
         std::ostringstream ss;
         const char *lr = std::getenv("ARRUS_HOST_LAP_RELEASE");
         const char *pk = std::getenv("ARRUS_HOST_PARK");
-        ss << "ARRUS_HOST_PARK=" << (pk ? pk : "unset") << " (unset=element=mainline per-element park, no HS stop bits; last=one park + HS stop bits); "
+        const char *st = std::getenv("ARRUS_HOST_STALL_MS");
+        ss << "ARRUS_HOST_STALL_MS=" << (st ? st : "unset") << " (unset=off; N=release the oldest incomplete element after N ms); "
+           << "ARRUS_HOST_PARK=" << (pk ? pk : "unset") << " (unset=element=mainline per-element park, no HS stop bits; last=one park + HS stop bits); "
            << "ARRUS_HOST_LAP_RELEASE=" << (lr ? lr : "unset") << " (1=park released once per lap, from the last ring element; ARRUS_HOST_PARK=last only); "
            << "ARRUS_HOST_HS_RESUME=" << (v ? v : "unset") << " (unset=2=counter-gated [default], 1=ungated, 0=off); "
            << "IRQ counter baselines at start (int5 rx/int6 tx):";
@@ -603,22 +617,55 @@ void Us4RImpl::start() {
 }
 
 void Us4RImpl::startStallWatchdog() {
-    // ARRUS_HOST_STALL_MS (default 2000; 0 = off): in HOST mode, if no element completes for this
-    // long while the device is running, the oldest incomplete element is abandoned and released
-    // (Us4ROutputBuffer::releaseLost) so the boards continue. Measured cause (2026-09-15): a 1 s
-    // 40G link drop on one board loses one UC frame; the element then never completes, nothing is
-    // released, and every board sits parked at its WAIT_FOR_SOFT forever. Each release is logged
-    // at WARNING with a running count; stop() logs the total. Not for ASYNC/SYNC/MANUAL, where the
-    // board does not wait for the host.
-    static const long stallMs = [] {
-        const char *v = std::getenv("ARRUS_HOST_STALL_MS");
-        return v != nullptr ? std::strtol(v, nullptr, 10) : 2000L;
-    }();
-    if (!hostModeScheme || stallMs <= 0) {
+    // ARRUS_HOST_STALL_MS (default OFF): in HOST mode, if no element completes for this long while
+    // the device is running, the oldest incomplete element is abandoned and released
+    // (Us4ROutputBuffer::releaseLost) so the boards continue. Measured cause (2026-09-15): a 1 s 40G
+    // link drop on one board loses one UC frame; the element then never completes, nothing is
+    // released, and every board sits parked at its WAIT_FOR_SOFT forever.
+    //
+    // It is a timeout heuristic, opt-in for that reason: it cannot tell a lost frame from a late
+    // one, and a false positive strobes the master once too often. Guards: the threshold is clamped
+    // to at least 4 x the element period (a long element is not a stall), the head is only released
+    // once the consumer has released the element before it (a slow consumer is not a stall), and it
+    // is refused when the host buffer is deeper than the board ring (hostDepth > rxDepth: the per-OEM
+    // transfer bookkeeping would drift a lap apart after a loss). PCIe cannot lose a frame; do not
+    // enable it there. The proper fix is a per-transfer loss event from the receiver; until then this
+    // is the Ethernet HOST safety net. Each release is logged at WARNING with a running count.
+    stopStallWatchdog();// never assign over a joinable thread (std::terminate)
+    if (!hostModeScheme) {
         return;
     }
+    const char *v = std::getenv("ARRUS_HOST_STALL_MS");
+    if (v == nullptr || *v == '\0') {
+        return;
+    }
+    char *end = nullptr;
+    long stallMs = std::strtol(v, &end, 10);
+    if (end == v || *end != '\0' || stallMs < 0) {
+        logger->log(LogSeverity::WARNING,
+                    ::arrus::format("ARRUS_HOST_STALL_MS='{}' is not a whole number of milliseconds - stall watchdog OFF.", v));
+        return;
+    }
+    if (stallMs == 0) {
+        return;
+    }
+    if (hostBufferRepeats != 1) {
+        logger->log(LogSeverity::WARNING,
+                    ::arrus::format("ARRUS_HOST_STALL_MS={} ignored: the host buffer is {}x deeper than the board ring; the "
+                                    "stall watchdog needs hostDepth == rxDepth.", stallMs, hostBufferRepeats));
+        return;
+    }
+    const long minMs = (long) std::ceil(4.0 * elementPeriodUs / 1000.0);
+    if (stallMs < minMs) {
+        logger->log(LogSeverity::INFO,
+                    ::arrus::format("ARRUS_HOST_STALL_MS={} raised to {} ms = 4 x the element period ({} us).",
+                                    stallMs, minMs, elementPeriodUs));
+        stallMs = minMs;
+    }
+    logger->log(LogSeverity::INFO, ::arrus::format("HOST stall watchdog ON: {} ms without a completed element releases the oldest "
+                                                    "incomplete one as lost.", stallMs));
     stallWatchdogRun = true;
-    stallWatchdog = std::thread([this, stallMs = stallMs] {
+    stallWatchdog = std::thread([this, stallMs] {
         uint64_t lastCompleted = buffer->getCompletedElements();
         auto lastProgress = std::chrono::steady_clock::now();
         while (stallWatchdogRun) {
@@ -1196,6 +1243,7 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     // Register buffer element release functions.
     bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterOEM()->getDeviceId().getOrdinal();
     size_t nRepeats = nElementsDst / nElementsSrc;
+    this->hostBufferRepeats = nRepeats;
     uint16 startFiring = 0;
     std::vector<std::pair<uint16, uint16>> firingRanges;
     for (size_t i = 0; i < bufferSrc.getNumberOfElements(); ++i) {
@@ -1220,32 +1268,19 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     // Overflow handling
     ius4oem->RegisterReceiveOverflowCallback(createOnReceiveOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
     ius4oem->RegisterTransferOverflowCallback(createOnTransferOverflowCallback(workMode, bufferDst, isMaster, firingRanges));
-    // Work mode specific initialization.
-    // HOST enables these too, matching the PCIe path: in AriusConsole/StreamingTest.cpp both the
-    // mode=="sync" and the mode=="host" branches call EnableWaitOnReceiveOverflow /
-    // EnableWaitOnTransferOverflow for EVERY board - host is sync PLUS the park, not an alternative
-    // to it. These set HSRXDMA_STOP_EN / HSPCIEDMA_STOP_EN (CONFIG bits 6,7), the HARDWARE
-    // back-pressure: at 1 the sequencer stops and waits for the host to clear the handshake, at 0 it
-    // ignores an uncleared handshake and continues. Leaving them off made HOST a combination PCIe
-    // never ran - a software park with no hardware back-pressure behind it.
-    // ARRUS_HOST_NO_STOP_EN=1 (DIAGNOSTIC): leave the stop bits OFF in HOST, i.e. PCIe parity
-    // minus D2. Measured 2026-09-13 with them ON: HOST runs ~40 laps, then the board laps the
-    // slower host, hits a slot whose transfer handshake it has not released, stops as the bit
-    // specifies (int6=1), and never resumes even after the host releases everything. This switch
-    // asks whether the stop itself is the failure - if the run continues with the bits off, the
-    // resume-after-HS-clear is what is broken, not the back-pressure.
+    // Work mode specific initialization. The HS stop bits (HSRXDMA_STOP_EN / HSPCIEDMA_STOP_EN,
+    // CONFIG bits 6,7) make the sequencer stop on an entry whose handshake the host has not cleared.
+    // SYNC needs them. HOST does NOT by default (ARRUS_HOST_PARK=element, mainline v0.14.x): the
+    // per-element WAIT_FOR_SOFT park is the back-pressure, and the stop bits produced every HOST
+    // stall measured on 2026-09-14 (stops the counter-gated resume failed to lift). Only the
+    // ARRUS_HOST_PARK=last scheme (one park + stop bits + resume strobes) sets them, and
+    // ARRUS_HOST_NO_STOP_EN=1 leaves them off even there (diagnostic).
     static const bool hostNoStopEn = [] {
         const char *v = std::getenv("ARRUS_HOST_NO_STOP_EN");
         return v != nullptr && v[0] == '1';
     }();
-    // ARRUS_HOST_PARK=element (default, mainline v0.14.x): HOST never sets the HS stop bits - the
-    // per-element park is the back-pressure. Only the "last" park scheme needs them.
-    static const bool hostParkLastForStop = [] {
-        const char *v = std::getenv("ARRUS_HOST_PARK");
-        return v != nullptr && std::string(v) == "last";
-    }();
     if (workMode == ops::us4r::Scheme::WorkMode::SYNC
-        || (workMode == ops::us4r::Scheme::WorkMode::HOST && hostParkLastForStop && !hostNoStopEn)) {
+        || (workMode == ops::us4r::Scheme::WorkMode::HOST && isHostParkLast() && !hostNoStopEn)) {
         ius4oem->EnableWaitOnReceiveOverflow();
         ius4oem->EnableWaitOnTransferOverflow();
     }
@@ -1300,93 +1335,28 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
                 const char *v = std::getenv("ARRUS_HOST_LAP_RELEASE");
                 return v != nullptr && v[0] == '1';
             }();
-            static const bool parkPerElement = [] {
-                const char *v = std::getenv("ARRUS_HOST_PARK");
-                return !(v != nullptr && std::string(v) == "last");
-            }();
-            for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
-            }
-            if (parkPerElement) {
-                // MAINLINE v0.14.x HOST release: clear the handshake range on every board, then release
-                // the park by strobing the MASTER only (getMasterOEM()->syncTrigger()), exactly as
-                // mainline does over PCIe. The slaves' parks are inert: a slave's trigger input is
-                // gated by HW_TRIGGER_EN alone, never by WAIT_FOR_SOFT (RTL, 2026-09-15), so it follows
-                // the master's trigger whether or not it is "parked". Measured 2026-09-15: master-only
-                // 435-453 fps vs every-board 427-442 fps, 0/4 stalls each, two boards.
-                // ARRUS_SYNC_ALL_BOARDS=1 strobes every board, slaves first, for comparison. (The
-                // 2026-09-11 "master-only leaves a slave parked forever" measurement was taken with the
-                // HS stop bits on, where the slave was stopped on a handshake, not parked.)
-                static const bool allBoards = [] {
-                    const char *v = std::getenv("ARRUS_SYNC_ALL_BOARDS");
-                    return v != nullptr && v[0] == '1';
-                }();
+            if (!isHostParkLast()) {
+                // MAINLINE v0.14.x HOST release (ARRUS_HOST_PARK=element, default): clear the handshake
+                // range on every board, then release the park by strobing the MASTER, as mainline does
+                // over PCIe - syncTriggerAllOEMs() is master-only unless ARRUS_SYNC_ALL_OEMS=1. The
+                // slaves' parks are inert: a slave's trigger input is gated by HW_TRIGGER_EN alone,
+                // never by WAIT_FOR_SOFT (RTL, 2026-09-15), so it follows the master's trigger whether
+                // or not it is "parked". No HS stop bits are set in this mode, so there is nothing to
+                // resume and no gate to evaluate. Measured 2026-09-15 with this release: 427-511 fps on
+                // two boards, 9913 consecutive releases in one run; one deadlock in ~12 sessions (both
+                // boards parked after the release was issued) is the BLOCK_CLR-before-park race, open
+                // with the FPGA side.
                 if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
-                    if (allBoards) {
-                        syncTriggerAllOEMs();
-                    } else {
-                        getMasterOEM()->syncTrigger();
-                    }
+                    syncTriggerAllOEMs();
                 }
                 return;
-            }
-            // HS RESUME (default ON, counter-gated). With the hardware back-pressure on (HS1/HS2_STOP_EN,
-            // D2), a board that laps the host stops on an uncleared transfer handshake and raises
-            // int6. Clearing the handshake above is necessary but not sufficient: BLOCK_CLR below
-            // resumes a WAIT_FOR_SOFT park, and an HS stop is resumed by SyncReceive/SyncTransfer -
-            // which SYNC mode issues and HOST never did except from an overflow callback that had
-            // already stopped the device. Measured 2026-09-13: HOST ran ~40 laps, stopped on
-            // int6=1, and never resumed although every handshake was subsequently cleared. With
-            // this resume, 7108 frames / 888 laps in 10 s. Issued on every board, slaves first,
-            // before the park release.
-            //
-            // ARRUS_HOST_HS_RESUME=2 (DEFAULT): pulse a bit only if ITS hardware IRQ counter changed
-            //   since the last release (GetIRQCounter int5 rx / int6 tx, baselines re-read after
-            //   each clear). Two ECB reads per board per release.
-            // ARRUS_HOST_HS_RESUME=1: pulse on every release, UNGATED. Diagnostic only - us4r-api's
-            //   tree (us4oembase.cpp:1165-1170, measured 2026-09-07) records that a pulse to a board
-            //   that is not stopped raises both overflow flags and re-triggers the pre-armed table;
-            //   the ungated arm issued ~1776 pulses in 10 s for ~365 stops.
-            // ARRUS_HOST_HS_RESUME=0: off (the pre-fix behaviour, for comparison).
-            // An earlier gate on sequencer STATUS was wrong: in HOST every release is at a park,
-            // and a park reads exactly like a stop.
-            static const int hsResume = [] {
-                const char *v = std::getenv("ARRUS_HOST_HS_RESUME");
-                return v != nullptr ? std::atoi(v) : 2;
-            }();
-            if (hsResume > 0 && this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
-                for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                    auto *oem = us4oems[i]->getIUs4OEM();
-                    if (hsResume == 2) {
-                        // Counter-gated: pulse a bit only if ITS stop counter advanced since the last
-                        // release. A sequencer-STATUS gate cannot do this - in HOST every release
-                        // happens at a park, and a park reads exactly the stopped signature, so it
-                        // passed on every lap (~888 pulses on a fix_1-sized run, not ~365).
-                        const uint32_t rx = oem->GetIRQCounter(IUs4OEM::MSINumber::RXDMAOVERFLOW);
-                        const uint32_t tx = oem->GetIRQCounter(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
-                        // The baseline is re-read AFTER the clear, and the test is "changed", not
-                        // "grew": correct whether the count is monotonic (nothing writes IC_CTRL, so
-                        // that is the expectation) or decremented by the acknowledge - in both cases
-                        // the only writer between two releases other than the hardware is this clear.
-                        if (tx != hsTxIrqBase[i]) {
-                            oem->SyncTransfer(); ++hsTxPulses;
-                            hsTxIrqBase[i] = oem->GetIRQCounter(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
-                        }
-                        if (rx != hsRxIrqBase[i]) {
-                            oem->SyncReceive(); ++hsRxPulses;
-                            hsRxIrqBase[i] = oem->GetIRQCounter(IUs4OEM::MSINumber::RXDMAOVERFLOW);
-                        }
-                        continue;
-                    }
-                    oem->SyncTransfer(); ++hsTxPulses;
-                    oem->SyncReceive();  ++hsRxPulses;
-                }
             }
             if (lapRelease && !lastOfLap) {
                 return;
             }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
-                // MASTER ONLY, because under PCIe parity only the master parks: SetTrigger's
+                // ARRUS_HOST_PARK=last only (the default per-element scheme returned above). MASTER
+                // ONLY, because under this scheme only the master parks: SetTrigger's
                 // syncReq is set on the master's last entry alone (Us4OEMImpl.cpp, pcieStylePark),
                 // so the slaves have no WAIT_FOR_SOFT to release and a BLOCK_CLR to them would have
                 // nothing to clear. This briefly released every board, which was correct only while

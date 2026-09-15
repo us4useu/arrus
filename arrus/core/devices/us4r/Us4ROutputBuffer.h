@@ -143,13 +143,17 @@ public:
      * HOST-mode stall recovery (a frame lost on the transport, e.g. a link drop) - see
      * Us4ROutputBuffer::releaseLost.
      */
-    void releaseLost() {
+    bool releaseLost() {
         std::unique_lock<std::mutex> guard(mutex);
+        if (this->state == State::READY) {
+            return false;// completed after all (the frame arrived as we were deciding): the consumer owns it
+        }
         this->accumulator = 0;
         this->state = State::FREE;
         guard.unlock();
         receiveReleaseFunction();
         releaseFunction();
+        return true;
     }
 
     void signal(Ordinal n) {
@@ -370,6 +374,13 @@ public:
         auto &element = this->elements[elementNr];
         try {
             element->signal(n);
+        } catch (const IllegalStateException &e) {
+            // A double signal = the producer lapped into an element the consumer still holds
+            // (data overflow). Element::signal throws IllegalStateException; catching only
+            // IllegalArgumentException here left this path dead and the buffer RUNNING over
+            // overwritten data (found in review 2026-09-15).
+            this->markAsInvalid();
+            throw e;
         } catch (const IllegalArgumentException &e) {
             this->markAsInvalid();
             throw e;
@@ -443,15 +454,31 @@ public:
             if (elements[i]->isPartiallyFilled()) { idx = (int) i; break; }
         }
         if (idx < 0) {
+            // Nothing partially filled: the head is the element after the last completed one - but only
+            // if that last one has been RELEASED by the consumer. If the consumer still holds it, the
+            // boards have not been released for the head yet, and the stall is the consumer's, not the
+            // transport's; a release here would fire an element nobody asked for.
+            if (elements[lastReadyElement]->isElementReady()) {
+                return -1;
+            }
             idx = (int) ((lastReadyElement + 1) % elements.size());
             if (elements[idx]->isElementReady()) {
                 return -1;
             }
         }
-        ++lostElements;
-        lastReadyElement = idx;// the producers move on to the next element; so does the head
+        const size_t headBefore = lastReadyElement;
         guard.unlock();
-        elements[idx]->releaseLost();
+        if (!elements[idx]->releaseLost()) {
+            return -1;
+        }
+        guard.lock();
+        ++lostElements;
+        // The producers move on to the next element; so does the head - unless a completion landed
+        // while the lock was dropped (the release itself can let the next element complete), in
+        // which case signal() has already moved it further and must not be undone.
+        if (lastReadyElement == headBefore) {
+            lastReadyElement = idx;
+        }
         return idx;
     }
 

@@ -1,4 +1,5 @@
 #include "Us4OEMImpl.h"
+#include "arrus/core/devices/us4r/HostParkMode.h"
 
 #include <chrono>
 #include <cmath>
@@ -480,11 +481,7 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
     // HS stop bits; "last" = the 2026-09-13 StreamingTest-parity scheme above (one park, master's
     // last entry, HS stop bits on, gated resume). The "last" scheme produced every HOST stall on
     // 2026-09-14; mainline's per-element park is the back-pressure ARRUS always had on PCIe.
-    static const bool hostParkLast = [] {
-        const char *v = std::getenv("ARRUS_HOST_PARK");
-        return v != nullptr && std::string(v) == "last";
-    }();
-    const bool pcieStylePark = workMode == ops::us4r::Scheme::WorkMode::HOST && hostParkLast;
+    const bool pcieStylePark = workMode == ops::us4r::Scheme::WorkMode::HOST && isHostParkLast();
 
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS

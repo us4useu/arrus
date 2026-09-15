@@ -30,6 +30,7 @@
 //   THROUGHPUT_CHECK         ramp-check every 100th frame (correctness run, not a clean throughput run)
 //   THROUGHPUT_PLACEMENT=GPU host buffer on GPU:0 (excludes CHECK and KEEP: they read from the host)
 //   THROUGHPUT_MODE=ASYNC|SYNC   work mode other than the default HOST
+//   THROUGHPUT_NTX=N          N TX/RX ops per sequence: a buffer element of N firings (default 1)
 //   THROUGHPUT_PROBE_ADDR=<hex sequencer word index>   poll that register every 100 ms
 //   THROUGHPUT_KICK          after a 1 s gap call SyncReceive+SyncTransfer once
 //   THROUGHPUT_RESTART[_WAIT=<s>]  after the point, stop and start again without re-uploading
@@ -105,7 +106,7 @@ struct PointResult {
     long carrierAfter = -1;
 };
 
-void printTable(const std::vector<PointResult> &results, size_t bytesPerFrame) {
+void printTable(const std::vector<PointResult> &results, size_t bytesPerFrame, unsigned firingsPerElement) {
     std::cout << "\n"
               << std::setw(8) << "PRI[us]" << std::setw(10) << "target/s" << std::setw(12) << "frames"
               << std::setw(10) << "fps" << std::setw(10) << "MB/s" << std::setw(10) << "Gbit/s"
@@ -113,7 +114,7 @@ void printTable(const std::vector<PointResult> &results, size_t bytesPerFrame) {
               << "  status\n";
     for (const auto &r : results) {
         std::cout << std::setw(8) << r.priUs;
-        double targetFps = 1e6 / (double) r.priUs;
+        double targetFps = 1e6 / (double) r.priUs / firingsPerElement;
         std::cout << std::setw(10) << std::fixed << std::setprecision(0) << targetFps;
         if (r.rejected) {
             std::cout << std::setw(12) << "-" << std::setw(10) << "-" << std::setw(10) << "-"
@@ -147,7 +148,7 @@ void printTable(const std::vector<PointResult> &results, size_t bytesPerFrame) {
         }
         std::cout << "\n";
     }
-    std::cout << "\n(frame = " << bytesPerFrame << " bytes; target/s is the sequencer rate implied by PRI;\n"
+    std::cout << "\n(element = " << bytesPerFrame << " bytes = " << firingsPerElement << " firing(s); target/s is the element rate implied by PRI;\n"
               << " deliv% = frames delivered / frames the sequencer would fire in run[s] at this PRI. In ASYNC\n"
               << " the sequencer is deterministic, so a shortfall WITHOUT an overflow is host-side receiver\n"
               << " loss; in HOST the host paces the sequencer, so a shortfall simply means the host round\n"
@@ -626,8 +627,16 @@ int main(int argc, char **argv) noexcept {
                         } catch (const std::exception &) { ++swTrigErrors; }
                         lock.lock();
                     }
+                    // The bench's own stall verdict must sit ABOVE the library's HOST stall watchdog
+                    // (ARRUS_HOST_STALL_MS), or one lost frame is reported two different ways
+                    // depending on which timer wins: 2 s, or 2 x the watchdog when it is set.
+                    static const long long stallNs = [] {
+                        const char *v = std::getenv("ARRUS_HOST_STALL_MS");
+                        const long ms = v ? std::strtol(v, nullptr, 10) : 0L;
+                        return std::max(2'000'000'000LL, (long long) ms * 2'000'000LL);
+                    }();
                     if (!holdMode && frames.load() > 0 && last > 0
-                        && now.time_since_epoch().count() - last > 2'000'000'000LL) {
+                        && now.time_since_epoch().count() - last > stallNs) {
                         stalled = true;
                         tStall = std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(last));
                         // THROUGHPUT_HSDUMP: read the HS handshake flags ONCE, here, at the moment
@@ -745,7 +754,7 @@ int main(int argc, char **argv) noexcept {
             res.stalled = stalled;
             auto endPoint = overflowed ? tOverflow : (stalled ? tStall : tEnd);
             res.secondsRun = std::chrono::duration<double>(endPoint - tStart).count();
-            res.expectedFrames = (uint64_t) (res.secondsRun * 1e6 / (double) priUs);
+            res.expectedFrames = (uint64_t) (res.secondsRun * 1e6 / (double) priUs / nTx);// one element per nTx firings
             if (snapTaken) {
                 res.ssFrames = res.frames - snapFrames;
                 res.ssBytes = res.bytes - snapBytes;
@@ -873,7 +882,7 @@ int main(int argc, char **argv) noexcept {
             }
         }
 
-        printTable(results, bytesPerFrame);
+        printTable(results, bytesPerFrame, nTx);
     } catch (const std::exception &e) {
         std::cerr << "FATAL: " << e.what() << std::endl;
         return -1;

@@ -251,19 +251,16 @@ private:
     std::atomic<uint32_t> hsTxPulses{0}, hsRxPulses{0};
 
     /**
-     * Releases the WAIT_FOR_SOFT park after a HOST-mode element: BLOCK_CLR on the MASTER only by
-     * default, matching PCIe (StreamingTest.cpp releases _us4oem[0] alone), because under the
-     * PCIe-parity programming in Us4OEMImpl::uploadTriggersIOBS only the master's last entry parks.
-     * A slave has no park to clear, and its triggers come from the master's trigger_out.
-     *
-     * TriggerSync writes CTRL.BLOCK_CLR on the board it is called on; BLOCK_CLR resumes a sequencer
-     * that stopped because WAIT_FOR_SOFT was set in its current entry (FPGA guide Table 4.35).
-     *
-     * Diagnostic switches, all default off: ARRUS_SYNC_ALL_OEMS=1 releases every board, slaves
-     * first and master last (needed only if every board parks, as before the parity change - then
-     * a master-only release left the slaves parked forever, measured 2026-09-11);
-     * ARRUS_SYNC_PARK_DELAY_US adds a slave-to-master gap; ARRUS_SYNC_MASTER_ONLY=1 forces the
-     * default path ahead of the others; ARRUS_SYNC_SKIP_RELEASE_CLR=1 issues no release at all.
+     * Releases the HOST/SYNC park (BLOCK_CLR). Default: the MASTER only, as mainline ARRUS does over
+     * PCIe. Under the default HOST scheme (ARRUS_HOST_PARK=element) every board carries a park on
+     * every element, but a slave's trigger input is gated by HW_TRIGGER_EN alone and never by its
+     * park (RTL, 2026-09-15), so the slaves follow the master's trigger regardless and the master
+     * strobe is sufficient; under ARRUS_HOST_PARK=last only the master parks at all.
+     * ARRUS_SYNC_ALL_OEMS=1 strobes every board, slaves first (diagnostic; the 2026-09-11 measurement
+     * that motivated it was taken in SYNC with the HS stop bits on, where the slave was stopped on a
+     * handshake, not parked). ARRUS_SYNC_MASTER_ONLY=1 forces the default path ahead of the others;
+     * ARRUS_SYNC_PARK_DELAY_US adds a slave-to-master gap; ARRUS_SYNC_SKIP_RELEASE_CLR=1 issues no
+     * release at all.
      *
      * DO NOT confuse this with TriggerStart/TriggerStop, which are master-only for a different
      * reason: there is one trigger generator and its trigger_out feeds every module's trigger_in.
@@ -389,6 +386,8 @@ private:
     // HOST-mode stall watchdog (ARRUS_HOST_STALL_MS): releases an element the transport never
     // completed so the boards continue instead of parking forever. See startStallWatchdog().
     bool hostModeScheme{false};
+    size_t hostBufferRepeats{1};
+    double elementPeriodUs{0.0};
     std::thread stallWatchdog;
     std::atomic<bool> stallWatchdogRun{false};
     void startStallWatchdog();
