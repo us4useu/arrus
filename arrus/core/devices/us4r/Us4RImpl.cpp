@@ -460,6 +460,28 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     auto workMode = scheme.getWorkMode();
     unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
+    // Ethernet port: the host buffer must have exactly rx_buffer_size elements. Over PCIe a deeper
+    // host buffer works by re-pointing each lap's DMA descriptors at the next group of host elements
+    // (Us4OEMDataTransferRegistrar strategies 1 and 2); over Ethernet the bridge's page ring IS the
+    // host ring and is programmed once at arm, and the re-scheduling path is not wired for the port:
+    // measured 2026-09-15 with rx 2 / host 4, every board delivered 3 elements and then parked for
+    // good. Refuse it with the reason rather than stall. The transport is recognised by the same
+    // variable us4r-api selects it with (US4R_ETH_DEVICES); a typed query is the better test once
+    // the library exposes one.
+    {
+        static const bool ethernetPort = [] {
+            const char *v = std::getenv("US4R_ETH_DEVICES");
+            return v != nullptr && *v != '\0';
+        }();
+        if (ethernetPort && hostBufferSize != rxBufferSize) {
+            throw ::arrus::IllegalArgumentException(::arrus::format(
+                "Over the Ethernet port the output buffer must have exactly rx_buffer_size elements: got "
+                "output n_elements = {0}, rx_buffer_size = {1}. The bridge's page ring is the host ring; a deeper "
+                "host buffer (PCIe's per-lap descriptor re-scheduling) is not supported on this transport yet - "
+                "set both to the same value (e.g. rx_buffer_size = {0}).",
+                hostBufferSize, rxBufferSize));
+        }
+    }
     ARRUS_REQUIRES_TRUE_E(
         (hostBufferSize % rxBufferSize) == 0,
         IllegalArgumentException(
