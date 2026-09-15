@@ -588,7 +588,11 @@ void Us4RImpl::start() {
     {
         const char *v = std::getenv("ARRUS_HOST_HS_RESUME");
         std::ostringstream ss;
-        ss << "ARRUS_HOST_HS_RESUME=" << (v ? v : "unset") << " (unset=2=counter-gated [default], 1=ungated, 0=off); "
+        const char *lr = std::getenv("ARRUS_HOST_LAP_RELEASE");
+        const char *pk = std::getenv("ARRUS_HOST_PARK");
+        ss << "ARRUS_HOST_PARK=" << (pk ? pk : "unset") << " (unset=element=mainline per-element park, no HS stop bits; last=one park + HS stop bits); "
+           << "ARRUS_HOST_LAP_RELEASE=" << (lr ? lr : "unset") << " (1=park released once per lap, from the last ring element; ARRUS_HOST_PARK=last only); "
+           << "ARRUS_HOST_HS_RESUME=" << (v ? v : "unset") << " (unset=2=counter-gated [default], 1=ungated, 0=off); "
            << "IRQ counter baselines at start (int5 rx/int6 tx):";
         for (size_t i = 0; i < us4oems.size(); ++i) ss << " oem" << i << "=" << hsRxIrqBase[i] << "/" << hsTxIrqBase[i];
         logger->log(LogSeverity::INFO, ss.str());
@@ -1147,7 +1151,10 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
 
         for (size_t j = 0; j < nRepeats; ++j) {
             // Cleaning up the WHOLE SEQUENCE entries (possible minor optimization: limit just to the current sub-sequence).
-            std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring);
+            // Per-lap release (ARRUS_HOST_LAP_RELEASE): the park is released only from the LAST element of
+            // the board's ring, i == nElementsSrc-1, whichever host repeat it belongs to.
+            const bool lastOfLap = (i + 1 == nElementsSrc);
+            std::function<void()> releaseFunc = createReleaseCallback(workMode, startFiring, endFiring, lastOfLap);
             std::function<void()> receiveReleaseFunc = createReceiveReleaseCallback(workMode, startFiring, endFiring);
             bufferDst->registerReleaseFunction(j * nElementsSrc + i, releaseFunc);
             bufferDst->registerReceiveReleaseFunction(j * nElementsSrc + i, receiveReleaseFunc);
@@ -1175,8 +1182,14 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
         const char *v = std::getenv("ARRUS_HOST_NO_STOP_EN");
         return v != nullptr && v[0] == '1';
     }();
+    // ARRUS_HOST_PARK=element (default, mainline v0.14.x): HOST never sets the HS stop bits - the
+    // per-element park is the back-pressure. Only the "last" park scheme needs them.
+    static const bool hostParkLastForStop = [] {
+        const char *v = std::getenv("ARRUS_HOST_PARK");
+        return v != nullptr && std::string(v) == "last";
+    }();
     if (workMode == ops::us4r::Scheme::WorkMode::SYNC
-        || (workMode == ops::us4r::Scheme::WorkMode::HOST && !hostNoStopEn)) {
+        || (workMode == ops::us4r::Scheme::WorkMode::HOST && hostParkLastForStop && !hostNoStopEn)) {
         ius4oem->EnableWaitOnReceiveOverflow();
         ius4oem->EnableWaitOnTransferOverflow();
     }
@@ -1207,12 +1220,59 @@ void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
     }
 }
 
-std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
+
+std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring, bool lastOfLap) {
     switch (workMode) {
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
-        return [this, startFiring, endFiring]() {
+        return [this, startFiring, endFiring, lastOfLap]() {
+            // ARRUS_HOST_LAP_RELEASE=1 (2026-09-14, Mateusz): release the master's park ONCE PER LAP, from
+            // the last element of the ring, instead of on every element release. The board then cannot
+            // start lap n+1 until the host has released all of lap n, so no entry's egress can land in
+            // a host element the consumer still holds - which is the only thing the HS stop bits protect
+            // in HOST mode (DDR pages are never read and written concurrently). Run it together with
+            // ARRUS_HOST_NO_STOP_EN=1 and ARRUS_HOST_HS_RESUME=0: no HS stops, no strobes, no gate.
+            // Cost: no acquisition/release pipelining within a lap. Off by default.
+            // CONTRACT (nothing on the board enforces this once the stop bits are off): the host must
+            // have consumed every element of lap n before it releases the park, i.e. the last ring
+            // element's release must be the last release of the lap. The consumer releases elements in
+            // completion order, so this holds as long as every element completes. An element that never
+            // completes (a short frame on entry k) is the open case: k < 7 leaves element k held while
+            // the board writes lap n+1's entry k into it - the receiver completes it a lap late, one
+            // frame lost, counted by the receiver; k == 7 never releases the park and the run stalls -
+            // needs a bounded wait + release-as-lost before this mode can be the default (2026-09-14).
+            static const bool lapRelease = [] {
+                const char *v = std::getenv("ARRUS_HOST_LAP_RELEASE");
+                return v != nullptr && v[0] == '1';
+            }();
+            static const bool parkPerElement = [] {
+                const char *v = std::getenv("ARRUS_HOST_PARK");
+                return !(v != nullptr && std::string(v) == "last");
+            }();
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
                 us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+            }
+            if (parkPerElement) {
+                // MAINLINE v0.14.x HOST release: clear the handshake range on every board, then release
+                // the park by strobing the MASTER only (getMasterOEM()->syncTrigger()), exactly as
+                // mainline does over PCIe. The slaves' parks are inert: a slave's trigger input is
+                // gated by HW_TRIGGER_EN alone, never by WAIT_FOR_SOFT (RTL, 2026-09-15), so it follows
+                // the master's trigger whether or not it is "parked". Measured 2026-09-15: master-only
+                // 435-453 fps vs every-board 427-442 fps, 0/4 stalls each, two boards.
+                // ARRUS_SYNC_ALL_BOARDS=1 strobes every board, slaves first, for comparison. (The
+                // 2026-09-11 "master-only leaves a slave parked forever" measurement was taken with the
+                // HS stop bits on, where the slave was stopped on a handshake, not parked.)
+                static const bool allBoards = [] {
+                    const char *v = std::getenv("ARRUS_SYNC_ALL_BOARDS");
+                    return v != nullptr && v[0] == '1';
+                }();
+                if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
+                    if (allBoards) {
+                        syncTriggerAllOEMs();
+                    } else {
+                        getMasterOEM()->syncTrigger();
+                    }
+                }
+                return;
             }
             // HS RESUME (default ON, counter-gated). With the hardware back-pressure on (HS1/HS2_STOP_EN,
             // D2), a board that laps the host stops on an uncleared transfer handshake and raises
@@ -1265,6 +1325,9 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
                     oem->SyncTransfer(); ++hsTxPulses;
                     oem->SyncReceive();  ++hsRxPulses;
                 }
+            }
+            if (lapRelease && !lastOfLap) {
+                return;
             }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
                 // MASTER ONLY, because under PCIe parity only the master parks: SetTrigger's

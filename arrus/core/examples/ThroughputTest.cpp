@@ -372,10 +372,18 @@ int main(int argc, char **argv) noexcept {
         std::vector<float> delays(nElements, 0.0f);
         Pulse pulse(6e6, 2, false);
         std::pair<::arrus::uint32, ::arrus::uint32> sampleRange{1, 1 + nSamples};
-        const size_t bytesPerFrame = (size_t) nSamples * 32 * sizeof(int16_t);
+        // THROUGHPUT_NTX=N (default 1): N TX/RX ops per sequence, i.e. a buffer element of N firings
+        // (N sequencer entries, N frames), the shape of a real imaging sequence.
+        static const unsigned nTx = [] {
+            const char *v = std::getenv("THROUGHPUT_NTX");
+            const long n = v != nullptr ? std::strtol(v, nullptr, 10) : 1L;
+            return (unsigned) (n > 0 ? n : 1);
+        }();
+        const size_t bytesPerFrame = (size_t) nSamples * 32 * sizeof(int16_t) * nTx;
+        const unsigned nOemsInElement = ultrasound->getNumberOfUs4OEMs();
 
-        std::cout << "throughput sweep: nSamples=" << nSamples << " (" << bytesPerFrame
-                  << " B/frame), rxDepth=" << rxDepth << ", hostDepth=" << hostDepth << ", "
+        std::cout << "throughput sweep: nSamples=" << nSamples << " x " << nTx << " firing(s)/element (" << bytesPerFrame
+                  << " B/element), rxDepth=" << rxDepth << ", hostDepth=" << hostDepth << ", "
                   << secondsPerPoint << " s/point, mode=" << modeName << ", placement=" << placement.toString() << "\n";
 
         std::vector<PointResult> results;
@@ -407,8 +415,10 @@ int main(int argc, char **argv) noexcept {
             }
 
             std::vector<TxRx> txrxs;
-            txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange),
-                               (float) priUs * 1e-6f);
+            for (unsigned t = 0; t < nTx; ++t) {
+                txrxs.emplace_back(Tx(aperture, delays, pulse), Rx(aperture, sampleRange),
+                                   (float) priUs * 1e-6f);
+            }
             TxRxSequence seq(txrxs, {}, TxRxSequence::NO_SRI, 1);
             DataBufferSpec outputBuffer{DataBufferSpec::Type::FIFO, hostDepth, placement};
             Scheme scheme(seq, (::arrus::uint16) rxDepth, outputBuffer, workMode);
@@ -512,7 +522,11 @@ int main(int argc, char **argv) noexcept {
                     // report the worst channel's count, so the number is visible rather than a
                     // bare verdict. Real corruption is nowhere near this budget: a garbled frame
                     // deviates on hundreds or thousands of rows, not three.
-                    const int maxAnomalies = 3;  // ~1 restart + up to 2 header rows per boundary
+                    // Every firing of every OEM is one block with its own header rows and ramp
+                    // restart, so the budget scales with blocks per element: nOems x nTx blocks,
+                    // ~1 restart + up to 2 header rows each (2026-09-15: a 2-OEM x 16-firing element
+                    // measured 62 non-ramp steps on its worst channel with intact samples).
+                    const int maxAnomalies = 3 * (int) (nOemsInElement * nTx);
                     bool clean = stride != 0;
                     int worst = 0;
                     for (size_t ch = 0; ch < nc; ++ch) {

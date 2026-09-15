@@ -475,7 +475,16 @@ void Us4OEMImpl::uploadTriggersIOBS(const TxParametersSequenceColl &sequences, u
     //
     // MANUAL modes are deliberately NOT changed. PCIe has no MANUAL mode, so there is nothing to
     // match; stopping after each batch is the point of MANUAL and per-batch parking implements it.
-    const bool pcieStylePark = workMode == ops::us4r::Scheme::WorkMode::HOST;
+    // ARRUS_HOST_PARK (2026-09-14, Mateusz): "element" (DEFAULT) = mainline ARRUS v0.14.x behaviour -
+    // one park on the last entry of EVERY buffer element on EVERY board, released per element, no
+    // HS stop bits; "last" = the 2026-09-13 StreamingTest-parity scheme above (one park, master's
+    // last entry, HS stop bits on, gated resume). The "last" scheme produced every HOST stall on
+    // 2026-09-14; mainline's per-element park is the back-pressure ARRUS always had on PCIe.
+    static const bool hostParkLast = [] {
+        const char *v = std::getenv("ARRUS_HOST_PARK");
+        return v != nullptr && std::string(v) == "last";
+    }();
+    const bool pcieStylePark = workMode == ops::us4r::Scheme::WorkMode::HOST && hostParkLast;
 
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
         // BUFFER ELEMENTS

@@ -229,7 +229,7 @@ private:
     size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
 
     std::function<void()> createReleaseCallback(::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
-                                                uint16 stopFiring);
+                                                uint16 stopFiring, bool lastOfLap = true);
     std::function<void()> createOnReceiveOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
                                                           Us4ROutputBuffer *buffer, bool isMaster,
                                                           const std::vector<std::pair<uint16, uint16>> &firings);
