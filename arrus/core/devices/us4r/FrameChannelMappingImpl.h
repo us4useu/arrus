@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -120,7 +121,9 @@ public:
     void setFrameOffsets(const std::vector<uint32> &frameOffsets);
     void setNumberOfFrames(const std::vector<uint32> &nFrames);
     void slice(FrameNumber start, FrameNumber end);
+    void select(const std::vector<uint16_t> &frames);
     void subtractPhysicalFrameNumber(Ordinal oem, FrameNumber offset);
+    void remapPhysicalFrameNumbers(Ordinal oem, const std::unordered_map<FrameNumber, FrameNumber> &mapping);
     void recalculateOffsets();
 
 private:

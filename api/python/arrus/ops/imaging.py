@@ -1,6 +1,7 @@
 from typing import Union
 
 import arrus.ops.us4r
+from arrus.ops.us4r import _get_op_numbers
 import numpy as np
 import arrus.ops
 import dataclasses
@@ -103,13 +104,21 @@ class SimpleTxRxSequence:
     def excitation(self):
         return self.pulse
 
-    def get_subsequence(self, start, end):
+    def get_subsequence(self, ops, end=None):
         """
-        Limits the sequence to the given sub-sequence [start, end] both inclusive.
+        Limits the sequence to the given sub-sequence.
+
+        :param ops: the list of the TX/RX ordinal numbers to keep (in the increasing order);
+          alternatively, the number of the first TX/RX to keep, when the `end` parameter is provided
+        :param end: (deprecated) the end (exclusive) of the [ops, end) range of the TX/RXs to keep
         """
+        ops = _get_op_numbers(ops, end)
+
         def _limit_if_iterable(value):
-            if isinstance(value, Iterable):
-                return value[start:end]
+            if isinstance(value, np.ndarray):
+                return value[ops]
+            elif isinstance(value, Iterable):
+                return [value[i] for i in ops]
             else:
                 return value
 

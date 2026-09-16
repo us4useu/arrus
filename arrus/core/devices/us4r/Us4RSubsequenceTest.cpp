@@ -525,6 +525,171 @@ TEST(Us4RSubsequenceFactoryTest, HandlesProperlyTwoSequences) {
     EXPECT_EQ(outputFCM1->getLogical(0, 0), FrameChannelMappingAddress(0, 0, 0));
 }
 
+
+/**
+ * A sequence of 4 TX/RXs (a single physical TX/RX each), acquired by 2 OEMs:
+ * - OEM:0 acquires data for each TX/RX (frames 0, 1, 2, 3),
+ * - OEM:1 acquires data only for the TX/RXs 1 and 3 (frames 0, 1).
+ */
+class Us4RSubsequenceFactoryNonConsecutiveTest : public ::testing::Test {
+public:
+    static constexpr unsigned N_SAMPLES = 4096;
+    static constexpr size_t FRAME_SIZE = N_SAMPLES*sizeof(int16_t);
+
+    static TxRxParameters op(bool isRx) {
+        return TxRxParameters{
+            {true}, {0.0f}, Pulse{1.0e6, 1, false}.toWaveform(), {isRx}, {0, (int)N_SAMPLES}, 1, 100e-6,
+        };
+    }
+
+    static TxRxParametersSequence oemSequence(const std::vector<bool> &isRx) {
+        std::vector<TxRxParameters> ops;
+        for(const auto rx: isRx) {
+            ops.push_back(op(rx));
+        }
+        return TxRxParametersSequence{
+            ops, 1, std::nullopt, {},
+            DeviceId(arrus::devices::DeviceType::Probe, 0),
+            DeviceId(arrus::devices::DeviceType::Probe, 0)};
+    }
+
+    /** Creates the array definition: a single part for each op, the empty parts for the ops with no RX. */
+    static Us4OEMBufferArrayDef arrayDef(const std::vector<bool> &isRx) {
+        Us4OEMBufferArrayParts parts;
+        size_t address = 0, nFrames = 0;
+        for(uint16_t entry = 0; entry < isRx.size(); ++entry) {
+            if(isRx.at(entry)) {
+                parts.emplace_back(address, FRAME_SIZE, 0, entry, N_SAMPLES);
+                address += FRAME_SIZE;
+                ++nFrames;
+            }
+            else {
+                parts.emplace_back(address, 0, 0, entry, 0);
+            }
+        }
+        return Us4OEMBufferArrayDef{
+            0, framework::NdArrayDef{{nFrames*N_SAMPLES, 1}, arrus::framework::NdArrayDef::DataType::INT16}, parts};
+    }
+
+    void SetUp() override {
+        std::vector<TxRx> txrxs;
+        for(int i = 0; i < 4; ++i) {
+            txrxs.emplace_back(Tx({true, true}, {0.0f, 0.0f}, Pulse{1.0e6, 1, false}.toWaveform()),
+                               Rx({true, true}, {0, (int)N_SAMPLES}), 100e-6);
+        }
+        sequences = {TxRxSequence{txrxs, {}}};
+        oemSequences = {{oemSequence(oem0Rx), oemSequence(oem1Rx)}};
+        mapping = {{{0, 1}, {1, 2}, {2, 3}, {3, 4}}};
+        oemBuffers = {
+            Us4OEMBuffer{{Us4OEMBufferElement{0, 4*FRAME_SIZE, 3}}, {arrayDef(oem0Rx)}},
+            Us4OEMBuffer{{Us4OEMBufferElement{0, 2*FRAME_SIZE, 3}}, {arrayDef(oem1Rx)}},
+        };
+        // logical (op, channel) -> physical (oem, frame, channel)
+        FrameChannelMappingBuilder fcmBuilder(4, 2);
+        for(uint16_t op = 0; op < 4; ++op) {
+            fcmBuilder.setChannelMapping(op, 0, 0, op, 0);
+            if(oem1Rx.at(op)) {
+                fcmBuilder.setChannelMapping(op, 1, 1, uint16_t(op/2), 0);
+            } // otherwise: the channel is unavailable
+        }
+        fcms.emplace_back(fcmBuilder.build());
+    }
+
+    Us4RSubsequenceFactory getFactory() {
+        return Us4RSubsequenceFactory{sequences, mapping, oemSequences, oemBuffers, fcms};
+    }
+
+    const std::vector<bool> oem0Rx = {true, true, true, true};
+    const std::vector<bool> oem1Rx = {false, true, false, true};
+    std::vector<TxRxSequence> sequences;
+    std::vector<std::vector<TxRxParametersSequence>> oemSequences;
+    std::vector<LogicalToPhysicalOp> mapping;
+    std::vector<Us4OEMBuffer> oemBuffers;
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
+};
+
+TEST_F(Us4RSubsequenceFactoryNonConsecutiveTest, SelectsNonConsecutiveTxRxs) {
+    auto factory = getFactory();
+    // TX/RXs 0 and 2: only the OEM:0 acquires any data.
+    const auto res = factory.get(0, std::vector<uint16_t>{0, 2}, std::nullopt);
+    EXPECT_EQ(res.getEntries(), (std::vector<uint16_t>{0, 2}));
+
+    const auto buffers = factory.recreateOEMBuffers({res.getArrayDefs()});
+    const auto &oem0 = buffers.at(0);
+    EXPECT_EQ(oem0.getElement(0).getSize(), 2*FRAME_SIZE);
+    EXPECT_EQ(oem0.getParts(0).size(), 2);
+    EXPECT_EQ(oem0.getParts(0).at(0).getEntryId(), 0);
+    EXPECT_EQ(oem0.getParts(0).at(1).getEntryId(), 2);
+    // The source addresses should be kept (they are relative to the beginning of the FULL buffer element).
+    EXPECT_EQ(oem0.getParts(0).at(1).getAddress(), 2*FRAME_SIZE);
+    // OEM:1 does not acquire any data for the TX/RXs 0 and 2.
+    const auto &oem1 = buffers.at(1);
+    EXPECT_EQ(oem1.getElement(0).getSize(), 0);
+
+    auto fcm = res.buildFCM();
+    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 2);
+    EXPECT_EQ(fcm->getNumberOfFrames(0), 2);
+    EXPECT_EQ(fcm->getNumberOfFrames(1), 0);
+    // The OEM:0 frames 0, 2 become the frames 0, 1.
+    EXPECT_EQ(fcm->getLogical(0, 0), FrameChannelMappingAddress(0, 0, 0));
+    EXPECT_EQ(fcm->getLogical(1, 0), FrameChannelMappingAddress(0, 1, 0));
+    // The channel 1 is not available for the TX/RXs 0 and 2.
+    EXPECT_TRUE(FrameChannelMapping::isChannelUnavailable(fcm->getLogical(0, 1).getChannel()));
+    EXPECT_TRUE(FrameChannelMapping::isChannelUnavailable(fcm->getLogical(1, 1).getChannel()));
+}
+
+TEST_F(Us4RSubsequenceFactoryNonConsecutiveTest, RenumbersFramesOfAllOEMs) {
+    auto factory = getFactory();
+    // TX/RXs 1 and 3: both OEMs acquire data.
+    const auto res = factory.get(0, std::vector<uint16_t>{1, 3}, std::nullopt);
+    EXPECT_EQ(res.getEntries(), (std::vector<uint16_t>{1, 3}));
+
+    const auto buffers = factory.recreateOEMBuffers({res.getArrayDefs()});
+    EXPECT_EQ(buffers.at(0).getElement(0).getSize(), 2*FRAME_SIZE);
+    EXPECT_EQ(buffers.at(1).getElement(0).getSize(), 2*FRAME_SIZE);
+    // The OEM:1 frames are stored one after another in the OEM memory (the ops 0 and 2 acquire nothing).
+    EXPECT_EQ(buffers.at(1).getParts(0).at(0).getAddress(), 0);
+    EXPECT_EQ(buffers.at(1).getParts(0).at(1).getAddress(), FRAME_SIZE);
+
+    auto fcm = res.buildFCM();
+    EXPECT_EQ(fcm->getNumberOfLogicalFrames(), 2);
+    EXPECT_EQ(fcm->getNumberOfFrames(0), 2);
+    EXPECT_EQ(fcm->getNumberOfFrames(1), 2);
+    // OEM:0 frames 1, 3 -> 0, 1
+    EXPECT_EQ(fcm->getLogical(0, 0), FrameChannelMappingAddress(0, 0, 0));
+    EXPECT_EQ(fcm->getLogical(1, 0), FrameChannelMappingAddress(0, 1, 0));
+    // OEM:1 frames 0, 1 -> 0, 1 (unchanged)
+    EXPECT_EQ(fcm->getLogical(0, 1), FrameChannelMappingAddress(1, 0, 0));
+    EXPECT_EQ(fcm->getLogical(1, 1), FrameChannelMappingAddress(1, 1, 0));
+}
+
+TEST_F(Us4RSubsequenceFactoryNonConsecutiveTest, SetsSriUsingTheSelectedTxRxsOnly) {
+    auto factory = getFactory();
+    // 2 TX/RXs, 100 us each: the last PRI should be extended by 1000-200 = 800 us.
+    const auto res = factory.get(0, std::vector<uint16_t>{0, 3}, 1000e-6f);
+    EXPECT_EQ(res.getTimeToNextTrigger(), 900);
+    // Without SRI: the PRI of the last TX/RX.
+    const auto res2 = factory.get(0, std::vector<uint16_t>{0, 3}, std::nullopt);
+    EXPECT_EQ(res2.getTimeToNextTrigger(), 100);
+}
+
+TEST_F(Us4RSubsequenceFactoryNonConsecutiveTest, TurnsOffTheSequenceForAnEmptyListOfTxRxs) {
+    auto factory = getFactory();
+    const auto res = factory.get(0, std::vector<uint16_t>{}, std::nullopt);
+    EXPECT_TRUE(res.empty());
+    EXPECT_TRUE(res.getEntries().empty());
+}
+
+TEST_F(Us4RSubsequenceFactoryNonConsecutiveTest, RejectsInvalidListOfTxRxs) {
+    auto factory = getFactory();
+    // TX/RX outside of the sequence.
+    EXPECT_THROW(factory.get(0, std::vector<uint16_t>{0, 4}, std::nullopt), IllegalArgumentException);
+    // Not sorted.
+    EXPECT_THROW(factory.get(0, std::vector<uint16_t>{2, 1}, std::nullopt), IllegalArgumentException);
+    // Repeated.
+    EXPECT_THROW(factory.get(0, std::vector<uint16_t>{1, 1}, std::nullopt), IllegalArgumentException);
+}
+
 }// namespace
 
 int main(int argc, char **argv) {

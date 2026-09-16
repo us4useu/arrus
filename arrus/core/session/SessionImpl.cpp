@@ -286,11 +286,33 @@ UploadResult SessionImpl::setSubsequence(uint16 start, uint16 end, std::optional
 }
 
 UploadResult SessionImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
+    // Convert each [start, end) slice to the explicit list of TX/RXs.
+    std::vector<std::vector<uint16>> ops;
+    ops.reserve(slices.size());
+    for(const auto &slice: slices) {
+        if(slice.getStep() != 1) {
+            throw ::arrus::IllegalArgumentException("Only slices with step = 1 are supported.");
+        }
+        if(slice.getStart() > slice.getEnd()) {
+            throw ::arrus::IllegalArgumentException("The sub-sequence start should not be greater than the end.");
+        }
+        std::vector<uint16> sequenceOps;
+        sequenceOps.reserve(slice.getEnd()-slice.getStart());
+        for(size_t op = slice.getStart(); op < slice.getEnd(); ++op) {
+            sequenceOps.push_back(ARRUS_SAFE_CAST(op, uint16));
+        }
+        ops.push_back(std::move(sequenceOps));
+    }
+    return setSubsequences(ops, sris);
+}
+
+UploadResult SessionImpl::setSubsequences(const std::vector<std::vector<uint16>> &ops,
+                                          const std::vector<std::optional<float>> &sris) {
     std::lock_guard guard(stateMutex);
     ASSERT_STATE(State::STOPPED);
 
     auto ultrasound = (Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
-    auto[buffer, metadata] = ultrasound->setSubsequences(slices, sris);
+    auto[buffer, metadata] = ultrasound->setSubsequences(ops, sris);
     return UploadResult(buffer, {metadata});
 }
 

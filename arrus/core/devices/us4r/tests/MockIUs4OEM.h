@@ -208,6 +208,7 @@ public:
     MOCK_METHOD(float, GetMinTxPulseLength, (), (const, override));
     MOCK_METHOD(float, GetMaxTxPulseLength, (), (const, override));
     MOCK_METHOD(void, SetSubsequences, (const std::vector<uint16_t> &start, const std::vector<uint16_t> &end, bool syncMode, const std::vector<uint32_t> &endTimeToNextTrigger), (override));
+    MOCK_METHOD(void, SetSubsequences, ((const std::vector<std::vector<uint16_t>> &entries), bool syncMode, const std::vector<uint32_t> &endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));

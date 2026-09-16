@@ -4,6 +4,22 @@ Release notes
 0.14.x
 ------
 
+0.14.2
+
+- core (driver):
+
+    - ``SetSubsequences``: exposed the possibility to select an arbitrary list of TX/RXs (the selected TX/RXs do not have to be consecutive any more). Only the sequencer entries that actually change are re-programmed. NOTE: the us4OEM+ devices only.
+    - Fixed the PRI of the sub-sequence end drifting by a single clock tick with each ``SetSubsequences`` call.
+
+- C++ API:
+
+    - Added ``arrus::session::Session::setSubsequences(ops, sris)``: the list of the TX/RXs to run can now be provided for each of the uploaded TX/RX sequences (the previous, slice-based method is still available). The us4OEM data transfers are now determined per each continuous range of the acquired TX/RXs.
+
+- Python API:
+
+    - ``session.set_subsequences``: the TX/RXs to run can now be given as a list of the TX/RX ordinal numbers, e.g. ``session.set_subsequences([2, 3, 5, 8, 13])``; a ``slice`` is still accepted. The same applies to the ``session.set_subsequence`` method, e.g. ``session.set_subsequence([2, 3, 5, 8, 13])``.
+    - ``session.set_subsequences``: the output buffer is no longer re-allocated when the new sub-sequence produces exactly the same amount of data as the current one; when the same ``processing`` object is provided, the imaging pipeline is updated (see ``arrus.utils.imaging.Operation.update``) instead of being re-created from scratch. Both significantly reduce the time needed to switch to a new sub-sequence.
+
 0.14.1
 
 - core (driver):

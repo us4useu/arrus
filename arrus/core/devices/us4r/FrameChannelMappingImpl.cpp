@@ -153,6 +153,52 @@ void FrameChannelMappingBuilder::slice(FrameNumber start, FrameNumber end) {
 }
 
 /**
+ * Keeps only the given logical frames (in the provided order).
+ *
+ * This is a generalization of the slice method: the frames do not have to be consecutive.
+ */
+void FrameChannelMappingBuilder::select(const std::vector<uint16_t> &frames) {
+    const auto nFrames = static_cast<int>(frames.size());
+    const auto nChannels = (int)(this->us4oemMapping.cols());
+    auto newUs4oemMapping = FrameChannelMappingImpl::Us4OEMMapping(nFrames, nChannels);
+    auto newFrameMapping = FrameChannelMappingImpl::FrameMapping(nFrames, nChannels);
+    auto newChannelMapping = FrameChannelMappingImpl::ChannelMapping(nFrames, nChannels);
+    for(int newFrameNr = 0; newFrameNr < nFrames; ++newFrameNr) {
+        const auto frame = frames.at((size_t)newFrameNr);
+        if(frame >= this->frameMapping.rows()) {
+            throw std::runtime_error("Accessing frame outside of the available range: " + std::to_string(frame));
+        }
+        for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
+            newUs4oemMapping(newFrameNr, channel) = this->us4oemMapping(frame, channel);
+            newFrameMapping(newFrameNr, channel) = this->frameMapping(frame, channel);
+            newChannelMapping(newFrameNr, channel) = this->channelMapping(frame, channel);
+        }
+    }
+    this->us4oemMapping = std::move(newUs4oemMapping);
+    this->frameMapping = std::move(newFrameMapping);
+    this->channelMapping = std::move(newChannelMapping);
+}
+
+/**
+ * Replaces the physical frame number of each entry (i, j) that has us4oemMapping(i, j) == oem, with the number
+ * determined by the given mapping (the physical frame number in the full sequence -> the number in the sub-sequence).
+ *
+ * The frames that are not in the mapping (i.e. the ones that are not acquired by the current sub-sequence,
+ * e.g. the unavailable channels) are set to 0.
+ */
+void FrameChannelMappingBuilder::remapPhysicalFrameNumbers(
+    Ordinal oem, const std::unordered_map<FrameNumber, FrameNumber> &mapping) {
+    for(long frame = 0; frame < this->frameMapping.rows(); ++frame) {
+        for(long channel = 0; channel < this->frameMapping.cols(); ++channel) {
+            if(this->us4oemMapping(frame, channel) == oem) {
+                const auto it = mapping.find(this->frameMapping(frame, channel));
+                this->frameMapping(frame, channel) = it == std::end(mapping) ? FrameNumber(0) : it->second;
+            }
+        }
+    }
+}
+
+/**
  * Subtracts the given 'offset' number from each channelMapping entry (i, j) that has us4oemMapping(i, j) == us4oem.
  * The negative values are clipped to 0 (i.e. the unavailable frames are set to 0).
  *

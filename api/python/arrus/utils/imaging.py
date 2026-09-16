@@ -431,6 +431,68 @@ class ProcessingRunner:
         self._process_lock = threading.Lock()
         self._state_lock = threading.Lock()
 
+    def update(self, input_buffer, metadata):
+        """
+        Updates this runner to work with the new input buffer and metadata, e.g. after selecting a new
+        TX/RX sub-sequence (the `session.set_subsequences` method).
+
+        Only the graph operations are updated here (see Operation.update) -- in particular, the GPU
+        input/output buffers are not re-allocated, the processing graph is not re-created and the kernels
+        are not re-compiled.
+
+        This method requires that the shape and the data type of the input and output data does not change.
+
+        :param input_buffer: the new input (host) buffer
+        :param metadata: the new input metadata
+        :raises ValueError: when this runner cannot be updated; the caller should create a new
+          ProcessingRunner in that case
+        :return: the same as the `outputs` property
+        """
+        with self._state_lock:
+            if self._state != ProcessingRunner.State.READY:
+                raise ValueError("The processing runner is already closed.")
+        if len(metadata) != len(self.input_metadata):
+            raise ValueError("The number of the input arrays has changed.")
+        for new, old in zip(metadata, self.input_metadata):
+            if new.input_shape != old.input_shape or new.dtype != old.dtype:
+                raise ValueError(f"The shape/data type of the input array {new.context.sequence.name} "
+                                 f"has changed.")
+            if new.context.sequence.name != old.context.sequence.name:
+                raise ValueError("The names of the input TX/RX sequences have changed.")
+        current_output_shapes = tuple(m.input_shape for m in self.output_metadata)
+        current_output_dtypes = tuple(m.dtype for m in self.output_metadata)
+        with self._process_lock, self.processing_stream:
+            (output_shapes, output_dtypes), output_metadata = self._update_ops(self.processing, metadata)
+            if tuple(output_shapes) != current_output_shapes or tuple(output_dtypes) != current_output_dtypes:
+                raise ValueError("The shape/data type of the output data has changed.")
+            self.input_metadata = metadata
+            self.output_metadata = output_metadata
+            self._rebind_input_buffer(input_buffer)
+        self.cp.cuda.Stream.null.synchronize()
+        return self.outputs
+
+    def _rebind_input_buffer(self, input_buffer):
+        """
+        Replaces the input buffer this runner reads the data from.
+
+        NOTE: a new input buffer wrapper is created on each upload/set_subsequences call, even when the
+        underlying (us4R output) buffer is exactly the same -- in the latter case there is no need to
+        re-register the host memory in the CUDA runtime.
+        """
+        if input_buffer is self.host_input_buffer:
+            return
+        if not self.use_p2p_dma:
+            def get_address(element):
+                return element.array.ctypes.data
+            old_addresses = [get_address(e) for e in self.host_input_buffer.elements]
+            new_addresses = [get_address(e) for e in input_buffer.elements]
+            if old_addresses != new_addresses:
+                # The input buffer has been re-allocated.
+                self._unregister_buffer(self.host_input_buffer, lambda element: element.array)
+                self._register_buffer(input_buffer, lambda element: element.array)
+        self.host_input_buffer = input_buffer
+        self.host_input_buffer.append_on_new_data_callback(self.process)
+
     def get_parameter(self, key):
         return self.processing.get_parameter(key)
 
@@ -448,9 +510,44 @@ class ProcessingRunner:
         return n_inputs_by_name, input_counters
 
     def _prepare_ops(self, processing, metadata):
-        graph = processing.graph
         input_buffer_def = processing.input_buffer
         output_buffer_def = processing.output_buffer
+        input_shapes, input_dtypes, output_shapes, output_dtypes, output_metadata = self._traverse_ops(
+            processing, metadata, lambda op, m: op.prepare(m))
+        input_buffer = Buffer(
+            name="InputBufferGPU", n_elements=input_buffer_def.size,
+            type=input_buffer_def.type,
+            shapes=input_shapes,
+            dtypes=input_dtypes,
+            math_pkg=self.cp)
+        output_buffer = Buffer(
+            name="OutputBufferCPU",
+            n_elements=output_buffer_def.size,
+            type=output_buffer_def.type,
+            shapes=output_shapes,
+            dtypes=output_dtypes,
+            math_pkg=np)
+        return input_buffer, output_buffer, output_metadata
+
+    def _update_ops(self, processing, metadata):
+        """
+        Re-runs the preparation of the graph operations for the new input metadata, without
+        re-creating the GPU input/output buffers (see the ProcessingRunner.update method).
+
+        :return: a pair: the new output shapes and dtypes, the new output metadata
+        """
+        _, _, output_shapes, output_dtypes, output_metadata = self._traverse_ops(
+            processing, metadata, lambda op, m: op.update(m))
+        return (output_shapes, output_dtypes), output_metadata
+
+    def _traverse_ops(self, processing, metadata, op_func):
+        """
+        Traverses the processing graph (in the topological order), calling op_func(op, input metadata)
+        on each of the graph operations.
+
+        :return: input shapes, input dtypes, output shapes, output dtypes, output metadata
+        """
+        graph = processing.graph
         # target, input -> source, output
         deps = graph.dependencies_parsed
         # Get number of inputs for each target
@@ -473,12 +570,6 @@ class ProcessingRunner:
                 op_name, input_nr = target
                 q.append((op_name, input_nr))
                 metadata_by_target[op_name].append((input_nr, m))
-        input_buffer = Buffer(
-            name="InputBufferGPU", n_elements=input_buffer_def.size,
-            type=input_buffer_def.type,
-            shapes=input_shapes,
-            dtypes=input_dtypes,
-            math_pkg=self.cp)
         ops_by_name = graph.get_ops_by_name()
         visited_names = set()
         output_shapes = []
@@ -509,7 +600,7 @@ class ProcessingRunner:
                 if len(metadata) == 1:
                     # Backward compatibility
                     metadata = metadata[0]
-                new_metadata = op.prepare(metadata)
+                new_metadata = op_func(op, metadata)
                 if not isinstance(new_metadata, Iterable):
                     new_metadata = [new_metadata]
                 for i, m in enumerate(new_metadata):
@@ -521,15 +612,8 @@ class ProcessingRunner:
                             q.append((next_name, next_input_nr))
         output_shapes = list(zip(*sorted(output_shapes, key=lambda a: a[0])))[1]
         output_dtypes = list(zip(*sorted(output_dtypes, key=lambda a: a[0])))[1]
-        output_buffer = Buffer(
-            name="OutputBufferCPU",
-            n_elements=output_buffer_def.size,
-            type=output_buffer_def.type,
-            shapes=output_shapes,
-            dtypes=output_dtypes,
-            math_pkg=np)
         output_metadata = list(zip(*sorted(output_metadata.items(), key=lambda x: x[0])))[1]
-        return input_buffer, output_buffer, output_metadata
+        return input_shapes, input_dtypes, output_shapes, output_dtypes, output_metadata
 
     def _preprocess_graph(self, processing, input_metadata,
                           host_input_buffer, gpu_input_buffer,
@@ -780,6 +864,21 @@ class Operation:
         :return: const metadata describing output of this Operation.
         """
         pass
+
+    def update(self, const_metadata):
+        """
+        Function that will be called when the input const metadata changes, but the structure
+        (shape, data type) of the processed data stays the same -- e.g. after selecting a new
+        TX/RX sub-sequence with the `session.set_subsequences` method.
+
+        By default, this function simply calls the `prepare` method. The operations that keep some state
+        which is expensive to re-create (e.g. compiled kernels) can override this method and update only
+        the parameters that depend on the acquisition parameters (e.g. the positions of the TX/RX apertures).
+
+        :param const_metadata: const metadata describing output from the previous Operation.
+        :return: const metadata describing output of this Operation.
+        """
+        return self.prepare(const_metadata)
 
     def process(self, data):
         """
@@ -1063,11 +1162,23 @@ class Pipeline:
                 data = step.initialize(data)
 
     def prepare(self, const_metadata):
+        return self._prepare(const_metadata, initialize=True)
+
+    def update(self, const_metadata):
+        """
+        Updates this pipeline for the new input const metadata (e.g. after selecting a new TX/RX sub-sequence).
+
+        In contrast to the `prepare` method, the (already compiled) kernels are not re-initialized here.
+        """
+        return self._prepare(const_metadata, initialize=False)
+
+    def _prepare(self, const_metadata, initialize: bool):
         metadatas = deque()
         current_metadata = const_metadata
         for step in self.steps:
+            step_prepare = step.prepare if initialize else step.update
             if isinstance(step, (Pipeline, Output)):
-                child_metadatas = step.prepare(current_metadata)
+                child_metadatas = step_prepare(current_metadata)
                 if not isinstance(child_metadatas, Iterable):
                     child_metadatas = (child_metadatas,)
                 # To keep the order of child_metadatas, appendleft
@@ -1075,10 +1186,11 @@ class Pipeline:
                 metadatas.extendleft(reversed(child_metadatas))
                 step.endpoint = True
             else:
-                current_metadata = step.prepare(current_metadata)
+                current_metadata = step_prepare(current_metadata)
                 step.endpoint = False
-        # Force cupy to recompile kernels before running the pipeline.
-        self.__initialize(const_metadata)
+        if initialize:
+            # Force cupy to recompile kernels before running the pipeline.
+            self.__initialize(const_metadata)
         last_step = self.steps[-1]
         if not isinstance(last_step, (Pipeline, Output)):
             if not isinstance(current_metadata, Iterable):

@@ -180,6 +180,8 @@ class Session(AbstractSession):
         self._context = SessionContext(medium=medium)
         self._py_devices = self._create_py_devices()
         self._current_processing = None
+        # The processing object provided by the user (see the _set_processing method).
+        self._current_processing_spec = None
         self._current_scheme = None
         # Current metadata (for the full sequence)
         self.metadatas = None
@@ -405,31 +407,43 @@ class Session(AbstractSession):
         """
         self._context = SessionContext(medium=value)
 
-    def set_subsequences(self, slices: List[slice], processing=None, sris: List[Optional[float]] = None):
+    def set_subsequences(self, subsequences, processing=None, sris: List[Optional[float]] = None):
         """
-        Selects [start, end) slices for each sub-sequence.
+        Selects the TX/RXs to be executed, for each of the uploaded TX/RX sequences.
 
-        The `slices` array should have exactly n elements, where n is the number of currently uploaded sequences.
-        The element slice[i] sets the [start, end) range for the i-th sequence.
+        The `subsequences` array should have exactly n elements, where n is the number of currently uploaded
+        sequences. The element subsequences[i] determines the TX/RXs of the i-th sequence to run, and can be:
+
+        - a slice, e.g. `slice(2, 8)`: the [start, end) range of the TX/RXs,
+        - a list of the TX/RX ordinal numbers, e.g. `[2, 3, 5, 8, 13]`: exactly these TX/RXs will be executed,
+          in that order. The numbers should be provided in the increasing order, without repetitions.
+
+        As a shortcut, when a single TX/RX sequence is uploaded, the list of the TX/RX numbers can be provided
+        directly, e.g. `session.set_subsequences([2, 3, 5, 8, 13])`.
+
+        NOTE: in the Python API we operate on the logical TX/RXs; a single logical TX/RX can be translated to
+        more than one physical TX/RX (e.g. when the RX aperture is larger than the number of the RX channels
+        of a single us4OEM). Selecting non-consecutive TX/RXs is supported by the us4OEM+ devices only.
 
         The `sris` should have exactly n elements, or should be empty (which means that no additional sri should be
         applied).
 
-        To turn off the given sequence, just set start equal to end (e.g. Slice(0, 0)). For such sequences, the metadata
-        will
+        To turn off the given sequence, just provide an empty list of TX/RXs (or e.g. `slice(0, 0)`) for it.
+        For such sequences, the metadata will describe only empty data.
 
-        :param slices: slices to set to each Scheme sub-sequence
+        :param subsequences: the TX/RXs to run, for each Scheme sub-sequence
         :param sris: sris to apply to each Scheme sub-sequence
         :return returns: the buffer and metadata for the modified Scheme. The metadata array size is always equal to
            the number of sequences in the original Scheme
         """
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
         sris = [] if sris is None else sris
+        subsequences = self._convert_to_subsequences(subsequences)
 
-        arrus_slices = arrus.utils.core.convert_to_arrus_slices(slices)
+        arrus_ops = arrus.utils.core.convert_to_arrus_subsequences(subsequences)
         arrus_sris = arrus.utils.core.convert_to_optional_vector(sris)
 
-        upload_result = self._session_handle.setSubsequences(arrus_slices, arrus_sris)
+        upload_result = self._session_handle.setSubsequences(arrus_ops, arrus_sris)
 
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
@@ -437,10 +451,11 @@ class Session(AbstractSession):
         # Create new metadata
         result_metadatas = []
         result_sequences = []
-        for array_id, (s, array, metadata) in enumerate(zip(slices, self.buffer.elements[0].arrays, self.metadatas)):
+        for array_id, (ops, array, metadata) in enumerate(
+                zip(subsequences, self.buffer.elements[0].arrays, self.metadatas)):
             input_shape = array.shape
-            sequence = metadata.context.sequence.get_subsequence(s.start, s.stop)
-            raw_sequence = metadata.context.raw_sequence.get_subsequence(s.start, s.stop)
+            sequence = metadata.context.sequence.get_subsequence(ops)
+            raw_sequence = metadata.context.raw_sequence.get_subsequence(ops)
             data_description = us_device.get_data_description_updated_for_subsequence(array_id, upload_result, sequence)
             fac = dataclasses.replace(
                 metadata.context,
@@ -455,51 +470,112 @@ class Session(AbstractSession):
             result_metadatas.append(metadata)
         return self._set_processing(self.buffer, result_metadatas, processing, result_sequences)
 
-    def set_subsequence(self, start, end, array_id=0, processing=None, sri=None):
-        """
-        Turns on the sequence with the arrayId and sets the TX/RXs to the [start, end) range. This method turns off all
-        the uploaded TX/RX sequences except sequence pointed by `arrayId`.
-
-        This method requires that:
-
-        - start < end (start == end would mean that the given sequence should bet turned off, and that would mean that all TX/RXs sequences should be turned off, which current does not make sense),
-        - the scheme was uploaded,
-        - the TX/RX sequence length is greater than the `end` value,
-        - the scheme is stopped.
-
-        :param start: the TX/RX number which should now be the first TX/RX
-        :param end: the TX/RX number which should now be the last TX/RX
-        :param sri: the new SRI to apply
-        :param array_id: id array to select, default: array with id 0
-        :param processing: processing that should be used to process the output data for the given sub-sequence
-        :return: the new data buffer and metadata
-        """
-        if start >= end:
-            raise ValueError("The `set_subsequence` method requires start < end.")
+    def _get_uploaded_sequences(self):
         if self._current_scheme is None:
             raise ValueError("Please upload the scheme first")
         sequences = self._current_scheme.tx_rx_sequence
         if not isinstance(sequences, Iterable):
             sequences = [sequences]
+        return sequences
+
+    def _convert_to_subsequences(self, subsequences):
+        """
+        Converts the input sub-sequence specification to the list of the TX/RX ordinal numbers,
+        for each of the uploaded TX/RX sequences.
+        """
+        sequences = self._get_uploaded_sequences()
         n_sequences = len(sequences)
 
-        slices = [slice(0, 0)]*n_sequences
+        if len(subsequences) > 0 and all(isinstance(s, (int, np.integer)) for s in subsequences):
+            # A single, flat list of the TX/RX numbers was provided.
+            if n_sequences != 1:
+                raise ValueError("A flat list of the TX/RX numbers can be used only when a single TX/RX "
+                                 f"sequence is uploaded (currently uploaded: {n_sequences}). "
+                                 "Please provide a separate list of TX/RXs for each sequence.")
+            subsequences = [subsequences]
+        if len(subsequences) != n_sequences:
+            raise ValueError(f"Exactly {n_sequences} sub-sequences should be provided "
+                             f"(got: {len(subsequences)}).")
+        result = []
+        for sequence, ops in zip(sequences, subsequences):
+            if isinstance(ops, slice):
+                ops = range(*ops.indices(len(sequence.ops)))
+            result.append([int(op) for op in ops])
+        return result
+
+    def set_subsequence(self, start=None, end=None, array_id=0, processing=None, sri=None):
+        """
+        Turns on the sequence with the arrayId and sets the TX/RXs that should be executed. This method turns off
+        all the uploaded TX/RX sequences except the sequence pointed by `arrayId`.
+
+        The TX/RXs to run can be provided either as the [start, end) range, or as an explicit list of the TX/RX
+        ordinal numbers, e.g. `session.set_subsequence([2, 3, 5, 8, 13])`.
+
+        This method requires that:
+
+        - at least one TX/RX is selected,
+        - the scheme was uploaded,
+        - the TX/RX sequence length is greater than the `end` value (and than any of the provided TX/RX numbers),
+        - the scheme is stopped.
+
+        :param start: the TX/RX number which should now be the first TX/RX, or the list of the TX/RXs to run
+        :param end: the TX/RX number which should now be the last TX/RX (exclusive)
+        :param sri: the new SRI to apply
+        :param array_id: id array to select, default: array with id 0
+        :param processing: processing that should be used to process the output data for the given sub-sequence
+        :return: the new data buffer and metadata
+        """
+        n_sequences = len(self._get_uploaded_sequences())
+        if isinstance(start, Iterable):
+            if end is not None:
+                raise ValueError("The `end` parameter should not be used with the list of TX/RXs.")
+            ops = [int(op) for op in start]
+        else:
+            if start is None or end is None:
+                raise ValueError("Please provide the [start, end) range or the list of the TX/RXs to run.")
+            if start >= end:
+                raise ValueError("The `set_subsequence` method requires start < end.")
+            ops = list(range(int(start), int(end)))
+        if len(ops) == 0:
+            raise ValueError("At least one TX/RX should be selected.")
+
+        # Turn off all the other sequences.
+        subsequences = [[] for _ in range(n_sequences)]
         sris = [None]*n_sequences
 
-        slices[array_id] = slice(start, end)
+        subsequences[array_id] = ops
         sris[array_id] = sri
 
-        return self.set_subsequences(slices=slices, sris=sris, processing=processing)
+        return self.set_subsequences(subsequences=subsequences, sris=sris, processing=processing)
 
     def _set_processing(self, buffer, metadatas, processing, sequences):
+        # Try to update the currently running processing first: when the user provides exactly the same
+        # processing as the one that is currently in use (e.g. when selecting a new TX/RX sub-sequence),
+        # there is no need to re-create the whole processing pipeline -- it's enough to update the
+        # operations that depend on the acquisition parameters (e.g. RxBeamforming, ScanConversion).
+        if (self._current_processing is not None
+                and processing is not None
+                and processing is self._current_processing_spec):
+            try:
+                return self._current_processing.update(buffer, metadatas)
+            except ValueError as e:
+                # The processing cannot be updated (e.g. the output data shape has changed)
+                # -- re-create it from scratch.
+                arrus.logging.log(
+                    arrus.logging.DEBUG,
+                    f"Re-creating the data processing pipeline, reason: {e}")
         # setup processing
         if self._current_processing is not None:
             self._current_processing.close()
             self._current_processing = None
+        self._current_processing_spec = None
 
         if processing is not None:
             # setup processing
             import arrus.utils.imaging as _imaging
+            # The object provided by the user -- kept in order to be able to determine whether the
+            # currently running processing can be updated (see the beginning of this method).
+            processing_spec = processing
             if not isinstance(processing, _imaging.Processing):
                 # Wrap into the Processing object.
                 processing = _imaging.Processing(
@@ -534,6 +610,7 @@ class Session(AbstractSession):
             )
             outputs = processing_runner.outputs
             self._current_processing = processing_runner
+            self._current_processing_spec = processing_spec
         else:
             # Device buffer and const_metadata
             outputs = buffer, metadatas

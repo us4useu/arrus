@@ -25,6 +25,10 @@ public:
 
     std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
     setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override = 0;
+
+    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<std::vector<uint16>> &ops,
+                    const std::vector<std::optional<float>> &sris) override = 0;
 };
 
 }

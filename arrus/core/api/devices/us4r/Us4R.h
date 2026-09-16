@@ -466,6 +466,13 @@ public:
      */
     virtual std::vector<int64_t> getHVPSTuningInfo() = 0;
 
+    /**
+     * Selects the given list of TX/RXs for each of the uploaded TX/RX sequences (a generalization
+     * of the method above: the selected TX/RXs do not have to be consecutive).
+     */
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<std::vector<uint16>> &ops, const std::vector<std::optional<float>> &sris) = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <unordered_map>
 #include <utility>
 
 #include "FrameChannelMappingImpl.h"
@@ -25,22 +26,27 @@ namespace arrus::devices {
 class Us4RSubsequence {
 
 public:
-    Us4RSubsequence(uint16_t start, uint16_t anEnd, uint32_t timeToNextTrigger,
+    Us4RSubsequence(std::vector<uint16_t> entries, uint32_t timeToNextTrigger,
                     const std::vector<Us4OEMBufferArrayDef> &arrays, FrameChannelMappingBuilder fcm)
-        : start(start), end(anEnd), timeToNextTrigger(timeToNextTrigger), arrays(arrays),
+        : entries(std::move(entries)), timeToNextTrigger(timeToNextTrigger), arrays(arrays),
           fcm(std::move(fcm)) {}
 
-    uint16_t getStart() const { return start; }
-    uint16_t getEnd() const { return end; }
+    /** The list of the physical firings (sequencer entries) to be executed, in the order of execution. */
+    const std::vector<uint16_t> &getEntries() const { return entries; }
+    /** The first physical firing of this sub-sequence (0 for an empty sub-sequence). */
+    uint16_t getStart() const { return entries.empty() ? uint16_t(0) : entries.front(); }
+    /** The last physical firing of this sub-sequence + 1 (0 for an empty sub-sequence).
+     *  NOTE: the sub-sequence firings do not have to be consecutive, see getEntries. */
+    uint16_t getEnd() const { return entries.empty() ? uint16_t(0) : ARRUS_SAFE_CAST(entries.back()+1, uint16_t); }
     uint32_t getTimeToNextTrigger() const { return timeToNextTrigger; }
     const std::vector<Us4OEMBufferArrayDef> &getArrayDefs() const { return arrays; }
     /** NOTE: this method builds a new FCM everytime is called */
     FrameChannelMappingImpl::Handle buildFCM() const { return fcm.build(); }
-    bool empty() const {return start == end; }
+    bool empty() const { return entries.empty(); }
 
 private:
-    /** Physical firing [start, end) NOTE: left-side inclusive, right-side exclusive. */
-    uint16_t start, end;
+    /** Physical firings (sequencer entries) to be executed, in the order of execution. */
+    std::vector<uint16_t> entries;
     uint32_t timeToNextTrigger;
     /** Arrays for each OEM, TX/RX sequence id -> array. */
     std::vector<Us4OEMBufferArrayDef> arrays;
@@ -95,9 +101,31 @@ public:
         }
     }
 
+    /**
+     * Creates the sub-sequence consisting of the [start, end) logical TX/RXs of the given sequence.
+     */
     Us4RSubsequence get(SequenceId sequenceId, uint16_t start, uint16_t end, std::optional<float> sri) {
         ARRUS_REQUIRES_TRUE_IAE(start <= end, "Sub-sequence start should be not greater than the end");
-        if(start == end) {
+        std::vector<uint16_t> ops;
+        ops.reserve(static_cast<size_t>(end-start));
+        for(uint16_t op = start; op < end; ++op) {
+            ops.push_back(op);
+        }
+        return get(sequenceId, ops, sri);
+    }
+
+    /**
+     * Creates the sub-sequence consisting of the given list of the logical TX/RXs of the given sequence.
+     *
+     * The TX/RXs do not have to be consecutive, however they must be provided in the increasing order
+     * (the acquired data is stored in the output buffer in the TX/RX order).
+     *
+     * @param sequenceId the id of the TX/RX sequence to limit
+     * @param ops the list of the logical TX/RXs (ordinal numbers) to run; empty means: turn off this sequence
+     * @param sri the sequence repetition interval to apply
+     */
+    Us4RSubsequence get(SequenceId sequenceId, const std::vector<uint16_t> &ops, std::optional<float> sri) {
+        if(ops.empty()) {
             // Return empty sub-sequence (i.e. the sequence should be turned off).
             std::vector<Us4OEMBufferArrayDef> arrays;
             for(const auto &buffer: oemBuffers) {
@@ -109,44 +137,54 @@ public:
                 });
             }
             return Us4RSubsequence{
-                start, start, 0, arrays, FrameChannelMappingBuilder{0, 0}
+                {}, 0, arrays, FrameChannelMappingBuilder{0, 0}
             };
         }
-        validate(sequenceId, start, end);
-        uint16_t oemStart = logicalToPhysicalOp.at(sequenceId).at(start).first;
-        uint16_t oemEnd = logicalToPhysicalOp.at(sequenceId).at(end-1).second;
-
-        uint16_t oemStartLocal = logicalToPhysicalOpLocal.at(sequenceId).at(start).first;
-        uint16_t oemEndLocal = logicalToPhysicalOpLocal.at(sequenceId).at(end-1).second;
-
+        validate(sequenceId, ops);
+        // Determine the physical firings (sequencer entries) to be executed.
+        // NOTE: a single logical TX/RX can be translated to more than one physical TX/RX (e.g. when the RX aperture
+        // is larger than the number of the OEM RX channels).
+        // entries: global (i.e. counted from the beginning of the sequencer table),
+        // localEntries: local (i.e. counted from the beginning of the given TX/RX sequence).
+        std::vector<uint16_t> entries, localEntries;
+        for(const auto op: ops) {
+            const auto [globalStart, globalEnd] = logicalToPhysicalOp.at(sequenceId).at(op);
+            const auto [localStart, localEnd] = logicalToPhysicalOpLocal.at(sequenceId).at(op);
+            for(uint16_t entry = globalStart; entry < globalEnd; ++entry) {
+                entries.push_back(entry);
+            }
+            for(uint16_t entry = localStart; entry < localEnd; ++entry) {
+                localEntries.push_back(entry);
+            }
+        }
         std::vector<Us4OEMBufferArrayDef> views;
         // Update us4OEM buffers.
-        // We only limit the range of the parts list and change the size and shape of the elements buffer (required
+        // We only limit the list of the parts and change the size and shape of the elements buffer (required
         // for creating new host buffer).
         // We do not recalculate firing numbers! This way transfer registrar will use the proper firing numbers.
         for (const auto &oemBuffer : oemBuffers) {
-            views.push_back(getOEMBufferArrayDef(oemBuffer, sequenceId, oemStartLocal, oemEndLocal));
+            views.push_back(getOEMBufferArrayDef(oemBuffer, sequenceId, localEntries));
         }
         // Update FCM.
         FrameChannelMappingBuilder outFCMBuilder = FrameChannelMappingBuilder::copy(*(fcm.at(sequenceId)));
-        outFCMBuilder.slice(start, end);// slice to logical frames to [start, end)
+        outFCMBuilder.select(ops);// keep the selected logical frames only
         // OEM nr -> number of frames
         std::vector<uint32> nFrames;
         for (size_t oem = 0; oem < oemBuffers.size(); ++oem) {
-            auto nextFrameNumber = opToNextFrame.at(sequenceId).at(oem).getNextFrame(oemStartLocal);
-            auto n = opToNextFrame.at(sequenceId).at(oem).getNumberOfFrames(oemStartLocal, oemEndLocal);
-            nFrames.push_back(n);
-            if (nextFrameNumber.has_value()) {
-                // Subtract from the physical frame numbers, the number of preceding frames (e.g. move frame 3 to 0).
-                outFCMBuilder.subtractPhysicalFrameNumber((Ordinal)oem, nextFrameNumber.value());
+            // The frames not acquired by this sub-sequence are dropped, the remaining ones are renumbered
+            // (e.g. the frames 3, 7 of the full sequence become the frames 0, 1 of the sub-sequence).
+            auto frameNumbers = opToNextFrame.at(sequenceId).at(oem).getFrameNumbers(localEntries);
+            nFrames.push_back(ARRUS_SAFE_CAST(frameNumbers.size(), uint32));
+            if(!frameNumbers.empty()) {
+                outFCMBuilder.remapPhysicalFrameNumbers((Ordinal)oem, frameNumbers);
             } // Otherwise there is no frame from the given OEM in FCM, so nothing to update.
         }
         // recalculate frame offsets
         outFCMBuilder.setNumberOfFrames(nFrames);
         outFCMBuilder.recalculateOffsets();
         return Us4RSubsequence{
-            oemStart, oemEnd, // right-side exclusive
-            getTimeToNextTrigger(sequenceId, oemStartLocal, oemEndLocal, sri),
+            entries,
+            getTimeToNextTrigger(sequenceId, localEntries, sri),
             views, outFCMBuilder
         };
     }
@@ -263,6 +301,28 @@ private:
             }
             return result;
         }
+
+        /**
+         * Returns the renumbering of the physical frames acquired by the given ops (firings):
+         * the frame number in the full sequence -> the frame number in the sub-sequence.
+         *
+         * The ops that do not acquire any data are skipped; the remaining frames are numbered from 0,
+         * in the order the ops are provided.
+         */
+        std::unordered_map<uint16, uint16> getFrameNumbers(const std::vector<uint16_t> &ops) {
+            std::unordered_map<uint16, uint16> result;
+            uint16 currentFrame = 0;
+            for(const auto op: ops) {
+                if(op >= isRxOp.size()) {
+                    throw IllegalArgumentException("Accessing mapping outside the available range.");
+                }
+                if(isRxOp.at(op)) {
+                    // NOTE: for the RX ops, opToNextFrame points to the frame acquired by this op.
+                    result.emplace(opToNextFrame.at(op).value(), currentFrame++);
+                }
+            }
+            return result;
+        }
         // op (firing) number -> next frame number, relative to the full sequence.
         std::vector<std::optional<uint16_t>> opToNextFrame;
         // op (firing) number -> whether there is some data acquisition done by this op
@@ -297,56 +357,73 @@ private:
         return result;
     }
 
-    void validate(SequenceId sequenceId, uint16 start, uint16 stop) {
+    void validate(SequenceId sequenceId, const std::vector<uint16_t> &ops) {
         if(sequenceId >= sequences.size()) {
             throw IllegalStateException(
                 format("Sequence {} is outside of of the uploaded sequences (size: {})", sequenceId, sequences.size()));
         }
         const auto &seq = sequences.at(sequenceId);
         const auto currentSequenceSize = static_cast<uint16_t>(seq.getOps().size());
-        if(stop > currentSequenceSize) {
-            throw IllegalArgumentException(
-                format("The new sub-sequence [{}, {}] is outside of the scope of the sequence with id: {} "
-                             " [0, {})", start, stop, sequenceId, currentSequenceSize));
+        for(size_t i = 0; i < ops.size(); ++i) {
+            if(ops.at(i) >= currentSequenceSize) {
+                throw IllegalArgumentException(
+                    format("The TX/RX {} is outside of the scope of the sequence with id: {} [0, {})",
+                           ops.at(i), sequenceId, currentSequenceSize));
+            }
+            if(i > 0 && ops.at(i) <= ops.at(i-1)) {
+                throw IllegalArgumentException(
+                    "The sub-sequence TX/RXs should be provided in the increasing order, without repetitions.");
+            }
         }
     }
 
-    unsigned int getTimeToNextTrigger(SequenceId sid, uint16 start, uint16 end, std::optional<float> sri) const {
+    /**
+     * Returns the time to the next trigger (PRI) that should be set for the last firing of the sub-sequence,
+     * so that the requested SRI is preserved.
+     *
+     * @param entries the physical firings (local to the given sequence) of the sub-sequence
+     */
+    unsigned int getTimeToNextTrigger(SequenceId sid, const std::vector<uint16_t> &entries,
+                                      std::optional<float> sri) const {
         const auto &referenceOEMSequence = oemSequences.at(sid).at(0);
-        // NOTE: end is inclusive (and the below method expects [start, end) range.
-        std::optional<float> extend = getSRIExtend(
-            std::begin(referenceOEMSequence)+start,
-            std::begin(referenceOEMSequence)+end,
-            sri
-        );
-        auto lastOpPri = referenceOEMSequence.at(end-1).getPri() + extend.value_or(0);
+        auto lastOpPri = referenceOEMSequence.at(entries.back()).getPri();
+        if(sri.has_value()) {
+            // The total time of the sub-sequence (note: only the selected firings are executed).
+            float totalPri = 0.0f;
+            for(const auto entry: entries) {
+                totalPri += referenceOEMSequence.at(entry).getPri();
+            }
+            if(totalPri >= sri.value()) {
+                throw IllegalArgumentException(format("Sequence repetition interval {} cannot be set, "
+                                                      "sequence total pri is equal {}", sri.value(), totalPri));
+            }
+            lastOpPri += sri.value() - totalPri;
+        }
         return getPRIMicroseconds(lastOpPri);
     }
 
     /**
-     * Returns the view of this buffer for slice [start, end) (note: end is exclusive) of the given array.
+     * Returns the view of this buffer, limited to the given list of firings (parts) of the given array.
+     *
+     * @param entries the firings (local to the given sequence, i.e. the part numbers) to be kept
      */
-    Us4OEMBufferArrayDef getOEMBufferArrayDef(const Us4OEMBuffer &buffer, ArrayId arrayId, uint16 start, uint16 end) const {
-        if (start > end) {
-            throw IllegalArgumentException("Us4OEMBufferView: start cannot exceed end");
-        }
+    Us4OEMBufferArrayDef getOEMBufferArrayDef(const Us4OEMBuffer &buffer, ArrayId arrayId,
+                                              const std::vector<uint16_t> &entries) const {
         const auto& arrayDef = buffer.getArrayDef(arrayId);
-        if(start == end || arrayDef.getSize() == 0) {
-            // Empty the current (arrayDef) or te new (start, end) array.
+        if(entries.empty() || arrayDef.getSize() == 0) {
+            // Empty the current (arrayDef) or the new (entries) array.
             return getEmptyArrayDef(arrayDef);
         }
         const auto& parts = arrayDef.getParts();
-
-        if (end > parts.size()) {
-            throw IllegalArgumentException(
-                format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})", end, parts.size()));
-        }
-        auto b = std::begin(parts);
-        // NEW ARRAY DEF (A SINGLE ARRAY SHOULD BE DEFINED)
-        Us4OEMBufferArrayParts newParts(b+start, b+end); // NOTE: end is exclusive
-        if(newParts.empty()) {
-            // empty array
-            return getEmptyArrayDef(arrayDef);
+        Us4OEMBufferArrayParts newParts;
+        newParts.reserve(entries.size());
+        for(const auto entry: entries) {
+            if(entry >= parts.size()) {
+                throw IllegalArgumentException(
+                    format("The index is outside of the scope of us4OEM Buffer view (index: {}, size: {})",
+                           entry, parts.size()));
+            }
+            newParts.push_back(parts.at(entry));
         }
         // Calculate new shape of the array.
         auto oldShape = arrayDef.getDefinition().getShape();
@@ -357,7 +434,7 @@ private:
         auto newShape = updateShape(oldShape, newNSamples);
         auto newDefinition = framework::NdArrayDef{newShape, arrayDef.getDefinition().getDataType()};
         // Calculate new address of the array.
-        // The new address is the current address + offset caused by the start part.
+        // The new address is the address of the first part of this sub-sequence.
         auto newAddress = std::begin(newParts)->getAddress();
 
         return Us4OEMBufferArrayDef {

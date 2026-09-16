@@ -147,14 +147,21 @@ public:
                     ARRUS_REQUIRES_TRUE_E(part.getSize() <= maxTransferSize,
                                           ArrusException(format("A single frame cannot exceed {} bytes, got: {}",
                                                                 part.getSize(), maxTransferSize)));
-
-                    if (size + part.getSize() > maxTransferSize) {
-                        transfers.emplace_back(destination, source, size, firing);
-                        source = part.getAddress();
-                        destination += size;
-                        size = 0;
+                    if (part.getSize() > 0) {
+                        // NOTE: the parts do not have to be consecutive in the us4OEM memory (e.g. when
+                        // a sub-sequence with non-consecutive TX/RXs is selected) -- only the parts that are
+                        // adjacent to each other can be transferred together.
+                        const bool isAdjacent = part.getAddress() == source + size;
+                        if (size > 0 && (size + part.getSize() > maxTransferSize || !isAdjacent)) {
+                            transfers.emplace_back(destination, source, size, firing);
+                            destination += size;
+                            size = 0;
+                        }
+                        if (size == 0) {
+                            source = part.getAddress();
+                        }
+                        size += part.getSize();
                     }
-                    size += part.getSize();
                     firing = part.getEntryId();
                 }
                 if (size > 0) {

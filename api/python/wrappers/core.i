@@ -578,6 +578,7 @@ namespace std {
 %template(ArrusNdArrayVector) vector<arrus::framework::NdArray>;
 %template(SliceVector) vector<arrus::Slice>;
 %template(OptionalFloatVector) vector<std::optional<float>>;
+%template(VectorVectorUInt16) vector<vector<unsigned short>>;
 };
 
 %inline %{
@@ -610,6 +611,11 @@ void Arrus2dArrayVectorPushBack(
 
 void SlicePushBack(std::vector<arrus::Slice> &vector, arrus::Slice &slice) {
     vector.push_back(slice);
+}
+
+void VectorVectorUInt16PushBack(
+    std::vector<std::vector<unsigned short>> &vector, const std::vector<unsigned short> &value) {
+    vector.push_back(value);
 }
 
 void OptionalVectorFloatPushBack(std::vector<std::optional<float>> &vector, std::optional<float> value) {

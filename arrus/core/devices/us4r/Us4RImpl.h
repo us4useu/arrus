@@ -162,6 +162,10 @@ public:
     std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
     setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
 
+    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<std::vector<uint16>> &ops,
+                    const std::vector<std::optional<float>> &sris) override;
+
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
     std::string getDescription() const override;
@@ -249,6 +253,8 @@ private:
      * Consider using this method only in case the performance is critical; in other cases, please use setVoltage.
      */
     void setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &voltages);
+
+    uint16 getSequencerStartEntry() const;
 
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
                            bool cleanupSequencerTransfers = false);

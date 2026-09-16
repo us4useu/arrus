@@ -103,6 +103,18 @@ public:
     virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
     setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
+    /**
+     * Selects the given list of TX/RXs for each of the uploaded TX/RX sequences.
+     *
+     * This is a generalization of the method above: the selected TX/RXs do not have to be consecutive.
+     * An empty list means that the given sequence should be turned off.
+     *
+     * @param ops the list of TX/RXs (ordinal numbers, increasing) to run, for each Scheme sub-sequence
+     * @param sris sris to apply to each Scheme sub-sequence
+     */
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    setSubsequences(const std::vector<std::vector<uint16>> &ops, const std::vector<std::optional<float>> &sris) = 0;
+
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;
     void operator=(Ultrasound const &) = delete;

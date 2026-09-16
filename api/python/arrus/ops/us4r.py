@@ -9,6 +9,23 @@ from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Se
 from arrus.devices.device import parse_device_id, DeviceId
 
 
+def _get_op_numbers(ops, end=None):
+    """
+    Converts the sub-sequence specification to the list of the TX/RX ordinal numbers.
+
+    :param ops: an iterable of the TX/RX ordinal numbers, or the number of the first TX/RX,
+      when the `end` parameter is provided
+    :param end: the end (exclusive) of the [ops, end) range of the TX/RX numbers
+    :return: a list of the TX/RX ordinal numbers
+    """
+    if end is not None:
+        return list(range(int(ops), int(end)))
+    if isinstance(ops, slice):
+        raise ValueError("The sub-sequence slice should be converted to the list of "
+                         "TX/RX numbers first (the length of the sequence is required).")
+    return [int(op) for op in ops]
+
+
 @dataclass(frozen=True)
 class Pulse:
     """
@@ -328,11 +345,16 @@ class TxRxSequence:
                              f"{rx_probe_ids}")
         return next(iter(rx_probe_ids))
 
-    def get_subsequence(self, start, end):
+    def get_subsequence(self, ops, end=None):
         """
-        Limits the sequence to the given sub-sequence [start, end) (left-side inclusive).
+        Limits the sequence to the given sub-sequence.
+
+        :param ops: the list of the TX/RX ordinal numbers to keep (in the increasing order);
+          alternatively, the number of the first TX/RX to keep, when the `end` parameter is provided
+        :param end: (deprecated) the end (exclusive) of the [ops, end) range of the TX/RXs to keep
         """
-        return dataclasses.replace(self, ops=self.ops[start:end])
+        ops = _get_op_numbers(ops, end)
+        return dataclasses.replace(self, ops=[self.ops[i] for i in ops])
 
 
 @dataclass(frozen=True)

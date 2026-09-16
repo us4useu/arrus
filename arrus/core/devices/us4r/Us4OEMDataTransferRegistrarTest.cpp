@@ -80,6 +80,39 @@ TEST_F(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoSingleTr
     ASSERT_EQ(transfers, expected);
 }
 
+TEST_F(Us4OEMDataTransferRegistrarTest, CreatesSeparateTransferForNonAdjacentParts) {
+    // The parts acquired by a sub-sequence with non-consecutive TX/RXs: the firings 0, 2 and 3 of the full sequence.
+    size_t partSize = 4096*128*2;
+    Us4OEMBufferArrayParts parts = {
+        Us4OEMBufferArrayPart{0, partSize, 0, 0, 4096},
+        Us4OEMBufferArrayPart{2*partSize, partSize, 0, 2, 4096},
+        Us4OEMBufferArrayPart{3*partSize, partSize, 0, 3, 4096},
+    };
+    auto transfers = createTransfers(parts);
+    // expect: the parts 2 and 3 are adjacent, so they are transferred together.
+    std::vector<Us4OEMDataTransferRegistrar::ArrayTransfers> expected{{
+        Transfer{0, 0, partSize, 0},
+        Transfer{partSize, 2*partSize, 2*partSize, 3},
+    }};
+    ASSERT_EQ(transfers, expected);
+}
+
+TEST_F(Us4OEMDataTransferRegistrarTest, SkipsThePartsWithNoData) {
+    // The firings 1 and 3 do not acquire any data on this OEM.
+    size_t partSize = 4096*128*2;
+    Us4OEMBufferArrayParts parts = {
+        Us4OEMBufferArrayPart{0, partSize, 0, 0, 4096},
+        Us4OEMBufferArrayPart{partSize, 0, 0, 1, 0},
+        Us4OEMBufferArrayPart{partSize, partSize, 0, 2, 4096},
+        Us4OEMBufferArrayPart{2*partSize, 0, 0, 3, 0},
+    };
+    auto transfers = createTransfers(parts);
+    std::vector<Us4OEMDataTransferRegistrar::ArrayTransfers> expected{{
+        Transfer{0, 0, 2*partSize, 3},
+    }};
+    ASSERT_EQ(transfers, expected);
+}
+
 TEST_F(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoTwoTransfers) {
     // Given
     Us4OEMBufferArrayParts parts;

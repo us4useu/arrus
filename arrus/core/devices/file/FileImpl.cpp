@@ -228,6 +228,11 @@ std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<sessio
 FileImpl::setSubsequences(const std::vector<Slice> &, const std::vector<std::optional<float>> &) {
     throw std::runtime_error("Not implemented.");
 }
+
+std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+FileImpl::setSubsequences(const std::vector<std::vector<uint16>> &, const std::vector<std::optional<float>> &) {
+    throw std::runtime_error("Not implemented.");
+}
 float FileImpl::getSamplingFrequency() const { return 65e6; }
 float FileImpl::getCurrentSamplingFrequency() const { return this->currentFs; }
 

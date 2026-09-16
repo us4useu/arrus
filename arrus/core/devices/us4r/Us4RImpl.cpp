@@ -502,38 +502,104 @@ vector<Metadata::SharedHandle> Us4RImpl::createMetadata(vector<FrameChannelMappi
     return metadatas;
 }
 
+/**
+ * Returns true if the given sets of OEM buffers result in exactly the same layout of the host (output) buffer.
+ */
+static bool hasSameLayout(const std::vector<Us4OEMBuffer> &a, const std::vector<Us4OEMBuffer> &b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (size_t oem = 0; oem < a.size(); ++oem) {
+        const auto &bufferA = a.at(oem);
+        const auto &bufferB = b.at(oem);
+        if (bufferA.getNumberOfArrays() != bufferB.getNumberOfArrays()
+            || bufferA.getNumberOfElements() != bufferB.getNumberOfElements()) {
+            return false;
+        }
+        for (ArrayId array = 0; array < bufferA.getNumberOfArrays(); ++array) {
+            if (bufferA.getArrayDef(array).getDefinition().getShape()
+                != bufferB.getArrayDef(array).getDefinition().getShape()) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 void Us4RImpl::prepareHostBuffer(unsigned hostBufNElements, Scheme::WorkMode workMode, vector<Us4OEMBuffer> buffers,
                                  bool cleanupSequencerTransfers) {
+    // The currently allocated host buffer can be reused, when the new OEM buffers produce exactly the same
+    // layout of the output buffer (e.g. when switching to a sub-sequence with the same number of TX/RXs).
+    // This way we avoid re-allocating and page-locking the host memory, which is time-consuming.
+    const bool reuseHostBuffer = buffer != nullptr
+        && hostBufNElements == buffer->getNumberOfElements()
+        && hasSameLayout(buffers, this->oemBuffers);
+    const auto tStart = std::chrono::high_resolution_clock::now();
     // Cleanup.
-    // If the output buffer already exists - remove it.
     if (buffer) {
-        cleanupBuffers(cleanupSequencerTransfers);
+        if (reuseHostBuffer) {
+            // Only the data transfers have to be re-registered (their source addresses and firings may change).
+            unregisterOutputBuffer(cleanupSequencerTransfers);
+        }
+        else {
+            // The output buffer already exists, but it has a different layout -- remove it.
+            cleanupBuffers(cleanupSequencerTransfers);
+        }
     }
+    const auto tUnregister = std::chrono::high_resolution_clock::now();
     // Reset previously set properties for buffer handling.
     for(auto &us4oem: us4oems) {
         us4oem->getIUs4OEM()->DisableWaitOnReceiveOverflow();
         us4oem->getIUs4OEM()->DisableWaitOnTransferOverflow();
     }
-    // Derive host buffer placement (CPU or GPU) from the scheme's DataBufferSpec.
-    const auto &placement = currentScheme->getOutputBuffer().getPlacement();
-    const auto placementType = placement.getDeviceType();
-    const auto placementOrdinal = placement.getOrdinal();
-    if (!((placementType == DeviceType::CPU || placementType == DeviceType::GPU) && placementOrdinal == 0)) {
-        throw IllegalArgumentException(
-            format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
-                   placement.toString()));
+    if (!reuseHostBuffer) {
+        // Derive host buffer placement (CPU or GPU) from the scheme's DataBufferSpec.
+        const auto &placement = currentScheme->getOutputBuffer().getPlacement();
+        const auto placementType = placement.getDeviceType();
+        const auto placementOrdinal = placement.getOrdinal();
+        if (!((placementType == DeviceType::CPU || placementType == DeviceType::GPU) && placementOrdinal == 0)) {
+            throw IllegalArgumentException(
+                format("Unsupported output buffer placement: {}. Currently allowed values: CPU:0, GPU:0.",
+                       placement.toString()));
+        }
+        const bool useP2pDma = (placementType == DeviceType::GPU);
+        // Create output buffer.
+        Us4ROutputBufferBuilder builder;
+        buffer = builder.setStopOnOverflow(stopOnOverflow)
+                              .setNumberOfElements(hostBufNElements)
+                              .setLayoutTo(buffers)
+                              .setUseP2pDma(useP2pDma)
+                              .build();
     }
-    const bool useP2pDma = (placementType == DeviceType::GPU);
-    // Create output buffer.
-    Us4ROutputBufferBuilder builder;
-    buffer = builder.setStopOnOverflow(stopOnOverflow)
-                          .setNumberOfElements(hostBufNElements)
-                          .setLayoutTo(buffers)
-                          .setUseP2pDma(useP2pDma)
-                          .build();
+    const auto tAllocate = std::chrono::high_resolution_clock::now();
     registerOutputBuffer(buffer.get(), buffers, workMode);
+    const auto tRegister = std::chrono::high_resolution_clock::now();
+    logger->log(LogSeverity::DEBUG, format(
+        "prepareHostBuffer timing [ms] (host buffer {}): unregister transfers: {}, allocate: {}, register transfers: {}",
+        reuseHostBuffer ? "reused" : "re-created",
+        std::chrono::duration<float, std::milli>(tUnregister-tStart).count(),
+        std::chrono::duration<float, std::milli>(tAllocate-tUnregister).count(),
+        std::chrono::duration<float, std::milli>(tRegister-tAllocate).count()));
     // Note: use only as a marker, that the upload was performed, and there is still some memory to unlock.
     oemBuffers = std::move(buffers);
+}
+
+/**
+ * Returns the sequencer entry the sequencer should start from.
+ *
+ * This is the first firing of the first ENABLED sub-sequence (some of the uploaded TX/RX sequences can be
+ * turned off by the setSubsequences method). 0, when no sub-sequence is currently set.
+ */
+uint16 Us4RImpl::getSequencerStartEntry() const {
+    if(!currentSubsequenceParams.has_value()) {
+        return 0;
+    }
+    for(const auto &params: currentSubsequenceParams.value()) {
+        if(!params.empty()) {
+            return params.getStart();
+        }
+    }
+    return 0;
 }
 
 void Us4RImpl::start() {
@@ -562,7 +628,7 @@ void Us4RImpl::start() {
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
         // the sequencer pointers will appropriately set to the start param value.
         // Set it to the current beginning of the array 0.
-        auto startEntry = currentSubsequenceParams.has_value() ? currentSubsequenceParams.value().at(0).getStart() : 0;
+        auto startEntry = getSequencerStartEntry();
         us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t), maskDVDDInterrupt);
     }
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
@@ -1487,23 +1553,44 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
     return rxDelay;
 }
 
-std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>>
 Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) {
+    // Convert each [start, end) slice to the explicit list of TX/RXs.
+    std::vector<std::vector<uint16>> ops;
+    ops.reserve(slices.size());
+    for(const auto &slice: slices) {
+        ARRUS_REQUIRES_TRUE_IAE(slice.getStep() == 1, "Only slices with step = 1 are supported.");
+        ARRUS_REQUIRES_TRUE_IAE(slice.getStart() <= slice.getEnd(),
+                                "The sub-sequence start should not be greater than the end.");
+        std::vector<uint16> sequenceOps;
+        sequenceOps.reserve(slice.getEnd()-slice.getStart());
+        for(size_t op = slice.getStart(); op < slice.getEnd(); ++op) {
+            sequenceOps.push_back(ARRUS_SAFE_CAST(op, uint16));
+        }
+        ops.push_back(std::move(sequenceOps));
+    }
+    return setSubsequences(ops, sris);
+}
+
+std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>>
+Us4RImpl::setSubsequences(const std::vector<std::vector<uint16>> &ops,
+                          const std::vector<std::optional<float>> &sris) {
     // Validation
-    // - all slices should have exactly step = 1
     ARRUS_REQUIRES_TRUE_E(subsequenceFactory.has_value() && currentScheme.has_value(),
                           ::arrus::IllegalStateException("Call upload method before setting a new subsequences."));
-    ARRUS_REQUIRES_TRUE_IAE(!slices.empty(), "At least one sub-sequence should be selected");
-    ARRUS_REQUIRES_TRUE_IAE(slices.size() == currentScheme->getTxRxSequences().size(),
-                            "You should provide the same number of slices as the number of currently uploaded TX/RX sequences.");
-    ARRUS_REQUIRES_TRUE_IAE(sris.empty() || slices.size() == sris.size(),
-                            "The list of SRIs should be empty or have the same length as the list of slices.");
+    ARRUS_REQUIRES_TRUE_IAE(!ops.empty(), "At least one sub-sequence should be selected");
+    ARRUS_REQUIRES_TRUE_IAE(ops.size() == currentScheme->getTxRxSequences().size(),
+                            "You should provide the same number of sub-sequences as the number of currently "
+                            "uploaded TX/RX sequences.");
+    ARRUS_REQUIRES_TRUE_IAE(sris.empty() || ops.size() == sris.size(),
+                            "The list of SRIs should be empty or have the same length as the list of sub-sequences.");
     // vars/consts
     const SequenceId nSequences = ARRUS_SAFE_CAST(currentScheme->getTxRxSequences().size(), SequenceId);
     const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
-    // Physical start/end, etc.
+    // Physical firings, etc.
     std::vector<Us4RSubsequence> params;
-    std::vector<uint16_t> starts, ends;
+    // The physical firings (sequencer entries) of each of the enabled sub-sequences.
+    std::vector<std::vector<uint16_t>> entries;
     std::vector<uint32_t> timeToNextTriggers;
     // TX/RX sequence -> OEM buffer -> array definition
     std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays;
@@ -1511,29 +1598,40 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
     std::vector<std::optional<float>> actualSris = sris.empty() ?
                                                                 getNTimes<std::optional<float>>(std::nullopt, nSequences):
                                                                 sris;
+    const auto tStart = std::chrono::high_resolution_clock::now();
     // Clear callback (the new one will be registered later, in the prepareHostBuffer)
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
     for(SequenceId i = 0; i < nSequences; ++i) {
-        auto p = subsequenceFactory->get(i, ARRUS_SAFE_CAST(slices.at(i).getStart(), uint16_t), ARRUS_SAFE_CAST(slices.at(i).getEnd(), uint16_t), sris.at(i));
+        auto p = subsequenceFactory->get(i, ops.at(i), actualSris.at(i));
         params.push_back(p);
         oemArrays.push_back(p.getArrayDefs());
         if(!p.empty()) {
             // Filter out empty sub-sequences
-            starts.push_back(p.getStart());
-            ends.push_back(p.getEnd());
+            entries.push_back(p.getEntries());
             timeToNextTriggers.push_back(p.getTimeToNextTrigger());
         }
     }
+    ARRUS_REQUIRES_TRUE_IAE(!entries.empty(), "At least one TX/RX should be selected.");
+    const auto tParams = std::chrono::high_resolution_clock::now();
 
     for (auto &oem : us4oems) {
-        oem->getIUs4OEM()->SetSubsequences(starts, ends, isSyncMode, timeToNextTriggers);
+        oem->getIUs4OEM()->SetSubsequences(entries, isSyncMode, timeToNextTriggers);
     }
+    const auto tSequencer = std::chrono::high_resolution_clock::now();
     currentSubsequenceParams = params;
     const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
+    const auto tBuffers = std::chrono::high_resolution_clock::now();
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
                       currentScheme->getWorkMode(), subsequenceBuffers, true);
+    const auto tHostBuffer = std::chrono::high_resolution_clock::now();
+    logger->log(LogSeverity::DEBUG, format(
+        "setSubsequences timing [ms]: sub-sequence params: {}, sequencer: {}, OEM buffers: {}, host buffer: {}",
+        std::chrono::duration<float, std::milli>(tParams-tStart).count(),
+        std::chrono::duration<float, std::milli>(tSequencer-tParams).count(),
+        std::chrono::duration<float, std::milli>(tBuffers-tSequencer).count(),
+        std::chrono::duration<float, std::milli>(tHostBuffer-tBuffers).count()));
     // Create metadata
     std::vector<FrameChannelMappingImpl::Handle> fcms;
     for(const auto &p: params) {

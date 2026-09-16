@@ -161,6 +161,7 @@ public:
      */
     virtual UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) = 0;
 
+
     /**
      * Returns true if this session has been configured to work with the given device, otherwise false.
      *
@@ -174,6 +175,31 @@ public:
      * @param deviceId device identifier
      */
     virtual bool hasDevice(const arrus::devices::DeviceId &deviceId) const = 0;
+
+    /**
+     * Selects the given list of TX/RXs for each of the uploaded TX/RX sequences.
+     *
+     * This is a generalization of the method above: the selected TX/RXs do not have to be consecutive, e.g.
+     * ops = {{2, 3, 5, 8}} means that the TX/RXs 2, 3, 5 and 8 (and only them) will be executed, in that order.
+     *
+     * The `ops` array should have exactly n elements, where n is the number of currently uploaded sequences.
+     * The TX/RX numbers should be provided in the increasing order, without repetitions.
+     *
+     * The `sris` should have exactly n elements, or should be empty (which means that no additional sri should be
+     * applied).
+     *
+     * To turn off the given sequence, just provide an empty list of TX/RXs for it. For such sequences, the metadata
+     * will describe only empty data (dummy metadata).
+     *
+     * NOTE: selecting non-consecutive TX/RXs is supported only by the us4OEM+ devices.
+     *
+     * @param ops the list of TX/RXs (ordinal numbers) to run, for each Scheme sub-sequence
+     * @param sris sris to apply to each Scheme sub-sequence
+     * @return returns the buffer and metadata for the modified Scheme. The metadata array size is always equal to
+     *   the number of sequences in the original Scheme
+     */
+    virtual UploadResult setSubsequences(const std::vector<std::vector<uint16>> &ops,
+                                         const std::vector<std::optional<float>> &sris) = 0;
 
     virtual ~Session() = default;
 

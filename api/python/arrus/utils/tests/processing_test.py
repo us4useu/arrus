@@ -203,6 +203,83 @@ class ProcessingRunnerTestCase(unittest.TestCase):
             print(outputs)
 
 
+    def __create_simple_setup(self, output_shape=(2, 2), n_updates_counter=None):
+        """
+        A single sequence, a single output pipeline.
+        """
+        a1 = np.zeros((2, 2), dtype=np.int16) + 1
+        a2 = np.zeros((2, 2), dtype=np.int16) + 3
+        pipeline = Pipeline(name="A", placement="/GPU:0", steps=(
+            Lambda(lambda data: data+1),
+        ))
+        graph = Graph(
+            operations={pipeline},
+            dependencies={"A": "SequenceA", "Output:0": "A/Output:0"}
+        )
+        return self.__create_setup(elements=[(a1, ), (a2, )], graph=graph, sequences=["SequenceA"])
+
+    def test_update_keeps_the_buffers_and_the_graph(self):
+        """
+        The runner update should not re-create the GPU buffers, nor the processing graph.
+        """
+        input_buffer, runner = self.__create_simple_setup()
+        gpu_buffer, output_buffer, ops = runner.gpu_input_buffer, runner.output_buffer, runner._ops
+        _, old_metadata = runner.outputs
+        new_metadata = [MetadataMock(input_shape=(2, 2), dtype=np.int16, name="SequenceA")]
+
+        buffer, metadata = runner.update(input_buffer, new_metadata)
+
+        self.assertIs(runner.gpu_input_buffer, gpu_buffer)
+        self.assertIs(runner.output_buffer, output_buffer)
+        self.assertIs(runner._ops, ops)
+        self.assertEqual(runner.input_metadata, new_metadata)
+        # The processing should still work after the update.
+        for i in range(2):
+            input_buffer.produce()
+            output = buffer.get()
+            self.assertEqual(output[0].shape, (2, 2))
+
+    def test_update_rejects_the_change_of_the_input_shape(self):
+        input_buffer, runner = self.__create_simple_setup()
+        new_metadata = [MetadataMock(input_shape=(4, 2), dtype=np.int16, name="SequenceA")]
+        with self.assertRaises(ValueError):
+            runner.update(input_buffer, new_metadata)
+
+    def test_update_rejects_the_change_of_the_number_of_arrays(self):
+        input_buffer, runner = self.__create_simple_setup()
+        metadata = [MetadataMock(input_shape=(2, 2), dtype=np.int16, name="SequenceA")]*2
+        with self.assertRaises(ValueError):
+            runner.update(input_buffer, metadata)
+
+    def test_update_calls_update_on_the_graph_operations(self):
+        """
+        The operations should be updated (not prepared) -- e.g. the kernels should not be re-compiled.
+        """
+        calls = []
+
+        class OpMock(Lambda):
+            def prepare(self, const_metadata):
+                calls.append("prepare")
+                return super().prepare(const_metadata)
+
+            def update(self, const_metadata):
+                calls.append("update")
+                return super().update(const_metadata)
+
+        a1 = np.zeros((2, 2), dtype=np.int16) + 1
+        pipeline = Pipeline(name="A", placement="/GPU:0", steps=(
+            OpMock(lambda data: data+1),
+        ))
+        graph = Graph(
+            operations={pipeline},
+            dependencies={"A": "SequenceA", "Output:0": "A/Output:0"}
+        )
+        input_buffer, runner = self.__create_setup(
+            elements=[(a1, )], graph=graph, sequences=["SequenceA"])
+        self.assertEqual(calls, ["prepare"])
+        runner.update(input_buffer, [MetadataMock(input_shape=(2, 2), dtype=np.int16, name="SequenceA")])
+        self.assertEqual(calls, ["prepare", "update", "prepare"])
+
     # def __run_increment_sync(self, buffer, n_runs):
     #     value = 0
     #     for i in range(n_runs):

@@ -40,6 +40,8 @@ public:
     State getCurrentState() override;
     UploadResult setSubsequence(uint16 start, uint16 end, std::optional<float> sri, uint16 arrayId) override;
     UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
+    UploadResult setSubsequences(const std::vector<std::vector<uint16>> &ops,
+                                 const std::vector<std::optional<float>> &sris) override;
     bool hasDevice(const std::string &deviceId) const override;
     bool hasDevice(const devices::DeviceId &deviceId) const override;
 

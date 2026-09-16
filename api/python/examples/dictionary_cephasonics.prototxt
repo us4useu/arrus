@@ -1,0 +1,67 @@
+probe_adapter_models: [
+    {
+        id: {
+            manufacturer: "us4us"
+            name: "ca_qlc"
+        }
+        n_channels: 192
+        channel_mapping_regions: [
+        {
+# Adapter (probe) channels [0, 31]
+            us4oem: 0
+            region: {
+                        begin: 0,
+                        end: 31
+			}
+        },
+        {
+# Adpater (probe) channels [32, 63]
+            us4oem: 1
+            region: {
+                        begin: 0,
+                        end: 31
+			}
+        },
+        {
+# Adapter (probe) channels [64, 95]
+            us4oem: 0
+            region: {
+                        begin: 32,
+                        end: 63
+			}
+        },
+        {
+# Adapter (probe) channels [96, 127]
+            us4oem: 1
+            region: {
+                        begin: 32,
+                        end: 63
+			}
+        },
+        {
+# Adapter (probe) channels [128, 159]
+            us4oem: 0
+            region: {
+                        begin: 64,
+                        end: 95
+            }
+        },
+        {
+# Adapter (probe) channels [160, 191]
+            us4oem: 1
+            region: {
+                        begin: 64,
+                        end: 95
+            }
+        }
+    ]
+	}
+]
+
+probe_models: [
+
+]
+
+probe_to_adapter_connections: [
+
+]

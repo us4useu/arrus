@@ -303,6 +303,19 @@ def convert_to_arrus_slices(slices: List[slice]):
         arrus.core.SlicePushBack(vector, core_slice)
     return vector
 
+def convert_to_arrus_subsequences(subsequences):
+    """
+    Converts the list of the TX/RX ordinal numbers (for each TX/RX sequence) to the arrus core vector.
+    """
+    vector = arrus.core.VectorVectorUInt16()
+    for ops in subsequences:
+        sequence_ops = arrus.core.VectorUInt16()
+        for op in ops:
+            sequence_ops.push_back(int(op))
+        arrus.core.VectorVectorUInt16PushBack(vector, sequence_ops)
+    return vector
+
+
 def convert_to_optional_vector(values: List[Optional[float]]):
     vector = arrus.core.OptionalFloatVector()
     for v in values:
