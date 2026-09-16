@@ -10,6 +10,8 @@
 # kept in igx/out/driver/conan-cache). The driver has no release tags; the reference bench ran
 # commit 8a977c1a (marker mirror-unless-bit12-2026-09-16dh) or later on ref-M_OEM-296. The
 # marker of the installed library: strings igx/out/us4-install/lib64/libUs4OEM.so | grep US4R-ETH-BUILD
+# US4R_EMBED_DEPS=ON puts the boost shared libraries the driver links into lib64/ (with an
+# $ORIGIN rpath): without them ARRUS cannot link against libUs4OEM.so, and the wheel embeds them.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 API=${US4R_API_DIR:-$(cd "$HERE/../.." && pwd)/us4r-api}
@@ -25,7 +27,7 @@ echo "us4r-api at $API: $(git -C "$API" rev-parse --short HEAD) ($(git -C "$API"
 CONFIGURE='
 set -e
 conan install /usr/src/us4r-api --build missing -pr /usr/src/us4r-api/.conan/linux_aarch64.profile -s build_type=Release
-cmake /usr/src/us4r-api -DCMAKE_BUILD_TYPE=Release -DUS4R_BUILD_KERNEL_SPACE_DRIVER=OFF -DUS4R_EMBED_DEPS=OFF
+cmake /usr/src/us4r-api -DCMAKE_BUILD_TYPE=Release -DUS4R_BUILD_KERNEL_SPACE_DRIVER=OFF -DUS4R_EMBED_DEPS=ON
 '
 BUILD='
 set -e
