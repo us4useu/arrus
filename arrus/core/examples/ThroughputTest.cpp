@@ -529,7 +529,7 @@ int main(int argc, char **argv) noexcept {
                     // measured 62 non-ramp steps on its worst channel with intact samples).
                     const int maxAnomalies = 3 * (int) (nOemsInElement * nTx);
                     bool clean = stride != 0;
-                    int worst = 0;
+                    int worst = 0, worstCh = -1, chOverBudget = 0;
                     for (size_t ch = 0; ch < nc; ++ch) {
                         int anomalies = 0;
                         for (size_t j = 2; j < nr; ++j) {
@@ -537,9 +537,26 @@ int main(int argc, char **argv) noexcept {
                             int cur = (int) (unsigned short) d.get<short>(j, ch);
                             if (cur != ((prev + stride) & 0xFFFF)) ++anomalies;
                         }
-                        if (anomalies > worst) worst = anomalies;
+                        if (anomalies > worst) { worst = anomalies; worstCh = (int) ch; }
+                        if (anomalies > maxAnomalies) ++chOverBudget;
                     }
                     if (worst > maxAnomalies) clean = false;
+                    // For a failure, WHERE it is: the first anomalous rows of the worst channel tell a
+                    // wrong firing (rows in one 1024-row block), a header artefact (rows 1..2 of each
+                    // block) and random corruption (rows everywhere) apart. The 2026-09-16 SWAP4H
+                    // element-0 failure (4613 steps on its worst channel) could not be read without it.
+                    std::string where;
+                    if (!clean && worstCh >= 0) {
+                        int shown = 0;
+                        for (size_t j = 2; j < nr && shown < 4; ++j) {
+                            int prev = (int) (unsigned short) d.get<short>(j - 1, (size_t) worstCh);
+                            int cur = (int) (unsigned short) d.get<short>(j, (size_t) worstCh);
+                            if (cur != ((prev + stride) & 0xFFFF)) {
+                                where += " row " + std::to_string(j) + ":" + std::to_string(prev) + "->" + std::to_string(cur);
+                                ++shown;
+                            }
+                        }
+                    }
                     checkRestarts.store(worst, std::memory_order_relaxed);
                     checked.fetch_add(1, std::memory_order_relaxed);
                     if (clean) {
@@ -551,8 +568,9 @@ int main(int argc, char **argv) noexcept {
                         static std::atomic<int> reported{0};
                         if (reported.fetch_add(1) < 3) {
                             std::cout << "content: element " << n << " (slot " << ptr->getPosition() << ") NOT clean: stride "
-                                      << stride << ", worst channel " << worst << " non-ramp steps, budget " << maxAnomalies
-                                      << " (" << nOemsInElement << " OEM x " << nTx << " firings)\n";
+                                      << stride << ", worst channel " << worstCh << " with " << worst << " non-ramp steps, budget "
+                                      << maxAnomalies << " (" << nOemsInElement << " OEM x " << nTx << " firings), "
+                                      << chOverBudget << " of " << nc << " channels over budget; first steps:" << where << "\n";
                         }
                     }
                     checkStride.store(stride, std::memory_order_relaxed);
