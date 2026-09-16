@@ -115,11 +115,29 @@ receiver state on a stall. `THROUGHPUT_MODE=HOST` is the default; `THROUGHPUT_NT
 firings per element, `THROUGHPUT_CHECK=1` the ramp content check. Usage and the other
 switches are documented at the top of the file.
 
+## Boards, bitstream and configuration flash (2026-09-16)
+
+Both bench boards carry image 0x0A5EC7B1 in their configuration flash (a Micron MT25QU256,
+which Quartus's JTAG flash programmer cannot unprotect; the flash was written through the
+driver's EPCQ controller over Ethernet, which is also the remote-update path) and boot from it
+on power-up without a JTAG load. The remote-system-update auto-jump at power-on does not work
+(an untested FSM, the same over PCIe), so the boards always run the FACTORY slot; the
+application slot holds the same image. A power-cycled board is a cold board: the LMK is reset
+and the session's Initialize sequence is required, as ARRUS always does. After the self-boot
+the acceptance set of `igx/README.md` section 7 passed unchanged (942 fps with the ramp check,
+channel order CORRECT on TX 5 and TX 40 with the driver's mirror on, plane wave at 38.6 fps).
+
+One control-plane fact for anyone batching register writes: the HSB bridge's AVMM timeout is
+2.5 us, so an ECB packet the bridge rejects is a silently dropped write, never a write to a
+wrong address; the driver's ECB client resends on timeout and counts resends and rejections in
+its close line.
+
 ## Operational rules learned the hard way
 
 - Never rebuild or reinstall the driver library while a session has it mapped.
 - One ECB client per board at a time; two sessions on one board wedge the control plane.
 - STANDARD/JD18 boards need HV enabled or the pulsers fault after one frame.
-- Do not power-cycle the boards: the FPGA bitstream is volatile (JTAG).
+- A board that loses its image (before 2026-09-16 the bitstream was volatile, loaded by JTAG)
+  needs a reload; since the flash provisioning of 2026-09-16 both boards boot from flash.
 - A measurement needs an instrument outside the path under test: the driver's counters and a
   packet sniffer sit behind the same receive ring; the PHY counters do not.

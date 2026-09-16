@@ -15,8 +15,9 @@ mode exactly as it does over PCIe. Background, switches and measurements are in
 - The IGX with its ConnectX ports cabled to the boards' QSFP ports (passive DACs are fine),
   docker with the NVIDIA container toolkit, `rdma-core`. `igx/check-host.sh` verifies all of it.
 - The two us4OEM+ boards, powered, carrying an Ethernet-bridge bitstream (status bit 11 set:
-  little-endian samples on the wire) and addressed 192.168.0.2 (master, port 1) and 192.168.4.2
-  (slave, port 2). The master is the board whose trigger output is looped to every board's
+  little-endian samples on the wire; the reference boards boot 0x0A5EC7B1 from their
+  configuration flash) and addressed 192.168.0.2 (master, port 1) and 192.168.4.2 (slave,
+  port 2). The master is the board whose trigger output is looped to every board's
   trigger input; the order in `US4R_ETH_DEVICES` must put it first.
 - HV: the boards use their own internal HVPS; a probe is needed only for imaging examples.
   STANDARD/AFE58JD18 boards must have HV enabled or their pulsers fault and the sequencer
@@ -173,7 +174,9 @@ The bench's switches are documented at the top of `arrus/core/examples/Throughpu
 - Never rebuild or reinstall the driver or ARRUS while a session has the libraries mapped.
 - One control client per board at a time; a second session on the same board wedges its
   control plane until both are closed.
-- Do not power-cycle the boards to "reset" them: the bitstream is volatile on this bench.
+- A power cycle is a cold boot: the boards come up from flash (since 2026-09-16) with the LMK
+  reset, and the next session initialises them; it does not "reset" a wedged control plane
+  faster than closing every client does.
 - The software receiver (`US4R_ETH_RECEIVER=software`) needs host busy polling
   (`net.core.busy_read=50` as root, or `US4R_ETH_BUSY_POLL_US=50` with `CAP_NET_ADMIN`);
   without it the NIC holds the tail of a frame and a HOST-mode session deadlocks. The RDMA
