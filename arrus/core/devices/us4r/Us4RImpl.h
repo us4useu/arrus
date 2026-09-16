@@ -387,6 +387,10 @@ private:
     // completed so the boards continue instead of parking forever. See startStallWatchdog().
     bool hostModeScheme{false};
     size_t hostBufferRepeats{1};
+    // HOST release bookkeeping (stop line): callbacks run, strobes sent, strobes gated by state,
+    // and the time of the last release, so a stall can be attributed to the release path or not.
+    std::atomic<uint64_t> hostReleaseCalls{0}, hostReleaseStrobes{0}, hostReleaseGated{0};
+    std::atomic<int64_t> lastHostReleaseNs{0};
     double elementPeriodUs{0.0};
     std::thread stallWatchdog;
     std::atomic<bool> stallWatchdogRun{false};

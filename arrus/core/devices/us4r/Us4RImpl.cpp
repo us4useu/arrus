@@ -618,6 +618,7 @@ void Us4RImpl::start() {
         hsTxIrqBase[i] = us4oems[i]->getIUs4OEM()->GetIRQCounter(IUs4OEM::MSINumber::PCIEDMAOVERFLOW);
     }
     hsTxPulses = 0; hsRxPulses = 0;
+    hostReleaseCalls = 0; hostReleaseStrobes = 0; hostReleaseGated = 0; lastHostReleaseNs = 0;
     {
         const char *v = std::getenv("ARRUS_HOST_HS_RESUME");
         std::ostringstream ss;
@@ -731,6 +732,15 @@ void Us4RImpl::stopDevice() {
     } else {
         this->state = State::STOP_IN_PROGRESS;
         logger->log(LogSeverity::DEBUG, "Stopping system.");
+        if (hostModeScheme) {
+            const int64_t nowNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                      std::chrono::steady_clock::now().time_since_epoch()).count();
+            const int64_t last = lastHostReleaseNs.load();
+            logger->log(LogSeverity::INFO,
+                        ::arrus::format("HOST releases at stop: {} callback(s), {} strobe(s) sent, {} gated by state; last release {} ms before this stop; completed {} element(s).",
+                                        hostReleaseCalls.load(), hostReleaseStrobes.load(), hostReleaseGated.load(),
+                                        last ? (nowNs - last) / 1000000 : -1, buffer ? buffer->getCompletedElements() : 0));
+        }
         stopStallWatchdog();
         if (this->digitalBackplane.has_value() && isExternalTrigger) {
             this->digitalBackplane.value()->enableInternalTrigger();
@@ -1356,6 +1366,9 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
                 return v != nullptr && v[0] == '1';
             }();
             if (!isHostParkLast()) {
+                ++hostReleaseCalls;
+                lastHostReleaseNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                        std::chrono::steady_clock::now().time_since_epoch()).count();
                 // MAINLINE v0.14.x HOST release (ARRUS_HOST_PARK=element, default): clear the handshake
                 // range on every board, then release the park by strobing the MASTER, as mainline does
                 // over PCIe - syncTriggerAllOEMs() is master-only unless ARRUS_SYNC_ALL_OEMS=1. The
@@ -1367,7 +1380,10 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
                 // boards parked after the release was issued) is the BLOCK_CLR-before-park race, open
                 // with the FPGA side.
                 if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
+                    ++hostReleaseStrobes;
                     syncTriggerAllOEMs();
+                } else {
+                    ++hostReleaseGated;
                 }
                 return;
             }
