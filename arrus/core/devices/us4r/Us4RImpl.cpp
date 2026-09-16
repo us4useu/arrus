@@ -460,12 +460,15 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     auto workMode = scheme.getWorkMode();
     unsigned hostBufferSize = outputBufferSpec.getNumberOfElements();
     // Validate input parameters.
-    // A transport whose transfer ring is the host ring (the Ethernet port: one transfer index = one
-    // bridge page = one host element, as many pages as transfers, armed once) cannot serve a host
-    // buffer deeper than the rx buffer: over PCIe that works by re-pointing each lap's DMA descriptors
-    // at the next group of host elements (Us4OEMDataTransferRegistrar strategies 1 and 2), which the
-    // port has no equivalent for yet. Measured 2026-09-15 with rx 2 / host 4: every board delivered
-    // three elements and then parked for good. Refuse it with the reason rather than stall.
+    // A transport whose transfer ring IS the host ring (one transfer index = one bridge page = one
+    // host element, as many pages as transfers, armed once, per-lap re-scheduling of an entry to
+    // another transfer index not honoured) cannot serve a host buffer deeper than the rx buffer:
+    // over PCIe that works by re-pointing each lap's DMA descriptors at the next group of host
+    // elements (Us4OEMDataTransferRegistrar strategies 1 and 2). The device says which kind it is
+    // (IUs4OEM::TransferRingDepthIsHostRing). The Ethernet port answered true until 2026-09-15
+    // (rx 2 / host 4 delivered three elements and parked for good) and false since its per-entry
+    // completion routing (rx 4 / host 8 measured clean on 2026-09-16). Refuse with the reason
+    // rather than stall.
     {
         bool ringIsHostRing = false;
         for (auto &us4oem : us4oems) {

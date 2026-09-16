@@ -37,8 +37,9 @@ the strobe only change the rate.
 
 ARRUS programs the same scheme as mainline v0.14.x does over PCIe:
 
-- every sequencer entry on every board carries a WAIT_FOR_SOFT park (`ARRUS_HOST_PARK`
-  unset, i.e. `element`), no HS1/HS2 stop bits;
+- the last sequencer entry of every buffer element on every board carries a WAIT_FOR_SOFT
+  park (`ARRUS_HOST_PARK` unset, i.e. `element`), no HS1/HS2 stop bits; with one firing per
+  element that is every entry;
 - one host buffer element = one bridge page region = one transfer index; when the element
   completes on every board the release callback strobes BLOCK_CLR on the **master only**
   (`Us4RImpl::syncTriggerAllOEMs()`); the slave's trigger input is gated by HW_TRIGGER_EN and
@@ -82,7 +83,7 @@ session with callbacks < completed elements is a release that did not run.
 
 | Shape | RDMA receiver | Software receiver, no busy poll | Software receiver, busy poll 50 us |
 |---|---|---|---|
-| single firing, 1 MiB elements, rx 8 | 937 fps, 0 stalls / 20 x 10 s | 686 fps, 6 stalls / 60 runs | 979 fps, 0 / 20 |
+| single firing, 1 MiB elements, rx 8 | 937 fps, 0 stalls / 20 x 10 s | 686 fps, 2 stalls / 20 runs on plain defaults (6 / 60 over the release-delay variants) | 979 fps, 0 / 20 |
 | 16 firings per element, rx 4 | 60 fps (PRI-bound), 125 MB/s, 3 x 30 s clean | | |
 | single firing, rx 4, host buffer 8 | 695 to 742 fps, 3 x 10 s clean | | |
 | plane_wave_imaging.py, SL1543, 32 angles x 4096 samples (24 MiB per element per board, 96 chained descriptors) | 38 fps headless B-mode | | |

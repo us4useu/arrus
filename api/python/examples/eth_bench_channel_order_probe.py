@@ -120,7 +120,6 @@ def main():
         ax.set_xlabel("RX column (logical element)"); ax.set_ylabel("sample")
         fig.savefig(f"channel_order_probe_txel_{K}.png", dpi=100)
         mirrored = 31 - (K % 32) + 32 * (K // 32)
-        live = [int(c) for c in order if energy[c] < 0.5 * energy[order[0]] or c in (K, mirrored)]
         verdict = "CORRECT" if energy[K] > energy[mirrored] else "MIRRORED within the 32-channel group"
         print(f"channel order: {verdict} (column {K} vs its mirror {mirrored})")
 
