@@ -11,7 +11,8 @@ FAILS=0
 echo "host: $(hostname) $(uname -r) $(lsb_release -ds 2>/dev/null)"
 command -v docker > /dev/null && ok "docker $(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)" || bad "docker not installed"
 docker info 2>/dev/null | grep -q 'Runtimes:.*nvidia' && ok "nvidia container runtime" || bad "nvidia container runtime missing (nvidia-container-toolkit)"
-docker run --rm --gpus all nvidia/cuda:11.7.1-base-ubuntu20.04 nvidia-smi -L > /dev/null 2>&1 && ok "GPU visible in a container" || warn "could not run a CUDA container (--gpus all); the examples' GPU pipelines need it"
+CUDA_IMG=$(docker image inspect us4r-build > /dev/null 2>&1 && echo us4r-build || echo nvidia/cuda:11.7.1-base-ubuntu20.04)
+docker run --rm --gpus all --entrypoint nvidia-smi "$CUDA_IMG" -L > /dev/null 2>&1 && ok "GPU visible in a container ($CUDA_IMG)" || warn "could not run a CUDA container with --gpus all ($CUDA_IMG; pulled if absent); the examples' GPU pipelines need it"
 dpkg -s rdma-core > /dev/null 2>&1 && ok "rdma-core $(dpkg-query -W -f='${Version}' rdma-core)" || bad "rdma-core not installed"
 for d in /dev/infiniband/uverbs0 /dev/infiniband/uverbs1 /dev/infiniband/rdma_cm; do [ -e $d ] && ok "$d" || bad "$d missing (mlx5 RDMA devices; is the ConnectX driver loaded?)"; done
 command -v ibv_devices > /dev/null && ok "verbs devices: $(ibv_devices 2>/dev/null | awk 'NR>2{printf "%s ", $1}')" || warn "ibv_devices not found (ibverbs-utils); the driver opens the device itself"

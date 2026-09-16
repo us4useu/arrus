@@ -42,4 +42,6 @@ case "$MODE" in
 esac
 docker run --rm -v "$API":/usr/src/us4r-api -v "$SCRATCH":/scratch -v "$INSTALL":/install \
   -e CONAN_USER_HOME=/scratch/conan-cache -w /scratch/build us4r-build -c "$SCRIPT"
+# The container runs as root; hand the scratch tree and the install back to the user.
+docker run --rm -v "$SCRATCH":/scratch -v "$INSTALL":/install us4r-build -c "chown -R $(id -u):$(id -g) /scratch /install"
 echo "driver install: $INSTALL"

@@ -11,6 +11,10 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
 conf() { # ifname address
   local n="us4oem-$1"
+  if ip -br -4 addr show dev "$1" 2>/dev/null | grep -q " $2"; then
+    echo "$1 already carries $2 (mtu $(cat /sys/class/net/$1/mtu)); leaving its existing connection alone"
+    return
+  fi
   if nmcli -t -f NAME con show | grep -qx "$n"; then
     nmcli con mod "$n" ipv4.method manual ipv4.addresses "$2" ipv6.method disabled 802-3-ethernet.mtu 4096 connection.autoconnect yes
   else

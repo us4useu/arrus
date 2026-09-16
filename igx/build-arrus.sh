@@ -66,6 +66,8 @@ case "$MODE" in
 esac
 
 docker run --rm -v "$ROOT":/src -v "$BUILD_DIR":/build -v "$OUT/conan":/conan -v "$US4":/us4:ro "$IMAGE" -c "$SCRIPT"
+# The container runs as root; hand the outputs back to the user so they can be cleaned or moved.
+docker run --rm -v "$OUT":/out "$IMAGE" -c "chown -R $(id -u):$(id -g) /out/build-py$PYVER /out/conan /out/wheel"
 
 WHEEL=$(ls "$BUILD_DIR"/api/python/dist/arrus-*-linux_aarch64.whl | head -1)
 cp "$WHEEL" "$OUT/wheel/"
