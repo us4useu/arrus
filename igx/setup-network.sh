@@ -11,8 +11,15 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
 conf() { # ifname address
   local n="us4oem-$1"
-  if ip -br -4 addr show dev "$1" 2>/dev/null | grep -q " $2"; then
-    echo "$1 already carries $2 (mtu $(cat /sys/class/net/$1/mtu)); leaving its existing connection alone"
+  # A port that already carries the address keeps its existing connection; only its MTU is
+  # made persistent. (The reference machine came up after a reboot with MTU 1500 on a port
+  # whose connection said "auto": the address was right, the RoCE path was not.)
+  local existing
+  existing=$(nmcli -t -f NAME,DEVICE con show --active 2>/dev/null | awk -F: -v d="$1" '$2==d{print $1}' | head -1)
+  if [ -n "$existing" ] && ip -br -4 addr show dev "$1" 2>/dev/null | grep -q " $2"; then
+    nmcli con mod "$existing" 802-3-ethernet.mtu 4096
+    nmcli con up "$existing" > /dev/null
+    echo "$1: $2 already configured by connection '$existing'; mtu set to 4096 there"
     return
   fi
   if nmcli -t -f NAME con show | grep -qx "$n"; then
