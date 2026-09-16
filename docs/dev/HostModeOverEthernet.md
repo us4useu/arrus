@@ -85,10 +85,26 @@ session with callbacks < completed elements is a release that did not run.
 | single firing, 1 MiB elements, rx 8 | 937 fps, 0 stalls / 20 x 10 s | 686 fps, 6 stalls / 60 runs | 979 fps, 0 / 20 |
 | 16 firings per element, rx 4 | 60 fps (PRI-bound), 125 MB/s, 3 x 30 s clean | | |
 | single firing, rx 4, host buffer 8 | 695 to 742 fps, 3 x 10 s clean | | |
+| plane_wave_imaging.py, SL1543, 32 angles x 4096 samples (24 MiB per element per board, 96 chained descriptors) | 38 fps headless B-mode | | |
 | 16 firings, rx 8, 1 h soak (2026-09-15) | 214,934 elements, 0 lost, 0 stalls; 2149/2150 checked elements clean, the one failure undetailed | | |
 
 The Python `custom_tx_rx_sequence.py` example runs over Ethernet with the RDMA receiver (a
 copy adapted to the bench probe configuration, 5 frames in 0.21 s on 2026-09-16).
+
+## Data-order probe (acceptance item since 2026-09-16)
+
+The ramp test pattern verifies every channel's samples but is blind to any permutation of the
+channels: a mirrored row order passed the 09-06 "ramp native LE 32/32" check and was found only
+on a live image with a probe. The check that sees a permutation is
+`api/python/examples/eth_bench_channel_order_probe.py`: fire one element with the full receive
+aperture and report which column carries the transmit ringdown. On a correct data path the
+strongest live column is the firing element; a mirrored row puts it at 31 - (k mod 32) inside
+its 32-channel group. Run it after the ramp check on any change to the RX data path, the
+driver's RX mapping write, or the bitstream. Background: the RTL's Data_Receiver indexed the
+output lanes with `mapping[31-i]`, which the PCIe DMA's 512-bit endianness reversal used to
+cancel; the fabric-side byte swap of 2026-09-06 (status bit 11) kept the swap and dropped the
+cancellation. The driver mirrors the RX mapping table on bit-11 images without bit 12; a fixed
+image announces native row order with status bit 12.
 
 ## Bench
 
