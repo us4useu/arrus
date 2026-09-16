@@ -253,6 +253,13 @@ public:
     MOCK_METHOD(void, SetHVPSVoltage, (uint8_t), (override));
     MOCK_METHOD(void, SetCustomHvpsFuseThresholds, (::us4us::us4r::HvpsRails rail, const ::us4us::us4r::HvpsFuseCustomThresholds& thresholds), (override));
     MOCK_METHOD(int64_t, GetHVPSTuningTimestamp, (), (override));
+    MOCK_METHOD(IUs4OEM::OemType, GetOemType, (), (override));
+    MOCK_METHOD(IUs4OEM::SerialNumberData, ParseSerialNumber, (), (override));
+    MOCK_METHOD(std::string, GetRevision, (), (override));
+    MOCK_METHOD(std::string, GetMountingType, (), (override));
+    MOCK_METHOD(std::string, GetVariant, (), (override));
+    MOCK_METHOD(std::string, GetVariantReadable, (), (override));
+    MOCK_METHOD(float, GetAfeSamplingFrequency, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
