@@ -28,7 +28,7 @@ mode exactly as it does over PCIe. Background, switches and measurements are in
 
 ```
 git clone -b ref-M_OEM-296 git@github.com:us4useu/arrus.git
-git clone -b ref-M_OEM-296 <us4r-api url> us4r-api      # next to arrus/, or set US4R_API_DIR
+git clone -b ref-M_OEM-296 git@github.com:us4useu/us4r-api.git   # next to arrus/, or set US4R_API_DIR
 cd arrus
 sudo igx/setup-network.sh <master_port_if> <slave_port_if>   # 192.168.0.101 and 192.168.4.101, MTU 4096
 igx/check-host.sh                                        # must end with "host check: OK"
@@ -46,8 +46,9 @@ igx/build-images.sh
 ```
 
 Builds `us4r-build` from the us4r-api repository's `.docker/build/Dockerfile` (CUDA 11.7 devel,
-gcc 9, cmake 3.21, conan 1.59, python 3.8, libibverbs) and `us4r-build-py` on top of it with
-SWIG, numpy, scipy and matplotlib (`igx/docker/Dockerfile.py`). The base image pulls the CUDA
+gcc 9, cmake 3.21, conan 1.59, python 3.8, libibverbs), `us4r-build-py` on top of it with
+SWIG, numpy, scipy and matplotlib (`igx/docker/Dockerfile.py`), and `us4r-build-py310` with a
+Python 3.10 built from source for the native wheel of section 5b (`igx/docker/Dockerfile.py310`). The base image pulls the CUDA
 devel image and builds CMake; allow tens of minutes.
 
 ## 3. Driver (us4r-api, Ethernet port)
@@ -64,10 +65,10 @@ is no kernel module), `make`, `cmake --install`. The first run builds Boost from
 (45 to 90 minutes, once). The installed library carries a build marker:
 `strings igx/out/us4-install/lib64/libUs4OEM.so | grep US4R-ETH-BUILD`.
 
-Which commit: branch `ref-M_OEM-296` (the same name as this ARRUS branch) at `8a977c1a` or
-later (marker `mirror-unless-bit12-2026-09-16dh`). The branch is not tagged and, as of 2026-09-16, exists only on the reference machine
-(`/home/us4us/us4r-api`, unpushed): before cloning elsewhere, push it or carry it as a bundle
-(`git bundle create us4r-api.bundle ref-M_OEM-296`, then `git clone -b ref-M_OEM-296 us4r-api.bundle`).
+Which commit: branch `ref-M_OEM-296` of `git@github.com:us4useu/us4r-api.git` (the same name
+as this ARRUS branch) at `8a977c1a` or later (marker `mirror-unless-bit12-2026-09-16dh`). The
+branch is not tagged. Do not use the older remote branch `eth-holoscan`, an ancestor hundreds
+of commits back.
 
 Two facts about the driver that matter at run time: `US4R_ETH_ALLOW_WRITES=1` must be set by
 any process that arms a board (the control client refuses every register write without it,
@@ -88,8 +89,8 @@ core, the bench examples and the Python wheel (which embeds libarrus-core and th
 libraries), then builds the runtime image `us4r-arrus-runtime` with the wheel, cupy and tkinter
 installed and prints an import check. Outputs:
 
-- `igx/out/build/arrus/core/throughput-test` and `minimal-acquisition`, the C++ bench binaries
-- `igx/out/build/api/python/dist/arrus-*.whl`, the wheel
+- `igx/out/build-py3.8/arrus/core/throughput-test` and `minimal-acquisition`, the C++ bench binaries
+- `igx/out/wheel/arrus-*.whl`, the wheel (one per Python version built)
 - the `us4r-arrus-runtime` image
 
 ## 5. Run the examples
@@ -116,6 +117,31 @@ curve, which ARRUS does not combine with DTGC. `nus4oems: 2`, the watchdog off, 
 Examples known to run unchanged on the reference bench with an SL1543 on the esaote3
 adapter: `custom_tx_rx_sequence.py`, `plane_wave_imaging.py` (38 fps of B-mode headless).
 `eth_bench_channel_order_probe.py` is the data-order acceptance check (section 7).
+
+## 5b. Or install natively on the host, without docker at run time
+
+The wheel is self-contained (libarrus-core, the driver and boost inside, needing only
+rdma-core's libibverbs and libnl from the host), so it can be installed straight into a venv on
+the IGX's system Python 3.10. That takes the cp310 wheel, built once (here or on the reference
+machine) with the Python 3.10 build image:
+
+```
+ARRUS_PY_VERSION=3.10 ARRUS_BUILD_IMAGE=us4r-build-py310 igx/build-arrus.sh   # -> igx/out/wheel/arrus-*-cp310-*.whl
+igx/install-native.sh [wheel]        # venv ~/arrus-venv: wheel, cupy, CUDA runtime wheels; no root
+. ~/arrus-venv/bin/activate
+cd ~/work && python3 plane_wave_imaging.py
+```
+
+The IGX ships the CUDA driver but no toolkit, so `install-native.sh` takes cupy and the CUDA
+runtime libraries from PyPI (pinned to 12.3, which the 535 driver runs through minor-version
+compatibility) and makes the venv's activation export their loader path together with the
+board addresses and `US4R_ETH_ALLOW_WRITES=1`. The venv sees the system packages, so the
+examples' window uses the host's tkinter and matplotlib. A wheel from another machine works
+as long as it is a cp310 aarch64 wheel: copy it and pass its path to `install-native.sh`.
+
+To ship without any build on the new machine: copy the wheel (native route) or
+`docker save us4r-arrus-runtime | gzip > us4r-arrus-runtime.tgz` and `docker load` it there
+(container route); the host steps of section 1 still apply.
 
 ## 6. Run the bench
 
@@ -168,11 +194,12 @@ The bench's switches are documented at the top of `arrus/core/examples/Throughpu
 | `setup-network.sh` | the two port addresses, MTU, sysctl (sudo) |
 | `build-images.sh` | `us4r-build`, `us4r-build-py` |
 | `build-driver.sh` | us4r-api Ethernet port into `out/us4-install` |
-| `build-arrus.sh` | core, bench, wheel, `us4r-arrus-runtime` |
+| `build-arrus.sh` | core, bench, wheel (3.8 for the runtime image, 3.10 for the host), `us4r-arrus-runtime` |
+| `install-native.sh` | the cp310 wheel into a host venv with cupy and the CUDA runtime wheels |
 | `run-example.sh` | a Python script against the boards, with display |
 | `run-bench.sh` | `throughput-test` against the boards |
 | `config/us4r_sl1543_esaote3.prototxt` | session config for the SL1543 on esaote3 |
 | `config/us4r_eth_bench_synthetic64.prototxt` | session config for the bench, no probe |
 | `examples/plane_wave_imaging_headless.py` | the plane-wave example without a window, saves a PNG |
-| `docker/Dockerfile.py`, `docker/Dockerfile.runtime` | the derived images |
+| `docker/Dockerfile.py`, `docker/Dockerfile.py310`, `docker/Dockerfile.runtime` | the derived images |
 | `out/` | build products, git-ignored |

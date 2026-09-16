@@ -12,6 +12,12 @@
 #   ARRUS_PY_VERSION   python for the wheel                        (default 3.8, the image's python3)
 #   ARRUS_BUILD_IMAGE  build image                                 (default us4r-build-py, see build-images.sh)
 #   J                  parallel jobs                               (default nproc)
+#
+# The cp310 wheel for a native install on the IGX host (Ubuntu 22.04, system Python 3.10):
+#   ARRUS_PY_VERSION=3.10 ARRUS_BUILD_IMAGE=us4r-build-py310 igx/build-arrus.sh
+# (image from igx/docker/Dockerfile.py310, built by build-images.sh). Each Python version gets its
+# own build tree, igx/out/build-py<version>; the wheels collect in igx/out/wheel/. The runtime
+# docker image is built only for the image's own Python (3.8); the cp310 wheel is for the host.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/.." && pwd)
@@ -24,7 +30,8 @@ MODE=${1:-full}
 
 [ -d "$US4/lib64" ] && [ -d "$US4/include" ] || { echo "driver install not found at $US4 (lib64/ and include/): run igx/build-driver.sh first, or set US4_ROOT_DIR"; exit 1; }
 docker image inspect "$IMAGE" > /dev/null 2>&1 || { echo "image $IMAGE missing: run igx/build-images.sh first"; exit 1; }
-mkdir -p "$OUT/build" "$OUT/conan"
+BUILD_DIR=$OUT/build-py$PYVER
+mkdir -p "$BUILD_DIR" "$OUT/conan" "$OUT/wheel"
 
 CONFIGURE='
 set -e
@@ -35,9 +42,17 @@ if [ ! -f /conan/.conan/profiles/default ]; then conan profile new default --det
 conan profile update settings.compiler.libcxx=libstdc++11 default
 conan profile update settings.build_type=Release default
 conan install /src -if /build --build=missing
+# Point cmake at the requested interpreter, its headers and its shared library explicitly:
+# FindPythonLibs does not look inside a pyenv prefix (the 3.10 image), and it must not pick
+# another version from /usr when two are installed.
+PYEXE=$(command -v python'"$PYVER"')
+PYINC=$($PYEXE -c "import sysconfig; print(sysconfig.get_paths()[\"include\"])")
+PYLIB=$($PYEXE -c "import sysconfig, os; print(os.path.join(sysconfig.get_config_var(\"LIBDIR\"), sysconfig.get_config_var(\"LDLIBRARY\")))")
+echo "python: $PYEXE include $PYINC library $PYLIB"
 cmake -S /src -B /build -G "Unix Makefiles" \
   -DCMAKE_BUILD_TYPE=Release -DUs4_ROOT_DIR=/us4 \
-  -DARRUS_BUILD_PY=ON -DARRUS_PY_VERSION='"$PYVER"' -DARRUS_EMBED_DEPS=ON
+  -DARRUS_BUILD_PY=ON -DARRUS_PY_VERSION='"$PYVER"' -DARRUS_EMBED_DEPS=ON \
+  -DPYTHON_EXECUTABLE=$PYEXE -DPYTHON_INCLUDE_DIR=$PYINC -DPYTHON_LIBRARY=$PYLIB
 '
 BUILD='
 set -e
@@ -50,13 +65,19 @@ case "$MODE" in
   *) echo "usage: $0 [--rebuild]"; exit 2 ;;
 esac
 
-docker run --rm -v "$ROOT":/src -v "$OUT/build":/build -v "$OUT/conan":/conan -v "$US4":/us4:ro "$IMAGE" -c "$SCRIPT"
+docker run --rm -v "$ROOT":/src -v "$BUILD_DIR":/build -v "$OUT/conan":/conan -v "$US4":/us4:ro "$IMAGE" -c "$SCRIPT"
 
-WHEEL=$(ls "$OUT"/build/api/python/dist/arrus-*-linux_aarch64.whl | head -1)
-echo "wheel: $WHEEL"
-# The runtime image: a small build context holding only the wheel (the build tree is gigabytes).
-rm -rf "$OUT/wheel" && mkdir -p "$OUT/wheel" && cp "$WHEEL" "$OUT/wheel/"
-echo "runtime image: us4r-arrus-runtime (wheel + cupy + tk)"
-docker build -q -f "$HERE/docker/Dockerfile.runtime" --build-arg BASE="$IMAGE" --build-arg WHEEL="$(basename "$WHEEL")" -t us4r-arrus-runtime "$OUT/wheel" > /dev/null
-docker run --rm --gpus all us4r-arrus-runtime -c 'python3 -c "import arrus, arrus.session, cupy; print(\"arrus import OK, cupy\", cupy.__version__)"'
-echo "bench binary: $OUT/build/arrus/core/throughput-test"
+WHEEL=$(ls "$BUILD_DIR"/api/python/dist/arrus-*-linux_aarch64.whl | head -1)
+cp "$WHEEL" "$OUT/wheel/"
+echo "wheel: $OUT/wheel/$(basename "$WHEEL")"
+if [ "$PYVER" = "3.8" ]; then
+  # The runtime image: a small build context holding only this wheel (the build tree is gigabytes).
+  CTX=$(mktemp -d) && cp "$WHEEL" "$CTX/"
+  echo "runtime image: us4r-arrus-runtime (wheel + cupy + tk)"
+  docker build -q -f "$HERE/docker/Dockerfile.runtime" --build-arg BASE="$IMAGE" --build-arg WHEEL="$(basename "$WHEEL")" -t us4r-arrus-runtime "$CTX" > /dev/null
+  rm -rf "$CTX"
+  docker run --rm --gpus all us4r-arrus-runtime -c 'python3 -c "import arrus, arrus.session, cupy; print(\"arrus import OK, cupy\", cupy.__version__)"'
+else
+  echo "no runtime image for Python $PYVER (the image's python is 3.8); install the wheel on the host, see README section 5b"
+fi
+echo "bench binary: $BUILD_DIR/arrus/core/throughput-test"

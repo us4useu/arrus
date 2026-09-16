@@ -1,0 +1,15 @@
+# us4r-build-py plus Python 3.10 built from source with pyenv (the repository's own
+# .docker/build/install_python_via_pyenv.sh; the Ubuntu 20.04 base has no 3.10 package for
+# arm64), to build a cp310 wheel that installs natively on an IGX host running Ubuntu 22.04:
+#   ARRUS_PY_VERSION=3.10 ARRUS_BUILD_IMAGE=us4r-build-py310 igx/build-arrus.sh
+# pyenv's python3.10 is first on PATH, so cmake's find_package(PythonInterp 3.10) picks it.
+ARG BASE=us4r-build-py
+FROM ${BASE}
+COPY install_python_via_pyenv.sh /root/install_python_via_pyenv.sh
+# --enable-shared: the SWIG module links libpython3.10.so (as the cp38 wheel links the system
+# libpython3.8.so), and the IGX host provides libpython3.10.so.1.0 with its own Python.
+RUN chmod +x /root/install_python_via_pyenv.sh \
+ && DEBIAN_FRONTEND=noninteractive PYTHON_CONFIGURE_OPTS="--enable-shared" /root/install_python_via_pyenv.sh 3.10 \
+ && rm -rf /var/lib/apt/lists/*
+ENV PATH="/root/.pyenv/shims:/root/.pyenv/bin:$PATH"
+RUN python3.10 -m pip install --no-cache-dir "setuptools<70" wheel "numpy<2"

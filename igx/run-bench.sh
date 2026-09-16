@@ -14,7 +14,7 @@ set -euo pipefail
 [ $# -ge 6 ] || { echo "usage: $0 <label> <nSamples> <rxDepth> <hostDepth> <seconds> <pri_us> [pri_us ...]"; exit 2; }
 HERE=$(cd "$(dirname "$0")" && pwd)
 OUT=$HERE/out
-BIN=$OUT/build/arrus/core/throughput-test
+BIN=$OUT/build-py${ARRUS_PY_VERSION:-3.8}/arrus/core/throughput-test
 [ -x "$BIN" ] || { echo "bench binary missing at $BIN: run igx/build-arrus.sh first"; exit 1; }
 US4=${US4_ROOT_DIR:-$OUT/us4-install}
 IMAGE=${ARRUS_BUILD_IMAGE:-us4r-build-py}
@@ -28,7 +28,7 @@ for v in $(env | grep -oE '^(THROUGHPUT|US4R_ETH|ARRUS_HOST|ARRUS_SYNC)_[A-Z0-9_
 done
 docker run --rm --network host \
   --device /dev/infiniband/uverbs0 --device /dev/infiniband/uverbs1 --device /dev/infiniband/rdma_cm --ulimit memlock=-1 \
-  -v "$OUT/build":/build -v "$US4":/us4:ro -v "$(dirname "$CFG")":/cfg:ro \
+  -v "$(dirname "$(dirname "$(dirname "$BIN")")")":/build -v "$US4":/us4:ro -v "$(dirname "$CFG")":/cfg:ro \
   -e LD_LIBRARY_PATH=/us4/lib64:/build/arrus/core "${ENV_ARGS[@]}" \
   "$IMAGE" -c "cd /cfg && /build/arrus/core/throughput-test ./$(basename "$CFG") $*" 2>&1 | tee "$OUT/bench/$LABEL.log" | grep -E '^PRI |STALL|^content|rejected \(|\[ERROR\]|\[WARNING\] RDMA' || true
 echo "log: $OUT/bench/$LABEL.log"
