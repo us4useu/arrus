@@ -14,7 +14,7 @@ public:
     void trigger(bool sync = false, std::optional<long long> timeout = {});
     void sync(std::optional<long long> timeout);
 
-    // Introspection
+    // Introspectiowwhn
     float getSamplingFrequency() const;
     float getCurrentSamplingFrequency() const;
     Probe* getProbe(Ordinal ordinal);

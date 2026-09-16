@@ -172,6 +172,8 @@ set(SRC_FILES
     api/framework/DeviceRef.h
     api/framework/Shape.h
     api/framework/NdArrayType.h
+    api/framework/Attribute.h
+    api/framework/Op.h
     api/session/UploadResult.h
     api/framework/DataBufferSpec.h
     api/framework/Buffer.h
@@ -293,6 +295,8 @@ if (ARRUS_RUN_TESTS)
     set(ARRUS_CORE_DEVICES_TESTS_SRCS devices/DeviceId.cpp common/logging.cpp)
     # core::framework type-descriptor tests (header-only headers under api/framework/)
     create_core_test(framework/NdArrayTypeTest.cpp)
+    # core::framework SSA-node tests (Attribute, Value, Op)
+    create_core_test(framework/OpTest.cpp)
     # core::devices test
     create_core_test(devices/DeviceIdTest.cpp devices/DeviceId.cpp)
     create_core_test(devices/utilsTest.cpp)
