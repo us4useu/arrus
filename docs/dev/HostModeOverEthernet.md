@@ -135,7 +135,10 @@ its close line.
 ## Operational rules learned the hard way
 
 - Never rebuild or reinstall the driver library while a session has it mapped.
-- One ECB client per board at a time; two sessions on one board wedge the control plane.
+- One ECB client per board at a time: two sessions on one board wedge the control plane, and
+  a driver device construction pulses SW_RESET, which under a running acquisition corrupts
+  the element in flight and stalls the sequencer (measured 2026-09-16: one 16-channel AFE
+  lost its test pattern, 16 of 32 channels over budget, stall after 18 frames).
 - STANDARD/JD18 boards need HV enabled or the pulsers fault after one frame.
 - A board that loses its image (before 2026-09-16 the bitstream was volatile, loaded by JTAG)
   needs a reload; since the flash provisioning of 2026-09-16 both boards boot from flash.

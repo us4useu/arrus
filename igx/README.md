@@ -172,8 +172,9 @@ The bench's switches are documented at the top of `arrus/core/examples/Throughpu
 ## 8. Rules that cost a day each to learn
 
 - Never rebuild or reinstall the driver or ARRUS while a session has the libraries mapped.
-- One control client per board at a time; a second session on the same board wedges its
-  control plane until both are closed.
+- One control client per board at a time: a second session on the same board wedges its
+  control plane until both are closed, and opening a device pulses SW_RESET, which corrupts
+  and stalls an acquisition running from another process.
 - A power cycle is a cold boot: the boards come up from flash (since 2026-09-16) with the LMK
   reset, and the next session initialises them; it does not "reset" a wedged control plane
   faster than closing every client does.
