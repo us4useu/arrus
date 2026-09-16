@@ -1,0 +1,76 @@
+# TWO-BOARD ARRUS session settings for the Ethernet bench with the esaote3 adapter and the
+# Esaote SL1543 probe (2026-09-16), WITH the internal HVPS.
+#
+# Run with:  US4R_ETH_DEVICES=192.168.0.2,192.168.4.2   <- MASTER FIRST, the order IS the topology
+# and with US4R_ETH_NIC UNSET. us4r-api resolves the host NIC per board (ResolveHostNicFor ->
+# HostNicForPeer), so board 1 gets enP5p3s0f1np1 and board 2 enP5p3s0f0np0 automatically; setting
+# US4R_ETH_NIC overrides that for EVERY board and breaks this multi-NIC bench.
+#
+# WHY TWO BOARDS AND NOT TWO SESSIONS: only the master (GetID()==0) drives the sync/SYSREF pulse out
+# of its trigger_out and into every module's trigger_in. A STANDALONE board-2 session reaches
+# code-group sync but never frame sync (dev_syncn=0, cs=2, fs=0 on all 8 lanes, measured twice
+# 2026-09-11) and delivers zero frames, because nothing is generating that pulse. Requires the
+# external trigger loopback to be fitted - Synchronize() only reaches the LMK when it is, since
+# LMK_SYNC_MUX_SEL is set by Initialize(4).
+#
+# ARRUS session settings for the Ethernet/Holoscan bench, WITH the OEM's internal HVPS.
+#
+# Copy of us4r_eth_bench.prototxt plus an `hv:` block. Use this one whenever the run needs
+# hardware triggers: the STANDARD/AFE58JD18 boards have no external supply, so with the internal
+# HVPS disabled the pulsers' HV references are absent, all eight assert HVM0|HVM1 (status
+# 0x1028 = 0x0C00), their open-collector INT outputs hold the wired-OR tx_int low, and
+# Sequencer_IP_oemplus.vhd:987 gates the trigger generator. Symptom: exactly one frame (PRELOAD
+# bypasses the trigger process) and then a SILENT stall with no error. Measured 2026-09-11.
+#
+# `us4oemhvps` is the model for the OEM's own HVPS, and it does NOT pull in a backplane -
+# DigitalBackplaneFactoryImpl.h:55-57 returns nullopt for this name. So getBackplane still yields
+# nullopt, enableInternalTrigger() is still NEVER called, and Us4RImpl::start() still takes the
+# TriggerStart() branch exactly as with the HV-less config. The "omits hv:" warning in the sibling
+# file is about hv256/us4rpsc, which DO require a backplane; it does not apply here.
+#
+# setVoltage() semantics (Us4RImpl.cpp:204-245), so nobody has to rediscover them:
+#   - the vector is indexed by TX AMPLITUDE, not by HVM0/HVM1 monitor;
+#   - index 1 (amplitude 2 / HV0) is MANDATORY, index 0 is optional;
+#   - if both are given they must be STRICTLY INCREASING, so {10,10},{10,10} is rejected -
+#     use e.g. {5,5} then {10,10};
+#   - setVoltage(v) is shorthand for {nullopt, HVVoltage(v,v)}, i.e. amplitude 2 only.
+us4r: {
+    # Esaote SL1543 linear probe (192 elements, 0.245 mm pitch, 1-12 MHz) on the us4us esaote3
+    # adapter (192 channels, three 32-channel regions per OEM, alternating OEM 0 / OEM 1). Both
+    # come from the ARRUS default dictionary, which also defines the probe-to-adapter connection,
+    # so no probe_to_adapter_connection block is needed here.
+    probe_id: {
+        manufacturer: "esaote"
+        name: "sl1543"
+    }
+    adapter_id: {
+        manufacturer: "us4us"
+        name: "esaote3"
+    }
+    rx_settings: {
+        lna_gain: 18
+        pga_gain: 24
+        lpf_cutoff: 15000000
+    }
+    channels_mask: {}
+    us4oem_channels_mask: [
+        {},
+        {}
+    ]
+    nus4oems: 2
+    # IMPORTANT for the Ethernet bench.
+    # WatchdogSettings::defaultSettings() is {1.0, 1.1, 1.0} with enabled=true
+    # (arrus/core/api/devices/us4r/WatchdogSettings.h:27-32), i.e. the watchdog is
+    # ON unless you explicitly disable it. At ~0.5 ms per ECB round trip a 1 s host
+    # threshold is a hazard during bring-up. Turn it off first, re-enable later.
+    watchdog: {
+        enabled: false
+    }
+    # The OEM's own HVPS. See the header for why this does not change the trigger-start path.
+    hv: {
+        model_id: {
+            manufacturer: "us4us"
+            name: "us4oemhvps"
+        }
+    }
+}

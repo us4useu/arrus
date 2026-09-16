@@ -5,6 +5,12 @@ To obtain the source files:
 git clone https://github.com/us4useu/arrus.git
 ```
 
+## NVIDIA IGX (aarch64) with us4OEM+ boards over Ethernet
+
+A scripted, docker-based build for the IGX developer kit, including the driver's Ethernet
+port, the Python wheel, a runtime image and the bench, lives in [`igx/`](../../igx/README.md).
+It is the reference procedure for that platform; the manual steps below apply to x86_64 hosts.
+
 ## Binaries
 
 ### Prerequisites

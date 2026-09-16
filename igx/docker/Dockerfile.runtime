@@ -1,0 +1,14 @@
+# ARRUS runtime image for the IGX: the Python package (wheel built by igx/build-arrus.sh, which
+# embeds libarrus-core and the us4OEM driver libraries), cupy for the GPU processing pipelines,
+# and tkinter so the examples' Display2D can open a window on a forwarded or local X display.
+# Run with: --network host --gpus all --device /dev/infiniband/uverbs0 --device /dev/infiniband/uverbs1
+#           --device /dev/infiniband/rdma_cm --ulimit memlock=-1   (see igx/run-example.sh)
+ARG BASE=us4r-build-py
+FROM ${BASE}
+ARG WHEEL=arrus-0.14.1-cp38-cp38-linux_aarch64.whl
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-tk \
+ && rm -rf /var/lib/apt/lists/* \
+ && pip3 install --no-cache-dir "cupy-cuda11x<13"
+COPY ${WHEEL} /tmp/
+RUN pip3 install --no-cache-dir /tmp/${WHEEL} && rm /tmp/${WHEEL}
+WORKDIR /work
