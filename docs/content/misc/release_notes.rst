@@ -4,6 +4,21 @@ Release notes
 0.14.x
 ------
 
+0.14.2
+
+- core (driver):
+
+    - Updated Windows driver to 0.16.0, Linux driver to 0.15.2.
+    - us4OEM firmware upgrader improvement: skip us4OEM device initialization before running FW update, and therefore, avoid any initialization errors that might occur due to legacy firmware running on device (e.g. invalid AFE memory map) # M_OEM-238.
+    - us4OEM firmware upgrade: changed .rpd files to .surpd, which is a signed us4OEM+ raw programming data file. From now on official firmware upgrades will only support .surpd files. #M_OEM-316.
+    - Exposed in C++ API voltage read-out from all OEM rails (Us4OEM::getHVPSScalarMeasurement) M_OEM-326.
+    - Implemented HV fault injection utility (only for device development purposes, Linux-only, available from us4us upon justified request) #M_OEM-330.
+    - Fixed Linux driver installer (the .run file) on Linux distributions with LKM compression enabled #M_US4R-148.
+
+- Python API:
+
+    - Exposed HVPS scalar voltage measurement from all OEM rails in Python API (Us4OEM.get_hvps_scalar_measurement) #M_OEM-326.
+
 0.14.1
 
 - core (driver):
