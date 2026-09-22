@@ -15,7 +15,7 @@
 #include <memory>
 #include <thread>
 #include <regex>
-#include <std4us/string.h>
+#include <nson/string>
 
 #define ARRUS_ASSERT_RX_SETTINGS_SET()                                                                                 \
     if (!rxSettings.has_value()) {                                                                                     \
@@ -1657,7 +1657,7 @@ Us4RImpl::groupTxDelaysBySequence(const std::vector<TxRxSequence> &sequences, co
 
     std::unordered_set<std::string> sequenceNames;
     for (const auto& s : sequences) {
-        const auto name = std4us::trim(s.getName());
+        const auto name = nson::trim(s.getName());
         sequenceNames.insert(name);
         arraysBySequence[name] = std::vector<OrderedArray>();
     }

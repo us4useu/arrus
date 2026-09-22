@@ -3,7 +3,7 @@ boost/1.90.0
 gtest/1.17.0
 eigen/5.0.1
 protobuf/7.35.0
-std4us/0.0.1
+nson/0.1.0
 
 [tool_requires]
 swig/4.4.0

@@ -2,7 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMSETTINGSVALIDATOR_H
 
 #include <format>
-#include <std4us/string.h>
+#include <nson/string>
 #include <unordered_set>
 
 #include "arrus/core/common/validation.h"
@@ -49,7 +49,7 @@ public:
                 }
                 expectTrue("channel mapping", missingValues.empty(),
                            std::format("Some of Us4OEM channels: '{}' are missing in the group of channels [{}, {}]",
-                                         std4us::join(missingValues, ", "), group * nRxChannels, (group + 1) * nRxChannels));
+                                         nson::join(missingValues, ", "), group * nRxChannels, (group + 1) * nRxChannels));
             }
         }
     }

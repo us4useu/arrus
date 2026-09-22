@@ -128,7 +128,7 @@ find_package(Protobuf REQUIRED)
 # Use project root to search for .proto files.
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Eigen3 REQUIRED)
-find_package(std4us REQUIRED)
+find_package(nson REQUIRED)
 
 # OS specific dependencies.
 if("${ARRUS_BUILD_PLATFORM}" STREQUAL "windows")

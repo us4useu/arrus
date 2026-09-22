@@ -7,7 +7,7 @@
 #include <thread>
 #include <regex>
 
-#include <std4us/string.h>
+#include <nson/string>
 #include <vector>
 
 #include "BlockingQueue.h"
@@ -56,8 +56,8 @@ public:
 
     Device::RawHandle getDevice(const std::string &path) override {
         auto [root, tail] = getPathRoot(path);
-        root = std4us::trim(root);
-        tail = std4us::trim(tail);
+        root = nson::trim(root);
+        tail = nson::trim(tail);
         if (!tail.empty()) {
             throw IllegalArgumentException(
                 "Us4R devices allows access only to the top-level devices (got relative path: '{}')", path);

@@ -13,7 +13,7 @@
 #include <set>
 
 #include <boost/lexical_cast.hpp>
-#include <std4us/string.h>
+#include <nson/string>
 
 #include "arrus/core/api/common/exceptions.h"
 
@@ -127,7 +127,7 @@ protected:
         }
         if(!invalidValues.empty()) {
             errors.emplace(parameter, std::format("Value(s) '{}{}' should be in range [{}, {}] (found: '{}')",
-                                                    parameter, msg, min, max, std4us::join(invalidValues, ", ")));
+                                                    parameter, msg, min, max, nson::join(invalidValues, ", ")));
         }
     }
 
@@ -158,7 +158,7 @@ protected:
 
         if(!invalidValues.empty()) {
             errors.emplace(parameter, std::format("Value(s) '{}{}' should be in range [{}, {}] (found: '{}')",
-                                                    parameter, msg, min, max, std4us::join(invalidValues, ", ")));
+                                                    parameter, msg, min, max, nson::join(invalidValues, ", ")));
         }
     }
 
@@ -173,7 +173,7 @@ protected:
         }
         if(!invalidValues.empty()) {
             errors.emplace(parameter, std::format("Value(s) '{}' should be positive (found: '{}')",
-                                                    parameter, std4us::join(invalidValues, ", ")));
+                                                    parameter, nson::join(invalidValues, ", ")));
         }
     }
 
@@ -209,7 +209,7 @@ protected:
             // Concatenate and sort dictionary values.
             errors.emplace(parameter, std::format("Value '{}{}' should be one of: '{}' (found: '{}')",
                                                     parameter, msg,
-                                                    std4us::join(dictionary, ", "),
+                                                    nson::join(dictionary, ", "),
                                                     value));
         }
     }
@@ -219,7 +219,7 @@ protected:
         std::unordered_set<U> set(std::begin(values), std::end(values));
         if(set.size() != values.size()) {
             errors.emplace(parameter, std::format("Parameter '{}{}' contains non-unique values. (got: '{}')",
-                                                    parameter, msg, std4us::join(values, ", ")));
+                                                    parameter, msg, nson::join(values, ", ")));
         }
     }
 

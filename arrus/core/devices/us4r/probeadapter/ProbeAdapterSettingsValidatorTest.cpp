@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <iostream>
-#include <std4us/string.h>
+#include <nson/string>
 #include <utility>
 
 #include "arrus/core/common/tests.h"
@@ -35,7 +35,7 @@ struct TestAdapterSettings {
         std::transform(settings.channelMapping.begin(), settings.channelMapping.end(),
                        std::back_inserter(channelMappingStr), func);
         os << " nChannels: " << settings.nChannels
-           << " channelMapping: " << std4us::join(channelMappingStr, ", ");
+           << " channelMapping: " << nson::join(channelMappingStr, ", ");
         return os;
     }
 

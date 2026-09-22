@@ -33,14 +33,14 @@ from arrus.utils.gui import (
     Display2D
 )
 
-arrus.set_clog_level(arrus.logging.INFO)
-arrus.add_log_file("test.log", arrus.logging.INFO)
+arrus.set_clog_level(arrus.logging.TRACE)
+arrus.add_log_file("test.log", arrus.logging.TRACE)
 
 
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
-    with arrus.Session("us4r.prototxt", medium=medium) as sess:
+    with arrus.Session("/home/mila/work/setup.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(5)
 
@@ -70,11 +70,11 @@ def main():
                        downsampling_factor=1),
                     pri=200e-6
                 ),
-            ],
+            ]*64,
             # Turn off TGC.
-            tgc_curve=[],  # [dB]
+            tgc_curve=[]#,  # [dB]
             # Time between consecutive acquisitions, i.e. 1/frame rate.
-            sri=50e-3
+            #sri=50e-3
         )
         # Declare the complete scheme to execute on the devices.
         scheme = Scheme(

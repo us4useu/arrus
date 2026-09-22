@@ -270,7 +270,7 @@ target_link_libraries(${TARGET_NAME}
     Us4::Us4RPSC
     Boost::boost
     Boost::log
-    std4us::std4us
+    nson::nson
     protobuf::libprotobuf
     Eigen3::Eigen
     ${ARRUS_OS_DEPS}
@@ -400,10 +400,10 @@ install(
 # Examples
 ################################################################################
 add_executable(pwi-example examples/PwiExample.cpp)
-target_link_libraries(pwi-example PRIVATE arrus-core std4us::std4us Boost::boost)
+target_link_libraries(pwi-example PRIVATE arrus-core nson::nson Boost::boost)
 target_include_directories(pwi-example PRIVATE ${ARRUS_ROOT_DIR})
 
 add_executable(custom-tx-waveform-example examples/CustomTxWaveform.cpp)
-target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core std4us::std4us Boost::boost)
+target_link_libraries(custom-tx-waveform-example PRIVATE arrus-core nson::nson Boost::boost)
 target_include_directories(custom-tx-waveform-example PRIVATE ${ARRUS_ROOT_DIR})
 

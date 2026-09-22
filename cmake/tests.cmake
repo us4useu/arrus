@@ -32,7 +32,7 @@ function(create_core_test test_src)
         Boost::boost
         Boost::log
         Eigen3::Eigen
-        std4us::std4us
+        nson::nson
         ${other_deps})
     target_include_directories(
         ${target_name}

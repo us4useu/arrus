@@ -7,7 +7,7 @@
 #include <fstream>
 #include <format>
 #include <memory>
-#include <std4us/string.h>
+#include <nson/string>
 #include <unordered_map>
 
 #include "arrus/common/utils.h"
@@ -711,7 +711,7 @@ SessionSettings readSessionSettings(const std::string &filepath) {
         settingsBuilder.addGpu(readGpuSettings(s->gpu()));
     }
     SessionSettings settings = settingsBuilder.build();
-    logger->debug("Read settings from '{}': {}", filepath, std4us::to_string(settings));
+    logger->debug("Read settings from '{}': {}", filepath, nson::to_string(settings));
     return settings;
 }
 

@@ -65,7 +65,7 @@ target_link_libraries(py_core
         PRIVATE
         arrus-core
         Boost::boost
-        std4us::std4us
+        nson::nson
         ${Python3_LIBRARIES}
         )
 ################################################################################

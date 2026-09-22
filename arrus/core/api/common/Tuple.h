@@ -5,7 +5,7 @@
 #include <vector>
 #include <numeric>
 #include <ostream>
-#include <std4us/string.h>
+#include <nson/string>
 
 #include "arrus/core/api/common/exceptions.h"
 
@@ -64,7 +64,7 @@ public:
     }
 
     const std::string toString() const {
-        return std::format("Tuple({})", std4us::join(values, ", "));
+        return std::format("Tuple({})", nson::join(values, ", "));
     }
 
     size_t product() const {

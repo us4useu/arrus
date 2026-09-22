@@ -2,7 +2,7 @@
 #include <boost/lexical_cast.hpp>
 #include <format>
 #include <regex>
-#include <std4us/string.h>
+#include <nson/string>
 
 #include "arrus/core/api/devices/DeviceId.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -75,7 +75,7 @@ DeviceType parseToDeviceTypeEnum(const std::string &deviceTypeStr) {
                 DeviceTypeEnumStringRepr::getInstance().keys();
         std::sort(availableKeys.begin(), availableKeys.end());
         const auto availableKeysMsg =
-                std4us::join(availableKeys, ", ");
+                nson::join(availableKeys, ", ");
         throw IllegalArgumentException(
                 "Unrecognized device type: {}, "
                               "allowed types: {}", deviceTypeStr,
@@ -90,15 +90,15 @@ std::string toString(const DeviceType deviceTypeEnum) {
 // DeviceId.
 DeviceId DeviceId::parse(const std::string &deviceId) {
     std::vector<std::string> deviceIdComponents;
-    std4us::split(deviceIdComponents, deviceId, ":");
+    nson::split(deviceIdComponents, deviceId, ":");
 
     if (deviceIdComponents.size() != 2) {
         throw IllegalArgumentException("Device id should be in the format of: deviceType:ordinal "
                                       "(got: '{}')", deviceId
         );
     }
-    auto deviceTypeStr = std4us::trim(deviceIdComponents[0]);
-    auto ordinalStr = std4us::trim(deviceIdComponents[1]);
+    auto deviceTypeStr = nson::trim(deviceIdComponents[0]);
+    auto ordinalStr = nson::trim(deviceIdComponents[1]);
     // Device Type.
     DeviceType deviceTypeEnum = parseToDeviceTypeEnum(deviceTypeStr);
 

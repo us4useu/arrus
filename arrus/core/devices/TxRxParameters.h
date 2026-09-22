@@ -3,7 +3,7 @@
 
 #include <format>
 #include <ostream>
-#include <std4us/string.h>
+#include <nson/string>
 #include <utility>
 
 #include "arrus/common/asserts.h"
@@ -104,7 +104,7 @@ public:
         os << std::scientific;
         os << "Tx/Rx: ";
         os << "TX: ";
-        os << "aperture: " << std4us::join(parameters.getTxAperture(), ", ");
+        os << "aperture: " << nson::join(parameters.getTxAperture(), ", ");
         os << ", delays: ";
         for(auto d: parameters.getTxDelays()) {
             os << d << ", ";
@@ -134,7 +134,7 @@ public:
             }
         }
         os << "; RX: ";
-        os << "aperture: " << std4us::join(parameters.getRxAperture(), ", ");
+        os << "aperture: " << nson::join(parameters.getRxAperture(), ", ");
         os << ", sample range: " << parameters.getRxSampleRange().start() << ", " << parameters.getRxSampleRange().end();
         os << ", fs divider: " << parameters.getRxDecimationFactor() << ", padding: " << parameters.getRxPadding()[0]
            << ", " << parameters.getRxPadding()[1];
@@ -350,7 +350,7 @@ public:
         }
         os << " n repeats: " << sequence.getNRepeats() << ", ";
         os << " SRI: " << std::to_string(sequence.getSri().value_or(0.0f)) << ", ";
-        os << " TGC curve: " << std4us::to_string(sequence.getTgcCurve());
+        os << " TGC curve: " << nson::to_string(sequence.getTgcCurve());
         os << std::endl;
         return os;
     }

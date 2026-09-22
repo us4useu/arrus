@@ -5,8 +5,8 @@
 #include <memory>
 #include "LogSeverity.h"
 
-#include <std4us/concepts.h>
-#include <std4us/string.h>
+#include <nson/concepts>
+#include <nson/string>
 
 namespace arrus {
 
@@ -42,9 +42,9 @@ public:
         log(severity, std::vformat(fmt, std::make_format_args(args...)));
     }
 
-    template<typename... Args> requires ((!std::formattable<Args, char> && std4us::supports_to_string<Args>) && ...)
+    template<typename... Args> requires ((!std::formattable<Args, char> && nson::supports_to_string<Args>) && ...)
     void log(const LogSeverity severity, const std::string &fmt, Args... args) {
-        log(severity, std::vformat(fmt, std::make_format_args(std4us::to_string(args)...)));
+        log(severity, std::vformat(fmt, std::make_format_args(nson::to_string(args)...)));
     }
 
     /**

@@ -6,7 +6,7 @@
 #include <thread>
 #include <utility>
 #include <regex>
-#include <std4us/string.h>
+#include <nson/string>
 
 #include "Us4OEMDescriptorFactory.h"
 #include "Us4OEMTxRxValidator.h"
@@ -84,7 +84,7 @@ void Us4OEMImpl::setAfeDemodConfig(uint8_t decInt, uint8_t decQuarters, const fl
     const auto availableGains = DDC_GAIN_MAP.getAvailableValues();
     ARRUS_REQUIRES_TRUE_IAE(setContains(availableGains, gain),
                             std::format("Digital Down Conversion gain should be one of: {}",
-                               std4us::join(availableGains, ", ")));
+                               nson::join(availableGains, ", ")));
     auto actualValue = DDC_GAIN_MAP.get(gain);
     ius4oem->afeDemodConfig(decInt, decQuarters, firCoeffs, firLength, freq, actualValue);
 }
@@ -211,7 +211,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
         for (OpId opId = 0; opId < ARRUS_SAFE_CAST(sequence.size(), OpId); ++opId, ++firingId) {
             auto const &op = sequence.at(opId);
             logger->trace("Setting sequence {}, TX/RX {}: NOP? {}, definition: {}", sequenceId, opId, op.isNOP(),
-                          std4us::to_string(op));
+                          nson::to_string(op));
             // TX
             auto txAperture = arrus::toBitset<Us4OEMDescriptor::N_TX_CHANNELS>(op.getTxAperture());
             // RX

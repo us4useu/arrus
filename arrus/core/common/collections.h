@@ -10,7 +10,7 @@
 #include <bitset>
 #include <stdexcept>
 #include <iterator>
-#include <std4us/string.h>
+#include <nson/string>
 #include <span>
 
 #include "arrus/core/api/arrus.h"
@@ -308,7 +308,7 @@ public:
             return valueMap.at(value);
         } catch(const std::out_of_range& ) {
             throw IllegalArgumentException(std::format("Invalid value: '{}' should be one of: '{}'",
-                                                  value, std4us::join(getAvailableValues(), ", ")));
+                                                  value, nson::join(getAvailableValues(), ", ")));
         }
     }
 

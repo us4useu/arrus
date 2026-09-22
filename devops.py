@@ -76,8 +76,6 @@ def get_default_us4r_api_dir(context):
 
 stages = {
     "cfg": (
-        ("fetch_std4us", gitdep.Fetch),
-        ("add_std4us_index", conan.AddLocalIndex),
         ("conan", conan.Install),
         ("cmake", cmake.Configure),
     ),
@@ -116,21 +114,6 @@ defaults = {
     "us4r_api_dir": get_default_us4r_api_dir,
     "/cfg/cmake/DARRUS_EMBED_DEPS": "ON",
     "/install/prefix": "./install",
-    "/cfg/fetch_std4us/repo": "https://github.com/us4useu/std4us.git",
-    "/cfg/fetch_std4us/revision": "clang-dev",
-    "/cfg/fetch_std4us/path": "std4us",
-    "/cfg/add_std4us_index/path": "std4us",
 }
 
 defaults.update(get_generator_options_for_current_os())
-
-transforms = [
-    lambda options: {
-        f"/cfg/cmake/preset": f"conan-{options['/build/config'].lower()}", 
-        f"/build/preset": f"conan-{options['/build/config'].lower()}",
-        f"/test/preset": f"conan-{options['/build/config'].lower()}",
-        },
-    lambda options: {
-        f"/install/build_dir_suffix": f"/{options['/build/config']}/"
-    },
-]

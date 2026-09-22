@@ -1,7 +1,7 @@
 #include <format>
 #include <gtest/gtest.h>
 #include <ostream>
-#include <std4us/string.h>
+#include <nson/string>
 
 #include "arrus/core/common/tests.h"
 #include "arrus/core/common/collections.h"
@@ -17,9 +17,9 @@ struct TestWatchdogSettings {
     friend std::ostream &
     operator<<(std::ostream &os, const TestWatchdogSettings &settings) {
         os << "enabled: " << settings.settings.isEnabled()
-           << " oemThreshold0: " << std4us::to_string(settings.settings.getOEMThreshold0())
-           << " oemThreshold1: " << std4us::to_string(settings.settings.getOEMThreshold1())
-           << " hostThreshold: " << std4us::to_string(settings.settings.getHostThreshold());
+           << " oemThreshold0: " << nson::to_string(settings.settings.getOEMThreshold0())
+           << " oemThreshold1: " << nson::to_string(settings.settings.getOEMThreshold1())
+           << " hostThreshold: " << nson::to_string(settings.settings.getHostThreshold());
         return os;
     }
 };

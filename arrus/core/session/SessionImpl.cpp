@@ -2,7 +2,7 @@
 
 #include <format>
 #include <memory>
-#include <std4us/string.h>
+#include <nson/string>
 
 #include "arrus/common/compiler.h"
 #include "arrus/core/common/os.h"
@@ -72,7 +72,7 @@ SessionImpl::SessionImpl(
     getDefaultLogger()->debug("ARRUS version: {}", ::arrus::version());
     // Debug info.
     getDefaultLogger()->debug("OS: {}", ::arrus::OS_NAME);
-    getDefaultLogger()->debug("Configuring session with the following settings {}", std4us::to_string(sessionSettings));
+    getDefaultLogger()->debug("Configuring session with the following settings {}", nson::to_string(sessionSettings));
     configureDevices(sessionSettings);
 }
 
@@ -83,7 +83,7 @@ arrus::devices::Device::RawHandle SessionImpl::getDevice(const std::string &path
     return rootDevice;
 }
 std::string SessionImpl::sanitizeDeviceId(const std::string &path) const {
-    std::string sanitizedPath{std4us::trim(path)};
+    std::string sanitizedPath{nson::trim(path)};
     // Get the root node (without the / ) and check if there is any tail
     auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedPath);
     if(! tail.empty()) {
@@ -238,7 +238,7 @@ void SessionImpl::setParameters(const Parameters &params) {
         const std::string &key = item.first;
         int value = item.second;
 
-        std::string sanitizedKey{std4us::trim(key)};
+        std::string sanitizedKey{nson::trim(key)};
 
         // parse path
         auto [root, tail] = ::arrus::devices::getPathRoot(sanitizedKey);
