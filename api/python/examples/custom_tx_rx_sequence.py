@@ -1,5 +1,4 @@
-"""
-This script acquires and reconstructs RF img for plane wave imaging
+"""This script acquires and reconstructs RF img for plane wave imaging
 (synthetic aperture).
 
 GPU usage is recommended.
@@ -40,7 +39,7 @@ arrus.add_log_file("test.log", arrus.logging.INFO)
 def main():
     # Here starts communication with the device.
     medium = arrus.medium.Medium(name="water", speed_of_sound=1490)
-    with arrus.Session("/opt/us4us/us4ndt64.prototxt", medium=medium) as sess:
+    with arrus.Session("/home/pjarosik/us4r.prototxt", medium=medium) as sess:
         us4r = sess.get_device("/Us4R:0")
         us4r.set_hv_voltage(5)
 

@@ -88,28 +88,50 @@ def _assert_unique_property_for_rx_active_ops(seq: TxRxSequence, getter: Callabl
                          f"{s}")
 
 
+def _get_total_const_memory() -> int:
+    """The size of the GPU constant memory [bytes]; queried once (the query takes ~1-2 ms)."""
+    global _TOTAL_CONST_MEMORY
+    if _TOTAL_CONST_MEMORY is None:
+        import cupy as cp
+        _TOTAL_CONST_MEMORY = cp.cuda.runtime.getDeviceProperties(0)["totalConstMem"]
+    return _TOTAL_CONST_MEMORY
+
+
+_TOTAL_CONST_MEMORY = None
+
+
 class GpuConstMemoryPool:
 
     def __init__(self, kernel_module, variable_name, total_size: int, dtype):
         if is_package_available("cupy"):
             import cupy as cp
-            device_props = cp.cuda.runtime.getDeviceProperties(0)
-            if device_props["totalConstMem"] < total_size*dtype(1).itemsize:
+            if _get_total_const_memory() < total_size*dtype(1).itemsize:
                 raise ValueError(f"There is not enough constant memory available for {variable_name}!")
         self.total_size = total_size
         self.variable_name = variable_name
         self.reference_array = np.zeros((self.total_size, ), dtype=dtype)  # Global memory
         self.const_array = _get_const_memory_array(kernel_module, variable_name, self.reference_array)
         self.currently_reserved = 0  # [the number of input array elements]
+        self.reserved_lengths = {}  # offset -> the number of reserved elements
         self.lock = threading.Lock()
 
-    def reserve_new_array(self, input_array) -> int:
+    def reserve_new_array(self, input_array, reuse_offset: Optional[int] = None) -> int:
         """
+        :param reuse_offset: the offset returned by a previous call made for the same operation (e.g. when the
+          operation is updated after `session.set_subsequences`). When the array length is the same, that part of
+          the pool is overwritten instead of reserving a new one -- otherwise every update would reserve more
+          memory, until the pool is exhausted and the whole processing has to be re-created.
         :return: offset relative to the global constant pool
         """
         with self.lock:
             assert len(input_array.shape) == 1, "Only 1D arrays are supported"
             array_len = input_array.shape[0]
+            if reuse_offset is not None and self.reserved_lengths.get(reuse_offset) == array_len:
+                a, b = reuse_offset, reuse_offset + array_len
+                if not np.array_equal(self.reference_array[a:b], input_array):
+                    self.reference_array[a:b] = input_array
+                    self.const_array.set(self.reference_array)
+                return a
             a, b = self.currently_reserved, self.currently_reserved + array_len
             if b > self.total_size:
                 raise ValueError(f"Exceeded maximum const memory "
@@ -120,6 +142,7 @@ class GpuConstMemoryPool:
             # Update const array TODO consider updating only the modified part
             self.const_array.set(self.reference_array)
             self.currently_reserved = b
+            self.reserved_lengths[a] = array_len
             return a
 
 
@@ -1914,12 +1937,14 @@ class RxBeamforming(Operation):
             z_elem = z_elem - np.min(z_elem)
 
         # check if there is enough constant memory
-        device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
+        if _get_total_const_memory() < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
             raise ValueError("There is not enough constant memory available!")
-        self.x_elem_const_offset = RxBeamforming.X_ELEM_CONST_POOL.reserve_new_array(np.squeeze(x_elem))
-        self.z_elem_const_offset = RxBeamforming.Z_ELEM_CONST_POOL.reserve_new_array(np.squeeze(z_elem))
-        self.angle_elem_const_offset = RxBeamforming.ANGLE_ELEM_CONST_POOL.reserve_new_array(np.squeeze(angle_elem))
+        self.x_elem_const_offset = RxBeamforming.X_ELEM_CONST_POOL.reserve_new_array(
+            np.squeeze(x_elem), reuse_offset=getattr(self, "x_elem_const_offset", None))
+        self.z_elem_const_offset = RxBeamforming.Z_ELEM_CONST_POOL.reserve_new_array(
+            np.squeeze(z_elem), reuse_offset=getattr(self, "z_elem_const_offset", None))
+        self.angle_elem_const_offset = RxBeamforming.ANGLE_ELEM_CONST_POOL.reserve_new_array(
+            np.squeeze(angle_elem), reuse_offset=getattr(self, "angle_elem_const_offset", None))
 
         return const_metadata.copy(input_shape=self.output_buffer.shape)
 
@@ -3140,17 +3165,19 @@ class ReconstructLri(Operation):
         element_angle_tang = np.tan(probe_model.element_angle)
         self.n_elements = probe_model.n_elements
 
-        device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
+        if _get_total_const_memory() < 256 * 3 * 4:  # 3 float32 arrays, 256 elements max
             raise ValueError("There is not enough constant memory available!")
 
         x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
         z_elem = np.asarray(element_pos_z, dtype=self.num_pkg.float32)
         tang_elem = np.asarray(element_angle_tang, dtype=self.num_pkg.float32)
 
-        self._x_elem_const_offset = ReconstructLri.X_ELEM_CONST_POOL.reserve_new_array(np.squeeze(x_elem))
-        self._z_elem_const_offset = ReconstructLri.Z_ELEM_CONST_POOL.reserve_new_array(np.squeeze(z_elem))
-        self._tang_elem_const_offset = ReconstructLri.TANG_ELEM_CONST_POOL.reserve_new_array(np.squeeze(tang_elem))
+        self._x_elem_const_offset = ReconstructLri.X_ELEM_CONST_POOL.reserve_new_array(
+            np.squeeze(x_elem), reuse_offset=getattr(self, "_x_elem_const_offset", None))
+        self._z_elem_const_offset = ReconstructLri.Z_ELEM_CONST_POOL.reserve_new_array(
+            np.squeeze(z_elem), reuse_offset=getattr(self, "_z_elem_const_offset", None))
+        self._tang_elem_const_offset = ReconstructLri.TANG_ELEM_CONST_POOL.reserve_new_array(
+            np.squeeze(tang_elem), reuse_offset=getattr(self, "_tang_elem_const_offset", None))
 
         tx_center_angles, tx_center_x, tx_center_z = arrus.kernels.tx_rx_sequence.get_aperture_center(
             tx_centers, probe_model)
@@ -3766,8 +3793,7 @@ class ReconstructLri3D(Operation):
         element_pos_x = element_pos_x.astype(np.float32)
         element_pos_y = element_pos_y.astype(np.float32)
         # Put the data into GPU constant memory.
-        device_props = cp.cuda.runtime.getDeviceProperties(0)
-        if device_props["totalConstMem"] < 256 * 2 * 4:  # 2 float32 arrays, 256 elements max
+        if _get_total_const_memory() < 256 * 2 * 4:  # 2 float32 arrays, 256 elements max
             raise ValueError("There is not enough constant memory available!")
         x_elem = np.asarray(element_pos_x, dtype=self.num_pkg.float32)
         self._x_elem_const = _get_const_memory_array(

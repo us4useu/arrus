@@ -44,9 +44,17 @@ public:
     // TODO expose the below constant to Us4OEMDescriptor
     static constexpr size_t MAX_N_TRANSFERS = 256;
 
+    /**
+     * @param firingOffset the offset of the sequencer entries (firings) of this transfers (the first entry of
+     *   the sequencer table bank, when the sequencer double-buffering is used; 0 otherwise)
+     * @param transferIdxOffset the first transfer (descriptor table) id that can be used by this registrar
+     * @param maxNTransfers the maximum number of transfer (descriptor table) ids that can be used by this registrar
+     */
     Us4OEMDataTransferRegistrar(Us4ROutputBuffer *dst, const Us4OEMBuffer &src, Us4OEMImplBase *us4oem,
-                                size_t maxTransferSize)
-        : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src), maxTransferSize(maxTransferSize) {
+                                size_t maxTransferSize, uint16 firingOffset = 0, size_t transferIdxOffset = 0,
+                                size_t maxNTransfers = MAX_N_TRANSFERS)
+        : logger(loggerFactory->getLogger()), dstBuffer(dst), srcBuffer(src), maxTransferSize(maxTransferSize),
+          firingOffset(firingOffset), transferIdxOffset(transferIdxOffset) {
         ARRUS_INIT_COMPONENT_LOGGER(logger, "Us4OEMDataTransferRegistrar");
         if (dst->getNumberOfElements() % src.getNumberOfElements() != 0) {
             throw IllegalArgumentException("Host buffer should have multiple of rx buffer elements.");
@@ -63,10 +71,10 @@ public:
         // Number of transfer dst points.
         dstNTransfers = nTransfersPerElement * dstNElements;// Can be > 256
 
-        ARRUS_REQUIRES_AT_MOST(srcNTransfers, MAX_N_TRANSFERS, "Exceeded maximum number of transfers.");
+        ARRUS_REQUIRES_AT_MOST(srcNTransfers, maxNTransfers, "Exceeded maximum number of transfers.");
 
         // If true: create only nSrc transfers, the callback function will reprogram the appropriate number transfers.
-        if (dstNTransfers > MAX_N_TRANSFERS) {
+        if (dstNTransfers > maxNTransfers) {
             strategy = 2;
         } else if (dstNTransfers > srcNTransfers) {
             // reschedule needed
@@ -84,6 +92,12 @@ public:
                                [](const auto &a, const auto &b) { return a + b.size(); });
     }
 
+    /**
+     * Page-locks the destination memory, programs the transfers and schedules them in the sequencer.
+     *
+     * NOTE: the transfer callbacks are NOT registered in the us4OEM here; they are available via getCallbacks
+     * (in the order the us4OEM interrupts will be generated), see Us4OEMTransferCallbacks.
+     */
     void registerTransfers() {
         // Page-lock all host dst points.
         pageLockDstMemory();
@@ -108,7 +122,7 @@ public:
         for(uint16 srcIdx = 0; srcIdx < srcNElements; ++srcIdx) {
             for(auto &arrayTransfers: elementTransfers) {
                 for(const auto &transfer: arrayTransfers) {
-                    auto firing = elementFirstFiring + transfer.firing;
+                    auto firing = firingOffset + elementFirstFiring + transfer.firing;
                     ius4oem->ClearTransferRXBufferToHost(firing);
                 }
             }
@@ -218,7 +232,8 @@ public:
                     uint8 *dst = addressDst + transfer.destination;
                     size_t src = addressSrc + transfer.source;
                     size_t size = transfer.size;
-                    ius4oem->PrepareTransferRXBufferToHost(transferIdx, dst, size, src, dstBuffer->usesDmaBuf());
+                    ius4oem->PrepareTransferRXBufferToHost(transferIdxOffset + transferIdx, dst, size, src,
+                                                           dstBuffer->usesDmaBuf());
                 }
             }
         }
@@ -239,7 +254,7 @@ public:
 // (nSrc < nDst && nDst <= 256)
 #define ARRUS_ON_NEW_DATA_CALLBACK_strategy_1                                                                          \
     currentTransferIdx = (int16) ((currentTransferIdx + srcNTransfers) % dstNTransfers);                               \
-    ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, currentTransferIdx, nullptr);
+    ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdxOffset + currentTransferIdx, nullptr);
 
 // Strategy 2: re-program transfer, so in the next call this transfer will write to subsequent dst element
 // (nDst > 256)
@@ -247,7 +262,7 @@ public:
     uint16 nextElementIdx = (int16) ((currentDstIdx + srcNElements) % dstNElements);                                   \
     auto nextDstAddress = dstBuffer->getAddress(nextElementIdx);                                                       \
     nextDstAddress += transfer.destination;                                                                            \
-    ius4oem->PrepareTransferRXBufferToHost(currentTransferIdx, nextDstAddress, transferSize, src,                      \
+    ius4oem->PrepareTransferRXBufferToHost(transferIdxOffset + currentTransferIdx, nextDstAddress, transferSize, src,  \
                                            dstBuffer->usesDmaBuf());
 
 #define ARRUS_ON_NEW_DATA_CALLBACK(signal, strategy)                                                                   \
@@ -268,6 +283,7 @@ public:
         // appropriately (if necessary).
         size_t transferIdx = 0;       // global transfer idx
         uint16 elementFirstFiring = 0;// NOTE: global, counted from 0
+        callbacks.clear();
         for (int16 srcIdx = 0; srcIdx < int16(srcNElements); ++srcIdx) {
             const auto &element = srcBuffer.getElement(srcIdx);
             size_t addressSrc = element.getAddress();// bytes addressed
@@ -279,7 +295,7 @@ public:
                     size_t src = addressSrc + transfer.source;// used by callback strategy 2
                     size_t transferSize = transfer.size;
                     // transfer.firing - firing offset within element
-                    uint16 transferLastFiring = elementFirstFiring + transfer.firing;
+                    uint16 transferLastFiring = firingOffset + elementFirstFiring + transfer.firing;
 
                     bool isLastTransfer = localIdx == nTransfersPerElement - 1;
                     std::function<void()> callback;
@@ -299,13 +315,20 @@ public:
                         }
                     }
                     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(transferIdx);
-                    ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdx, callback);
+                    ius4oem->ScheduleTransferRXBufferToHost(transferLastFiring, transferIdxOffset + transferIdx,
+                                                            nullptr);
+                    callbacks.push_back(std::move(callback));
                     ++localIdx; ++transferIdx;
                 }
             }
             elementFirstFiring = elementLastFiring + 1;
         }
     }
+
+    /** The transfer callbacks, in the order of the us4OEM "transfer done" interrupts (element by element). */
+    const std::vector<std::function<void()>> &getCallbacks() const { return callbacks; }
+    size_t getNumberOfTransfersPerElement() const { return nTransfersPerElement; }
+    int getStrategy() const { return strategy; }
 
 private:
     Logger::Handle logger;
@@ -326,6 +349,11 @@ private:
     int strategy{0};
     /** Maximum allowable size of a single transfer. */
     size_t maxTransferSize;
+    /** The offset of the sequencer entries (bank offset). */
+    uint16 firingOffset{0};
+    /** The first transfer (descriptor table) id used by this registrar. */
+    size_t transferIdxOffset{0};
+    std::vector<std::function<void()>> callbacks;
 };
 
 }// namespace arrus::devices

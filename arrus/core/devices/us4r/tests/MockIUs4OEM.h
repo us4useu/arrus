@@ -209,6 +209,12 @@ public:
     MOCK_METHOD(float, GetMaxTxPulseLength, (), (const, override));
     MOCK_METHOD(void, SetSubsequences, (const std::vector<uint16_t> &start, const std::vector<uint16_t> &end, bool syncMode, const std::vector<uint32_t> &endTimeToNextTrigger), (override));
     MOCK_METHOD(void, SetSubsequences, ((const std::vector<std::vector<uint16_t>> &entries), bool syncMode, const std::vector<uint32_t> &endTimeToNextTrigger), (override));
+    MOCK_METHOD(void, EnableSequencerDoubleBuffering, (), (override));
+    MOCK_METHOD(bool, IsSequencerDoubleBufferingEnabled, (), (override));
+    MOCK_METHOD(uint16_t, GetSequencerActiveBankOffset, (), (override));
+    MOCK_METHOD(uint16_t, GetSequencerInactiveBankOffset, (), (override));
+    MOCK_METHOD(void, PrepareSubsequences, ((const std::vector<std::vector<uint16_t>> &entries), bool syncMode, const std::vector<uint32_t> &endTimeToNextTrigger), (override));
+    MOCK_METHOD(void, SwapSubsequences, (bool setStartPointer), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
     MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));

@@ -230,6 +230,11 @@ FileImpl::setSubsequences(const std::vector<Slice> &, const std::vector<std::opt
 }
 
 std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+FileImpl::prepareSubsequences(const std::vector<std::vector<uint16>> &, const std::vector<std::optional<float>> &) {
+    throw std::runtime_error("Not implemented.");
+}
+
+std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
 FileImpl::setSubsequences(const std::vector<std::vector<uint16>> &, const std::vector<std::optional<float>> &) {
     throw std::runtime_error("Not implemented.");
 }

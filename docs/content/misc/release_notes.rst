@@ -10,14 +10,17 @@ Release notes
 
     - ``SetSubsequences``: exposed the possibility to select an arbitrary list of TX/RXs (the selected TX/RXs do not have to be consecutive any more). Only the sequencer entries that actually change are re-programmed. NOTE: the us4OEM+ devices only.
     - Fixed the PRI of the sub-sequence end drifting by a single clock tick with each ``SetSubsequences`` call.
+    - Sequencer double-buffering: ``EnableSequencerDoubleBuffering``, ``PrepareSubsequences``, ``SwapSubsequences``. The sequencer table is split into two banks of 2048 entries; a new sub-sequence is programmed in the bank that is not executed, while the sequencer runs the other one. The DMA descriptor tables are now reference counted (the same host memory can be a destination of the transfers of both banks).
 
 - C++ API:
 
+    - Added ``arrus::session::Session::prepareSubsequences(ops, sris)``: prepares the next sub-sequences while the scheme is running (MANUAL work mode, the same output data layout); they are used starting from the second ``run`` after the call (while waiting for the trigger, the sequencer already points to the first TX/RX of the next acquisition).
     - Added ``arrus::session::Session::setSubsequences(ops, sris)``: the list of the TX/RXs to run can now be provided for each of the uploaded TX/RX sequences (the previous, slice-based method is still available). The us4OEM data transfers are now determined per each continuous range of the acquired TX/RXs.
 
 - Python API:
 
     - ``session.set_subsequences``: the TX/RXs to run can now be given as a list of the TX/RX ordinal numbers, e.g. ``session.set_subsequences([2, 3, 5, 8, 13])``; a ``slice`` is still accepted. The same applies to the ``session.set_subsequence`` method, e.g. ``session.set_subsequence([2, 3, 5, 8, 13])``.
+    - Added ``session.prepare_subsequences``: the same as ``set_subsequences``, but it does not require the scheme to be stopped (MANUAL work mode, the same number of TX/RXs); the new sub-sequences are used starting from the second ``session.run`` after the call, the processing is updated accordingly.
     - ``session.set_subsequences``: the output buffer is no longer re-allocated when the new sub-sequence produces exactly the same amount of data as the current one; when the same ``processing`` object is provided, the imaging pipeline is updated (see ``arrus.utils.imaging.Operation.update``) instead of being re-created from scratch. Both significantly reduce the time needed to switch to a new sub-sequence.
 
 0.14.1

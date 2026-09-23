@@ -182,6 +182,14 @@ class Session(AbstractSession):
         self._current_processing = None
         # The processing object provided by the user (see the _set_processing method).
         self._current_processing_spec = None
+        # The sub-sequences prepared with prepare_subsequences, not triggered yet: (metadata, processing).
+        self._prepared_subsequences = None
+        # The processing updates that should be applied, before the given element is triggered:
+        # [(element number, metadata, processing), ...] (see prepare_subsequences).
+        self._pending_processing_updates = []
+        # The number of the triggered elements (MANUAL mode), since the start of the scheme.
+        self._n_runs = 0
+        self._is_started = False
         self._current_scheme = None
         # Current metadata (for the full sequence)
         self.metadatas = None
@@ -199,6 +207,8 @@ class Session(AbstractSession):
         # Prepare sequence to load
         us_device: Ultrasound = self.get_device("/Ultrasound:0")
         us_device_dto = us_device.get_dto()
+        self._prepared_subsequences = None
+        self._pending_processing_updates = []
         medium = self._context.medium
         sequences = scheme.tx_rx_sequence
         if not isinstance(sequences, Iterable):
@@ -278,13 +288,18 @@ class Session(AbstractSession):
         """
         Starts the execution of the uploaded scheme.
         """
+        # The prepared sub-sequences (if any) are used right from the start.
+        self._apply_all_processing_updates()
         arrus.core.arrusSessionStartScheme(self._session_handle)
+        self._is_started = True
+        self._n_runs = 1
 
     def stop_scheme(self):
         """
         Stops execution of the scheme.
         """
         arrus.core.arrusSessionStopScheme(self._session_handle)
+        self._is_started = False
 
     def run(self, sync: bool=False, timeout: int=None):
         """
@@ -306,7 +321,32 @@ class Session(AbstractSession):
         :param timeout: timeout [ms]; std::nullopt means to wait infinitely. This parameter is only relevant when
                         sync = true; the value of this parameter only matters when work mode is set to MANUAL or MANUAL_OP.
         """
-        arrus.core.arrusSessionRun(self._session_handle, sync, timeout)
+        if not self._is_started:
+            # Starts the scheme: the prepared sub-sequences (if any) are used right from the start.
+            self._apply_all_processing_updates()
+            arrus.core.arrusSessionRun(self._session_handle, sync, timeout)
+            self._is_started = True
+            self._n_runs = 1
+            return
+        # The number of the element triggered now.
+        element = self._n_runs
+        # The data of this element are acquired with the sub-sequences prepared before the previous run.
+        self._apply_processing_updates(until_element=element)
+        prepared = self._prepared_subsequences
+        if prepared is not None:
+            # This run switches the us4R to the prepared sub-sequences; the element triggered now is still acquired
+            # with the current ones, the next element is the first one acquired with the prepared ones.
+            self._pending_processing_updates.append((element + 1, ) + tuple(prepared))
+            self._prepared_subsequences = None
+        try:
+            arrus.core.arrusSessionRun(self._session_handle, sync, timeout)
+        except Exception:
+            if prepared is not None:
+                # Not switched (e.g. the device was not waiting for the trigger).
+                self._pending_processing_updates.pop()
+                self._prepared_subsequences = prepared
+            raise
+        self._n_runs += 1
 
     def close(self):
         """
@@ -436,21 +476,86 @@ class Session(AbstractSession):
         :return returns: the buffer and metadata for the modified Scheme. The metadata array size is always equal to
            the number of sequences in the original Scheme
         """
-        us_device: Ultrasound = self.get_device("/Ultrasound:0")
         sris = [] if sris is None else sris
         subsequences = self._convert_to_subsequences(subsequences)
 
         arrus_ops = arrus.utils.core.convert_to_arrus_subsequences(subsequences)
         arrus_sris = arrus.utils.core.convert_to_optional_vector(sris)
 
+        # Any previously prepared sub-sequences are overwritten.
+        self._prepared_subsequences = None
+        self._pending_processing_updates = []
         upload_result = self._session_handle.setSubsequences(arrus_ops, arrus_sris)
 
         buffer_handle = arrus.core.getFifoLockFreeBuffer(upload_result)
         self.buffer = arrus.framework.DataBuffer(buffer_handle)
+        result_metadatas = self._create_subsequence_metadata(subsequences, upload_result)
+        return self._set_processing(self.buffer, result_metadatas, processing, [])
 
-        # Create new metadata
+    def prepare_subsequences(self, subsequences, processing=None, sris: List[Optional[float]] = None):
+        """
+        Prepares the TX/RXs to be executed, without stopping the scheme.
+
+        The parameters are the same as for `set_subsequences`. In contrast to `set_subsequences`, the scheme
+        can be running: the new sub-sequences are programmed in the part of the us4R sequencer memory, that is
+        currently not in use (sequencer double-buffering), i.e. the next sub-sequence can be prepared while the
+        current one is acquired and processed.
+
+        NOTE: when the scheme is running, the new sub-sequences are used starting from the SECOND `run` after this
+        call: the next `run` still acquires the data with the current sub-sequences (while waiting for the trigger,
+        the us4R sequencer has already moved to the first TX/RX of the next acquisition). The processing is updated
+        accordingly (right before the second `run`). When the scheme is started (start_scheme, or `run` of the
+        stopped scheme), the prepared sub-sequences are used right from the start.
+
+        Requirements (when the scheme is running):
+
+        - the MANUAL work mode,
+        - the new sub-sequences must produce the data of exactly the same shape as the current ones (e.g. the same
+          number of TX/RXs), so that the output buffer and the processing can be reused,
+        - the output buffer should have the same number of elements as the RX buffer,
+        - `processing` should be None or the same object as the currently used one,
+        - the next `run` should be called after the data of the previous `run` arrived (otherwise the data
+          of the previous `run` may be processed with the metadata of the new sub-sequences).
+
+        When the scheme is stopped, this method is equivalent to `set_subsequences`.
+
+        :return: the metadata of the data acquired with the prepared sub-sequences (the input of the processing).
+        """
+        if not self._is_started:
+            return self.set_subsequences(subsequences, processing=processing, sris=sris)
+        if processing is not None and processing is not self._current_processing_spec:
+            raise ValueError("Only the currently used processing can be updated while the scheme is running; "
+                             "please stop the scheme and use set_subsequences instead.")
+        sris = [] if sris is None else sris
+        subsequences = self._convert_to_subsequences(subsequences)
+        arrus_ops = arrus.utils.core.convert_to_arrus_subsequences(subsequences)
+        arrus_sris = arrus.utils.core.convert_to_optional_vector(sris)
+        upload_result = self._session_handle.prepareSubsequences(arrus_ops, arrus_sris)
+        # NOTE: the output buffer stays the same (the same layout is required); self.buffer is kept, so the
+        # processing does not have to re-bind to a new buffer wrapper.
+        result_metadatas = self._create_subsequence_metadata(subsequences, upload_result)
+        self._prepared_subsequences = (result_metadatas, self._current_processing_spec)
+        return result_metadatas
+
+    def _apply_processing_updates(self, until_element):
+        """Applies the processing updates for the sub-sequences used starting from the given element."""
+        while self._pending_processing_updates and self._pending_processing_updates[0][0] <= until_element:
+            _, metadatas, processing = self._pending_processing_updates.pop(0)
+            self._set_processing(self.buffer, metadatas, processing, [])
+
+    def _apply_all_processing_updates(self):
+        updates = [u[1:] for u in self._pending_processing_updates]
+        if self._prepared_subsequences is not None:
+            updates.append(self._prepared_subsequences)
+        self._pending_processing_updates = []
+        self._prepared_subsequences = None
+        for metadatas, processing in updates:
+            self._set_processing(self.buffer, metadatas, processing, [])
+
+    def _create_subsequence_metadata(self, subsequences, upload_result):
+        """Creates the metadata for the given sub-sequences (each of the uploaded sequences)."""
+        us_device: Ultrasound = self.get_device("/Ultrasound:0")
         result_metadatas = []
-        result_sequences = []
         for array_id, (ops, array, metadata) in enumerate(
                 zip(subsequences, self.buffer.elements[0].arrays, self.metadatas)):
             input_shape = array.shape
@@ -468,7 +573,7 @@ class Session(AbstractSession):
                 context=fac,
             )
             result_metadatas.append(metadata)
-        return self._set_processing(self.buffer, result_metadatas, processing, result_sequences)
+        return result_metadatas
 
     def _get_uploaded_sequences(self):
         if self._current_scheme is None:

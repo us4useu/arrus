@@ -415,5 +415,52 @@ class ProcessingRunnerTestCase(unittest.TestCase):
     #         np.testing.assert_equal(expected_array_2, array2)
 
 
+
+class GpuConstMemoryPoolTest(unittest.TestCase):
+    """Operations updated after session.set_subsequences must not exhaust the constant memory pool."""
+
+    def make_pool(self, total_size):
+        from unittest import mock
+        import arrus.utils.imaging as imaging
+        const_array = mock.MagicMock()
+        with mock.patch.object(imaging, "_get_const_memory_array", return_value=const_array):
+            pool = imaging.GpuConstMemoryPool(kernel_module=None, variable_name="test",
+                                              total_size=total_size, dtype=np.float32)
+        return pool, const_array
+
+    def test_reuse_offset_does_not_reserve_more_memory(self):
+        pool, const_array = self.make_pool(total_size=256)
+        x = np.arange(64, dtype=np.float32)
+        offset = pool.reserve_new_array(x)
+        # Many more updates than the pool could hold if each one reserved a new part.
+        for _ in range(100):
+            self.assertEqual(pool.reserve_new_array(x, reuse_offset=offset), offset)
+        self.assertEqual(pool.currently_reserved, 64)
+        # Unchanged content: the constant memory is uploaded only once (by the first reservation).
+        self.assertEqual(const_array.set.call_count, 1)
+
+    def test_reuse_offset_overwrites_changed_content(self):
+        pool, const_array = self.make_pool(total_size=256)
+        offset = pool.reserve_new_array(np.zeros(64, dtype=np.float32))
+        new = np.full(64, 3.0, dtype=np.float32)
+        self.assertEqual(pool.reserve_new_array(new, reuse_offset=offset), offset)
+        np.testing.assert_array_equal(pool.reference_array[offset:offset+64], new)
+        self.assertEqual(const_array.set.call_count, 2)
+
+    def test_different_length_reserves_new_part(self):
+        pool, _ = self.make_pool(total_size=256)
+        offset = pool.reserve_new_array(np.zeros(64, dtype=np.float32))
+        new_offset = pool.reserve_new_array(np.zeros(32, dtype=np.float32), reuse_offset=offset)
+        self.assertEqual(new_offset, 64)
+        self.assertEqual(pool.currently_reserved, 96)
+
+    def test_without_reuse_offset_the_pool_is_exhausted(self):
+        pool, _ = self.make_pool(total_size=256)
+        x = np.zeros(64, dtype=np.float32)
+        for _ in range(4):
+            pool.reserve_new_array(x)
+        with self.assertRaises(ValueError):
+            pool.reserve_new_array(x)
+
 if __name__ == "__main__":
     unittest.main()

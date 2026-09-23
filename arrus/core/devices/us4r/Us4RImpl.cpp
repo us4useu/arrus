@@ -475,6 +475,12 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
     currentScheme = scheme;
     currentRxTimeOffset = rxTimeOffset;
+    // A new sequence: the sequencer table is no longer split into banks (see the us4OEM SetNTriggers).
+    discardPreparedSubsequences();
+    releaseRetiredTransfers(false);
+    sequencerDoubleBuffering = false;
+    sequencerBankSize = 0;
+    activeBankOffset = 0;
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(), buffers);
     // Reset sub-sequence factory and params.
     currentSubsequenceParams.reset();
@@ -619,6 +625,10 @@ void Us4RImpl::start() {
     for (auto &us4oem : us4oems) {
         us4oem->getIUs4OEM()->EnableRuntimeInterrupts();
     }
+    if (preparedSubsequences.has_value()) {
+        // The prepared sub-sequences are used right from the start.
+        commitPreparedSubsequences(false);
+    }
     //  EnableSequencer resets position of the us4oem sequencer.
     for(auto &us4oem: this->us4oems) {
         // Reset tx subsystem pointers.
@@ -628,9 +638,17 @@ void Us4RImpl::start() {
         // a sub-sequence is in use. When the sub-sequence is set with the setSubsequence method,
         // the sequencer pointers will appropriately set to the start param value.
         // Set it to the current beginning of the array 0.
-        auto startEntry = getSequencerStartEntry();
+        // With the sequencer double-buffering: the sequence is executed from the currently active bank.
+        auto startEntry = getSequencerStartEntry() + activeBankOffset;
         us4oem->enableSequencer(ARRUS_SAFE_CAST(startEntry, uint16_t), maskDVDDInterrupt);
     }
+    for (auto &callbacks: transferCallbacks) {
+        if (callbacks) {
+            callbacks->reset();
+        }
+    }
+    // NOTE: starting the device runs the first element (in the MANUAL mode: until the first trigger).
+    nTriggeredElements = 1;
     if (this->digitalBackplane.has_value() && isExternalTrigger) {
         // external trigger
         this->digitalBackplane.value()->enableExternalTrigger();
@@ -868,6 +886,14 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
 }
 
 void Us4RImpl::trigger(bool sync, std::optional<long long> timeout) {
+    {
+        std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
+        if (preparedSubsequences.has_value()) {
+            // The sequencer waits for this trigger: redirect it to the prepared bank (see the method for details).
+            commitPreparedSubsequences(true);
+        }
+        ++nTriggeredElements;
+    }
     this->getMasterOEM()->syncTrigger();
     if(sync) {
         this->sync(timeout);
@@ -1128,6 +1154,9 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *outputBuffer, const std::v
     if (transferRegistrar.size() < us4oems.size()) {
         transferRegistrar.resize(us4oems.size());
     }
+    if (transferCallbacks.size() < us4oems.size()) {
+        transferCallbacks.resize(us4oems.size());
+    }
     for (auto &us4oem : us4oems) {
         auto us4oemBuffer = srcBuffers.at(o);
         this->registerOutputBuffer(outputBuffer, us4oemBuffer, us4oem.get(), workMode);
@@ -1153,9 +1182,18 @@ void Us4RImpl::registerOutputBuffer(Us4ROutputBuffer *bufferDst, const Us4OEMBuf
     if (transferRegistrar[us4oemOrdinal]) {
         transferRegistrar[us4oemOrdinal].reset();
     }
+    const auto [transferIdOffset, maxNTransfers] = getTransferIdRange(activeBankOffset);
     transferRegistrar[us4oemOrdinal] = std::make_shared<Us4OEMDataTransferRegistrar>(
-        bufferDst, bufferSrc, us4oem, us4oem->getDescriptor().getMaxTransferSize());
+        bufferDst, bufferSrc, us4oem, us4oem->getDescriptor().getMaxTransferSize(),
+        activeBankOffset, transferIdOffset, maxNTransfers);
     transferRegistrar[us4oemOrdinal]->registerTransfers();
+    // A single us4OEM IRQ callback, which dispatches the interrupts to the transfer callbacks (which can be
+    // then replaced while the device is running, see prepareSubsequences).
+    auto callbacks = std::make_shared<Us4OEMTransferCallbacks>();
+    callbacks->set(transferRegistrar[us4oemOrdinal]->getCallbacks(),
+                   transferRegistrar[us4oemOrdinal]->getNumberOfTransfersPerElement());
+    transferCallbacks[us4oemOrdinal] = callbacks;
+    ius4oem->RegisterCallback(IUs4OEM::MSINumber::PCIDMA, [callbacks]() { (*callbacks)(); });
     // Register buffer element release functions.
     bool isMaster = us4oem->getDeviceId().getOrdinal() == this->getMasterOEM()->getDeviceId().getOrdinal();
     size_t nRepeats = nElementsDst / nElementsSrc;
@@ -1212,12 +1250,28 @@ void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
     }
 }
 
+void Us4RImpl::markEntriesAsReady(IUs4OEM *ius4oem, uint16 startFiring, uint16 endFiring, bool transfer) {
+    auto mark = [ius4oem, transfer](uint16 start, uint16 end) {
+        if (transfer) {
+            ius4oem->MarkEntriesAsReadyForTransfer(start, end);
+        } else {
+            ius4oem->MarkEntriesAsReadyForReceive(start, end);
+        }
+    };
+    mark(startFiring, endFiring);
+    if (sequencerDoubleBuffering) {
+        // The firings are the same in both banks of the sequencer table; the element can be acquired by any of them.
+        const uint16 bankSize = sequencerBankSize;
+        mark(ARRUS_SAFE_CAST(startFiring + bankSize, uint16), ARRUS_SAFE_CAST(endFiring + bankSize, uint16));
+    }
+}
+
 std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring) {
     switch (workMode) {
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                markEntriesAsReady(us4oems[i]->getIUs4OEM(), startFiring, endFiring, true);
             }
             if (this->state != State::STOP_IN_PROGRESS && this->state != State::STOPPED) {
                 getMasterOEM()->syncTrigger();
@@ -1230,7 +1284,7 @@ std::function<void()> Us4RImpl::createReleaseCallback(Scheme::WorkMode workMode,
         return [this, startFiring, endFiring]() {
             std::unique_lock<std::mutex> guard(triggerMutex);
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForTransfer(startFiring, endFiring);
+                markEntriesAsReady(us4oems[i]->getIUs4OEM(), startFiring, endFiring, true);
             }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1243,7 +1297,7 @@ std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode wo
     case Scheme::WorkMode::HOST:// Automatically generate new trigger after releasing all elements.
         return [this, startFiring, endFiring]() {
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                markEntriesAsReady(us4oems[i]->getIUs4OEM(), startFiring, endFiring, false);
             }
         };
     case Scheme::WorkMode::ASYNC: // Trigger generator: us4R
@@ -1253,7 +1307,7 @@ std::function<void()> Us4RImpl::createReceiveReleaseCallback(Scheme::WorkMode wo
         return [this, startFiring, endFiring]() {
             std::unique_lock<std::mutex> guard(triggerMutex);
             for (int i = (int) us4oems.size() - 1; i >= 0; --i) {
-                us4oems[i]->getIUs4OEM()->MarkEntriesAsReadyForReceive(startFiring, endFiring);
+                markEntriesAsReady(us4oems[i]->getIUs4OEM(), startFiring, endFiring, false);
             }
         };
     default: throw ::arrus::IllegalArgumentException("Unsupported work mode.");
@@ -1572,9 +1626,9 @@ Us4RImpl::setSubsequences(const std::vector<Slice> &slices, const std::vector<st
     return setSubsequences(ops, sris);
 }
 
-std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>>
-Us4RImpl::setSubsequences(const std::vector<std::vector<uint16>> &ops,
-                          const std::vector<std::optional<float>> &sris) {
+Us4RImpl::SubsequenceSelection
+Us4RImpl::createSubsequenceSelection(const std::vector<std::vector<uint16>> &ops,
+                                     const std::vector<std::optional<float>> &sris) {
     // Validation
     ARRUS_REQUIRES_TRUE_E(subsequenceFactory.has_value() && currentScheme.has_value(),
                           ::arrus::IllegalStateException("Call upload method before setting a new subsequences."));
@@ -1584,44 +1638,50 @@ Us4RImpl::setSubsequences(const std::vector<std::vector<uint16>> &ops,
                             "uploaded TX/RX sequences.");
     ARRUS_REQUIRES_TRUE_IAE(sris.empty() || ops.size() == sris.size(),
                             "The list of SRIs should be empty or have the same length as the list of sub-sequences.");
-    // vars/consts
     const SequenceId nSequences = ARRUS_SAFE_CAST(currentScheme->getTxRxSequences().size(), SequenceId);
-    const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
-    // Physical firings, etc.
-    std::vector<Us4RSubsequence> params;
-    // The physical firings (sequencer entries) of each of the enabled sub-sequences.
-    std::vector<std::vector<uint16_t>> entries;
-    std::vector<uint32_t> timeToNextTriggers;
-    // TX/RX sequence -> OEM buffer -> array definition
-    std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays;
     // Handle empty sris array.
     std::vector<std::optional<float>> actualSris = sris.empty() ?
                                                                 getNTimes<std::optional<float>>(std::nullopt, nSequences):
                                                                 sris;
+    SubsequenceSelection result;
+    for(SequenceId i = 0; i < nSequences; ++i) {
+        auto p = subsequenceFactory->get(i, ops.at(i), actualSris.at(i));
+        result.params.push_back(p);
+        result.oemArrays.push_back(p.getArrayDefs());
+        if(!p.empty()) {
+            // Filter out empty sub-sequences
+            result.entries.push_back(p.getEntries());
+            result.timeToNextTriggers.push_back(p.getTimeToNextTrigger());
+        }
+    }
+    ARRUS_REQUIRES_TRUE_IAE(!result.entries.empty(), "At least one TX/RX should be selected.");
+    return result;
+}
+
+std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>>
+Us4RImpl::setSubsequences(const std::vector<std::vector<uint16>> &ops,
+                          const std::vector<std::optional<float>> &sris) {
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
     const auto tStart = std::chrono::high_resolution_clock::now();
+    auto selection = createSubsequenceSelection(ops, sris);
+    const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    const auto tParams = std::chrono::high_resolution_clock::now();
+    // The transfers of the sequencer banks other than the one that will be used from now on.
+    discardPreparedSubsequences();
+    releaseRetiredTransfers(false);
     // Clear callback (the new one will be registered later, in the prepareHostBuffer)
     for(auto &us4oem: us4oems) {
         us4oem->clearDMACallbacks();
     }
-    for(SequenceId i = 0; i < nSequences; ++i) {
-        auto p = subsequenceFactory->get(i, ops.at(i), actualSris.at(i));
-        params.push_back(p);
-        oemArrays.push_back(p.getArrayDefs());
-        if(!p.empty()) {
-            // Filter out empty sub-sequences
-            entries.push_back(p.getEntries());
-            timeToNextTriggers.push_back(p.getTimeToNextTrigger());
-        }
-    }
-    ARRUS_REQUIRES_TRUE_IAE(!entries.empty(), "At least one TX/RX should be selected.");
-    const auto tParams = std::chrono::high_resolution_clock::now();
-
+    // NOTE: with the sequencer double-buffering enabled, the sub-sequence is programmed in the inactive bank,
+    // which then becomes the active one.
     for (auto &oem : us4oems) {
-        oem->getIUs4OEM()->SetSubsequences(entries, isSyncMode, timeToNextTriggers);
+        oem->getIUs4OEM()->SetSubsequences(selection.entries, isSyncMode, selection.timeToNextTriggers);
     }
+    activeBankOffset = getMasterOEM()->getIUs4OEM()->GetSequencerActiveBankOffset();
     const auto tSequencer = std::chrono::high_resolution_clock::now();
-    currentSubsequenceParams = params;
-    const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(oemArrays);
+    currentSubsequenceParams = selection.params;
+    const auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(selection.oemArrays);
     const auto tBuffers = std::chrono::high_resolution_clock::now();
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(),
                       currentScheme->getWorkMode(), subsequenceBuffers, true);
@@ -1634,12 +1694,244 @@ Us4RImpl::setSubsequences(const std::vector<std::vector<uint16>> &ops,
         std::chrono::duration<float, std::milli>(tHostBuffer-tBuffers).count()));
     // Create metadata
     std::vector<FrameChannelMappingImpl::Handle> fcms;
-    for(const auto &p: params) {
+    for(const auto &p: selection.params) {
         fcms.emplace_back(p.buildFCM());
     }
     auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
     // A single metadata is assumed here.
     return {this->buffer, metadatas};
+}
+
+std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>>
+Us4RImpl::prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
+                              const std::vector<std::optional<float>> &sris) {
+    std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
+    if (this->state != State::STARTED) {
+        // Nothing is running: just set the new sub-sequences.
+        return setSubsequences(ops, sris);
+    }
+    ARRUS_REQUIRES_TRUE_E(currentScheme.has_value(),
+                          ::arrus::IllegalStateException("Call upload method before setting a new subsequences."));
+    ARRUS_REQUIRES_TRUE_E(
+        currentScheme->getWorkMode() == Scheme::WorkMode::MANUAL,
+        IllegalStateException("Preparing sub-sequences while the device is running is supported in the MANUAL work "
+                              "mode only (please stop the device and use setSubsequences instead)."));
+    const auto tStart = std::chrono::high_resolution_clock::now();
+    auto selection = createSubsequenceSelection(ops, sris);
+    const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
+    auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(selection.oemArrays);
+    // The host buffer (and the metadata of the buffer elements acquired so far) is kept.
+    ARRUS_REQUIRES_TRUE_E(
+        buffer != nullptr && hasSameLayout(subsequenceBuffers, oemBuffers),
+        IllegalArgumentException("Preparing a sub-sequence while the device is running requires the same layout of "
+                                 "the output data as the currently running (sub-)sequence, e.g. the same number of "
+                                 "TX/RXs. Please stop the device and use setSubsequences instead."));
+    if (!sequencerDoubleBuffering) {
+        // The transfer ids will be split between the two banks: the currently used ones must fit the first bank's
+        // range (the range that will be used once the double-buffering is enabled).
+        constexpr size_t maxNTransfers = N_TRANSFER_IDS_PER_SEQUENCER_BANK;
+        for (const auto &registrar: transferRegistrar) {
+            if (registrar) {
+                ARRUS_REQUIRES_TRUE_E(
+                    registrar->getStrategy() == 0
+                        && registrar->getNumberOfTransfers()*oemBuffers.at(0).getNumberOfElements() <= maxNTransfers,
+                    IllegalArgumentException(format(
+                        "The sequencer double-buffering requires the host buffer to have the same number of "
+                        "elements as the RX buffer, and at most {} data transfers per us4OEM.", maxNTransfers)));
+            }
+        }
+    }
+    // The previous prepared sub-sequence was not triggered: overwrite it.
+    discardPreparedSubsequences();
+    // The inactive bank may still contain the transfers of the previously active sub-sequence.
+    releaseRetiredTransfers(true);
+    const auto tRelease = std::chrono::high_resolution_clock::now();
+    {
+        // NOTE: the buffer release functions (MANUAL mode) modify the handshake registers under triggerMutex.
+        std::unique_lock<std::mutex> triggerGuard(triggerMutex);
+        for (auto &oem : us4oems) {
+            auto ius4oem = oem->getIUs4OEM();
+            ius4oem->EnableSequencerDoubleBuffering();
+            ius4oem->PrepareSubsequences(selection.entries, isSyncMode, selection.timeToNextTriggers);
+        }
+    }
+    const uint16 inactiveBankOffset = getMasterOEM()->getIUs4OEM()->GetSequencerInactiveBankOffset();
+    if (!sequencerDoubleBuffering) {
+        sequencerBankSize = ARRUS_SAFE_CAST(std::max(inactiveBankOffset, activeBankOffset), uint16);
+        sequencerDoubleBuffering = true;
+    }
+    const auto tSequencer = std::chrono::high_resolution_clock::now();
+    // Data transfers of the inactive bank. NOTE: the us4OEM IRQ callbacks are not modified here (the device is
+    // running), the new transfer callbacks are scheduled on commit (see Us4OEMTransferCallbacks).
+    PreparedSubsequences prepared;
+    prepared.params = selection.params;
+    prepared.registrars.resize(us4oems.size());
+    const auto [transferIdOffset, maxNTransfers] = getTransferIdRange(inactiveBankOffset);
+    try {
+        for (Ordinal o = 0; o < us4oems.size(); ++o) {
+            const auto &oemBuffer = subsequenceBuffers.at(o);
+            if (getUniqueUs4OEMBufferElementSize(oemBuffer) == 0) {
+                continue;
+            }
+            auto us4oem = us4oems.at(o).get();
+            auto registrar = std::make_shared<Us4OEMDataTransferRegistrar>(
+                buffer.get(), oemBuffer, us4oem, us4oem->getDescriptor().getMaxTransferSize(),
+                inactiveBankOffset, transferIdOffset, maxNTransfers);
+            ARRUS_REQUIRES_TRUE_E(registrar->getStrategy() == 0,
+                                  IllegalArgumentException("The sequencer double-buffering requires the host buffer "
+                                                           "to have the same number of elements as the RX buffer."));
+            registrar->registerTransfers();
+            prepared.registrars.at(o) = registrar;
+        }
+    } catch (...) {
+        for (auto &registrar : prepared.registrars) {
+            if (registrar) {
+                registrar->unregisterTransfers(true);
+            }
+        }
+        throw;
+    }
+    prepared.oemBuffers = std::move(subsequenceBuffers);
+    preparedSubsequences = std::move(prepared);
+    const auto tTransfers = std::chrono::high_resolution_clock::now();
+    logger->log(LogSeverity::DEBUG, format(
+        "prepareSubsequences timing [ms]: params + release: {}, sequencer: {}, transfers: {}",
+        std::chrono::duration<float, std::milli>(tRelease-tStart).count(),
+        std::chrono::duration<float, std::milli>(tSequencer-tRelease).count(),
+        std::chrono::duration<float, std::milli>(tTransfers-tSequencer).count()));
+    std::vector<FrameChannelMappingImpl::Handle> fcms;
+    for(const auto &p: selection.params) {
+        fcms.emplace_back(p.buildFCM());
+    }
+    auto metadatas = createMetadata(std::move(fcms), currentRxTimeOffset.value());
+    return {this->buffer, metadatas};
+}
+
+std::vector<uint16> Us4RImpl::getActiveBankRepetitionStarts() const {
+    // The number of sequencer entries of a single repetition (i.e. of a single us4OEM buffer element).
+    const auto &element = oemBuffers.at(0).getElement(0);
+    const uint16 nFirings = ARRUS_SAFE_CAST(element.getGlobalFiring() + 1, uint16);
+    // The first entry of a single repetition that is currently executed.
+    const uint16 firstEntry = getSequencerStartEntry();
+    std::vector<uint16> result;
+    for (size_t r = 0; r < oemBuffers.at(0).getNumberOfElements(); ++r) {
+        result.push_back(ARRUS_SAFE_CAST(activeBankOffset + r*nFirings + firstEntry, uint16));
+    }
+    return result;
+}
+
+void Us4RImpl::commitPreparedSubsequences(bool isRunning) {
+    auto &prepared = preparedSubsequences.value();
+    if (isRunning) {
+        // NOTE: while waiting for the trigger, the us4OEM sequencer already points to the FIRST entry of the next
+        // repetition (i.e. it has already followed the NEXT_PTR of the last entry of the previous repetition).
+        // That repetition will be executed by the next trigger as it is (from the active bank); only its end can
+        // be redirected to the prepared bank, i.e. the new sub-sequence is executed starting from the second
+        // trigger after this call.
+        // Safety check: each us4OEM sequencer must wait at the beginning of a repetition of the active bank --
+        // otherwise, it is not known which entries are still going to be executed.
+        const auto expectedStarts = getActiveBankRepetitionStarts();
+        std::vector<uint16> currentIndices;
+        for (auto &oem : us4oems) {
+            currentIndices.push_back(oem->getIUs4OEM()->GetSequencerCurrentIndex());
+        }
+        logger->log(LogSeverity::DEBUG, format("Swapping the sequencer banks; the current sequencer entries: {}, "
+                                               "expected one of: {}", ::arrus::toString(currentIndices),
+                                               ::arrus::toString(expectedStarts)));
+        for (size_t o = 0; o < currentIndices.size(); ++o) {
+            const auto index = currentIndices.at(o);
+            if (std::find(std::begin(expectedStarts), std::end(expectedStarts), index) == std::end(expectedStarts)) {
+                throw IllegalStateException(format(
+                    "Cannot switch to the prepared sub-sequence: the sequencer of us4OEM:{} is at the entry {}, while "
+                    "one of {} (the beginning of a repetition of the active bank) was expected (all the us4OEMs: {}). "
+                    "Make sure the previous trigger has completed; otherwise please stop the device and use "
+                    "setSubsequences.",
+                    o, index, ::arrus::toString(expectedStarts), ::arrus::toString(currentIndices)));
+            }
+        }
+    }
+    for (auto &oem : us4oems) {
+        oem->getIUs4OEM()->SwapSubsequences(false);
+    }
+    activeBankOffset = getMasterOEM()->getIUs4OEM()->GetSequencerActiveBankOffset();
+    // Running: the element triggered next is still acquired with the previous bank (see above), the one after
+    // it is the first one acquired by the new bank. Stopped: the device will be started from the new bank.
+    const uint64_t firstElement = isRunning ? nTriggeredElements + 1 : 0;
+    for (Ordinal o = 0; o < us4oems.size(); ++o) {
+        const auto &registrar = prepared.registrars.at(o);
+        if (o < transferCallbacks.size() && transferCallbacks.at(o)) {
+            if (registrar) {
+                transferCallbacks.at(o)->schedule(registrar->getCallbacks(),
+                                                  registrar->getNumberOfTransfersPerElement(), firstElement);
+            } else {
+                transferCallbacks.at(o)->schedule({}, 0, firstElement);
+            }
+        }
+    }
+    // The transfers of the previous bank are still in use until the element firstElement-1 is transferred.
+    RetiredTransfers retired{firstElement, {}};
+    for (auto &registrar : transferRegistrar) {
+        if (registrar) {
+            retired.registrars.push_back(registrar);
+        }
+    }
+    retiredTransfers.push_back(std::move(retired));
+    transferRegistrar = prepared.registrars;
+    currentSubsequenceParams = prepared.params;
+    oemBuffers = prepared.oemBuffers;
+    preparedSubsequences.reset();
+}
+
+void Us4RImpl::discardPreparedSubsequences() {
+    if (!preparedSubsequences.has_value()) {
+        return;
+    }
+    for (auto &registrar : preparedSubsequences->registrars) {
+        if (registrar) {
+            // NOTE: the prepared bank is not executed, it is safe to clear its transfers.
+            registrar->unregisterTransfers(true);
+        }
+    }
+    preparedSubsequences.reset();
+}
+
+void Us4RImpl::releaseRetiredTransfers(bool waitUntilUnused) {
+    if (retiredTransfers.empty()) {
+        return;
+    }
+    if (waitUntilUnused && state == State::STARTED) {
+        // The retired transfers (and their page-locked memory) are in use until all the elements acquired with them
+        // are transferred; after that, the sequencer does not execute the entries of their bank anymore.
+        const std::chrono::milliseconds timeout{10000};
+        const auto untilElement = retiredTransfers.back().untilElement;
+        for (auto &callbacks : transferCallbacks) {
+            if (callbacks) {
+                ARRUS_ACTIVE_WAIT_TIMEOUT_P(
+                    callbacks->getNumberOfCompletedElements() >= untilElement, timeout,
+                    IllegalStateException("Timeout while waiting for the data transfers of the previous sub-sequence "
+                                          "(was the device triggered?)."),
+                    std::chrono::milliseconds{1}
+                );
+            }
+        }
+    }
+    for (auto &retired : retiredTransfers) {
+        for (auto &registrar : retired.registrars) {
+            // NOTE: the retired transfers are in the inactive sequencer bank.
+            registrar->unregisterTransfers(true);
+        }
+    }
+    retiredTransfers.clear();
+}
+
+std::pair<size_t, size_t> Us4RImpl::getTransferIdRange(uint16 bankOffset) const {
+    if (!sequencerDoubleBuffering) {
+        return {0, Us4OEMDataTransferRegistrar::MAX_N_TRANSFERS};
+    }
+    // Each bank uses its own part of the transfer ids. NOTE: only the ids < 128 are used (i.e. the ones used
+    // in the typical configurations so far): [0, 64) for the first bank, [64, 128) for the second one.
+    const size_t bank = bankOffset == 0 ? 0 : 1;
+    return {bank*N_TRANSFER_IDS_PER_SEQUENCER_BANK, N_TRANSFER_IDS_PER_SEQUENCER_BANK};
 }
 
 void Us4RImpl::setMaximumPulseLength(std::optional<float> maxLength) {

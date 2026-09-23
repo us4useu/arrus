@@ -15,6 +15,7 @@ Two independent checks of "did the hardware really run exactly the selected TX/R
 The same `processing` object is passed to every set_subsequences call, so the imaging
 pipeline goes through the update path (instead of being re-created).
 """
+import os
 import sys
 import time
 import numpy as np
@@ -27,7 +28,8 @@ from arrus.utils.imaging import Pipeline, Processing, RemapToLogicalOrder
 
 arrus.set_clog_level(arrus.logging.ERROR)
 
-CFG = "/opt/us4us/us4ndt64.prototxt"
+# The session configuration; can be overridden with the ARRUS_CFG environment variable.
+CFG = os.environ.get("ARRUS_CFG", "/opt/us4us/us4ndt64.prototxt")
 VOLTAGE = 10
 N_OPS = 16
 ELEMENT_STEP = 4           # TX/RX i transmits on the element ELEMENT_STEP*i

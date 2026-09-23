@@ -308,6 +308,8 @@ if (ARRUS_RUN_TESTS)
     create_core_test(devices/us4r/us4oem/Us4OEMImplTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
     create_core_test(devices/us4r/us4oem/Us4OEMTxRxValidatorTest.cpp "devices/TxRxParameters.cpp;devices/DeviceId.cpp;common/logging.cpp")
     create_core_test(devices/us4r/us4oem/Us4OEMRxMappingRegisterBuilderTest.cpp "${US4OEM_IMPL_TEST_DEPS}")
+    create_core_test(devices/us4r/Us4OEMDataTransferRegistrarBankTest.cpp
+                     "${US4OEM_IMPL_TEST_DEPS};devices/gpu/CudaRuntime.cpp")
 
     set(ADAPTER_IMPL_TEST_DEPS
         devices/TxRxParameters.cpp
@@ -318,6 +320,7 @@ if (ARRUS_RUN_TESTS)
     )
 
     create_core_test(devices/us4r/Us4OEMDataTransferRegistrarTest.cpp "common/logging.cpp;devices/gpu/CudaRuntime.cpp")
+    create_core_test(devices/us4r/Us4OEMTransferCallbacksTest.cpp)
     create_core_test(devices/us4r/mapping/ProbeToAdapterMappingConverterTest.cpp
          "devices/us4r/mapping/ProbeToAdapterMappingConverter.h;devices/us4r/FrameChannelMappingImpl.cpp;common/logging.cpp;devices/DeviceId.cpp")
     create_core_test(devices/us4r/mapping/AdapterToUs4OEMMappingConverterTest.cpp "${ADAPTER_IMPL_TEST_DEPS}")

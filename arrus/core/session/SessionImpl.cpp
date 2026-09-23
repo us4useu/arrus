@@ -316,6 +316,21 @@ UploadResult SessionImpl::setSubsequences(const std::vector<std::vector<uint16>>
     return UploadResult(buffer, {metadata});
 }
 
+UploadResult SessionImpl::prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
+                                              const std::vector<std::optional<float>> &sris) {
+    std::lock_guard guard(stateMutex);
+    ASSERT_STATE_NOT(State::CLOSED);
+    if (state == State::STARTED) {
+        ARRUS_REQUIRES_TRUE_E(
+            currentScheme.has_value() && currentScheme->getWorkMode() == ops::us4r::Scheme::WorkMode::MANUAL,
+            IllegalStateException("Preparing sub-sequences while the scheme is running is supported in the MANUAL "
+                                  "work mode only."));
+    }
+    auto ultrasound = (Ultrasound *) getDevice(DeviceId(DeviceType::Ultrasound, 0));
+    auto[buffer, metadata] = ultrasound->prepareSubsequences(ops, sris);
+    return UploadResult(buffer, {metadata});
+}
+
 bool SessionImpl::hasDevice(const std::string &deviceIdString) const {
     std::string sanitizedId = sanitizeDeviceId(deviceIdString);
     auto deviceId = DeviceId::parse(sanitizedId);

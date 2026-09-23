@@ -201,6 +201,27 @@ public:
     virtual UploadResult setSubsequences(const std::vector<std::vector<uint16>> &ops,
                                          const std::vector<std::optional<float>> &sris) = 0;
 
+    /**
+     * Prepares the given list of TX/RXs for each of the uploaded TX/RX sequences, without stopping the scheme.
+     *
+     * The new sub-sequences are programmed in the part of the us4R sequencer memory, which is currently not used
+     * (sequencer double-buffering); the currently running sub-sequence is not affected. This way, the next
+     * sub-sequence can be prepared while the current one is acquired and processed.
+     *
+     * NOTE: when the scheme is running, the new sub-sequences are executed starting from the SECOND call to `run`
+     * after this method (the next `run` still acquires the data with the current sub-sequences, as the sequencer
+     * waiting for the trigger has already moved to its first TX/RX).
+     *
+     * When the scheme is running, it requires: the MANUAL work mode, the same layout of the output data as the
+     * current (sub-)sequence (e.g. the same number of TX/RXs) and the output buffer size equal to the RX buffer size.
+     * When the scheme is stopped, this method is equivalent to setSubsequences.
+     *
+     * Parameters: see setSubsequences.
+     * @return the buffer and metadata, that describe the data acquired starting from the next `run`
+     */
+    virtual UploadResult prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
+                                             const std::vector<std::optional<float>> &sris) = 0;
+
     virtual ~Session() = default;
 
 };

@@ -42,6 +42,8 @@ public:
     UploadResult setSubsequences(const std::vector<Slice> &slices, const std::vector<std::optional<float>> &sris) override;
     UploadResult setSubsequences(const std::vector<std::vector<uint16>> &ops,
                                  const std::vector<std::optional<float>> &sris) override;
+    UploadResult prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
+                                     const std::vector<std::optional<float>> &sris) override;
     bool hasDevice(const std::string &deviceId) const override;
     bool hasDevice(const devices::DeviceId &deviceId) const override;
 

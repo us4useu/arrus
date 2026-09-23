@@ -115,6 +115,29 @@ public:
     virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
     setSubsequences(const std::vector<std::vector<uint16>> &ops, const std::vector<std::optional<float>> &sris) = 0;
 
+    /**
+     * Prepares the given list of TX/RXs for each of the uploaded TX/RX sequences. Parameters: see setSubsequences.
+     *
+     * In contrast to setSubsequences, this method does not require the device to be stopped: the new sub-sequence
+     * is programmed in the part of the sequencer memory that is currently not executed (sequencer double-buffering),
+     * while the device can still acquire data with the current sub-sequence.
+     *
+     * When the device is running, the new sub-sequence is executed starting from the SECOND call to trigger after
+     * this method: while waiting for a trigger, the sequencer has already moved to the first TX/RX of the next
+     * acquisition, so the next trigger still acquires the data with the current sub-sequence.
+     *
+     * When the device is running, the following is required:
+     * - the MANUAL work mode,
+     * - the new sub-sequence produces data with exactly the same layout as the current one (e.g. the same number
+     *   of TX/RXs), i.e. the output buffer is kept,
+     * - the number of the host buffer elements is equal to the RX buffer size.
+     * When the device is stopped, this method is equivalent to setSubsequences.
+     *
+     * @return the buffer and the metadata that describe the data acquired starting from the next trigger
+     */
+    virtual std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    prepareSubsequences(const std::vector<std::vector<uint16>> &ops, const std::vector<std::optional<float>> &sris) = 0;
+
     Ultrasound(Ultrasound const &) = delete;
     Ultrasound(Ultrasound const &&) = delete;
     void operator=(Ultrasound const &) = delete;

@@ -1,6 +1,7 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4RIMPL_H
 #define ARRUS_CORE_DEVICES_US4R_US4RIMPL_H
 
+#include <atomic>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
@@ -25,6 +26,7 @@
 #include "arrus/core/common/logging.h"
 #include "arrus/core/devices/us4r/BlockingQueue.h"
 #include "arrus/core/devices/us4r/Us4OEMDataTransferRegistrar.h"
+#include "arrus/core/devices/us4r/Us4OEMTransferCallbacks.h"
 #include "arrus/core/devices/us4r/backplane/DigitalBackplane.h"
 #include "arrus/core/devices/us4r/hv/HighVoltageSupplier.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
@@ -166,6 +168,10 @@ public:
     setSubsequences(const std::vector<std::vector<uint16>> &ops,
                     const std::vector<std::optional<float>> &sris) override;
 
+    std::pair<std::shared_ptr<framework::Buffer>, std::vector<std::shared_ptr<session::Metadata>>>
+    prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
+                        const std::vector<std::optional<float>> &sris) override;
+
     void setMaximumPulseLength(std::optional<float> maxLength) override;
     float getActualTxFrequency(float frequency) override;
     std::string getDescription() const override;
@@ -229,6 +235,8 @@ private:
                               Us4OEMImplBase::RawHandle us4oem, ::arrus::ops::us4r::Scheme::WorkMode workMode);
     size_t getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuffer) const;
 
+    /** Marks the given firings (of both sequencer banks, if double-buffering is on) as ready for transfer/receive. */
+    void markEntriesAsReady(IUs4OEM *ius4oem, uint16 startFiring, uint16 endFiring, bool transfer);
     std::function<void()> createReleaseCallback(::arrus::ops::us4r::Scheme::WorkMode workMode, uint16 startFiring,
                                                 uint16 stopFiring);
     std::function<void()> createOnReceiveOverflowCallback(::arrus::ops::us4r::Scheme::WorkMode workMode,
@@ -255,6 +263,43 @@ private:
     void setVoltageUnsafe(const std::vector<std::optional<HVVoltage>> &voltages);
 
     uint16 getSequencerStartEntry() const;
+
+    /** The parameters of the sub-sequences, as determined for each OEM. */
+    struct SubsequenceSelection {
+        std::vector<Us4RSubsequence> params;
+        /** The physical firings (sequencer entries) of each of the enabled sub-sequences. */
+        std::vector<std::vector<uint16_t>> entries;
+        std::vector<uint32_t> timeToNextTriggers;
+        /** TX/RX sequence -> OEM -> array definition */
+        std::vector<std::vector<Us4OEMBufferArrayDef>> oemArrays;
+    };
+    SubsequenceSelection createSubsequenceSelection(const std::vector<std::vector<uint16>> &ops,
+                                                    const std::vector<std::optional<float>> &sris);
+
+    /** A sub-sequence programmed in the inactive sequencer bank, waiting for the next trigger. */
+    struct PreparedSubsequences {
+        std::vector<Us4RSubsequence> params;
+        std::vector<Us4OEMBuffer> oemBuffers;
+        /** OEM -> the data transfers of the prepared sub-sequence (nullptr: no data from the given OEM) */
+        std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> registrars;
+    };
+    /** The first sequencer entries of the active bank's repetitions (i.e. where the sequencer waits for trigger). */
+    std::vector<uint16> getActiveBankRepetitionStarts() const;
+    /**
+     * Makes the prepared sub-sequences the active ones.
+     *
+     * @param isRunning true: the device waits for the trigger (the new sub-sequences are executed starting from the
+     *   second trigger), false: the device is stopped (the new sub-sequences are executed right from the start)
+     */
+    void commitPreparedSubsequences(bool isRunning);
+    /** Removes the prepared (and not committed) sub-sequences. */
+    void discardPreparedSubsequences();
+    /** Releases the data transfers of the sequencer bank that was used before the last commit. */
+    void releaseRetiredTransfers(bool waitUntilUnused);
+    /** The number of transfer (descriptor table) ids available for a single sequencer bank. */
+    static constexpr size_t N_TRANSFER_IDS_PER_SEQUENCER_BANK = 64;
+    /** The transfer (descriptor table) ids that can be used by the transfers of the bank with the given offset. */
+    std::pair<size_t, size_t> getTransferIdRange(uint16 bankOffset) const;
 
     void prepareHostBuffer(unsigned hostBufNElements, ::arrus::ops::us4r::Scheme::WorkMode workMode, std::vector<Us4OEMBuffer> buffers,
                            bool cleanupSequencerTransfers = false);
@@ -296,6 +341,25 @@ private:
     std::vector<Us4OEMBuffer> oemBuffers;
     std::shared_ptr<Us4ROutputBuffer> buffer;
     std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> transferRegistrar;
+    /** OEM -> the callbacks of the "data transfer done" interrupts (nullptr: no data from the given OEM). */
+    std::vector<Us4OEMTransferCallbacks::SharedHandle> transferCallbacks;
+    // Sequencer double-buffering (see prepareSubsequences).
+    /** Whether the us4OEM sequencer tables are split into two banks. */
+    std::atomic<bool> sequencerDoubleBuffering{false};
+    /** The size of a single sequencer bank (0 when double-buffering is disabled). */
+    std::atomic<uint16> sequencerBankSize{0};
+    /** The first entry of the currently executed sequencer bank. */
+    uint16 activeBankOffset{0};
+    /** The number of the buffer elements triggered since the start (MANUAL work mode). */
+    uint64_t nTriggeredElements{0};
+    std::optional<PreparedSubsequences> preparedSubsequences;
+    /** The data transfers of the previously active sequencer bank, released on the next prepareSubsequences. */
+    struct RetiredTransfers {
+        /** The transfers are in use until this element (exclusive) is transferred. */
+        uint64_t untilElement;
+        std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> registrars;
+    };
+    std::vector<RetiredTransfers> retiredTransfers;
     // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};
