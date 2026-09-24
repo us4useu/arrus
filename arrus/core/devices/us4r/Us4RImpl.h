@@ -360,6 +360,7 @@ private:
         std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> registrars;
     };
     std::vector<RetiredTransfers> retiredTransfers;
+
     // Other.
     std::vector<Bitstream> bitstreams;
     bool hasIOBitstreamAdressing{false};

@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEMDATATRANSFERREGISTRAR_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEMDATATRANSFERREGISTRAR_H
 
+#include <chrono>
+#include <string>
 #include "arrus/common/compiler.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/common/logging.h"
@@ -99,15 +101,24 @@ public:
      * (in the order the us4OEM interrupts will be generated), see Us4OEMTransferCallbacks.
      */
     void registerTransfers() {
+        const auto t0 = std::chrono::high_resolution_clock::now();
         // Page-lock all host dst points.
         pageLockDstMemory();
+        const auto t1 = std::chrono::high_resolution_clock::now();
 
         // Send page descriptors to us4OEM DMA.
         size_t nSrcPoints = srcNElements;
         size_t nDstPoints = strategy == 2 ? srcNElements : dstNElements;
 
         programTransfers(nSrcPoints, nDstPoints);
+        const auto t2 = std::chrono::high_resolution_clock::now();
         scheduleTransfers();
+        const auto t3 = std::chrono::high_resolution_clock::now();
+        getDefaultLogger()->log(LogSeverity::DEBUG, ::arrus::format(
+            "registerTransfers timing [ms]: page lock: {}, program: {}, schedule: {}",
+            std::chrono::duration<float, std::milli>(t1-t0).count(),
+            std::chrono::duration<float, std::milli>(t2-t1).count(),
+            std::chrono::duration<float, std::milli>(t3-t2).count()));
     }
 
     void unregisterTransfers(bool cleanupSequencer = false) {

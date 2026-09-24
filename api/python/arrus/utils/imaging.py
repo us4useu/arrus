@@ -1804,8 +1804,22 @@ class RxBeamforming(Operation):
     def __init__(self, num_pkg=None):
         import cupy as cp
         self.num_pkg = cp
+        #: The TX centre delay the TX delays were equalized to, kept between updates (see update).
+        self._tx_center_delay = None
 
-    def prepare(self, const_metadata):
+    def update(self, const_metadata):
+        """Updates this operation for a new sub-sequence of the uploaded sequence.
+
+        Only the quantities that depend on the selected TX/RXs are recomputed. In particular the
+        TX centre delay is NOT: the TX delays were computed (and equalized to that centre delay)
+        for the whole uploaded sequence and programmed into the device at upload time, and
+        selecting a sub-sequence does not change them. Recomputing it from the sub-sequence would
+        also be wrong whenever the TX/RX with the largest centre delay is not selected -- the
+        beamformer's initial delay would then not match the delays the device actually uses.
+        """
+        return self.prepare(const_metadata, keep_tx_center_delay=True)
+
+    def prepare(self, const_metadata, keep_tx_center_delay: bool = False):
         import cupy as cp
         probe_model = get_unique_probe_model(const_metadata)
 
@@ -1826,10 +1840,14 @@ class RxBeamforming(Operation):
             init_delay = 0
             if seq.init_delay == "tx_start":
                 burst_factor = n_periods / (2 * fc)
-                tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
-                    sequence=seq, c=c, probe_model=probe_model,
-                    fs=const_metadata.data_description.sampling_frequency
-                )
+                if keep_tx_center_delay and self._tx_center_delay is not None:
+                    tx_center_delay = self._tx_center_delay
+                else:
+                    tx_center_delay = arrus.kernels.simple_tx_rx_sequence.get_center_delay(
+                        sequence=seq, c=c, probe_model=probe_model,
+                        fs=const_metadata.data_description.sampling_frequency
+                    )
+                    self._tx_center_delay = tx_center_delay
                 init_delay = tx_center_delay + burst_factor
             elif not seq.init_delay == "tx_center":
                 raise ValueError(f"Unrecognized init_delay value:"
@@ -1872,9 +1890,13 @@ class RxBeamforming(Operation):
             init_delay = 0
             if ref_rx.init_delay == "tx_start":
                 burst_factor = n_periods / (2 * fc)
-                tx_center_delay = arrus.kernels.tx_rx_sequence.get_center_delay(
-                    seq, probe_tx=probe_model, probe_rx=probe_model
-                )
+                if keep_tx_center_delay and self._tx_center_delay is not None:
+                    tx_center_delay = self._tx_center_delay
+                else:
+                    tx_center_delay = arrus.kernels.tx_rx_sequence.get_center_delay(
+                        seq, probe_tx=probe_model, probe_rx=probe_model
+                    )
+                    self._tx_center_delay = tx_center_delay
                 init_delay = tx_center_delay+burst_factor
             elif ref_rx.init_delay == "tx_center":
                 init_delay = 0
@@ -3428,8 +3450,13 @@ class RemapToLogicalOrder(Operation):
                 f"samples (actual: {n_samples_set})")
         n_samples = next(iter(n_samples_set))
         batch_size = fcm.batch_size
-        self.output_shape = (batch_size, n_frames, n_samples, n_channels)
-        self._output_buffer = xp.zeros(shape=self.output_shape, dtype=xp.int16)
+        output_shape = (batch_size, n_frames, n_samples, n_channels)
+        if self._output_buffer is not None and self._output_buffer.shape == output_shape:
+            # The same layout (e.g. after selecting another sub-sequence): keep the buffer.
+            self._output_buffer.fill(0)
+        else:
+            self._output_buffer = xp.zeros(shape=output_shape, dtype=xp.int16)
+        self.output_shape = output_shape
 
         if xp == np:
             # CPU
@@ -3446,19 +3473,22 @@ class RemapToLogicalOrder(Operation):
             self._frame_offsets = cp.asarray(frame_offsets)
             # For each us4OEM, get number of physical frames this us4OEM gathers.
             # Note: this is the max number of us4OEMs IN USE.
-            n_us4oems = cp.max(self._fcm_us4oems).get() + 1
+            # NOTE: computed from the HOST arrays. Doing it on the GPU (cp.max(...).get(), boolean
+            # masks) costs a device synchronisation each -- a few ms per call on an aarch64 host,
+            # and this runs on every sub-sequence change.
+            host_us4oems, host_frames = fcm.us4oems, fcm.frames
+            n_us4oems = int(np.max(host_us4oems)) + 1
             n_frames_us4oems = []
             # The us4OEM:0 is a master us4OEM that collects data from all transmits,
             # even if its channels are not included in the RX aperture (each frame
             # contains frame metadata information).
             n_frames_us4oems.append(fcm.n_frames[0]//batch_size)
             for us4oem in range(1, n_us4oems):
-                us4oem_frames = self._fcm_frames[self._fcm_us4oems == us4oem]
+                us4oem_frames = host_frames[host_us4oems == us4oem]
                 if us4oem_frames.size == 0:
                     n_frames_us4oems.append(0)
                 else:
-                    n_frames_us4oem = cp.max(us4oem_frames).get().item() + 1
-                    n_frames_us4oems.append(n_frames_us4oem)
+                    n_frames_us4oems.append(int(np.max(us4oem_frames)) + 1)
 
             #  TODO constant memory
             self._n_frames_us4oems = cp.asarray(n_frames_us4oems, dtype=cp.uint32)

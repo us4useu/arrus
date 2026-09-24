@@ -561,7 +561,7 @@ class Session(AbstractSession):
             input_shape = array.shape
             sequence = metadata.context.sequence.get_subsequence(ops)
             raw_sequence = metadata.context.raw_sequence.get_subsequence(ops)
-            data_description = us_device.get_data_description_updated_for_subsequence(array_id, upload_result, sequence)
+            data_description = us_device.get_data_description_updated_for_subsequence(array_id, upload_result, sequence, ops=ops)
             fac = dataclasses.replace(
                 metadata.context,
                 sequence=sequence,

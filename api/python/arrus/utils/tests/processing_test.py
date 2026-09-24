@@ -3,6 +3,7 @@ import unittest
 from collections import deque, namedtuple
 from collections.abc import Iterable
 import numpy as np
+from types import SimpleNamespace
 import cupy as cp
 from dataclasses import dataclass
 
@@ -461,6 +462,53 @@ class GpuConstMemoryPoolTest(unittest.TestCase):
             pool.reserve_new_array(x)
         with self.assertRaises(ValueError):
             pool.reserve_new_array(x)
+
+
+class DeriveSubsequenceFcmTest(unittest.TestCase):
+    """The frame channel mapping of a sub-sequence, derived from the uploaded sequence's one."""
+
+    def make_full(self, n_ops=8, n_channels=4, n_us4oems=2):
+        """A mapping where each TX/RX is received by both us4OEMs (half of the channels each)."""
+        us4oems = np.zeros((n_ops, n_channels), dtype=np.uint8)
+        us4oems[:, n_channels//2:] = 1
+        frames = np.repeat(np.arange(n_ops, dtype=np.int16)[:, None], n_channels, axis=1)
+        channels = np.tile(np.arange(n_channels//2, dtype=np.int8), (n_ops, 2))
+        return SimpleNamespace(us4oems=us4oems, frames=frames, channels=channels,
+                               frame_offsets=np.array([0, n_ops], dtype=np.uint32),
+                               n_frames=np.array([n_ops, n_ops], dtype=np.uint32), batch_size=1)
+
+    def test_frames_are_renumbered_per_us4oem(self):
+        from arrus.utils.core import derive_subsequence_fcm
+        full = self.make_full()
+        us4oems, frames, channels, frame_offsets, n_frames = derive_subsequence_fcm(full, [1, 4, 5])
+        np.testing.assert_array_equal(frames, np.repeat(np.arange(3)[:, None], 4, axis=1))
+        np.testing.assert_array_equal(us4oems, full.us4oems[[1, 4, 5]])
+        np.testing.assert_array_equal(channels, full.channels[[1, 4, 5]])
+        np.testing.assert_array_equal(n_frames, [3, 3])
+        np.testing.assert_array_equal(frame_offsets, [0, 3])
+
+    def test_us4oem_that_receives_only_some_of_the_selected_ops(self):
+        """A TX/RX whose RX aperture is clipped to one us4OEM: the other one has no frame for it."""
+        from arrus.utils.core import derive_subsequence_fcm
+        full = self.make_full()
+        full.channels[3, 2:] = -1     # op 3: no valid channels on us4OEM 1
+        _, frames, _, frame_offsets, n_frames = derive_subsequence_fcm(full, [2, 3, 6])
+        # us4OEM 0 receives all three; us4OEM 1 only ops 2 and 6, so they are its frames 0 and 1.
+        np.testing.assert_array_equal(frames[:, :2], np.repeat(np.arange(3)[:, None], 2, axis=1))
+        np.testing.assert_array_equal(frames[[0, 2], 2:], np.repeat(np.array([0, 1])[:, None], 2, axis=1))
+        np.testing.assert_array_equal(n_frames, [3, 2])
+        np.testing.assert_array_equal(frame_offsets, [0, 3])
+
+    def test_the_whole_sequence_is_unchanged(self):
+        from arrus.utils.core import derive_subsequence_fcm
+        full = self.make_full()
+        us4oems, frames, channels, frame_offsets, n_frames = derive_subsequence_fcm(
+            full, list(range(full.frames.shape[0])))
+        np.testing.assert_array_equal(frames, full.frames)
+        np.testing.assert_array_equal(us4oems, full.us4oems)
+        np.testing.assert_array_equal(channels, full.channels)
+        np.testing.assert_array_equal(n_frames, full.n_frames)
+        np.testing.assert_array_equal(frame_offsets, full.frame_offsets)
 
 if __name__ == "__main__":
     unittest.main()

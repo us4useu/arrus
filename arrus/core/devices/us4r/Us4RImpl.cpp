@@ -1718,6 +1718,7 @@ Us4RImpl::prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
                               "mode only (please stop the device and use setSubsequences instead)."));
     const auto tStart = std::chrono::high_resolution_clock::now();
     auto selection = createSubsequenceSelection(ops, sris);
+    const auto tSelection = std::chrono::high_resolution_clock::now();
     const bool isSyncMode = isWaitForSoftMode(currentScheme->getWorkMode());
     auto subsequenceBuffers = subsequenceFactory->recreateOEMBuffers(selection.oemArrays);
     // The host buffer (and the metadata of the buffer elements acquired so far) is kept.
@@ -1741,8 +1742,10 @@ Us4RImpl::prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
             }
         }
     }
+    const auto tBuffers = std::chrono::high_resolution_clock::now();
     // The previous prepared sub-sequence was not triggered: overwrite it.
     discardPreparedSubsequences();
+    const auto tDiscard = std::chrono::high_resolution_clock::now();
     // The inactive bank may still contain the transfers of the previously active sub-sequence.
     releaseRetiredTransfers(true);
     const auto tRelease = std::chrono::high_resolution_clock::now();
@@ -1794,6 +1797,13 @@ Us4RImpl::prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
     prepared.oemBuffers = std::move(subsequenceBuffers);
     preparedSubsequences = std::move(prepared);
     const auto tTransfers = std::chrono::high_resolution_clock::now();
+    logger->log(LogSeverity::DEBUG, format(
+        "prepareSubsequences timing details [ms]: selection: {}, oem buffers: {}, discard prepared: {}, "
+        "release retired: {}",
+        std::chrono::duration<float, std::milli>(tSelection-tStart).count(),
+        std::chrono::duration<float, std::milli>(tBuffers-tSelection).count(),
+        std::chrono::duration<float, std::milli>(tDiscard-tBuffers).count(),
+        std::chrono::duration<float, std::milli>(tRelease-tDiscard).count()));
     logger->log(LogSeverity::DEBUG, format(
         "prepareSubsequences timing [ms]: params + release: {}, sequencer: {}, transfers: {}",
         std::chrono::duration<float, std::milli>(tRelease-tStart).count(),

@@ -89,6 +89,36 @@ def convert_to_core_sequence(seq):
     return core_seq
 
 
+def derive_subsequence_fcm(full, ops):
+    """The frame channel mapping of a sub-sequence, derived from the one of the full sequence.
+
+    Selecting a sub-sequence keeps each TX/RX's (us4OEM, channel) mapping; only the frames are
+    renumbered, per us4OEM, in the order the selected TX/RXs are executed. Deriving it here avoids
+    converting the FCM of the sub-sequence entry by entry through the bindings (a few thousand
+    calls, milliseconds, on every sub-sequence change).
+
+    :param full: the FrameChannelMapping of the uploaded (full) sequence
+    :param ops: the selected TX/RX ordinals of that sequence, in increasing order
+    :return: (us4oems, frames, channels, frame_offsets, n_frames) -- as convert_fcm_to_np_arrays
+    """
+    ops = np.asarray(ops, dtype=int)
+    us4oems, frames, channels = full.us4oems[ops], full.frames[ops], full.channels[ops]
+    is_valid = channels >= 0
+    new_frames = np.zeros_like(frames)
+    n_frames, frame_offsets, offset = [], [], 0
+    for us4oem in range(int(np.max(full.us4oems)) + 1):
+        # The selected TX/RXs this us4OEM receives: their new frame number is their position here.
+        has_frame = np.any((us4oems == us4oem) & is_valid, axis=1)
+        new_frame_number = np.cumsum(has_frame) - 1
+        entries = (us4oems == us4oem) & is_valid
+        new_frames[entries] = np.broadcast_to(new_frame_number[:, None], frames.shape)[entries]
+        n_frames.append(int(np.sum(has_frame)))
+        frame_offsets.append(offset)
+        offset += n_frames[-1]
+    return (us4oems, new_frames, channels,
+            np.array(frame_offsets, dtype=np.uint32), np.array(n_frames, dtype=np.uint32))
+
+
 def convert_fcm_to_np_arrays(fcm, n_us4oems):
     """
     Converts frame channel mapping to a tupple of numpy arrays.

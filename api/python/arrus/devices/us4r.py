@@ -1,4 +1,5 @@
 import dataclasses
+import os
 import numpy as np
 
 from arrus.devices.device import Device, DeviceId, DeviceType, parse_device_id
@@ -8,6 +9,7 @@ import arrus.devices.probe
 import arrus.ops.imaging
 import arrus.ops.tgc
 from arrus.devices.us4oem import Us4OEM
+import arrus.logging
 import arrus.metadata
 import arrus.kernels
 import arrus.kernels.kernel
@@ -89,6 +91,9 @@ class Us4R(Device, Ultrasound):
         # Context for the currently running sequence.
         self._tgc_context = None
         self._backplane = Backplane(self)
+        #: array id -> the frame channel mapping of the uploaded sequence (for deriving the
+        #: mappings of its sub-sequences).
+        self._uploaded_fcm = {}
 
     def get_device_id(self):
         return self._device_id
@@ -458,6 +463,9 @@ class Us4R(Device, Ultrasound):
     def get_data_description(self, upload_result, sequence, array_id):
         # Prepare data buffer and constant context metadata
         fcm = self._get_fcm(array_id, upload_result, sequence)
+        # Kept for deriving the FCM of the sub-sequences of this sequence (see
+        # get_data_description_updated_for_subsequence).
+        self._uploaded_fcm[array_id] = fcm
         rx_offset = arrus.core.getRxOffset(array_id, upload_result)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
@@ -467,8 +475,15 @@ class Us4R(Device, Ultrasound):
             }
         )
 
-    def get_data_description_updated_for_subsequence(self, array_id, upload_result, sequence):
-        fcm = self._get_fcm(array_id, upload_result, sequence)
+    def get_data_description_updated_for_subsequence(self, array_id, upload_result, sequence, ops=None):
+        """
+        :param ops: the selected TX/RX ordinals of the uploaded sequence. When given (and the
+          uploaded sequence's FCM is known), the sub-sequence's FCM is derived from it instead of
+          being read entry by entry from the core -- the same result, a few ms faster.
+        """
+        fcm = self._get_derived_fcm(array_id, ops)
+        if fcm is None:
+            fcm = self._get_fcm(array_id, upload_result, sequence)
         rx_offset = arrus.core.getRxOffset(array_id, upload_result)
         return arrus.metadata.EchoDataDescription(
             sampling_frequency=self.current_sampling_frequency,
@@ -492,6 +507,25 @@ class Us4R(Device, Ultrasound):
         :param max_length: maxium pulse length (s) nullopt means to use 32 TX cycles (legacy OEM constraint)
         """
         self._handle.setMaximumPulseLength(max_length)
+    def _get_derived_fcm(self, array_id, ops):
+        """The sub-sequence's FCM derived from the uploaded sequence's one, or None."""
+        full = self._uploaded_fcm.get(array_id) if ops is not None else None
+        if full is None or os.environ.get("ARRUS_NO_FCM_DERIVATION"):
+            return None
+        try:
+            if isinstance(ops, slice):
+                ops = np.arange(full.frames.shape[0])[ops]
+            arrays = arrus.utils.core.derive_subsequence_fcm(full, ops)
+        except Exception as e:  # noqa: BLE001 - fall back to reading it from the core
+            arrus.logging.log(arrus.logging.DEBUG,
+                              f"Could not derive the sub-sequence frame channel mapping ({e}); "
+                              f"reading it from the core instead.")
+            return None
+        us4oems, frames, channels, frame_offsets, n_frames = arrays
+        return arrus.devices.us4r.FrameChannelMapping(
+            us4oems=us4oems, frames=frames, channels=channels, frame_offsets=frame_offsets,
+            n_frames=n_frames, batch_size=full.batch_size)
+
     def _get_fcm(self, array_id, upload_result, sequence):
         """
         Returns frame channel mapping (FCM) extracted from the given upload result, assuming
