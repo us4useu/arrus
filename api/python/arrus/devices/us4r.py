@@ -598,6 +598,13 @@ class Us4R(Device, Ultrasound):
         """
         return list(self._handle.getHVPSTuningInfo())
 
+    def set_seq_dma_buffer_size(self, size: int):
+        """
+        Sets the size of the DMA buffer used for sequence transfers.
+        This method is intended to be used in the probe_check implementation.
+        """
+        return self._handle.setSeqDmaBufferSize(size)
+
 
 # ------------------------------------------ LEGACY MOCK
 @dataclasses.dataclass(frozen=True)

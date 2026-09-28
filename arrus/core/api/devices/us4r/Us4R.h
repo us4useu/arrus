@@ -466,6 +466,8 @@ public:
      */
     virtual std::vector<int64_t> getHVPSTuningInfo() = 0;
 
+    virtual void setSeqDmaBufferSize(size_t size) = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;

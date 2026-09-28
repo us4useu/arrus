@@ -135,6 +135,7 @@ public:
     void setHpfCornerFrequency(uint32_t frequency) override;
     void disableAdcHpf() override;
     void disableAllHpf() override;
+    void setSeqDmaBufferSize(size_t size) override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;

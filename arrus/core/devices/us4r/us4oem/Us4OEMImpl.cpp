@@ -916,6 +916,10 @@ void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>
     currentTxDelayProfileIds = newProfiles;
 }
 
+void Us4OEMImpl::setSeqDmaBufferSize(size_t size) {
+    ius4oem->setSeqDmaBufferSize(size);
+}
+
 Us4OEM::Variant Us4OEMImpl::getVariant() {
     const auto &sn = this->serialNumber.get();
     auto variantStr = std::string();

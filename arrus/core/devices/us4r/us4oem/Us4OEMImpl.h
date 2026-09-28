@@ -162,6 +162,8 @@ public:
 
     int64_t getHVPSTuningInfo() override; 
 
+    void setSeqDmaBufferSize(size_t size) override;
+
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;

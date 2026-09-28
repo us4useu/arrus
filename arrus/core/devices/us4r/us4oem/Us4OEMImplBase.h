@@ -97,6 +97,8 @@ public:
 
     virtual int64_t getHVPSTuningInfo() override = 0;
 
+    virtual void setSeqDmaBufferSize(size_t size) = 0;
+
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}
 };
