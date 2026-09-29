@@ -4,13 +4,47 @@
 #include "Us4OEMDescriptor.h"
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
 #include "arrus/core/api/ops/us4r/constraints/TxRxSequenceLimits.h"
+#include "arrus/common/asserts.h"
 #include "arrus/common/format.h"
+#include "arrus/core/api/common/exceptions.h"
 #include <ius4oem.h>
 #include <cstdint>
+#include <cstdlib>
+#include <string>
 namespace arrus::devices {
 
 class Us4OEMDescriptorFactory {
 public:
+
+    /**
+     * The largest single transfer from a board's DDR4 memory to the host.
+     *
+     * 64 MiB is the PCIe DMA's limit. Over Ethernet a transfer is instead one frame egressed by the
+     * board's bridge, and the zero-copy RDMA receiver requires every frame to land at a uniform
+     * pitch inside one host buffer -- which only holds when a buffer element is exactly ONE transfer
+     * per board: two transfers per element put the second element's first frame an element stride
+     * away, not a frame away, and the receiver refuses ("every destination must sit at a uniform
+     * pitch"). A 192-transmit STA element is about 105 MiB per board, so the limit has to be raised
+     * there. ARRUS_MAX_TRANSFER_SIZE, in bytes, does that; unset, nothing changes.
+     */
+    static size_t getMaxTransferSize() {
+        static const size_t value = readMaxTransferSize();
+        return value;
+    }
+
+    static size_t readMaxTransferSize() {
+        constexpr size_t DEFAULT_MAX_TRANSFER_SIZE = 1ull << (14 + 12);// 64 MiB, the PCIe DMA limit
+        const char *env = std::getenv("ARRUS_MAX_TRANSFER_SIZE");
+        if (env == nullptr || *env == '\0') { return DEFAULT_MAX_TRANSFER_SIZE; }
+        size_t value = 0;
+        try {
+            value = std::stoull(env);
+        } catch (const std::exception &) {
+            throw IllegalArgumentException(format("ARRUS_MAX_TRANSFER_SIZE must be a number of bytes, got: {}", env));
+        }
+        ARRUS_REQUIRES_TRUE_E(value > 0, IllegalArgumentException("ARRUS_MAX_TRANSFER_SIZE must be greater than 0"));
+        return value;
+    }
 
     static Us4OEMDescriptor getDescriptor(const IUs4OEMHandle &ius4oem, bool isMaster) {
         auto version = ius4oem->GetOemVersion();
@@ -29,7 +63,7 @@ public:
                 35e-6f, // TX parameters reprogramming time,
                 65e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
-                1ull << (14+12), // Max transfer size [B]
+                getMaxTransferSize(), // Max transfer size [B]
                 0.5f,  // number of TX periods resolution
                 isMaster,
                 arrus::ops::us4r::TxRxSequenceLimits {
@@ -70,7 +104,7 @@ public:
                 7e-6f, // TX parameters reprogramming time,
                 65e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
-                1ull << (14+12), // Max transfer size [B]
+                getMaxTransferSize(), // Max transfer size [B]
                 0.5f,  // number of TX periods resolution
                 isMaster,
                 arrus::ops::us4r::TxRxSequenceLimits {
@@ -111,7 +145,7 @@ public:
                 35e-6f, // TX parameters reprogramming time,
                 120e6f, // Sampling frequency [Hz]
                 1ull << 32u, // DDR memory size [B]
-                1ull << (14+12), // Max transfer size [B]
+                getMaxTransferSize(), // Max transfer size [B]
                 0.5f,  // number of TX periods resolution
                 isMaster,
                 arrus::ops::us4r::TxRxSequenceLimits {

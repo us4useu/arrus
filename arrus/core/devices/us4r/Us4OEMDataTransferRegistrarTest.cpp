@@ -129,6 +129,63 @@ TEST_F(Us4OEMDataTransferRegistrarTest, CorrectlyGroupsMultiplePartsIntoThreeTra
 }
 
 
+// --- equal-sized transfers, which the Ethernet transport requires -------------
+
+TEST_F(Us4OEMDataTransferRegistrarTest, SplitsAnStaElementIntoEqualHalvesRatherThanAFullAndARemainder) {
+    // A 192-transmit STA element over the esaote3 adapter: 3 receive firings per transmit, each
+    // 3008 samples x 32 channels x 2 B = 188 KiB, so 105.75 MiB against the 64 MiB transfer limit.
+    // Filling greedily gave 64 MiB + 41.9 MiB, which the Ethernet receiver refuses ("transfer set
+    // must be ... all of the same length"), since the bridge egresses one fixed-size frame per
+    // transfer.
+    constexpr size_t PART = 3008 * 32 * 2;
+    constexpr uint16_t N_PARTS = 192 * 3;
+    Us4OEMBufferArrayParts parts;
+    for (uint16_t i = 0; i < N_PARTS; ++i) {
+        parts.push_back(Us4OEMBufferArrayPart{i * PART, PART, 0, i, 3008});
+    }
+
+    auto transfers = createTransfers(parts);
+
+    ASSERT_EQ(transfers.size(), 1);
+    ASSERT_EQ(transfers[0].size(), 2);
+    const size_t half = (N_PARTS / 2) * PART;
+    EXPECT_EQ(transfers[0][0], (Transfer{0, 0, half, (uint16_t)(N_PARTS / 2 - 1)}));
+    EXPECT_EQ(transfers[0][1], (Transfer{half, half, half, (uint16_t)(N_PARTS - 1)}));
+    EXPECT_LE(half, defaultDescriptor.getMaxTransferSize());
+}
+
+TEST_F(Us4OEMDataTransferRegistrarTest, EqualPartsThatDivideEvenlyGiveEquallySizedTransfers) {
+    // 128 MiB of 1 MiB parts: two transfers of exactly the limit.
+    const size_t maxTransferSize = defaultDescriptor.getMaxTransferSize();
+    constexpr size_t PART = 1u << 20;
+    const auto nParts = (uint16_t)(2 * maxTransferSize / PART);
+    Us4OEMBufferArrayParts parts;
+    for (uint16_t i = 0; i < nParts; ++i) { parts.push_back(Us4OEMBufferArrayPart{i * PART, PART, 0, i, 4096}); }
+
+    auto transfers = createTransfers(parts);
+
+    ASSERT_EQ(transfers[0].size(), 2);
+    EXPECT_EQ(transfers[0][0].size, maxTransferSize);
+    EXPECT_EQ(transfers[0][1].size, maxTransferSize);
+}
+
+TEST(SplitIntoEqualTransfersTest, PrefersTheFewestEqualTransfersAndRefusesToSpendTooMany) {
+    const size_t MiB = 1u << 20;
+    // One transfer when everything fits.
+    EXPECT_EQ(splitIntoEqualTransfers(std::vector<size_t>(96, 256 * 1024), 64 * MiB),
+              (std::vector<size_t>{96}));
+    // Three when two would exceed the limit.
+    EXPECT_EQ(splitIntoEqualTransfers(std::vector<size_t>(300, MiB), 128 * MiB),
+              (std::vector<size_t>{100, 100, 100}));
+    // A prime number of parts could only be cut one-per-transfer: refused, since each transfer
+    // costs one of the board's 256 descriptors. The caller then fills greedily.
+    EXPECT_TRUE(splitIntoEqualTransfers(std::vector<size_t>(7, 20 * MiB), 64 * MiB).empty());
+    // Nothing to split.
+    EXPECT_TRUE(splitIntoEqualTransfers({}, 64 * MiB).empty());
+    EXPECT_TRUE(splitIntoEqualTransfers(std::vector<size_t>(4, MiB), 0).empty());
+}
+
+
 int main(int argc, char **argv) {
     ARRUS_INIT_TEST_LOG(arrus::Logging);
     ::testing::InitGoogleTest(&argc, argv);

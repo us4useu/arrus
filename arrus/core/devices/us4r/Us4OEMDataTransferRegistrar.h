@@ -1,7 +1,9 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEMDATATRANSFERREGISTRAR_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEMDATATRANSFERREGISTRAR_H
 
+#include <algorithm>
 #include <cstdlib>
+#include <vector>
 #include "arrus/common/compiler.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/common/logging.h"
@@ -35,6 +37,57 @@ public:
         return os;
     }
 };
+
+/**
+ * Splits consecutive parts into the fewest groups of EQUAL total size, none above maxTransferSize.
+ *
+ * Returns the number of parts in each group, or an empty vector when the parts cannot be cut that
+ * way (then the caller falls back to filling greedily).
+ *
+ * Why equal and not simply "as full as possible": over Ethernet the us4OEM bridge egresses one
+ * fixed-size frame per transfer and the receiver maps frame k to transfer k, so a set of transfers
+ * of differing sizes is refused at start ("Ethernet transfer set must be contiguous transfer
+ * indices 0..N all of the same length"). Filling greedily makes a big transfer and a small
+ * remainder -- a 192-transmit STA element of 105 MiB became 64 MiB + 41 MiB -- which is legal over
+ * PCIe and impossible over Ethernet. Equal groups are correct for both.
+ */
+inline std::vector<size_t> splitIntoEqualTransfers(const std::vector<size_t> &partSizes,
+                                                   size_t maxTransferSize) {
+    size_t total = 0;
+    for (auto size : partSizes) { total += size; }
+    if (partSizes.empty() || total == 0 || maxTransferSize == 0) { return {}; }
+    // The fewest transfers the size limit allows; more only if the parts do not divide evenly.
+    // Never far more: each transfer costs one of the board's 256 transfer descriptors, and an
+    // awkward part count (a prime, say) would otherwise be "solved" with one transfer per part.
+    const size_t minTransfers = std::max<size_t>((total + maxTransferSize - 1) / maxTransferSize, 1);
+    const size_t maxTransfers = std::min(2 * minTransfers, partSizes.size());
+    for (size_t n = minTransfers; n <= maxTransfers; ++n) {
+        if (total % n != 0) { continue; }
+        const size_t target = total / n;
+        if (target > maxTransferSize) { continue; }
+        std::vector<size_t> groups;
+        size_t accumulated = 0, parts = 0;
+        for (auto size : partSizes) {
+            accumulated += size;
+            ++parts;
+            if (accumulated == target) {
+                groups.push_back(parts);
+                accumulated = 0;
+                parts = 0;
+            } else if (accumulated > target) {
+                groups.clear();
+                break;
+            }
+        }
+        // Trailing zero-size parts (an RX-NOP) belong to the last group.
+        if (!groups.empty() && parts > 0 && accumulated == 0) {
+            groups.back() += parts;
+            parts = 0;
+        }
+        if (groups.size() == n && parts == 0) { return groups; }
+    }
+    return {};
+}
 
 /**
  * Registers transfers from us4R internal DDR memory to the destination (host) memory.
@@ -144,19 +197,30 @@ public:
                 size_t destination = dst->getArrayAddressRelative(arrayId, oem);
                 size_t size = 0;
                 uint16 firing = parts[0].getEntryId();// the firing that finishes given transfer
+                std::vector<size_t> partSizes;
+                partSizes.reserve(parts.size());
                 for (auto &part : parts) {
                     ARRUS_REQUIRES_TRUE_E(part.getSize() <= maxTransferSize,
                                           ArrusException(format("A single frame cannot exceed {} bytes, got: {}",
                                                                 part.getSize(), maxTransferSize)));
-
-                    if (size + part.getSize() > maxTransferSize) {
+                    partSizes.push_back(part.getSize());
+                }
+                // Equal-sized transfers where the parts allow it (required over Ethernet, harmless
+                // over PCIe); otherwise fill each transfer as far as the limit allows.
+                const std::vector<size_t> groups = splitIntoEqualTransfers(partSizes, maxTransferSize);
+                size_t partsLeftInGroup = groups.empty() ? 0 : groups[0];
+                size_t group = 0;
+                for (auto &part : parts) {
+                    if (groups.empty() ? (size + part.getSize() > maxTransferSize) : (partsLeftInGroup == 0)) {
                         transfers.emplace_back(destination, source, size, firing);
                         source = part.getAddress();
                         destination += size;
                         size = 0;
+                        if (!groups.empty()) { partsLeftInGroup = groups[++group]; }
                     }
                     size += part.getSize();
                     firing = part.getEntryId();
+                    if (!groups.empty()) { --partsLeftInGroup; }
                 }
                 if (size > 0) {
                     transfers.emplace_back(destination, source, size, firing);

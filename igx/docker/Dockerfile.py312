@@ -1,0 +1,14 @@
+# us4r-build-py plus Python 3.12 built from source with pyenv, for a cp312 wheel that installs
+# into the Holoscan 4.x containers (Python 3.12), e.g. the ultrasound_guidance Holohub app:
+#   ARRUS_PY_VERSION=3.12 ARRUS_BUILD_IMAGE=us4r-build-py312 igx/build-arrus.sh
+# Same recipe as Dockerfile.py310; pyenv's python3.12 is first on PATH, so cmake picks it.
+# The bindings do not use the numpy C API, so a wheel built here imports next to numpy 2.
+ARG BASE=us4r-build-py
+FROM ${BASE}
+COPY install_python_via_pyenv.sh /root/install_python_via_pyenv.sh
+# --enable-shared: the SWIG module links libpython3.12.so, which the target provides.
+RUN chmod +x /root/install_python_via_pyenv.sh \
+ && DEBIAN_FRONTEND=noninteractive PYTHON_CONFIGURE_OPTS="--enable-shared" /root/install_python_via_pyenv.sh 3.12 \
+ && rm -rf /var/lib/apt/lists/*
+ENV PATH="/root/.pyenv/shims:/root/.pyenv/bin:$PATH"
+RUN python3.12 -m pip install --no-cache-dir "setuptools<70" wheel "numpy<2"

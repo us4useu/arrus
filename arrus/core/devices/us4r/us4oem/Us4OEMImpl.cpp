@@ -28,6 +28,55 @@ namespace arrus::devices {
 // TODO migrate this source to us4r subspace
 
 using namespace arrus::devices::us4r;
+
+namespace {
+/**
+ * Reports how far a long programming loop has got, at most once every few seconds.
+ *
+ * Programming one entry is a handful of register writes. Over PCIe those are memory writes and the
+ * whole upload is quick; over Ethernet each one is an ECB round trip, so a 192-transmit STA
+ * sequence (576 entries, programmed once per rx buffer element) takes minutes during which the
+ * application looks hung. This turns that silence into a line every few seconds with the count,
+ * the percentage and an estimate of what is left.
+ */
+class UploadProgress {
+public:
+    UploadProgress(Logger *logger, std::string what, size_t total)
+        : logger(logger), what(std::move(what)), total(total), started(std::chrono::steady_clock::now()),
+          lastReport(started) {}
+
+    /** Call with the number done so far; prints at most every REPORT_PERIOD_S, and at the end. */
+    void report(size_t done) {
+        if (logger == nullptr || total == 0) { return; }
+        const auto now = std::chrono::steady_clock::now();
+        const bool finished = done >= total;
+        const double sinceReport = std::chrono::duration<double>(now - lastReport).count();
+        if (!finished && sinceReport < REPORT_PERIOD_S) { return; }
+        // Nothing to say about a loop that was over before the first report would have been due.
+        if (finished && !reported) { return; }
+        lastReport = now;
+        reported = true;
+        const double elapsed = std::chrono::duration<double>(now - started).count();
+        const double rate = elapsed > 0 ? static_cast<double>(done) / elapsed : 0.0;
+        std::string remaining;
+        if (!finished && rate > 0) {
+            remaining = format(", about {} s left", static_cast<long>((total - done) / rate));
+        }
+        logger->log(LogSeverity::INFO,
+                    format("{}: {}/{} ({}%), {} s elapsed{}", what, done, total, 100 * done / total,
+                           static_cast<long>(elapsed), remaining));
+    }
+
+private:
+    static constexpr double REPORT_PERIOD_S = 5.0;
+    Logger *logger;
+    std::string what;
+    size_t total;
+    std::chrono::steady_clock::time_point started;
+    std::chrono::steady_clock::time_point lastReport;
+    bool reported{false};
+};
+}// namespace
 using namespace arrus::ops::us4r;
 
 Us4OEMImpl::Us4OEMImpl(DeviceId id, IUs4OEMHandle ius4oem, std::vector<uint8_t> channelMapping, RxSettings rxSettings,
@@ -212,6 +261,9 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
     currentTxDelayProfileIds = std::vector<size_t>(sequences.size());
     // us4OEM sequencer firing/entry id (global).
     OpId firingId = 0;
+    size_t nFirings = 0;
+    for (const auto &sequence : sequences) { nFirings += sequence.size(); }
+    UploadProgress progress(logger.get(), "Programming TX/RX firings", nFirings);
     for (SequenceId sequenceId = 0; sequenceId < ARRUS_SAFE_CAST(sequences.size(), SequenceId); ++sequenceId) {
         auto const &sequence = sequences[sequenceId];
         for (OpId opId = 0; opId < ARRUS_SAFE_CAST(sequence.size(), OpId); ++opId, ++firingId) {
@@ -277,6 +329,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             if(isOEMPlus() && op.getTxTimeoutId().has_value()) {
                 ius4oem->SetFiringTxTimoutId(firingId, op.getTxTimeoutId().value());
             }
+            progress.report(static_cast<size_t>(firingId) + 1);
         }
     }
     // Set the last profile as the current TX delay
@@ -369,6 +422,9 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
     size_t arrayStartAddress = 0;
     size_t elementStartAddress = 0;
     uint16 entryId = 0;
+    size_t nEntries = 0;
+    for (const auto &seq : sequences) { nEntries += seq.getNRepeats() * seq.size(); }
+    UploadProgress progress(logger.get(), "Scheduling acquisitions", nEntries * rxBufferSize);
     float rxTimeOffset = 0; // actually, rxOffsetTimeResidue, but rxOffset (sampleRxOffset) is already compensated in scheduleReceiveDDC,
                             // so the rxOffsetTimeResidue is the only remaining offset. Now it's named rxTimeOffset for simplicity.
     for (BatchId batchId = 0; batchId < rxBufferSize; ++batchId) {
@@ -414,6 +470,7 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
                         outputAddress += nBytes;
                         totalSamples += static_cast<unsigned>(nSamples);
                     }
+                    progress.report(static_cast<size_t>(entryId) + 1);
                 }
             }
             framework::NdArray::Shape shape;
