@@ -686,6 +686,15 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<TxRxParametersSequence> seqs = convertToInternalSequences(sequences, timeouts, rxDelays);
     // Initialize converters.
     auto oemMappings = getOEMMappings();
+    // The aperture splitter uses the master us4OEM RX layout for all us4OEMs.
+    const auto masterDescriptor = getMasterOEM()->getDescriptor();
+    for (auto &us4oem : us4oems) {
+        const auto descriptor = us4oem->getDescriptor();
+        ARRUS_REQUIRES_TRUE_IAE(descriptor.getRxInterleave() == masterDescriptor.getRxInterleave()
+                                    && descriptor.getRxInputTable() == masterDescriptor.getRxInputTable(),
+                                "All us4OEMs must have the same RX layout (mixed AFE58JD32 and other AFEs "
+                                "are not supported).");
+    }
     for (SequenceId sId = 0; sId < nSequences; ++sId) {
         auto s = seqs.at(sId);
         const auto &txProbeId = s.getTxProbeId();
@@ -701,7 +710,9 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         adapter2OEM.emplace_back(
             probeAdapterSettings, noems, oemMappings, frameMetadataOEM,
             // NOTE assuming that all OEMs have the same number of RX channels
-            getMasterOEM()->getDescriptor().getNRxChannels());
+            getMasterOEM()->getDescriptor().getNRxChannels(),
+            getMasterOEM()->getDescriptor().getRxInterleave(),
+            getMasterOEM()->getDescriptor().getRxInputTable());
     }
 
     using OEMSequences = AdapterToUs4OEMMappingConverter::OEMSequences;
@@ -910,6 +921,10 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     else if (us4oems.at(0)->isAFEJD48()) {
         offset = 359;
         tgcT = 120;
+    }
+    else {
+        // E.g. AFE58JD32: no TGC curve support yet.
+        throw IllegalArgumentException("TGC curve is not supported for this us4OEM AFE.");
     }
 
     // TODO try avoid converting from samples to time then back to samples?

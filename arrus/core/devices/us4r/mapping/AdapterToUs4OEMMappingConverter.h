@@ -22,8 +22,10 @@ public:
 
     AdapterToUs4OEMMappingConverter(ProbeAdapterSettings settings, const Ordinal noems,
                                     std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM,
-                                    ChannelIdx nRxChannelsOEM)
-        : settings(std::move(settings)), noems(noems), splitter{std::move(oemMappings), frameMetadataOEM, nRxChannelsOEM} {}
+                                    ChannelIdx nRxChannelsOEM, uint32_t rxInterleave = 1,
+                                    RxInputTable rxInputTable = {})
+        : settings(std::move(settings)), noems(noems),
+          splitter{std::move(oemMappings), frameMetadataOEM, nRxChannelsOEM, rxInterleave, std::move(rxInputTable)} {}
 
     std::pair<SequenceByOEM, DelayProfilesByOEM> convert(SequenceId id, const us4r::TxRxParametersSequence &seq,
                                                          const std::vector<framework::NdArray> &txDelayProfiles) {

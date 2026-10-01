@@ -2675,7 +2675,7 @@ class SelectSequenceRaw(Operation):
             current_frame += n_frames
             dst_start = dst_end
 
-        output_shape = (dst_end, 32)
+        output_shape = (dst_end, const_metadata.input_shape[-1])
         self.output = self.num_pkg.zeros(output_shape, dtype=np.int16)
 
         # Update const metadata
@@ -3328,13 +3328,17 @@ class RemapToLogicalOrder(Operation):
                 batch_size
             )
 
+            # Number of us4OEM data columns (32, or 64 for interleaved RX, AFE58JD32).
+            n_physical_channels = int(const_metadata.input_shape[-1])
+
             def gpu_remap_fn(data):
                 run_remap_v1(self.grid_size, self.block_size,
                              [self._output_buffer, data,
                               self._fcm_frames, self._fcm_channels, self._fcm_us4oems,
                               self._frame_offsets,
                               self._n_frames_us4oems,
-                              batch_size, n_frames, n_samples, n_channels])
+                              batch_size, n_frames, n_samples, n_channels,
+                              n_physical_channels])
 
             self._remap_fn = gpu_remap_fn
         return const_metadata.copy(input_shape=self.output_shape)
@@ -3424,6 +3428,9 @@ class RemapToLogicalOrderV2(Operation):
                 batch_size
             )
 
+            # Number of us4OEM data columns (32, or 64 for interleaved RX, AFE58JD32).
+            n_physical_channels = int(const_metadata.input_shape[-1])
+
             def gpu_remap_fn(data):
                 run_remap_v2(self.grid_size, self.block_size,
                              [self._output_buffer, data,
@@ -3431,7 +3438,7 @@ class RemapToLogicalOrderV2(Operation):
                               self._fcm_us4oems, self._frame_offsets,
                               self._n_frames_us4oems,
                               batch_size, n_frames, n_samples, n_channels,
-                              n_components])
+                              n_components, n_physical_channels])
 
             self._remap_fn = gpu_remap_fn
         return const_metadata.copy(input_shape=self.output_shape)
@@ -3537,6 +3544,10 @@ class ExtractMetadata(Operation):
         self._slices = (slice(0, self._n_samples * self._n_frames, self._n_samples),)
         if is_ddc:
             self._slices = self._slices + (0,)  # Select "I" value.
+        else:
+            # The frame metadata is the first raw row (32 values); with interleaved RX (AFE58JD32,
+            # 64 columns) the other 32 columns of the first row are RF samples.
+            self._slices = self._slices + (slice(0, 32),)
         return const_metadata
 
     def process(self, data):

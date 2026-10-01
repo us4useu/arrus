@@ -4,6 +4,8 @@
 #include <utility>
 
 #include "Us4OEMRxMappingRegisterBuilder.h"
+#include "Us4OEMDescriptorFactory.h"
+#include <set>
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/TxRxParameters.h"
 #include "arrus/core/devices/us4r/us4oem/tests/CommonSettings.h"
@@ -328,6 +330,121 @@ TEST_F(RXMappingTest, TestFrameChannelMappingForConflictingMapping) {
         EXPECT_EQ(address.getUs4oem(), 0);
         EXPECT_EQ(address.getChannel(), expectedDstChannels[i]);
         EXPECT_EQ(address.getFrame(), 0);
+    }
+}
+
+// Interleaved RX (AFE58JD32, us4OEM+ 64): the board RX wiring table (Us4OEMDescriptorFactory).
+class RXMappingInterleavedTest: public ::testing::Test {
+protected:
+    Us4OEMRxMappingRegister build(const BitMask &rxAperture, std::unordered_set<ChannelIdx> maskedChannelsRx = {}) {
+        std::vector<TxRxParameters> params = {
+            ARRUS_STRUCT_INIT_LIST(TestTxRxParams,
+                                   (x.rxAperture = rxAperture, x.maskedChannelsRx = maskedChannelsRx)).get()};
+        auto seq = ARRUS_STRUCT_INIT_LIST(TestTxRxParamsSequence, (x.txrx = params)).get();
+        TxParametersSequenceColl sequences = {std::move(seq)};
+        Us4OEMRxMappingRegisterBuilder builder(0, false, getRange<uint8>(0, 128), 32, 2, table);
+        builder.add(sequences);
+        return builder.build();
+    }
+    RxInputTable table = Us4OEMDescriptorFactory::createAfe58jd32RxInputTable();
+};
+
+TEST_F(RXMappingInterleavedTest, TableIsOneToOnePerMuxGroup) {
+    ASSERT_EQ(table.size(), 128);
+    for (ChannelIdx group = 0; group < 2; ++group) {
+        std::set<std::pair<uint8_t, uint8_t>> locations;
+        for (ChannelIdx ch = group * 64; ch < (group + 1) * 64; ++ch) {
+            EXPECT_LT(table[ch].first, 32);
+            EXPECT_LT(table[ch].second, 2);
+            locations.insert(table[ch]);
+        }
+        EXPECT_EQ(locations.size(), 64);
+    }
+}
+
+TEST_F(RXMappingInterleavedTest, TableMatchesSchematic) {
+    // AFE on slots 0-15: INP1 <- RX_IN16 = LVOUT32 (odd), INP2 <- RX_IN0 = LVOUT0 (even).
+    EXPECT_EQ(table[32], (std::pair<uint8_t, uint8_t>{0, 0}));
+    EXPECT_EQ(table[0], (std::pair<uint8_t, uint8_t>{0, 1}));
+    // INP25 <- RX_IN14 = LVOUT14, INP26 <- RX_IN30 = LVOUT46 (converter 12).
+    EXPECT_EQ(table[14], (std::pair<uint8_t, uint8_t>{12, 0}));
+    EXPECT_EQ(table[46], (std::pair<uint8_t, uint8_t>{12, 1}));
+    // AFE on slots 16-31: the same pattern + 16.
+    EXPECT_EQ(table[48], (std::pair<uint8_t, uint8_t>{16, 0}));
+    EXPECT_EQ(table[16], (std::pair<uint8_t, uint8_t>{16, 1}));
+    // The second mux group (transducer channels 64-127): the same location as c - 64.
+    for (ChannelIdx ch = 64; ch < 128; ++ch) {
+        EXPECT_EQ(table[ch], table[ch - 64]);
+    }
+}
+
+TEST_F(RXMappingInterleavedTest, FullMuxGroupInSingleRx) {
+    BitMask rxAperture(128, false);
+    setValuesInRange(rxAperture, 0, 64, true);
+    auto reg = build(rxAperture);
+    EXPECT_EQ(reg.getMappings().size(), 1);
+    auto map = reg.getMap(0, 0);
+    std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> expectedRxAperture;
+    setValuesInRange(expectedRxAperture, 0, 64, true);
+    EXPECT_EQ(reg.getRxAperture(0, 0), expectedRxAperture);
+    auto fcms = reg.acquireFCMs();
+    const auto &fcm = fcms.at(0);
+    std::set<int8> columns;
+    for (ChannelIdx ch = 0; ch < 64; ++ch) {
+        auto column = fcm->getLogical(0, ch).getChannel();
+        columns.insert(column);
+        // Column = raw row * 32 + mapping entry selecting the channel's RX slot.
+        EXPECT_EQ(column / 32, table[ch].second) << "channel " << ch;
+        EXPECT_EQ(map.at(column % 32), table[ch].first) << "channel " << ch;
+    }
+    EXPECT_EQ(columns.size(), 64);
+}
+
+TEST_F(RXMappingInterleavedTest, DifferentMuxGroupOfTheSameSlotConflicts) {
+    BitMask rxAperture(128, false);
+    rxAperture[0] = rxAperture[32] = rxAperture[64] = true; // 0, 32: slot 0 (rows 1, 0); 64: slot 0, other mux group
+    auto reg = build(rxAperture);
+    std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> expectedRxAperture;
+    expectedRxAperture[0] = expectedRxAperture[32] = true;
+    EXPECT_EQ(reg.getRxAperture(0, 0), expectedRxAperture);
+    auto fcms = reg.acquireFCMs();
+    const auto &fcm = fcms.at(0);
+    EXPECT_EQ(fcm->getLogical(0, 0).getChannel(), 32); // channel 0: slot 0, second raw row
+    EXPECT_EQ(fcm->getLogical(0, 1).getChannel(), 0);  // channel 32: slot 0, first raw row
+}
+
+TEST_F(RXMappingInterleavedTest, MaskedChannelDoesNotDropItsPair) {
+    BitMask rxAperture(128, false);
+    rxAperture[0] = rxAperture[32] = true;
+    auto reg = build(rxAperture, {0});
+    std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> expectedRxAperture;
+    expectedRxAperture[32] = true;
+    EXPECT_EQ(reg.getRxAperture(0, 0), expectedRxAperture);
+    auto map = reg.getMap(0, 0);
+    auto fcms = reg.acquireFCMs();
+    const auto &fcm = fcms.at(0);
+    auto column = fcm->getLogical(0, 1).getChannel();
+    // The pair (channel 32) must be read from the first raw row of the column selecting RX slot 0.
+    ASSERT_LT(column, 32);
+    EXPECT_EQ(map.at(column), 0);
+}
+
+TEST_F(RXMappingInterleavedTest, FullMuxGroupWithMaskedChannels) {
+    BitMask rxAperture(128, false);
+    setValuesInRange(rxAperture, 0, 64, true);
+    // 0 and 32 share RX slot 0 (masked channel first); 5 is in slot 5 with channel 7 (masked channel second).
+    auto reg = build(rxAperture, {0, 7});
+    std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS> expectedRxAperture;
+    setValuesInRange(expectedRxAperture, 0, 64, true);
+    expectedRxAperture[0] = expectedRxAperture[7] = false;
+    EXPECT_EQ(reg.getRxAperture(0, 0), expectedRxAperture);
+    auto map = reg.getMap(0, 0);
+    auto fcms = reg.acquireFCMs();
+    const auto &fcm = fcms.at(0);
+    for (ChannelIdx ch = 0; ch < 64; ++ch) {
+        auto column = fcm->getLogical(0, ch).getChannel();
+        EXPECT_EQ(column / 32, table[ch].second) << "channel " << ch;
+        EXPECT_EQ(map.at(column % 32), table[ch].first) << "channel " << ch;
     }
 }
 }// namespace

@@ -80,10 +80,17 @@ public:
     using RxMapId = Us4OEMRxMappingRegister::RxMapId;
     using RxMap = Us4OEMRxMappingRegister::RxMap;
 
+    /**
+     * @param nRxChannels the number of RX slots (FPGA RX channel mapping size)
+     * @param rxInterleave the number of inputs time-multiplexed in a single RX slot (see Us4OEMDescriptor)
+     * @param rxInputTable physical channel -> (RX slot, raw row), see Us4OEMDescriptor::getRxInputTable
+     */
     Us4OEMRxMappingRegisterBuilder(FrameChannelMapping::Us4OEMNumber oem, bool acceptRxNops,
                                    const std::vector<uint8_t> &channelMapping,
-                                   ChannelIdx nRxChannels)
-        : oem(oem), acceptRxNops(acceptRxNops), channelMapping(channelMapping), nRxChannels(nRxChannels) {}
+                                   ChannelIdx nRxChannels, uint32_t rxInterleave = 1,
+                                   RxInputTable rxInputTable = {})
+        : oem(oem), acceptRxNops(acceptRxNops), channelMapping(channelMapping), nRxChannels(nRxChannels),
+          rxInterleave(rxInterleave), rxInputTable(std::move(rxInputTable)) {}
 
     void add(const std::vector<us4r::TxRxParametersSequence> &sequences) {
         for (size_t sequenceId = 0; sequenceId < sequences.size(); ++sequenceId) {
@@ -97,7 +104,10 @@ public:
             // We transfer all module frames due to possible metadata stored in the frame (if enabled).
             numberOfOutputFrames = ARRUS_SAFE_CAST(sequence.size(), ChannelIdx);
         }
-        FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, nRxChannels);
+        const auto nOutputChannels = static_cast<ChannelIdx>(nRxChannels * rxInterleave);
+        // Interleaved RX: the physical channels of the same RX slot and mux group (see RxInputLocation)
+        // are acquired in a single RX, each one in its own raw row.
+        FrameChannelMappingBuilder fcmBuilder(numberOfOutputFrames, nOutputChannels);
         OpId opId = 0;
         OpId noRxNopId = 0;
 
@@ -107,39 +117,66 @@ public:
             // nullopt means that given channel is missing (conflicting with some other channel or is masked)
             std::vector<std::optional<uint8>> mapping;
             std::unordered_set<uint8> channelsUsed;
+            // Interleaved RX: RX slot -> (mapping column, mux group, raw rows in use).
+            std::unordered_map<uint8, std::tuple<uint8, ChannelIdx, std::unordered_set<ChannelIdx>>> slotsUsed;
             // Convert rx aperture + channel mapping -> new rx aperture (with conflicting channels turned off).
             RxAperture outputRxAperture;
             // Us4OEM channel number: values from 0-127
             uint8 channel = 0;
-            // Number of Us4OEM active channel, values from 0-31
+            // Number of Us4OEM active channel, values from 0-31 (0-63 for interleaved RX)
             uint8 onChannel = 0;
             bool isRxNop = true;
             for (const auto isOn : op.getRxAperture()) {
                 if (isOn) {
                     isRxNop = false;
-                    ARRUS_REQUIRES_TRUE(onChannel < nRxChannels,
-                                        format("Up to {} active rx channels can be set.", nRxChannels));
-                    // Physical channel number, values 0-31
-                    auto rxChannel = channelMapping[channel];
-                    rxChannel = rxChannel % nRxChannels;
-                    if (!setContains(channelsUsed, rxChannel) && !setContains(op.getMaskedChannelsRx(), static_cast<ChannelIdx>(channel))) {
+                    ARRUS_REQUIRES_TRUE(onChannel < nOutputChannels,
+                                        format("Up to {} active rx channels can be set.", nOutputChannels));
+                    const bool isMasked = setContains(op.getMaskedChannelsRx(), static_cast<ChannelIdx>(channel));
+                    const auto location = getRxInputLocation(channelMapping[channel], nRxChannels, rxInterleave,
+                                                             rxInputTable);
+                    // RX slot, values 0-31
+                    auto rxChannel = static_cast<uint8>(location.slot);
+                    const auto row = location.row;
+                    const auto group = location.group;
+                    // Output data column.
+                    int8 column = 0;
+                    // Interleaved RX: a masked channel still selects its RX slot (with its aperture bit off), so
+                    // that it never takes an extra mapping entry from the other input of the same slot.
+                    const bool isInterleaved = rxInterleave > 1;
+                    auto slotIt = slotsUsed.find(rxChannel);
+                    if (isInterleaved && slotIt != std::end(slotsUsed)
+                        && std::get<1>(slotIt->second) == group && !setContains(std::get<2>(slotIt->second), row)) {
+                        // Interleaved RX: the other input of an already selected RX slot.
+                        outputRxAperture[channel] = !isMasked;
+                        std::get<2>(slotIt->second).insert(row);
+                        column = static_cast<int8>(std::get<0>(slotIt->second));
+                    } else if (!setContains(channelsUsed, rxChannel) && (isInterleaved || !isMasked)) {
                         // This channel is OK.
                         // STRATEGY: if there are conflicting/masked rx channels, keep the
                         // first one (with the lowest channel number), turn off all
                         // the rest. Turn off conflicting channels.
-                        outputRxAperture[channel] = true;
+                        outputRxAperture[channel] = !isMasked;
                         mapping.emplace_back(rxChannel);
                         channelsUsed.insert(rxChannel);
+                        column = static_cast<int8>(mapping.size() - 1);
+                        slotsUsed.emplace(rxChannel, std::make_tuple(static_cast<uint8>(column), group,
+                                                                     std::unordered_set<ChannelIdx>{row}));
                     } else {
                         // This channel is not OK.
                         mapping.emplace_back(std::nullopt);
+                        column = static_cast<int8>(mapping.size() - 1);
                     }
+                    // Interleaved RX: output column = raw row * nRxChannels + mapping column.
+                    column = static_cast<int8>(row * nRxChannels + column);
                     auto frameNumber = acceptRxNops ? opId : noRxNopId;
-                    fcmBuilder.setChannelMapping(frameNumber, onChannel, oem, frameNumber, (int8) (mapping.size() - 1));
+                    fcmBuilder.setChannelMapping(frameNumber, onChannel, oem, frameNumber, column);
                     ++onChannel;
                 }
                 ++channel;
             }
+            ARRUS_REQUIRES_TRUE(mapping.size() <= nRxChannels,
+                                format("Too many conflicting/masked RX channels: {} RX slots are required, "
+                                       "only {} available.", mapping.size(), nRxChannels));
             // Register aperture.
             result.insert(sequenceId, opId, outputRxAperture);
 
@@ -207,6 +244,8 @@ private:
     RxMapId currentMapId{0};
     Us4OEMRxMappingRegister result;
     ChannelIdx nRxChannels;
+    uint32_t rxInterleave{1};
+    RxInputTable rxInputTable;
 };
 
 }// namespace arrus::devices

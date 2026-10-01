@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "AdapterToUs4OEMMappingConverter.h"
+#include "arrus/core/devices/us4r/us4oem/Us4OEMDescriptorFactory.h"
 #include "arrus/core/common/logging.h"
 #include "arrus/core/common/tests.h"
 #include "arrus/core/devices/TxRxParameters.h"
@@ -1010,8 +1011,58 @@ TEST_F(A2OConverterTestMappingEsaote3, AppliesPaddingToFCMCorrectlyRightSide) {
     EXPECT_EQ(0, fcm->getFirstFrame(1));// Us4OEM:1
 }
 
+// Interleaved RX (AFE58JD32, us4OEM+ 64): channels of the same RX slot and mux group (0-63, 64-127) are
+// acquired in a single RX (board RX wiring table: Us4OEMDescriptorFactory).
+TxRxParametersSequence createInterleavedTestSequence(const BitMask &rxAperture) {
+    std::vector<TxRxParameters> params = {
+        ARRUS_STRUCT_INIT_LIST(TestTxRxParams, (x.rxAperture = rxAperture)).get()};
+    return ARRUS_STRUCT_INIT_LIST(TestTxRxParamsSequence, (x.txrx = params)).get();
+}
 
+TEST(Us4OEMApertureSplitterInterleavedTest, FullMuxGroupIsNotSplit) {
+    Us4OEMApertureSplitter splitter{{getRange<uint8>(0, 128)}, std::nullopt, 32, 2,
+                                    Us4OEMDescriptorFactory::createAfe58jd32RxInputTable()};
+    BitMask rxAperture(128, false);
+    ::arrus::setValuesInRange(rxAperture, 0, 32, true);
+    ::arrus::setValuesInRange(rxAperture, 32, 64, true);
+    auto result = splitter.split({createInterleavedTestSequence(rxAperture)}, {});
+    ASSERT_EQ(result.sequences.at(0).size(), 1);
+    EXPECT_EQ(result.sequences.at(0).at(0).getRxAperture(), rxAperture);
+}
 
+TEST(Us4OEMApertureSplitterInterleavedTest, FullApertureIsSplitIntoTwo) {
+    Us4OEMApertureSplitter splitter{{getRange<uint8>(0, 128)}, std::nullopt, 32, 2,
+                                    Us4OEMDescriptorFactory::createAfe58jd32RxInputTable()};
+    BitMask rxAperture(128, true);
+    auto result = splitter.split({createInterleavedTestSequence(rxAperture)}, {});
+    ASSERT_EQ(result.sequences.at(0).size(), 2);
+    BitMask expected0(128, false), expected1(128, false);
+    ::arrus::setValuesInRange(expected0, 0, 64, true);
+    ::arrus::setValuesInRange(expected1, 64, 128, true);
+    EXPECT_EQ(result.sequences.at(0).at(0).getRxAperture(), expected0);
+    EXPECT_EQ(result.sequences.at(0).at(1).getRxAperture(), expected1);
+}
+
+TEST(Us4OEMApertureSplitterInterleavedTest, SameSlotDifferentMuxGroupIsSplit) {
+    Us4OEMApertureSplitter splitter{{getRange<uint8>(0, 128)}, std::nullopt, 32, 2,
+                                    Us4OEMDescriptorFactory::createAfe58jd32RxInputTable()};
+    BitMask rxAperture(128, false);
+    rxAperture[0] = rxAperture[32] = rxAperture[64] = true;  // 0, 32: slot 0 of mux group 0; 64: mux group 1
+    auto result = splitter.split({createInterleavedTestSequence(rxAperture)}, {});
+    ASSERT_EQ(result.sequences.at(0).size(), 2);
+    BitMask expected0(128, false), expected1(128, false);
+    expected0[0] = expected0[32] = true;
+    expected1[64] = true;
+    EXPECT_EQ(result.sequences.at(0).at(0).getRxAperture(), expected0);
+    EXPECT_EQ(result.sequences.at(0).at(1).getRxAperture(), expected1);
+}
+
+TEST(Us4OEMApertureSplitterInterleavedTest, NonInterleavedFullApertureIsSplitIntoFour) {
+    Us4OEMApertureSplitter splitter{{getRange<uint8>(0, 128)}, std::nullopt, 32};
+    BitMask rxAperture(128, true);
+    auto result = splitter.split({createInterleavedTestSequence(rxAperture)}, {});
+    EXPECT_EQ(result.sequences.at(0).size(), 4);
+}
 
 }
 

@@ -70,11 +70,17 @@ namespace arrus::devices {
                 ARRUS_VALIDATOR_EXPECT_EQUAL_M(op.getRxAperture().size(), size_t(descriptor.getNAddressableRxChannels()), firingStr);
                 size_t numberOfActiveRxChannels =
                     std::accumulate(std::begin(op.getRxAperture()), std::end(op.getRxAperture()), 0);
-                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(numberOfActiveRxChannels, size_t(0), size_t(descriptor.getNRxChannels()), firingStr);
+                ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(numberOfActiveRxChannels, size_t(0), size_t(descriptor.getNRxOutputChannels()), firingStr);
                 uint32 numberOfSamples = op.getNumberOfSamples();
                 ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(numberOfSamples, rxLimits.getNSamples(), firingStr);
-                ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(numberOfSamples, 64u, firingStr);
+                // The number of raw (ADC clock) samples must be divisible by 64.
+                ARRUS_VALIDATOR_EXPECT_DIVISIBLE_M(numberOfSamples, 64u / descriptor.getRxInterleave(), firingStr);
                 ARRUS_VALIDATOR_EXPECT_IN_RANGE_M(op.getRxDecimationFactor(), 0, 10, firingStr);
+                if(descriptor.getRxInterleave() > 1) {
+                    // FPGA decimation would drop one input of each interleaved pair.
+                    ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getRxDecimationFactor() == 1,
+                                                  "RX decimation is not supported for interleaved RX (AFE58JD32)." + firingStr);
+                }
                 ARRUS_VALIDATOR_EXPECT_IN_INTERVAL_M(op.getPri(), txRxLimits.getPri(), firingStr);
                 ARRUS_VALIDATOR_EXPECT_TRUE_M(op.getRxDecimationFactor() == decimationFactor,
                                               "Decimation factor should be the same for all operations." + firingStr);

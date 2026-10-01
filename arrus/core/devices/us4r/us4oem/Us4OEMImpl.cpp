@@ -146,6 +146,8 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
                                       const std::vector<std::vector<arrus::framework::NdArray>> &txDelays,
                                       const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
+    ARRUS_REQUIRES_TRUE_IAE(!(ddc.has_value() && descriptor.getRxInterleave() > 1),
+                            "Digital down conversion is not supported for interleaved RX (AFE58JD32).");
     validate(sequences, rxBufferSize);
     setTgcCurve(sequences);
     ius4oem->ResetSequencer();
@@ -324,12 +326,14 @@ std::pair<size_t, float> Us4OEMImpl::scheduleReceiveDDC(size_t outputAddress,
 
 size_t Us4OEMImpl::scheduleReceiveRF(size_t outputAddress, uint32 startSample, uint32 endSample, uint16 entryId,
                                      const TxRxParameters &op, uint16 rxMapId) {
-    const uint32 startSampleRaw = startSample * op.getRxDecimationFactor();
+    // Interleaved RX (AFE58JD32): each output sample = rxInterleave raw rows (ADC clocks) of all RX slots.
+    const uint32 interleave = descriptor.getRxInterleave();
+    const uint32 startSampleRaw = startSample * op.getRxDecimationFactor() * interleave;
     const uint32 sampleRxOffset = descriptor.getSampleTxStart();
     const size_t nSamples = endSample - startSample;
-    const size_t nSamplesRaw = nSamples;
+    const size_t nSamplesRaw = nSamples * interleave;
     const size_t sampleSize = sizeof(RawDataType);
-    const size_t nBytes = nSamples * descriptor.getNRxChannels() * sampleSize;
+    const size_t nBytes = nSamples * descriptor.getNRxOutputChannels() * sampleSize;
     ARRUS_REQUIRES_AT_MOST(outputAddress + nBytes, descriptor.getDdrSize(),
                            format("Total data size cannot exceed 4GiB (device {})", getDeviceId().toString()));
     US4US_US4R_PROGRAMMING_CHUNK_PAUSE(entryId);
@@ -413,7 +417,9 @@ std::pair<Us4OEMBuffer, float> Us4OEMImpl::uploadAcquisition(const TxParametersS
             if (isDDCOn) {
                 shape = {totalSamples, 2, descriptor.getNRxChannels()};
             } else {
-                shape = {totalSamples, descriptor.getNRxChannels()};
+                // Interleaved RX: raw rows (2m, 2m+1) read as one row of 64 columns: first raw row half,
+                // then the other one (zero-copy de-interleave).
+                shape = {totalSamples, descriptor.getNRxOutputChannels()};
             }
             if (batchId == 0) {
                 // Gather element layout.
@@ -536,7 +542,8 @@ float Us4OEMImpl::getTxRxTime(float rxTime) const {
 
 Us4OEMRxMappingRegister Us4OEMImpl::setRxMappings(const TxParametersSequenceColl &sequences) {
     Us4OEMRxMappingRegisterBuilder builder{static_cast<FrameChannelMapping::Us4OEMNumber>(getDeviceId().getOrdinal()),
-                                           acceptRxNops, channelMapping, descriptor.getNRxChannels()};
+                                           acceptRxNops, channelMapping, descriptor.getNRxChannels(),
+                                           descriptor.getRxInterleave(), descriptor.getRxInputTable()};
     builder.add(sequences);
     auto mappingRegister = builder.build();
     for (auto const &[mapId, map] : mappingRegister.getMappings()) {

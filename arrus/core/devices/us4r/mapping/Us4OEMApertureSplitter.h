@@ -35,8 +35,10 @@ public:
     };
 
     Us4OEMApertureSplitter(std::vector<std::vector<uint8_t>> oemMappings, const std::optional<Ordinal> frameMetadataOEM,
-                           const ChannelIdx nRxChannels)
-        : oemMappings(std::move(oemMappings)), frameMetadataOEM(frameMetadataOEM), nRxChannels(nRxChannels) {}
+                           const ChannelIdx nRxChannels, const uint32_t rxInterleave = 1,
+                           RxInputTable rxInputTable = {})
+        : oemMappings(std::move(oemMappings)), frameMetadataOEM(frameMetadataOEM), nRxChannels(nRxChannels),
+          rxInterleave(rxInterleave), rxInputTable(std::move(rxInputTable)) {}
 
     /**
     * Splits each tx/rx operation into multiple ops so that each rx aperture
@@ -87,8 +89,16 @@ public:
         opDestOp.setZero();
         opDestChannel.setConstant(FrameChannelMapping::UNAVAILABLE);
 
-        ChannelIdx nGroups = Us4OEMDescriptor::N_ADDR_CHANNELS / nRxChannels;
         constexpr ChannelIdx N_ADDR_CHANNELS = Us4OEMDescriptor::N_ADDR_CHANNELS;
+        // RX slot -> mux group -> physical channels. Channels of the same slot and group are acquired together
+        // (interleaved RX, AFE58JD32); different groups of the same slot conflict.
+        ChannelIdx nGroups = static_cast<ChannelIdx>(N_ADDR_CHANNELS / (nRxChannels * rxInterleave));
+        std::vector<std::vector<std::vector<ChannelIdx>>> slotGroupChannels(
+            nRxChannels, std::vector<std::vector<ChannelIdx>>(nGroups));
+        for (ChannelIdx physicalIdx = 0; physicalIdx < N_ADDR_CHANNELS; ++physicalIdx) {
+            auto location = getRxInputLocation(physicalIdx, nRxChannels, rxInterleave, rxInputTable);
+            slotGroupChannels.at(location.slot).at(location.group).push_back(physicalIdx);
+        }
 
         std::vector<std::vector<uint8_t>> us4oemP2LMappings(oemMappings.size());
         int i = 0;
@@ -126,16 +136,21 @@ public:
                 for (ChannelIdx ch = 0; ch < nRxChannels; ++ch) {
                     ChannelIdx subaperture = 1;
                     for (ChannelIdx group = 0; group < nGroups; ++group) {
-                        // Us4OEM Physical address
-                        ChannelIdx physicalIdx = group * nRxChannels + ch;
-                        // Us4OEM Logical address
-                        ChannelIdx logicalIdx = us4oemP2LMappings[oem][physicalIdx];
-                        if (op.getRxAperture()[logicalIdx]) {
-                            // channel active
-                            subapertureIdxs[logicalIdx] = subaperture++;
-                        } else {
-                            // channel inactive
-                            subapertureIdxs[logicalIdx] = 0;
+                        bool isGroupActive = false;
+                        for (ChannelIdx physicalIdx : slotGroupChannels[ch][group]) {
+                            // Us4OEM Logical address
+                            ChannelIdx logicalIdx = us4oemP2LMappings[oem][physicalIdx];
+                            if (op.getRxAperture()[logicalIdx]) {
+                                // channel active
+                                subapertureIdxs[logicalIdx] = subaperture;
+                                isGroupActive = true;
+                            } else {
+                                // channel inactive
+                                subapertureIdxs[logicalIdx] = 0;
+                            }
+                        }
+                        if (isGroupActive) {
+                            ++subaperture;
                         }
                     }
                 }
@@ -164,7 +179,7 @@ public:
                             opDestOp(oem, frameIdx, opActiveChannel) = FrameNumber(currentFrameIdx[oem] + subapIdx - 1);
                             ARRUS_REQUIRES_TRUE_E(
                                 opActiveChannel <= (std::numeric_limits<int8>::max)(),
-                                arrus::ArrusException("Number of active rx elements should not exceed 32."));
+                                arrus::ArrusException("Number of active rx elements should not exceed 127."));
                             opDestChannel(oem, frameIdx, opActiveChannel) =
                                 static_cast<int8>(subopActiveChannels[subapIdx - 1]);
                             ++opActiveChannel;
@@ -192,7 +207,7 @@ public:
                             opDestOp(oem, frameIdx, opActiveChannel) = currentFrameIdx[oem];
                             ARRUS_REQUIRES_TRUE_E(
                                 opActiveChannel <= (std::numeric_limits<int8>::max)(),
-                                arrus::ArrusException("Number of active rx elements should not exceed 32."));
+                                arrus::ArrusException("Number of active rx elements should not exceed 127."));
                             opDestChannel(oem, frameIdx, opActiveChannel) = static_cast<int8>(opActiveChannel);
                             ++opActiveChannel;
                         }
@@ -302,6 +317,8 @@ private:
     std::vector<std::vector<uint8_t>> oemMappings;
     std::optional<Ordinal> frameMetadataOEM{std::nullopt};
     ChannelIdx nRxChannels;
+    uint32_t rxInterleave{1};
+    RxInputTable rxInputTable;
 };
 
 }// namespace arrus::devices

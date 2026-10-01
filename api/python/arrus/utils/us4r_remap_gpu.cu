@@ -9,11 +9,13 @@
  * @parma frameOffsets: Number of frames, that starts given us4OEM data
  * @param nFramesUs4OEM: number of frames each us4OEM acquires
  * @param nSequences, nFrames, nSamples, nChannels: output shape
+ * @param nPhysicalChannels: number of columns of the input (us4OEM) data, e.g. 32 (64 for AFE58JD32)
  */
 extern "C" __global__ void arrusRemap(short *out, short *in, const short *fcmFrames, const char *fcmChannels,
                                        const unsigned char *fcmUs4oems, const unsigned int *frameOffsets,
                                        const unsigned int *nFramesUs4OEM, const unsigned nSequences,
-                                       const unsigned nFrames, const unsigned nSamples, const unsigned nChannels) {
+                                       const unsigned nFrames, const unsigned nSamples, const unsigned nChannels,
+                                       const unsigned nPhysicalChannels) {
     int channel = blockIdx.x * 32 + threadIdx.x;// logical channel
     int sample = blockIdx.y * 32 + threadIdx.y; // logical sample
     int frame = blockIdx.z;                     // logical frame, global in the whole batch of sequences
@@ -33,15 +35,14 @@ extern "C" __global__ void arrusRemap(short *out, short *in, const short *fcmFra
     size_t indexOut =
         sequence*nFrames*nSamples*nChannels + localFrame*nSamples*nChannels + sample*nChannels + channel;
 
-    // 32 == number of channels in the physical mapping
     // [us4oem, sequence, physicalFrame, sample, physicalChannel]
     int physicalFrame = fcmFrames[channel + nChannels*localFrame];
     int us4oem = fcmUs4oems[channel + nChannels*localFrame];
     int us4oemOffset = frameOffsets[us4oem];
     int nPhysicalFrames = nFramesUs4OEM[us4oem];
 
-    size_t indexIn = us4oemOffset*nSamples*32 + sequence*nPhysicalFrames*nSamples*32
-        + physicalFrame*nSamples*32 + sample*32 + physicalChannel;
+    size_t indexIn = us4oemOffset*nSamples*nPhysicalChannels + sequence*nPhysicalFrames*nSamples*nPhysicalChannels
+        + physicalFrame*nSamples*nPhysicalChannels + sample*nPhysicalChannels + physicalChannel;
     out[indexOut] = in[indexIn];
 }
 
@@ -63,12 +64,13 @@ extern "C" __global__ void arrusRemap(short *out, short *in, const short *fcmFra
  * @parma frameOffsets: Number of frame (global), that starts given us4OEM data
  * @param nFramesUs4OEM: number of frames each us4OEM acquires
  * @param nSequences, nFrames, nSamples, nChannels, nComponents: output shape
+ * @param nPhysicalChannels: number of us4OEM data columns per component, e.g. 32 (64 for AFE58JD32)
  */
 extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmFrames, const char *fcmChannels,
                                       const unsigned char *fcmUs4oems, const unsigned int *frameOffsets,
                                       const unsigned int *nFramesUs4OEM, const unsigned nSequences,
                                       const unsigned nFrames, const unsigned nSamples, const unsigned nChannels,
-                                      const unsigned nComponents) {
+                                      const unsigned nComponents, const unsigned nPhysicalChannels) {
     // NOTE: assuming, that maximum number of components == 2
     __shared__ short tile[32][32][2]; // NOTE: this is also the runtime block size.
 
@@ -89,7 +91,7 @@ extern "C" __global__ void arrusRemapV2(short *out, short *in, const short *fcmF
     int us4oemOffset = frameOffsets[us4oem];
     int nPhysicalFrames = nFramesUs4OEM[us4oem];
 
-    const int nus4OEMChannels = 32;
+    const int nus4OEMChannels = nPhysicalChannels;
     // physical, input
     int pSampleSize = nus4OEMChannels*nComponents;
     int pFrameSize = pSampleSize*nSamples;
