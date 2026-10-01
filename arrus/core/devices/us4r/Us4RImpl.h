@@ -360,6 +360,8 @@ private:
         std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> registrars;
     };
     std::vector<RetiredTransfers> retiredTransfers;
+    /** Fixed layout only: every registrar whose descriptor tables are kept registered for reuse. */
+    std::vector<std::shared_ptr<Us4OEMDataTransferRegistrar>> retainedRegistrars;
 
     // Other.
     std::vector<Bitstream> bitstreams;

@@ -1239,6 +1239,12 @@ size_t Us4RImpl::getUniqueUs4OEMBufferElementSize(const Us4OEMBuffer &us4oemBuff
 }
 
 void Us4RImpl::unregisterOutputBuffer(bool cleanupSequencer) {
+    // Fixed layout: the descriptor tables kept for reuse are released here (in the reverse order
+    // of their registration, so that the reference counts are balanced).
+    for (auto it = retainedRegistrars.rbegin(); it != retainedRegistrars.rend(); ++it) {
+        (*it)->releaseRetainedPages();
+    }
+    retainedRegistrars.clear();
     if(transferRegistrar.empty()) {
         return;
     }
@@ -1784,6 +1790,11 @@ Us4RImpl::prepareSubsequences(const std::vector<std::vector<uint16>> &ops,
                                   IllegalArgumentException("The sequencer double-buffering requires the host buffer "
                                                            "to have the same number of elements as the RX buffer."));
             registrar->registerTransfers();
+            if (isFixedSubsequenceLayout()) {
+                // Its descriptor tables are kept for the next sub-sequences; remember it, so that
+                // they can be released when the host buffer goes away.
+                retainedRegistrars.push_back(registrar);
+            }
             prepared.registrars.at(o) = registrar;
         }
     } catch (...) {

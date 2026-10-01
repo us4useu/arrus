@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "FixedSubsequenceLayout.h"
 #include "FrameChannelMappingImpl.h"
 #include "arrus/common/format.h"
 #include "arrus/core/api/common/exceptions.h"
@@ -170,7 +171,9 @@ public:
         outFCMBuilder.select(ops);// keep the selected logical frames only
         // OEM nr -> number of frames
         std::vector<uint32> nFrames;
-        for (size_t oem = 0; oem < oemBuffers.size(); ++oem) {
+        // With the fixed layout the frames stay where the full sequence puts them, so their
+        // numbers (and the per-OEM frame counts and offsets) are the ones of the full sequence.
+        for (size_t oem = 0; oem < oemBuffers.size() && !isFixedSubsequenceLayout(); ++oem) {
             // The frames not acquired by this sub-sequence are dropped, the remaining ones are renumbered
             // (e.g. the frames 3, 7 of the full sequence become the frames 0, 1 of the sub-sequence).
             auto frameNumbers = opToNextFrame.at(sequenceId).at(oem).getFrameNumbers(localEntries);
@@ -179,9 +182,11 @@ public:
                 outFCMBuilder.remapPhysicalFrameNumbers((Ordinal)oem, frameNumbers);
             } // Otherwise there is no frame from the given OEM in FCM, so nothing to update.
         }
-        // recalculate frame offsets
-        outFCMBuilder.setNumberOfFrames(nFrames);
-        outFCMBuilder.recalculateOffsets();
+        if (!isFixedSubsequenceLayout()) {
+            // recalculate frame offsets
+            outFCMBuilder.setNumberOfFrames(nFrames);
+            outFCMBuilder.recalculateOffsets();
+        }
         return Us4RSubsequence{
             entries,
             getTimeToNextTrigger(sequenceId, localEntries, sri),
@@ -424,6 +429,11 @@ private:
                            entry, parts.size()));
             }
             newParts.push_back(parts.at(entry));
+        }
+        if (isFixedSubsequenceLayout()) {
+            // The selected frames keep their place in the element, so the array keeps the shape
+            // and the address of the uploaded sequence's one; only the list of parts is limited.
+            return Us4OEMBufferArrayDef {arrayDef.getAddress(), arrayDef.getDefinition(), newParts};
         }
         // Calculate new shape of the array.
         auto oldShape = arrayDef.getDefinition().getShape();

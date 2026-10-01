@@ -6,6 +6,7 @@
 #include "arrus/common/compiler.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/common/logging.h"
+#include "arrus/core/devices/us4r/FixedSubsequenceLayout.h"
 #include "arrus/core/devices/us4r/Us4ROutputBuffer.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImpl.h"
 #include "arrus/core/devices/us4r/us4oem/Us4OEMImplBase.h"
@@ -122,9 +123,20 @@ public:
     }
 
     void unregisterTransfers(bool cleanupSequencer = false) {
-        pageUnlockDstMemory();
+        // Fixed layout: the descriptor tables of these transfers are exactly the ones the next
+        // sub-sequences will use, so they are kept (see releaseRetainedPages).
+        if (!isFixedSubsequenceLayout()) {
+            pageUnlockDstMemory();
+        }
         if(cleanupSequencer) {
             cleanupSequencerTransfers();
+        }
+    }
+
+    /** Releases the descriptor tables kept by the fixed layout (see unregisterTransfers). */
+    void releaseRetainedPages() {
+        if (isFixedSubsequenceLayout()) {
+            pageUnlockDstMemory();
         }
     }
 
@@ -164,8 +176,14 @@ public:
                 result.push_back(transfers);
             } else {
                 // This OEM produces some data for this array.
-                size_t source = src.getArrayAddressRelative(arrayId);
-                size_t destination = dst->getArrayAddressRelative(arrayId, oem);
+                const bool fixedLayout = isFixedSubsequenceLayout();
+                const size_t sourceBase = src.getArrayAddressRelative(arrayId);
+                const size_t destinationBase = dst->getArrayAddressRelative(arrayId, oem);
+                size_t source = sourceBase;
+                // Packed layout: the frames follow each other in the element. Fixed layout: each
+                // frame goes to the slot it occupies in the uploaded sequence, i.e. the element
+                // mirrors the us4OEM memory, and a frame's transfer never changes.
+                size_t destination = destinationBase;
                 size_t size = 0;
                 uint16 firing = parts[0].getEntryId();// the firing that finishes given transfer
                 for (auto &part : parts) {
@@ -176,11 +194,18 @@ public:
                         // NOTE: the parts do not have to be consecutive in the us4OEM memory (e.g. when
                         // a sub-sequence with non-consecutive TX/RXs is selected) -- only the parts that are
                         // adjacent to each other can be transferred together.
-                        const bool isAdjacent = part.getAddress() == source + size;
+                        // In the fixed layout a frame's transfer must always be the same one, so
+                        // frames are not merged -- unless there are more of them than there are
+                        // transfer ids (the uploaded sequence), where merging is what makes them fit.
+                        const bool mergeAllowed = !fixedLayout || parts.size() > MAX_N_TRANSFERS/4;
+                        const bool isAdjacent = mergeAllowed && part.getAddress() == source + size;
                         if (size > 0 && (size + part.getSize() > maxTransferSize || !isAdjacent)) {
                             transfers.emplace_back(destination, source, size, firing);
                             destination += size;
                             size = 0;
+                        }
+                        if (fixedLayout && size == 0) {
+                            destination = destinationBase + (part.getAddress() - sourceBase);
                         }
                         if (size == 0) {
                             source = part.getAddress();

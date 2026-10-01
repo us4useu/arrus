@@ -515,7 +515,8 @@ class Us4R(Device, Ultrasound):
         try:
             if isinstance(ops, slice):
                 ops = np.arange(full.frames.shape[0])[ops]
-            arrays = arrus.utils.core.derive_subsequence_fcm(full, ops)
+            arrays = arrus.utils.core.derive_subsequence_fcm(
+                full, ops, renumber_frames=not os.environ.get("ARRUS_FIXED_SUBSEQUENCE_LAYOUT") == "1")
         except Exception as e:  # noqa: BLE001 - fall back to reading it from the core
             arrus.logging.log(arrus.logging.DEBUG,
                               f"Could not derive the sub-sequence frame channel mapping ({e}); "

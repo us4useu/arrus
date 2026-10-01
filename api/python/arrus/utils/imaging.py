@@ -2163,6 +2163,113 @@ class EnvelopeDetection(Operation):
         return self.xp.abs(data)
 
 
+class Srad(Operation):
+    """
+    Speckle reducing anisotropic diffusion (SRAD).
+
+    Y. Yu, S. T. Acton, "Speckle reducing anisotropic diffusion", IEEE Trans. Image Processing
+    11(11), 2002. Smooths speckle while keeping the edges: the diffusion is strong where the
+    instantaneous coefficient of variation q matches the one of fully developed speckle (q0) and
+    weak where it is much larger, i.e. at edges and point targets.
+
+    The input is the ENVELOPE (a positive, linear-scale image), i.e. this op belongs after
+    EnvelopeDetection and before LogCompression. The last two axes are the image (depth, line);
+    any leading axes (e.g. frames) are processed independently.
+
+    :param n_iterations: number of diffusion steps
+    :param step: time step (dt); the paper's stability bound for a 2-D 4-neighbourhood is 0.25,
+      smaller values diffuse more slowly but more safely
+    :param q0: the coefficient of variation of the speckle. None: estimated from each frame, as
+      the ratio of the standard deviation to the mean over the whole image
+    :param rho: decay of q0 with time, q0(t) = q0*exp(-rho*t) (0: constant q0)
+    :param eps: guards the divisions
+    """
+
+    def __init__(self, n_iterations: int = 20, step: float = 0.05, q0: Optional[float] = None,
+                 rho: float = 1.0, eps: float = 1e-8, num_pkg=None, name=None):
+        super().__init__(name=name)
+        if n_iterations < 0:
+            raise ValueError("The number of SRAD iterations must not be negative.")
+        if not 0 < step <= 0.25:
+            raise ValueError("The SRAD time step should be in (0, 0.25] (stability).")
+        self.n_iterations = n_iterations
+        self.step = step
+        self.q0 = q0
+        self.rho = rho
+        self.eps = eps
+        self.xp = num_pkg
+
+    def set_pkgs(self, num_pkg, **kwargs):
+        self.xp = num_pkg
+
+    def prepare(self, const_metadata: arrus.metadata.ConstMetadata):
+        if len(const_metadata.input_shape) < 2:
+            raise ValueError("SRAD requires at least a 2-D input (depth, scan line).")
+        return const_metadata.copy(dtype="float32")
+
+    def process(self, data):
+        xp = self.xp
+        image = data.astype(xp.float32) if data.dtype != xp.float32 else data
+        if self.n_iterations == 0:
+            return image
+        image = image.copy()
+        for iteration in range(self.n_iterations):
+            image = self._step(image, iteration*self.step)
+        return image
+
+    def _step(self, image, time):
+        """One diffusion step (the paper's equations 30-35, discretised as in section IV)."""
+        xp = self.xp
+        eps = self.eps
+        # Forward/backward differences along the two image axes, with symmetric borders.
+        north = self._shift(image, -1, -2) - image
+        south = self._shift(image, +1, -2) - image
+        west = self._shift(image, -1, -1) - image
+        east = self._shift(image, +1, -1) - image
+
+        safe = xp.maximum(image, eps)
+        gradient2 = (north**2 + south**2 + west**2 + east**2)/safe**2
+        laplacian = (north + south + west + east)/safe
+
+        # The instantaneous coefficient of variation.
+        numerator = 0.5*gradient2 - (1.0/16.0)*laplacian**2
+        denominator = (1.0 + 0.25*laplacian)**2
+        q2 = numerator/xp.maximum(denominator, eps)
+        q2 = xp.maximum(q2, 0.0)
+
+        q0 = self._speckle_scale(image)*float(self.xp.exp(-self.rho*time)) if self.rho else \
+            self._speckle_scale(image)
+        q02 = max(float(q0), eps)**2
+        coefficient = 1.0/(1.0 + (q2 - q02)/xp.maximum(q02*(1.0 + q02), eps))
+        coefficient = xp.clip(coefficient, 0.0, 1.0)
+
+        # Divergence of c*grad(I): the coefficient of the "north"/"west" neighbour is taken from
+        # that neighbour, as in the paper's discretisation.
+        divergence = (coefficient*(north + west)
+                      + self._shift(coefficient, +1, -2)*south
+                      + self._shift(coefficient, +1, -1)*east)
+        return image + 0.25*self.step*divergence
+
+    def _speckle_scale(self, image):
+        """q0: given, or the coefficient of variation of the whole frame."""
+        if self.q0 is not None:
+            return self.q0
+        xp = self.xp
+        mean = xp.mean(image)
+        return float(xp.sqrt(xp.maximum(xp.var(image), 0.0))/xp.maximum(mean, self.eps))
+
+    def _shift(self, array, offset, axis):
+        """The array shifted by one sample along the given axis, with the border repeated."""
+        xp = self.xp
+        result = xp.roll(array, offset, axis=axis)
+        index = [slice(None)]*array.ndim
+        index[axis] = 0 if offset > 0 else -1
+        source = [slice(None)]*array.ndim
+        source[axis] = 1 if offset > 0 else -2
+        result[tuple(index)] = array[tuple(source)]
+        return result
+
+
 class Transpose(Operation):
     """
     Data transposition.

@@ -89,7 +89,7 @@ def convert_to_core_sequence(seq):
     return core_seq
 
 
-def derive_subsequence_fcm(full, ops):
+def derive_subsequence_fcm(full, ops, renumber_frames=True):
     """The frame channel mapping of a sub-sequence, derived from the one of the full sequence.
 
     Selecting a sub-sequence keeps each TX/RX's (us4OEM, channel) mapping; only the frames are
@@ -99,10 +99,15 @@ def derive_subsequence_fcm(full, ops):
 
     :param full: the FrameChannelMapping of the uploaded (full) sequence
     :param ops: the selected TX/RX ordinals of that sequence, in increasing order
+    :param renumber_frames: whether the frames are renumbered, i.e. whether the acquired frames are
+      packed at the beginning of the buffer element (the default). With the fixed sub-sequence
+      layout each frame keeps the place -- and the number -- it has in the full sequence.
     :return: (us4oems, frames, channels, frame_offsets, n_frames) -- as convert_fcm_to_np_arrays
     """
     ops = np.asarray(ops, dtype=int)
     us4oems, frames, channels = full.us4oems[ops], full.frames[ops], full.channels[ops]
+    if not renumber_frames:
+        return us4oems, frames, channels, full.frame_offsets, full.n_frames
     is_valid = channels >= 0
     new_frames = np.zeros_like(frames)
     n_frames, frame_offsets, offset = [], [], 0
