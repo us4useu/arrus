@@ -47,7 +47,7 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
                             Rx(aperture=[True]*n_elements,
                                 sample_range=(0, 65472-(64*20)),
                                 downsampling_factor=1),
-                            pri=1e-3
+                            pri=2e-3
                         ),
                     ]*n_tx_rx,
                     # Turn off TGC.
@@ -57,8 +57,8 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
         
         scheme = Scheme(
             tx_rx_sequence=seq,
-            rx_buffer_size=4,
-            output_buffer=DataBufferSpec(type="FIFO", n_elements=4),
+            rx_buffer_size=96,
+            output_buffer=DataBufferSpec(type="FIFO", n_elements=96),
             work_mode="ASYNC"
             )
 
@@ -66,7 +66,7 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
         print(f"DMA PERF TEST SeqDMA buffer size: {seqdma_buffer_size}")
         ultrasound.set_seq_dma_buffer_size(seqdma_buffer_size)
         ultrasound.set_hv_voltage(5)
-        ultrasound.set_stop_on_overflow(False)
+        ultrasound.set_stop_on_overflow(True)
         # Upload sequence on the us4r-lite device.
         buffer, const_metadata = sess.upload(scheme)
         timer = Timer()
