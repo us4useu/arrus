@@ -39,7 +39,13 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
-    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
+    /**
+     * @param op TX/RX
+     * @param profileDelays TX delays of the given op, from each of the TX delay profiles uploaded for the op's sequence
+     *   (probe element -> delay); the RX delay will be the maximum over all these profiles (and the op's own delays)
+     */
+    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op,
+                            const std::vector<std::vector<float>> &profileDelays = {});
 
     ~Us4RImpl() override;
 
@@ -264,7 +270,8 @@ private:
 
     std::tuple<std::string, std::string, size_t> parseTxDelaysConstantName(const std::string &name) const;
     std::tuple<std::string, std::string> parseTxDelaysParamName(const std::string &name) const;
-    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs);
+    std::vector<std::vector<float>> getRxDelays(const std::vector<arrus::ops::us4r::TxRxSequence> &seqs,
+                                                const std::unordered_map<std::string, DelayProfiles> &profiles = {});
     std::unordered_map<std::string, SequenceId> getSequenceNameToOrdinalMap(const arrus::ops::us4r::Scheme& scheme) const;
     std::function<void()> createReceiveReleaseCallback(ops::us4r::Scheme::WorkMode workMode, uint16 startFiring, uint16 endFiring);
     /** Sets fuse settings on all us4R OEMs. */

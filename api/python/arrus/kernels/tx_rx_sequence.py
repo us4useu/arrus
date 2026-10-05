@@ -3,6 +3,7 @@ In some time this module probably will not be needed anymore,
 as all of the below functionality will be moved to C++ API.
 """
 import dataclasses
+import re
 import typing
 
 import numpy as np
@@ -196,32 +197,92 @@ def convert_to_us4r_sequence_with_constants(
     sequence = dataclasses.replace(sequence, ops=new_ops)
 
     output_constants = []
+    parameter_name, tx_delay_constants = _sort_tx_delay_constants(tx_focus_constants)
+    n_ops = len(sequence_with_masks.ops)
 
-    for i, tx_focus_const in enumerate(tx_focus_constants):
-        focus = tx_focus_const.value
-
+    for i, tx_delay_const in enumerate(tx_delay_constants):
         # Currently we do not allow constants with multi-TX sequences.
-        focuses = []  # (n TX/RXs, n TXs in the op)
         for op in sequence_with_masks.ops:
             if isinstance(op.tx, typing.Iterable) and len(op.tx) > 1:
-                raise ValueError("Multi-TX ops are not supported with TX focus constants")
-            focuses.append([focus])  # note: a single TX in the op in the list
+                raise ValueError(f"Multi-TX ops are not supported with {parameter_name} constants")
+        # (n TX/RXs, n TXs in the op); note: a single TX in the op in the list
+        if parameter_name == "txFocus":
+            focuses = [[tx_delay_const.value] for _ in range(n_ops)]
+            angles = None  # Use the sequence TX angles.
+        elif parameter_name == "txAngle":
+            focuses = [[tx.focus for tx in op.tx] for op in original_sequence.ops]  # The sequence TX focuses.
+            op_angles = _broadcast_constant_value_to_ops(tx_delay_const, n_ops)
+            angles = [[a] for a in op_angles]
+        else:
+            raise ValueError(f"Unsupported constant parameter: {parameter_name}")
 
         constant_delays, _ = get_tx_delays_for_focuses(
             probe=probe_tx,
             sequence=original_sequence,
             seq_with_masks=sequence_with_masks,
-            tx_focuses=focuses
+            tx_focuses=focuses,
+            tx_angles=angles
         )
         full_tx_delays = _get_full_tx_delays(constant_delays, sequence_with_masks)
         output_constants.append(
             Constant(
                 value=full_tx_delays,
-                placement=tx_focus_const.placement,
+                placement=tx_delay_const.placement,
                 name=f"/{original_sequence.name}/txDelays:{i}"
             )
         )
     return sequence, tx_center_delay, output_constants
+
+
+_TX_DELAY_CONSTANT_NAME_PATTERN = re.compile(r"^/[A-Za-z][A-Za-z0-9_:]*/(txFocus|txAngle)(?::([0-9]+))?$")
+
+
+def _sort_tx_delay_constants(constants):
+    """
+    Validates the given TX delay constants (TX focus or TX angle) and returns them sorted by their ordinal
+    number, i.e. the i-th constant (the i-th TX delays profile) is the one with name "/{sequence}/{param}:{i}".
+
+    All the constants of a single sequence should be of the same kind: either TX focus or TX angle.
+
+    :return: a pair: parameter name (txFocus or txAngle, None if there are no constants), sorted constants
+    """
+    if len(constants) == 0:
+        return None, []
+    parameter_names = set()
+    ordered = []
+    for i, constant in enumerate(constants):
+        match = _TX_DELAY_CONSTANT_NAME_PATTERN.match(constant.name)
+        if match is None:
+            raise ValueError(f"The TX delay constant name should follow the pattern: "
+                             f"{_TX_DELAY_CONSTANT_NAME_PATTERN.pattern}, got: {constant.name}")
+        parameter_name, ordinal = match.groups()
+        parameter_names.add(parameter_name)
+        # No ordinal number: keep the order of the input list.
+        ordered.append((int(ordinal) if ordinal is not None else i, constant))
+    if len(parameter_names) > 1:
+        raise ValueError(f"All the TX delay constants of a single sequence should define the same parameter, "
+                         f"got: {sorted(parameter_names)}")
+    ordinals = sorted(o for o, _ in ordered)
+    if ordinals != list(range(len(ordinals))):
+        raise ValueError(f"The constants should be numbered 0, 1, ..., n-1 without gaps and duplicates, "
+                         f"got: {ordinals}")
+    ordered = sorted(ordered, key=lambda x: x[0])
+    return next(iter(parameter_names)), [c for _, c in ordered]
+
+
+def _broadcast_constant_value_to_ops(constant, n_ops):
+    """
+    Returns the constant value for each TX/RX of the sequence: a scalar is applied to all TX/RXs,
+    a 1D array should have exactly n_ops values (one value for each TX/RX).
+    """
+    value = np.asarray(constant.value, dtype=np.float64)
+    if value.ndim == 0:
+        return np.repeat(value.item(), n_ops)
+    value = value.flatten()
+    if len(value) != n_ops:
+        raise ValueError(f"The constant {constant.name} value should be a scalar or a 1D array with "
+                         f"exactly {n_ops} elements (one for each TX/RX), got: {len(value)}")
+    return value
 
 
 def _get_tx_delays_internal(
@@ -243,10 +304,14 @@ def get_tx_delays(
 
 def get_tx_delays_for_focuses(
         probe, sequence: TxRxSequence, seq_with_masks: TxRxSequence,
-        tx_focuses
+        tx_focuses, tx_angles=None
 ):
     """
     Returns tx_center_delay = None when all TXs have empty aperture.
+
+    :param tx_focuses: TX focus for each TX of each op: (n ops, n TXs in the op)
+    :param tx_angles: TX angle [rad] for each TX of each op: (n ops, n TXs in the op); None means that
+      the angles of the sequence TXs (tx.angle) should be used
 
     For ops with multiple TX: the TX delays will be equalized to the MAXIMUM CENTER DELAY of the whole op.
     """
@@ -282,7 +347,8 @@ def get_tx_delays_for_focuses(
                 delays = tx.delays
                 center_delay = None
             else:
-                tx_angle = tx.angle + tx_center_angles[i][j]
+                angle = tx.angle if tx_angles is None else tx_angles[i][j]
+                tx_angle = angle + tx_center_angles[i][j]
                 tx_cent_x = tx_center_x[i][j]
                 tx_cent_z = tx_center_z[i][j]
                 c = tx.speed_of_sound

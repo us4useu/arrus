@@ -361,6 +361,23 @@ class Session(AbstractSession):
         return specific_device
 
     def set_parameters(self, params):
+        """
+        Sets the given device parameters, while the scheme can be running.
+
+        Currently, the parameters that can be changed are the TX delay profiles, pre-defined in the scheme
+        as constants (see arrus.framework.Constant, arrus.ops.us4r.Scheme.constants):
+
+        - ``{"/Us4R:0/{sequence name}/txFocus": i}``: selects the i-th TX focus
+          (constant ``/{sequence name}/txFocus:{i}``),
+        - ``{"/Us4R:0/{sequence name}/txAngle": i}``: selects the i-th TX angle
+          (constant ``/{sequence name}/txAngle:{i}``).
+
+        NOTE: the i is the ordinal number of the constant, NOT the focus/angle value.
+        NOTE: in the MANUAL work modes, call this method only when no TX/RX is in progress
+        (e.g. after ``run(sync=True)``).
+
+        :param params: a dictionary: parameter name -> value
+        """
         if self._contains_py_params(params):
             self._handle_py_params(params)
             params = self._remove_py_params(params)
@@ -586,7 +603,8 @@ class Session(AbstractSession):
         # Validate constant names:
         #
         # - the sequence name should be in the collection of sequences,
-        # - the constant name is expected to be /{SequenceName}/txFocus (currently only TX focus is supported)
+        # - the constant name is expected to be /{SequenceName}/txFocus:{i} or /{SequenceName}/txAngle:{i}
+        #   (currently only TX focus and TX angle are supported)
         result = defaultdict(list)
         # TODO NOTE: assuming Us4R:0 device here
         pattern = re.compile(r"^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+)$")
@@ -597,8 +615,9 @@ class Session(AbstractSession):
                 sequence_name, parameter_name = r.groups()
                 if sequence_name not in sequence_names:
                     raise ValueError(f"One of the constants is assigned to unknown sequence with name {sequence_name}")
-                if not parameter_name.startswith("txFocus"):
-                    raise ValueError(f"Currently only 'txFocus' parameter is supported (got: {parameter_name})")
+                if not (parameter_name.startswith("txFocus") or parameter_name.startswith("txAngle")):
+                    raise ValueError(f"Currently only 'txFocus' and 'txAngle' parameters are supported "
+                                     f"(got: {parameter_name})")
                 result[sequence_name].append(constant)
             else:
                 raise ValueError(f"The Constant name should follow the following pattern: {pattern.pattern}")

@@ -82,6 +82,43 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
     EXPECT_EQ(expectedRxDelay2, actualRxDelay2);
 }
 
+TEST(Us4RImplTest, CalculatesCorrectRxDelayForTxDelayProfiles) {
+    constexpr ChannelIdx nChannels = 192;
+    // Partial TX aperture: [0, 10).
+    BitMask txAperture(nChannels, false);
+    std::fill(std::begin(txAperture), std::begin(txAperture) + 10, true);
+    BitMask rxAperture(nChannels, true);
+    ops::us4r::Pulse pulse{1.0e6f, 2.0f, false}; // 2 us
+    // The default delays: all zeros (e.g. PWI, angle 0).
+    std::vector<float> delays(nChannels, 0.0f);
+    // Profile 0: steered PW, linearly increasing delays.
+    std::vector<float> profile0(nChannels, 0.0f);
+    for (int i = 0; i < nChannels; ++i) {
+        profile0[i] = i * 1e-7f;
+    }
+    // Profile 1: large delay outside the TX aperture (should be ignored), small inside.
+    std::vector<float> profile1(nChannels, 0.0f);
+    profile1[5] = 2e-7f;
+    profile1[100] = 1e-3f;
+
+    auto op = ARRUS_STRUCT_INIT_LIST(
+        TestTxRxParams,
+        (
+            x.txAperture = txAperture,
+            x.rxAperture = rxAperture,
+            x.txDelays = delays,
+            x.pulse = pulse
+        )
+    ).getTxRx();
+
+    // No profiles: the default delays only.
+    float expectedDefaultRxDelay = Us4RImpl::getRxDelay(op);
+    // The maximum over all the profiles, TX aperture elements only.
+    float expectedRxDelay = expectedDefaultRxDelay + profile0[9];
+    EXPECT_FLOAT_EQ(expectedRxDelay, Us4RImpl::getRxDelay(op, {profile0, profile1}));
+    EXPECT_FLOAT_EQ(expectedRxDelay, Us4RImpl::getRxDelay(op, {profile1, profile0}));
+}
+
 //TEST_F(A2OConverterTestMappingEsaote3, SetsSubapertureCorrectly) {
 //    BitMask defaultTxAperture(nChannels, false);
 //    std::vector<float> defaultDelays(nChannels, 0.0f);

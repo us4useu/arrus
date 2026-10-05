@@ -593,6 +593,78 @@ TEST_F(A2OConverterTestMappingEsaote3, DistributesTxAperturesTwoOperations) {
     EXPECT_EQ(expectedTxAp11, sequenceOEM1.at(1).getTxAperture());
 }
 
+// ------------------------------------------ Test TX delay profiles
+// RX aperture: all 192 channels, i.e. 96 channels per us4OEM, 32 RX channels each -> each TX/RX is split into
+// 3 physical TX/RXs; each of these physical TX/RXs must use the TX delays of the source (logical) TX/RX,
+// in each TX delay profile.
+TEST_F(A2OConverterTestMappingEsaote3, DistributesTxDelayProfilesCorrectlyForSplitRxAperture) {
+    constexpr size_t nOps = 2;
+    constexpr size_t nProfiles = 3;
+    constexpr size_t nSubapertures = 3;
+    BitMask txAperture(nChannels, true);
+    BitMask rxAperture(nChannels, true);
+    auto getDelay = [](size_t profile, size_t op, size_t ch) {
+        return static_cast<float>(profile + 1)*1e-6f + static_cast<float>(op)*1e-7f + static_cast<float>(ch)*1e-9f;
+    };
+    std::vector<TxRxParameters> txrxs;
+    for(size_t op = 0; op < nOps; ++op) {
+        // The default (sequence) TX delays: the "last" profile.
+        std::vector<float> delays(nChannels);
+        for(size_t ch = 0; ch < nChannels; ++ch) {
+            delays[ch] = getDelay(nProfiles, op, ch);
+        }
+        txrxs.push_back(ARRUS_STRUCT_INIT_LIST(
+            TestTxRxParams,
+            (
+                x.txAperture = txAperture,
+                x.rxAperture = rxAperture,
+                x.txDelays = delays
+            )
+        ).get());
+    }
+    auto seq = ARRUS_STRUCT_INIT_LIST(TestTxRxParamsSequence, (x.txrx = txrxs)).get();
+    std::vector<NdArray> profiles;
+    for(size_t p = 0; p < nProfiles; ++p) {
+        NdArray profile{NdArray::Shape{nOps, nChannels}, NdArray::DataType::FLOAT32,
+                        DeviceId(DeviceType::CPU, 0), format("/TxRxSequence:0/txDelays:{}", p)};
+        for(size_t op = 0; op < nOps; ++op) {
+            for(size_t ch = 0; ch < nChannels; ++ch) {
+                profile.set<float>(op, ch, getDelay(p, op, ch));
+            }
+        }
+        profiles.push_back(std::move(profile));
+    }
+
+    auto converter = createConverter();
+    auto [sequenceByOEM, profilesByOEM] = converter.convert(0, seq, profiles);
+
+    const auto &mapping = settings->getChannelMapping();
+    for(Ordinal oem = 0; oem < noems; ++oem) {
+        const auto &oemSequence = sequenceByOEM.at(oem);
+        const auto &oemProfiles = profilesByOEM.at(oem);
+        ASSERT_EQ(nOps*nSubapertures, oemSequence.size());
+        ASSERT_EQ(nProfiles, oemProfiles.size());
+        for(size_t physicalOp = 0; physicalOp < oemSequence.size(); ++physicalOp) {
+            const size_t logicalOp = physicalOp / nSubapertures;
+            for(size_t ach = 0; ach < nChannels; ++ach) {
+                auto [dstOEM, dstChannel] = mapping.at(ach);
+                if(dstOEM != oem) {
+                    continue;
+                }
+                // Default TX delays.
+                EXPECT_FLOAT_EQ(getDelay(nProfiles, logicalOp, ach), oemSequence.at(physicalOp).getTxDelays().at(dstChannel));
+                // TX delay profiles.
+                for(size_t p = 0; p < nProfiles; ++p) {
+                    ASSERT_EQ(nOps*nSubapertures, oemProfiles.at(p).getShape()[0]);
+                    EXPECT_FLOAT_EQ(getDelay(p, logicalOp, ach), oemProfiles.at(p).get<float>(physicalOp, dstChannel))
+                        << "OEM: " << oem << ", profile: " << p << ", physical op: " << physicalOp
+                        << ", adapter channel: " << ach;
+                }
+            }
+        }
+    }
+}
+
 // ------------------------------------------ Test Frame Channel Mapping
 TEST_F(A2OConverterTestMappingEsaote3, ProducesCorrectFCMSingleDistributedOperation) {
     BitMask txAperture(nChannels, true);

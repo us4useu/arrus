@@ -4,6 +4,7 @@ import arrus.kernels.simple_tx_rx_sequence
 import arrus.kernels.tx_rx_sequence
 import arrus.ops.imaging
 import arrus.medium
+import arrus.framework
 from arrus.kernels.kernel import KernelExecutionContext
 import arrus.ops.us4r
 import unittest
@@ -167,6 +168,71 @@ class PwiSequenceTest(SimpleTxRxSequenceTest):
             self.assertEqual(np.sum(tx_rx.rx.aperture == 1), n_elements)
             self.assertEqual(tx_rx.rx.sample_range, input_sequence.rx_sample_range)
             self.assertEqual(tx_rx.rx.padding, (0, 0))
+
+    def _process(self, sequence, constants=()):
+        context = ContextMock(device=self.default_device,
+                              medium=self.default_medium,
+                              op=sequence, constants=tuple(constants))
+        return arrus.kernels.simple_tx_rx_sequence.process_simple_tx_rx_sequence(context)
+
+    def _tx_angle_constant(self, value, i, sequence_name="pw"):
+        return arrus.framework.Constant(value=value, placement="/Us4R:0", name=f"/{sequence_name}/txAngle:{i}")
+
+    def test_tx_angle_constants_scalar(self):
+        # Given: a single PW, angle 0, and two TX angle profiles.
+        angles = [-np.pi/4, np.pi/4]
+        sequence = dataclasses.replace(self.default_sequence, angles=[0.0], name="pw")
+        constants = [self._tx_angle_constant(a, i) for i, a in enumerate(angles)]
+        # When
+        result = self._process(sequence, constants)
+        # Then
+        # The default (sequence) delays are not changed by the constants.
+        np.testing.assert_almost_equal(result.sequence.ops[0].tx.delays,
+                                       self._process(sequence).sequence.ops[0].tx.delays, decimal=12)
+        self.assertEqual([c.name for c in result.constants], ["/pw/txDelays:0", "/pw/txDelays:1"])
+        # Each profile: the same as the delays of the sequence with the given angle.
+        for angle, constant in zip(angles, result.constants):
+            expected = self._process(dataclasses.replace(sequence, angles=[angle])).sequence.ops[0].tx.delays
+            self.assertEqual(constant.value.shape, (1, self.default_device.probe.model.n_elements))
+            np.testing.assert_allclose(constant.value[0], expected, rtol=1e-6)  # profiles: float32
+
+    def test_tx_angle_constants_per_op(self):
+        # Given: three TX/RXs, and a profile that sets a different angle for each of them.
+        n_ops = len(self.default_sequence.angles)
+        sequence = dataclasses.replace(self.default_sequence, angles=[0.0]*n_ops, name="pw")
+        constant = self._tx_angle_constant(self.default_sequence.angles, 0)
+        # When
+        result = self._process(sequence, [constant])
+        # Then: the same as the delays of the sequence with the given angles.
+        expected = self._process(self.default_sequence).sequence
+        self.assertEqual(len(result.constants), 1)
+        for i in range(n_ops):
+            np.testing.assert_allclose(result.constants[0].value[i], expected.ops[i].tx.delays, rtol=1e-6)
+
+    def test_tx_angle_constants_are_ordered_by_name(self):
+        angles = [-np.pi/4, np.pi/4]
+        sequence = dataclasses.replace(self.default_sequence, angles=[0.0], name="pw")
+        # Reversed order of the input list.
+        constants = [self._tx_angle_constant(angles[1], 1), self._tx_angle_constant(angles[0], 0)]
+        result = self._process(sequence, constants)
+        for angle, constant in zip(angles, result.constants):
+            expected = self._process(dataclasses.replace(sequence, angles=[angle])).sequence.ops[0].tx.delays
+            np.testing.assert_allclose(constant.value[0], expected, rtol=1e-6)  # profiles: float32
+
+    def test_tx_angle_constants_invalid(self):
+        sequence = dataclasses.replace(self.default_sequence, angles=[0.0, 0.0, 0.0], name="pw")
+        # Mixed TX focus and TX angle constants.
+        with self.assertRaises(ValueError):
+            self._process(sequence, [
+                self._tx_angle_constant(0.1, 0),
+                arrus.framework.Constant(value=10e-3, placement="/Us4R:0", name="/pw/txFocus:1")
+            ])
+        # Gaps in numbering.
+        with self.assertRaises(ValueError):
+            self._process(sequence, [self._tx_angle_constant(0.1, 0), self._tx_angle_constant(0.2, 2)])
+        # Invalid number of per-op values.
+        with self.assertRaises(ValueError):
+            self._process(sequence, [self._tx_angle_constant([0.1, 0.2], 0)])
 
     def test_reference_compliance_linear_array_ultrasonix_l14_5_38_parameters(self):
         """Tests linear array + convex PWI delays."""

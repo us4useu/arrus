@@ -916,9 +916,10 @@ std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {
 }
 
 void Us4OEMImpl::setTxDelaysProfiles(const std::vector<std::pair<size_t, size_t>> &profiles) {
-    std::vector<size_t> newProfiles(currentTxDelayProfileIds.size());
+    // NOTE: the sequences not mentioned in the input profiles keep their currently selected profile.
+    std::vector<size_t> newProfiles = currentTxDelayProfileIds;
     for(const auto &[sequenceId, profileId] : profiles) {
-        if(sequenceId > currentTxDelayProfileIds.size()) {
+        if(sequenceId >= currentTxDelayProfileIds.size()) {
             throw IllegalArgumentException(format("The sequence with id {} is out of the scope of the "
                                            "currently uploaded scheme (the number of uploaded sequences: {})",
                                                   sequenceId, currentTxDelayProfileIds.size()));

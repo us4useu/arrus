@@ -663,8 +663,14 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
     std::vector<ProbeToAdapterMappingConverter> probe2Adapter;
     // Sequence id -> converter
     std::vector<AdapterToUs4OEMMappingConverter> adapter2OEM;
-    // Calculate RX delays
-    std::vector<std::vector<float>> rxDelays = getRxDelays(sequences);
+    // Group TX delay profiles by sequence name. Also, validates NdArray names.
+    const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
+    sequenceNumberOfTxDelayProfiles.clear();
+    for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
+        sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
+    }
+    // Calculate RX delays (NOTE: considering all the TX delay profiles, as any of them can be selected at runtime).
+    std::vector<std::vector<float>> rxDelays = getRxDelays(sequences, txDelayProfilesBySequence);
     // Calculate TX timeouts
     TxTimeoutRegisterFactory txTimeoutRegisterFactory{
         oemDescriptor.getNTimeouts(),
@@ -673,12 +679,6 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         },
         rxDelays
     };
-    // Group TX delay profiles by sequence name. Also, validates NdArray names.
-    const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
-    sequenceNumberOfTxDelayProfiles.clear();
-    for(const auto &[sequenceName, profiles]: txDelayProfilesBySequence) {
-        sequenceNumberOfTxDelayProfiles[sequenceName] = profiles.size();
-    }
 
     TxTimeoutRegister timeouts = txTimeoutRegisterFactory.createFor(sequences, txDelayProfilesBySequence);
 
@@ -1383,6 +1383,11 @@ const char *Us4RImpl::getBackplaneFirmwareVersion() {
 }
 
 void Us4RImpl::setParameters(const Parameters &params) {
+    using Clock = std::chrono::steady_clock;
+    const auto toUs = [](Clock::duration d) {
+        return std::chrono::duration_cast<std::chrono::microseconds>(d).count();
+    };
+    const auto tStart = Clock::now();
     logger->log(LogSeverity::DEBUG, format("Setting {}", params.toString()));
     std::vector<std::pair<size_t, size_t>> values;
     // TODO: consider optimizing the below validation; perhaps avoid parsing the parameter name,
@@ -1396,10 +1401,11 @@ void Us4RImpl::setParameters(const Parameters &params) {
         if(!sequenceOrdinal.has_value()) {
             throw IllegalArgumentException(format("Could not find TX/RX sequence with name: {}", sequenceName));
         }
-        // Wer accept txDelays and txFocus; as for the txFocus, this is basically a shortcut for now
-        // (Python API translates focus to delays during the programming).
-        if(parameterName != "txDelays" && parameterName != "txFocus") {
-            throw IllegalArgumentException("Only txDelays and tx focus parameters are supported");
+        // We accept txDelays, txFocus and txAngle; as for the txFocus and txAngle, this is basically a shortcut for now
+        // (Python API translates focus/angle to delays during the programming), i.e. the value is the ordinal number
+        // of the TX delays profile to apply.
+        if(parameterName != "txDelays" && parameterName != "txFocus" && parameterName != "txAngle") {
+            throw IllegalArgumentException("Only txDelays, txFocus and txAngle parameters are supported");
         }
         auto nProfiles = mapGetValueOrNone(sequenceNumberOfTxDelayProfiles, sequenceName).value_or(0);
         if(value < 0) {
@@ -1415,27 +1421,49 @@ void Us4RImpl::setParameters(const Parameters &params) {
     std::unique_lock<std::mutex> guard(triggerMutex);
     // We need that to not stop/start the system when the state is actually stopped
     std::unique_lock<std::recursive_mutex> stateGuard(deviceStateMutex);
-    if(this->state == State::STARTED) {
+    const auto tLocked = Clock::now();
+    // NOTE: in the MANUAL work modes the sequencer waits for the (soft) trigger between the runs, and toggling the
+    // trigger generator (TriggerStop/TriggerStart) would fire additional, unexpected TX/RXs; keep the trigger as is.
+    const bool isStarted = this->state == State::STARTED
+        && !(currentScheme.has_value() && Scheme::isWorkModeManual(currentScheme->getWorkMode()));
+    if(isStarted) {
         this->us4oems[0]->getIUs4OEM()->TriggerStop();
     }
+    const auto tTriggerStopped = Clock::now();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    const auto tSetDelaysStart = Clock::now();
+    std::vector<long long> oemSetDelaysUs;
+    Clock::time_point tSetDelaysEnd;
     try {
         for (auto &us4oem : us4oems) {
+            const auto t0 = Clock::now();
             us4oem->setTxDelaysProfiles(values);
+            oemSetDelaysUs.push_back(toUs(Clock::now() - t0));
         }
+        tSetDelaysEnd = Clock::now();
         // Wait to make sure all the TX delays were correctly set.
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     } catch (...) {
         // Try resume.
-        if(this->state == State::STARTED) {
+        if(isStarted) {
             this->us4oems[0]->getIUs4OEM()->TriggerStart();
         }
         throw;
     }
     // Everything OK, resume.
-    if(this->state == State::STARTED) {
+    const auto tTriggerStart = Clock::now();
+    if(isStarted) {
         this->us4oems[0]->getIUs4OEM()->TriggerStart();
     }
+    const auto tEnd = Clock::now();
+    logger->log(LogSeverity::DEBUG,
+                format("TX delay profile change timing [us]: total: {}, validation+locks: {}, trigger stop: {}, "
+                       "us4r-api SetTxDelays (all OEMs): {} (per OEM: {}), trigger start: {}, "
+                       "settle sleeps: {} (trigger stopped/started: {})",
+                       toUs(tEnd - tStart), toUs(tLocked - tStart), toUs(tTriggerStopped - tLocked),
+                       toUs(tSetDelaysEnd - tSetDelaysStart), ::arrus::toString(oemSetDelaysUs),
+                       toUs(tEnd - tTriggerStart),
+                       toUs((tSetDelaysStart - tTriggerStopped) + (tTriggerStart - tSetDelaysEnd)), isStarted));
 }
 
 BitstreamId Us4RImpl::addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) {
@@ -1485,10 +1513,12 @@ int Us4RImpl::getNumberOfProbes() const {
  * Only TX delays from the active (aperture) elements are considered.
  * If the given TX/RX does not perform TX, this method returns 0.
  * If the given RX does not perform RX, this method also return 0.
+ * If TX delay profiles are provided, the maximum TX delay over all the profiles is used, so that the RX delay
+ * is correct regardless of the profile selected at runtime (see setParameters).
  * @return rx delay [s]
  *
  */
-float Us4RImpl::getRxDelay(const TxRx &op) {
+float Us4RImpl::getRxDelay(const TxRx &op, const std::vector<std::vector<float>> &profileDelays) {
     float rxDelay = 0.0f; // default value.
     if(op.getRx().isNOP()) {
         return rxDelay;
@@ -1497,6 +1527,9 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
     for(size_t i = 0; i < op.getTx().getAperture().size(); ++i) {
         if(op.getTx().getAperture()[i]) {
             txDelays.push_back(op.getTx().getDelays()[i]);
+            for(const auto &delays: profileDelays) {
+                txDelays.push_back(delays.at(i));
+            }
         }
     }
     if(!txDelays.empty()) {
@@ -1615,17 +1648,25 @@ void Us4RImpl::handlePulserInterrupt() {
 
 /**
  * Returns RX delays calculated for each TX/RX.
+ *
+ * @param profiles sequence name -> TX delay profiles (each: (number of ops, number of probe elements) array)
  */
-std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequence> &seqs) {
+std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequence> &seqs,
+                                                      const std::unordered_map<std::string, DelayProfiles> &profiles) {
     std::vector<std::vector<float>> result(seqs.size());
     for(size_t i = 0; i < seqs.size(); ++i) {
         const auto &seq = seqs.at(i);
         const auto &ops = seq.getOps();
+        const auto seqProfiles = mapGetValueOrNone(profiles, seq.getName()).value_or(DelayProfiles{});
         auto &outputDelays = result.at(i);
         outputDelays.resize(ops.size());
-        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=](const auto &op) {
-            return this->getRxDelay(op);
-        });
+        for(size_t opId = 0; opId < ops.size(); ++opId) {
+            std::vector<std::vector<float>> opProfileDelays;
+            for(const auto &profile: seqProfiles) {
+                opProfileDelays.push_back(profile.row(opId).toVector<float>());
+            }
+            outputDelays.at(opId) = getRxDelay(ops.at(opId), opProfileDelays);
+        }
     }
     return result;
 }
