@@ -45,9 +45,10 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
                                 # Custom delays 1.
                                 delays=[]),
                             Rx(aperture=[True]*n_elements,
-                                sample_range=(0, 65472-(64*20)),
+                                #sample_range=(0, 65472-(64*20)),
+                                sample_range=(0, 1024*20),
                                 downsampling_factor=1),
-                            pri=2e-3
+                            pri=1e-3
                         ),
                     ]*n_tx_rx,
                     # Turn off TGC.
@@ -57,9 +58,9 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
         
         scheme = Scheme(
             tx_rx_sequence=seq,
-            rx_buffer_size=96,
-            output_buffer=DataBufferSpec(type="FIFO", n_elements=96),
-            work_mode="ASYNC"
+            rx_buffer_size=16,
+            output_buffer=DataBufferSpec(type="FIFO", n_elements=32),
+            work_mode="SYNC"
             )
 
         seqdma_buffer_size = 512 * n_tx_rx * test_buf_multiplier
