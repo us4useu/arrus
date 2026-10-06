@@ -4,6 +4,36 @@ Release notes
 0.14.x
 ------
 
+0.14.2
+
+- core (driver):
+
+    - Updated Windows driver to 0.16.0, Linux driver to 0.15.2.
+    - us4OEM firmware upgrader improvement: skip us4OEM device initialization before running FW update, and therefore, avoid any initialization errors that might occur due to legacy firmware running on device (e.g. invalid AFE memory map) # M_OEM-238.
+    - us4OEM firmware upgrade: changed .rpd files to .surpd, which is a signed us4OEM+ raw programming data file. From now on official firmware upgrades will only support .surpd files. #M_OEM-316.
+    - Exposed in C++ API voltage read-out from all OEM rails (Us4OEM::getHVPSScalarMeasurement) M_OEM-326.
+    - Implemented HV fault injection utility (only for device development purposes, Linux-only, available from us4us upon justified request) #M_OEM-330.
+    - Fixed Linux driver installer (the .run file) on Linux distributions with LKM compression enabled #M_US4R-148.
+
+- Python API:
+
+    - Exposed HVPS scalar voltage measurement from all OEM rails in Python API (Us4OEM.get_hvps_scalar_measurement) #M_OEM-326.
+
+0.14.1
+
+- core (driver):
+
+    - Linux: updated kernel-space driver to 0.15.1. Implemented safe managed PCI DMA (moved low-level DMA logic to kernel space), LKM signing (secure boot) and DKMS support. Minimum required Linux kernel version bumped to 5.15. The new drivers are available here: https://us4useu.github.io/arrus-toolkit/content/installation/index.html#id1 #M_OEM-240, #M_OEM-241, #M_OEM-269.
+    - Windows: updated kernel-space driver to 0.15.1. Implemented managed safe managed PCI DMA (moved low-level DMA handling to kernel space). The new drivers are available here: https://us4useu.github.io/arrus-toolkit/content/installation/index.html#id1 #M_OEM-234, #M_OEM-269.
+    - Prevented simultaneous disabling of ATGC and DTGC. From now on, exactly one of the mechanisms must be enabled. #M_OEM-306.
+    - Fixed multiple voltage settings within a single session for firmware 2.2.0.0. #M_OEM-315.
+    - Fixed Watchdog's host threshold on Windows #M_OEM-317.
+
+- Python API:
+
+    - Fixed ARRUS version storage in the Python metadata, #ARRUS-580.
+    - Modified session.close method to release Python GIL (Global Interpreter Lock) before closing the session. This allows other threads to continue executing while the session is being closed, which helps avoid deadlocks in multi-threaded applications. #ARRUS-578
+
 0.14.0
 
 - core (driver):

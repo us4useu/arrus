@@ -317,7 +317,7 @@ class Session(AbstractSession):
         self.stop_scheme()
         if self._current_processing is not None:
             self._current_processing.close()
-        self._session_handle.close()
+        arrus.core.arrusSessionClose(self._session_handle)
 
     def get_device(self, path: str):
         """
