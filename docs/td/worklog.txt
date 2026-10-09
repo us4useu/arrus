@@ -1,0 +1,21 @@
+- [ ] we would like to support Multi-GPU setups -- this is the reason we would like to have the possibility to partion graphs
+- [ ] NdArrayType: this should be just dtype; shape is and placement are another properties of the NdArray
+- [ ] podzielic na node types, edge types; poszukac jakies dobrej schemy, która tez sie latwo wizualizuje -> GraphML?
+- [ ] co w przypadku zmiany wartosci zmiennych -- jak zrobic to w sposob synchronizowany, tak zeby kazde kolejne przejscie przez graf bylo spojne
+- [ ] co ze zmiennymi "rozproszonymi" jak np. predkosc dzwieku? zmiana w tej zmiennej powinna byc jakos rozpropagowana pomiedzy US i GPU
+- [ ] opisac proces variable re-bind
+    1. poszukaj minimalnego zbioru zmiennych, ktore musza byc zaktualizowane, i przygotuj nowe wartosci
+    2. zapauzuj caly graf
+    3. zaktualizuj zmienne jak najszybciej to mozliwe
+    4. wystartuj ponownie graf
+    5. 
+
+Constraints:
+- [ ] spojnosc zmiennych w ramach jednego grafu: sub-graph consistency on Variable re-bind -- each change to the Variable should be executed on the next trigger call (there should bo "variable write" on the next re-write, just to avoid situation where some of the variables are from t-1, and some from t)
+    - [ ] to dotyczy przede wszystkim sytuacji, gdy pewna zmienna wplywa na inne zmienne, i zeby nie bylo sytuacji, ze processing jest wykonywany ze zmiennymi czesciowo przekalkulowanymi
+    - [ ] mozliwe rozwiazanie: utrzymujemy "stan" (pod)-grafu, czyli wszystkie zmienne tam uzywane; przeliczamy wszystkie zmienne, i w kolejnym kroku uzywamy juz nowy pod-graf; jako mozemy zakomunikowac do sasiednych pod-grafow, ze weszla nowa wersja grafu (patrz punkt ponizej)
+    - [ ] dobry przyklad: zmiana predkosci dzwieku: zmiana predkosci dzwieku to proces: przeliczenia
+- [ ] graph consistency with the data produced by the ultrasound system: ultrasound system will start producing data
+    - [ ] pewien znacznik "zmiany" dopisywany do frame metadata?
+    - [ ] od kiedy wiemy, ze zostal zaaplikowana zmiana danego parametru?
+    - [ ] mozliwe rozwiazanie: na laczeniach miedzy urzadzeniami (np. pod-graf US i GPU) utrzymywana jest kolejka danych; w momencie gdy system produkuje dane

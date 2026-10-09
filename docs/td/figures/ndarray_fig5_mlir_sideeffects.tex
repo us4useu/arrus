@@ -1,0 +1,203 @@
+% MLIR-style visualization of side-effecting ops + control flow.
+%
+% Illustrates how MLIR represents a small program that mixes:
+%   - side-effecting ops (dev.write acts on device state)
+%   - control flow (scf.if with two regions)
+%
+% Key idea. The device state is a first-class `!dev.state` SSA value,
+% threaded through every side-effecting op. Ordering between writes is
+% therefore a genuine SSA data dependency, not a hidden "must respect
+% program order" convention. scf.if is a composite op that OWNS two
+% regions; each region yields a `!dev.state` value, and scf.if selects
+% one to expose as its own result.
+%
+% Program shown (MLIR pseudocode):
+%   %s1 = dev.write(%s0, %x1)               : !dev.state
+%   %s2 = scf.if %cond -> !dev.state {
+%     %s2t = dev.write(%s1, %x2)            : !dev.state
+%     scf.yield %s2t
+%   } else {
+%     %nx2 = arith.negf(%x2)                : f32
+%     %s2e = dev.write(%s1, %nx2)           : !dev.state
+%     scf.yield %s2e
+%   }
+%   %sum = arith.addf(%x1, %x2)             : f32
+%   %s3 = dev.write(%s2, %sum)              : !dev.state
+%
+% Build: pdflatex ndarray_fig5_mlir_sideeffects.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[
+    node distance=6mm and 12mm,
+    every node/.append style={font=\small},
+    op/write/.style = {op, fill=arrusGPU!25,  draw=arrusGPU!80!black,
+                       minimum width=48mm},
+    op/pure/.style  = {op, fill=arrusCPU!25,  draw=arrusCPU!70!black,
+                       minimum width=42mm},
+    op/if/.style    = {op, fill=arrusHost!20, draw=arrusHost!80!black,
+                       minimum width=48mm, minimum height=8mm},
+    op/yield/.style = {rectangle, draw=black!30, fill=black!5,
+                       rounded corners=2pt, inner sep=3pt,
+                       font=\scriptsize\itshape},
+    op/input/.style = {op/variable, minimum width=22mm},
+    edge/state/.style = {-{Latex[length=2.4mm]}, very thick,
+                         draw=arrusTrigger!80!black},
+    edge/data/.style  = {-{Latex[length=2mm]}, thick, draw=black!70},
+    region/scf/.style   = {region, draw=arrusHost!70!black, fill=arrusHost!5,
+                           inner sep=5mm, line width=0.9pt},
+    region/inner/.style = {region, draw=arrusHost!55!black, fill=arrusHost!8,
+                           inner sep=4mm, line width=0.7pt, dashed},
+]
+
+  % --- MLIR source (top code panel) ---------------------------------------
+  \node[legendbox, text width=118mm, align=left,
+        font=\ttfamily\scriptsize, inner sep=8pt]
+       (code) at (0,0)
+  {%
+    \%s1 = dev.write(\%s0, \%x1)\hfill : !dev.state\\
+    \%s2 = scf.if \%cond -> !dev.state \{ \\
+    \phantom{XXX}\%s2t = dev.write(\%s1, \%x2)\hfill : !dev.state\\
+    \phantom{XXX}scf.yield \%s2t\\
+    \} else \{\\
+    \phantom{XXX}\%nx2 = arith.negf(\%x2)\hfill : f32\\
+    \phantom{XXX}\%s2e = dev.write(\%s1, \%nx2)\hfill : !dev.state\\
+    \phantom{XXX}scf.yield \%s2e\\
+    \}\\
+    \%sum = arith.addf(\%x1, \%x2)\hfill : f32\\
+    \%s3 = dev.write(\%s2, \%sum)\hfill : !dev.state
+  };
+
+  % --- Inputs row ---------------------------------------------------------
+  \node[op/input, below=12mm of code.south west, anchor=north west]
+       (s0) {\%s0\\\scriptsize\itshape !dev.state};
+  \node[op/input, right=of s0]   (x1)   {\%x1\\\scriptsize\itshape f32};
+  \node[op/input, right=of x1]   (x2)   {\%x2\\\scriptsize\itshape f32};
+  \node[op/input, right=of x2]   (cond) {\%cond\\\scriptsize\itshape i1};
+
+  % --- w1: %s1 = dev.write(%s0, %x1) --------------------------------------
+  \node[op/write, below=12mm of x1, xshift=8mm] (w1)
+       {\textbf{dev.write}\\\scriptsize (\%s0, \%x1) $\to$ \%s1};
+
+  % --- scf.if body: then column ------------------------------------------
+  \node[op/write, below=26mm of w1, xshift=-32mm] (w2t)
+       {\textbf{dev.write}\\\scriptsize (\%s1, \%x2) $\to$ \%s2t};
+  \node[op/yield, below=3mm of w2t] (yt) {scf.yield \%s2t};
+
+  % --- scf.if body: else column ------------------------------------------
+  \node[op/pure,  below=15mm of w1, xshift=34mm] (nx2)
+       {\textbf{arith.negf}\\\scriptsize (\%x2) $\to$ \%nx2};
+  \node[op/write, below=6mm of nx2] (w2e)
+       {\textbf{dev.write}\\\scriptsize (\%s1, \%nx2) $\to$ \%s2e};
+  \node[op/yield, below=3mm of w2e] (ye) {scf.yield \%s2e};
+
+  % --- scf.if result --------------------------------------------------------
+  \node[op/if, below=55mm of w1] (ifres)
+       {\textbf{scf.if} \; \scriptsize (\%cond) $\to$ \%s2};
+
+  % --- sum + final write ---------------------------------------------------
+  \node[op/pure,  below=8mm of ifres] (sum)
+       {\textbf{arith.addf}\\\scriptsize (\%x1, \%x2) $\to$ \%sum};
+  \node[op/write, below=of sum] (w3)
+       {\textbf{dev.write}\\\scriptsize (\%s2, \%sum) $\to$ \%s3};
+  \node[op/output, below=6mm of w3] (out) {\%s3};
+
+  % --- Regions (drawn on background) --------------------------------------
+  \begin{scope}[on background layer]
+    \node[region/inner, fit=(w2t) (yt),
+          label={[font=\scriptsize\itshape, text=arrusHost!70!black,
+                  anchor=north west, xshift=1mm, yshift=-1mm]
+                  north west:\textbf{then} region}] (rthen) {};
+    \node[region/inner, fit=(nx2) (w2e) (ye),
+          label={[font=\scriptsize\itshape, text=arrusHost!70!black,
+                  anchor=north east, xshift=-1mm, yshift=-1mm]
+                  north east:\textbf{else} region}] (relse) {};
+    \node[region/scf, fit=(rthen) (relse) (ifres),
+          label={[font=\small\bfseries, text=arrusHost!80!black]
+                  above:\textbf{scf.if} \textit{(composite op with two regions)}}]
+          (ifregion) {};
+  \end{scope}
+
+  % --- Edges: state threading (red, thick) --------------------------------
+  \draw[edge/state] (s0.south) |- ($(w1.west)+(-4mm,0)$) -- (w1.west)
+      node[near start, right, font=\scriptsize\itshape,
+           text=arrusTrigger!70!black] {\%s0};
+
+  % w1's %s1 fans out to BOTH branch first writes.
+  \coordinate (w1out) at ($(w1.south)+(0,-4mm)$);
+  \draw[edge/state] (w1.south) -- (w1out);
+  \draw[edge/state] (w1out) -| (w2t.north)
+      node[near end, left, font=\scriptsize\itshape,
+           text=arrusTrigger!70!black] {\%s1};
+  \draw[edge/state] (w1out) -| (w2e.north)
+      node[near end, right, font=\scriptsize\itshape,
+           text=arrusTrigger!70!black] {\%s1};
+
+  % Each branch's write feeds its own yield; both yields feed scf.if result.
+  \draw[edge/state] (w2t.south) -- (yt.north);
+  \draw[edge/state] (w2e.south) -- (ye.north);
+  \draw[edge/state] (yt.south) |- ($(ifres.north)+(-8mm,4mm)$) -- ($(ifres.north)+(-8mm,0)$)
+      node[near end, left, font=\scriptsize\itshape,
+           text=arrusTrigger!70!black] {\%s2t};
+  \draw[edge/state] (ye.south) |- ($(ifres.north)+(8mm,4mm)$) -- ($(ifres.north)+(8mm,0)$)
+      node[near end, right, font=\scriptsize\itshape,
+           text=arrusTrigger!70!black] {\%s2e};
+
+  % scf.if -> sum (data via %cond is drawn separately)
+  \draw[edge/state] (ifres.south) -| ($(w3.north)+(-14mm,3mm)$) -- ($(w3.north)+(-14mm,0)$)
+      node[midway, left, font=\scriptsize\itshape,
+           text=arrusTrigger!70!black] {\%s2};
+
+  \draw[edge/state] (w3.south) -- (out.north)
+      node[midway, right, font=\scriptsize\itshape,
+           text=arrusTrigger!70!black] {\%s3};
+
+  % --- Edges: pure data (black) -------------------------------------------
+  % %x1 -> w1
+  \draw[edge/data] (x1.south) -- (w1.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55] {\%x1};
+
+  % %x2 -> w2t (then) and %x2 -> nx2 (else)
+  \draw[edge/data] (x2.south) |- ($(w2t.east)+(4mm,0)$) -- (w2t.east)
+      node[near start, right, font=\scriptsize\itshape, text=black!55] {\%x2};
+  \draw[edge/data] (x2.south) |- ($(nx2.west)+(-4mm,0)$) -- (nx2.west)
+      node[near start, left, font=\scriptsize\itshape, text=black!55] {\%x2};
+
+  % nx2 -> w2e
+  \draw[edge/data] (nx2.south) -- (w2e.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55] {\%nx2};
+
+  % %cond -> scf.if
+  \draw[edge/data] (cond.south) |- ($(ifres.east)+(6mm,0)$) -- (ifres.east)
+      node[near start, right, font=\scriptsize\itshape, text=black!55] {\%cond};
+
+  % %x1, %x2 -> sum
+  \draw[edge/data] (x1.south) -- ++(0,-3mm) -| ($(sum.north)+(-12mm,0)$)
+      node[near end, left, font=\scriptsize\itshape, text=black!55] {\%x1};
+  \draw[edge/data] (x2.south) -- ++(0,-3mm) -| ($(sum.north)+(12mm,0)$)
+      node[near end, right, font=\scriptsize\itshape, text=black!55] {\%x2};
+
+  % sum -> w3
+  \draw[edge/data] (sum.south) -- (w3.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55] {\%sum};
+
+  % --- Legend --------------------------------------------------------------
+  \node[legendbox, below=10mm of out, anchor=north] {%
+    \begin{tikzpicture}[node distance=3mm]
+      \node[op/write, minimum width=32mm, minimum height=6mm] (l1)
+        {dev.write (side effect)};
+      \node[op/pure,  minimum width=32mm, minimum height=6mm, below=of l1] (l2)
+        {arith.* (pure)};
+      \node[op/if,    minimum width=32mm, minimum height=6mm, below=of l2] (l3)
+        {scf.if (regions)};
+      \node[below=3mm of l3.south, anchor=north, font=\scriptsize] (e1)
+        {\tikz\draw[edge/state] (0,0) -- (10mm,0);\ !dev.state (state thread)};
+      \node[below=1mm of e1.south, anchor=north, font=\scriptsize] (e2)
+        {\tikz\draw[edge/data]  (0,0) -- (10mm,0);\ ordinary data (f32, i1)};
+    \end{tikzpicture}%
+  };
+
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,173 @@
+% Sparse-scanline B-mode feedback loop (paper: arXiv 2508.08782).
+%
+% Illustrates the *variable-rebind* framing of a DL-driven adaptive
+% TX/RX subset selector:
+%
+%   - @indices is a Variable, shared by TX/RX sequence and by
+%     downstream beamform / scan_convert (all coherent readers).
+%   - tx_rx_sequence is a COMPOSITE op with a region body describing
+%     ONE slot of the template; runtime firing selects K of N slots
+%     according to @indices.
+%   - Downstream ops read "changing metadata" via gather from
+%     compile-time-constant tables (scanline_positions_LUT), indexed
+%     by @indices. No runtime metadata upload.
+%   - store_variable closes the loop through the runtime binding
+%     table (next-epoch write), keeping the IR a DAG (SSA-safe).
+%
+% Build: pdflatex ndarray_fig6_sparse_scanline_loop.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[
+    node distance=7mm and 12mm,
+    every node/.append style={font=\small},
+    op/us4r/.style   = {op, fill=arrusUs4R!25, draw=arrusUs4R!80!black},
+    op/gpu/.style    = {op, fill=arrusGPU!25,  draw=arrusGPU!80!black},
+    op/cpu/.style    = {op, fill=arrusCPU!25,  draw=arrusCPU!70!black},
+    op/const/.style  = {op, fill=arrusHost!20, draw=arrusHost!80!black,
+                        font=\scriptsize\itshape},
+    op/store/.style  = {op, fill=arrusVariable!35, draw=arrusVariable!80!black,
+                        thick},
+    edge/data/.style = {-{Latex[length=2mm]}, thick, draw=black!70},
+    region/body/.style = {region, draw=arrusUs4R!55!black, fill=arrusUs4R!5,
+                          inner sep=4mm, line width=0.7pt, dashed},
+]
+
+  % --- Variable + constant LUT (top row) ----------------------------------
+  \node[op/variable, minimum width=52mm] (indices)
+      {\textbf{Variable(@indices)}\\\scriptsize\itshape NdArrayType((K,), i32, @host)};
+
+  \node[op/const, right=15mm of indices, minimum width=52mm] (lut)
+      {\textbf{scanline\_positions\_LUT}\\\scriptsize const (192, 2) f32 @GPU:0\\
+       \scriptsize (compile-time table, all 192 possible apertures)};
+
+  % --- tx_rx_sequence (composite op with inner region) --------------------
+  \node[op/us4r, below=16mm of indices, minimum width=98mm, minimum height=42mm,
+        anchor=north] (txrx)
+      {};
+  \node[anchor=north, font=\small\bfseries, text=arrusUs4R!80!black]
+       at (txrx.north) {\;arrus.tx\_rx\_sequence \; \scriptsize\itshape
+                        (slots = 192, active\_from = @indices)};
+
+  % Inner body ops (per-slot schema, invoked at compile time to build template)
+  \node[op/us4r, minimum width=26mm, below=8mm of txrx.north, xshift=-32mm]
+       (ap) {\textbf{aperture}\\\scriptsize\itshape aperture\_for\_slot(\%slot)};
+  \node[op/us4r, minimum width=26mm, right=of ap]
+       (del) {\textbf{delays}\\\scriptsize\itshape compute\_delays(\%slot)};
+  \node[op/us4r, minimum width=26mm, right=of del]
+       (fire) {\textbf{tx\_rx.slot}\\\scriptsize\itshape (\%slot, ...)  side-effect};
+
+  % Yield line
+  \node[below=3mm of del, font=\scriptsize\itshape, text=arrusUs4R!70!black]
+      (yield) {arrus.yield \%s\_next, \%rf};
+
+  % Region box around body
+  \begin{scope}[on background layer]
+    \node[region/body, fit=(ap) (del) (fire) (yield),
+          label={[font=\scriptsize\itshape, text=arrusUs4R!70!black,
+                  anchor=north east, xshift=-2mm, yshift=-1mm]
+                  north east:region: per-slot body}]
+         (body_region) {};
+  \end{scope}
+
+  % --- Downstream processing (GPU) ---------------------------------------
+  \node[op/gpu, below=22mm of txrx.south, minimum width=64mm]
+       (bf) {\textbf{arrus.beamform}\\%
+             \scriptsize\itshape (\%frames, gather(LUT, @indices))
+             $\to$ (K, n\_lines) f32};
+
+  \node[op/gpu, below=of bf, minimum width=64mm]
+       (sc) {\textbf{arrus.scan\_convert}\\%
+             \scriptsize\itshape (\%bf, gather(LUT, @indices))
+             $\to$ (h, w) f32};
+
+  % --- DL model (CPU / GPU) ----------------------------------------------
+  \node[op/cpu, below=of sc, minimum width=64mm]
+       (dl) {\textbf{arrus.dl\_scanline\_selector}\\%
+             \scriptsize\itshape (\%img, weights) $\to$ new\_indices : (K, i32)};
+
+  % --- store_variable (feedback sink) ------------------------------------
+  \node[op/store, below=of dl, minimum width=64mm]
+       (store) {\textbf{arrus.store\_variable}(@indices, \%new\_indices)\\%
+                \scriptsize\itshape side-effect: next-epoch binding};
+
+  % --- Edges: variable reads (dotted gold) -------------------------------
+  % @indices -> tx_rx_sequence (active_from)
+  \draw[edge/variable] (indices.south) -- ($(indices.south)+(0,-4mm)$) -| (txrx.north)
+      node[near end, right, font=\scriptsize\itshape,
+           text=arrusVariable!80!black] {active\_from};
+
+  % @indices -> beamform (gather into LUT)
+  \draw[edge/variable, rounded corners=6pt] (indices.west) -- ++(-16mm,0)
+      |- (bf.west)
+      node[near end, above, font=\scriptsize\itshape,
+           text=arrusVariable!80!black] {@indices};
+
+  % @indices -> scan_convert
+  \draw[edge/variable, rounded corners=6pt] (indices.west) -- ++(-16mm,0)
+      |- (sc.west);
+
+  % LUT -> beamform (data / read-only const)
+  \draw[edge/data] (lut.south) -- ($(lut.south)+(0,-6mm)$) coordinate (lutdown);
+  \draw[edge/data, rounded corners=6pt] (lutdown) -| (bf.east)
+      node[near end, above, font=\scriptsize\itshape, text=black!55]
+      {LUT};
+  \draw[edge/data, rounded corners=6pt] (lutdown) -| (sc.east)
+      node[near end, above, font=\scriptsize\itshape, text=black!55]
+      {LUT};
+
+  % --- Edges: data flow (thick black) ------------------------------------
+  \draw[edge/data] (txrx.south) -- (bf.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55]
+      {\%frames : (K, n\_ch, n\_samples)};
+
+  \draw[edge/data] (bf.south) -- (sc.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55]
+      {\%bf : (K, n\_lines)};
+
+  \draw[edge/data] (sc.south) -- (dl.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55]
+      {\%img : (h, w)};
+
+  \draw[edge/data] (dl.south) -- (store.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55]
+      {\%new\_indices};
+
+  % --- Feedback edge: store -> indices (curved, red, "next epoch") -------
+  \draw[-{Latex[length=3mm]}, very thick, draw=arrusTrigger!80!black,
+        dashed, rounded corners=8pt]
+    (store.east) -- ++(28mm,0)
+    |- node[near start, right, font=\scriptsize\bfseries,
+            text=arrusTrigger!80!black, align=left]
+       {next-epoch\\ rebind\\ (barrier-atomic)}
+    (indices.east);
+
+  % --- Legend ------------------------------------------------------------
+  \node[legendbox, below=12mm of store, anchor=north] {%
+    \begin{tikzpicture}[node distance=3mm]
+      \node[op/us4r,     minimum width=28mm, minimum height=6mm] (l1)
+        {us4r.* (device)};
+      \node[op/gpu,      minimum width=28mm, minimum height=6mm, below=of l1] (l2)
+        {gpu.* (processing)};
+      \node[op/cpu,      minimum width=28mm, minimum height=6mm, below=of l2] (l3)
+        {cpu.* (DL model)};
+      \node[op/variable, minimum width=28mm, minimum height=6mm, below=of l3] (l4)
+        {Variable};
+      \node[op/const,    minimum width=28mm, minimum height=6mm, below=of l4] (l5)
+        {compile-time const};
+      \node[op/store,    minimum width=28mm, minimum height=6mm, below=of l5] (l6)
+        {store\_variable sink};
+      \node[below=3mm of l6.south, anchor=north, font=\scriptsize] (e1)
+        {\tikz\draw[edge/data] (0,0) -- (10mm,0);\ SSA data};
+      \node[below=1mm of e1.south, anchor=north, font=\scriptsize] (e2)
+        {\tikz\draw[edge/variable] (0,0) -- (10mm,0);\ variable read};
+      \node[below=1mm of e2.south, anchor=north, font=\scriptsize] (e3)
+        {\tikz\draw[-{Latex[length=2mm]}, very thick, draw=arrusTrigger!80!black,
+                     dashed] (0,0) -- (10mm,0);\ next-epoch rebind};
+    \end{tikzpicture}%
+  };
+
+\end{tikzpicture}
+\end{document}

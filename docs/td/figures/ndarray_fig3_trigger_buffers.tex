@@ -1,0 +1,115 @@
+% High-level graph augmented with:
+%   - an explicit trigger source node (internal PRF) driving TX/RX,
+%   - explicit region grouping (dashed color boxes) showing where the
+%     three trigger regions live:
+%       * Acquisition   (Us4R:0)     -- runs autonomously at PRF
+%       * GPU per-frame (GPU:0)      -- fires once per beamformed frame
+%       * GPU per-N-frame (GPU:0)    -- Doppler; fires once per batch
+%   - real stream buffers at region boundaries (double arrows),
+%   - single arrows for intra-region data flow (no runtime queues),
+%   - a Variable("sos") consumed by both TX/RX delays and Beamforming.
+%
+% Build:  pdflatex ndarray_fig3_trigger_buffers.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[node distance=7mm and 11mm]
+
+  % --- Trigger source (autonomous internal PRF) -------------------------------
+  \node[op/trigger]                    (trig)  {clk};
+  \node[below=0.5mm of trig, font=\scriptsize\itshape, text=arrusTrigger!80!black]
+      (triglbl) {internal(prf=5\,kHz)};
+
+  % --- Region A: acquisition (Us4R:0) -----------------------------------------
+  \node[op/us4r,  right=13mm of trig]       (txrx)  {TX/RX sequence\\\scriptsize\itshape (acquisition)};
+
+  % --- Cross-region interface: device + host ring buffers ---------------------
+  \node[op/buffer, right=of txrx]           (buf1)  {device ring buffer\\\scriptsize (Us4R DDR)};
+  \node[op/buffer, right=of buf1]           (buf2)  {host ring buffer\\\scriptsize (Us4R $\to$ GPU)};
+
+  % --- Region B: GPU per-frame processing -------------------------------------
+  \node[op/gpu, right=of buf2]              (bf)    {Beamforming\\\scriptsize\itshape (GPU)};
+  \node[op/gpu, right=of bf, yshift=14mm]   (bmode) {B-mode reconstruction};
+  \node[op/output, right=of bmode]          (outB)  {B-mode image};
+
+  % --- Cross-region interface into Doppler region -----------------------------
+  \node[op/buffer, right=of bf, yshift=-18mm] (buf3) {IQ ring buffer\\\scriptsize (GPU; N-frame slow-time)};
+
+  % --- Region C: GPU per-N-frame (Doppler) processing -------------------------
+  \node[op/gpu, right=of buf3]              (dop)   {Color Doppler};
+  \node[op/output, right=of dop]            (outD)  {Doppler image};
+
+  % --- Variable: speed of sound ----------------------------------------------
+  \node[op/variable, above=16mm of buf1]    (sos)   {Variable(``sos'')};
+
+  % --- Data-flow edges --------------------------------------------------------
+  % Cross-region: double arrows through the ring buffers.
+  \draw[edge/stream] (txrx.east) -- (buf1.west);
+  \draw[edge/stream] (buf1.east) -- (buf2.west);
+  \draw[edge/stream] (buf2.east) -- (bf.west);
+  % bf -> bmode (intra-region, per-frame): direct single arrow, no queue.
+  \draw[edge/intra]  (bf.east)   -- ++(4mm,0) |- (bmode.west);
+  \draw[edge/intra]  (bmode.east) -- (outB.west);
+  % bf -> Doppler: cross-region, needs the IQ ring buffer for slow-time samples.
+  \draw[edge/stream] (bf.east)   -- ++(4mm,0) |- (buf3.west);
+  \draw[edge/stream] (buf3.east) -- (dop.west);
+  \draw[edge/intra]  (dop.east)  -- (outD.west);
+
+  % --- Trigger edge -----------------------------------------------------------
+  \draw[edge/trigger] (trig.east) -- (txrx.west)
+      node[midway, above, font=\scriptsize\itshape, text=arrusTrigger!80!black]
+        {trigger};
+
+  % --- Variable edges (fan-out to TX/RX delays and to beamformer) -------------
+  \draw[edge/variable] (sos.south) -- ++(0,-3mm) -| (txrx.north)
+      node[near end, right=1mm, font=\scriptsize\itshape,
+           text=arrusVariable!70!black] {delays};
+  \draw[edge/variable] (sos.east) -- ++(26mm,0) -- ++(0,-9mm) -| (bf.north)
+      node[near end, right=1mm, font=\scriptsize\itshape,
+           text=arrusVariable!70!black] {sos};
+
+  % --- Region grouping (dashed color boxes on the background layer) -----------
+  \begin{scope}[on background layer]
+    % Region A: acquisition (Us4R). Contains the trigger source + TX/RX;
+    % fires autonomously at PRF, no per-fire host action.
+    \node[region/us4r, fit=(trig) (triglbl) (txrx),
+          label={[font=\scriptsize\itshape, text=arrusUs4R!80!black]
+                 above:Region A --- Us4R (autonomous, PRF)}] {};
+    % Region B: GPU per-frame processing. bf + bmode + outB fire once per frame,
+    % share buffers, kernel-order dispatch, no runtime queue between them.
+    \node[region/gpu, fit=(bf) (bmode) (outB),
+          label={[font=\scriptsize\itshape, text=arrusGPU!80!black]
+                 above:Region B --- GPU (per-frame)}] {};
+    % Region C: GPU per-N-frame (Doppler). Fires once per slow-time batch.
+    \node[region/gpu, fit=(dop) (outD),
+          label={[font=\scriptsize\itshape, text=arrusGPU!80!black]
+                 below:Region C --- GPU (per-N-frame batch)}] {};
+  \end{scope}
+
+  % --- Legend -----------------------------------------------------------------
+  \node[legendbox, below=20mm of buf2.south, anchor=north] {
+    \begin{tikzpicture}[node distance=3mm]
+      % Row 1: node kinds.
+      \node[op/us4r,     minimum width=18mm, minimum height=6mm] (l1) {Us4R:0};
+      \node[op/gpu,      minimum width=18mm, minimum height=6mm, right=of l1] (l2) {GPU:0};
+      \node[op/output,   minimum width=18mm, minimum height=6mm, right=of l2] (l3) {output};
+      \node[op/buffer,   minimum width=16mm, minimum height=6mm, right=of l3] (l4) {buffer};
+      \node[op/variable, minimum width=18mm, minimum height=6mm, right=of l4] (l5) {Variable};
+      \node[op/trigger,  minimum size=7mm, right=of l5] (l6) {\scriptsize clk};
+      \node[right=2mm of l6, font=\scriptsize] (l7) {trigger source};
+      % Row 2: edge kinds.
+      \node[below=2mm of l1.south west, anchor=north west, font=\scriptsize] (le1)
+        {\tikz\draw[edge/intra]  (0,0) -- (7mm,0);\ intra-region data flow (no queue)};
+      \node[right=4mm of le1, font=\scriptsize] (le2)
+        {\tikz\draw[edge/stream] (0,0) -- (7mm,0);\ cross-region stream (queue)};
+      \node[right=4mm of le2, font=\scriptsize] (le3)
+        {\tikz\draw[edge/trigger] (0,0) -- (7mm,0);\ trigger edge};
+      \node[right=4mm of le3, font=\scriptsize]
+        {\tikz\draw[edge/variable] (0,0) -- (7mm,0);\ variable binding};
+    \end{tikzpicture}
+  };
+
+\end{tikzpicture}
+\end{document}

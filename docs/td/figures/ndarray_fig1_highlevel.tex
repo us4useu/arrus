@@ -1,0 +1,45 @@
+% High-level graph of operations: TX/RX sequence -> Beamforming ->
+% { B-mode reconstruction, Color Doppler }. Colors indicate device placement.
+%
+% Build:  pdflatex ndarray_fig1_highlevel.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[node distance=8mm and 14mm]
+
+  % --- Pipeline nodes ---------------------------------------------------------
+  \node[op/us4r]                        (txrx)  {TX/RX sequence\\\scriptsize\itshape (acquisition)};
+  \node[op/gpu, right=of txrx]          (bf)    {Beamforming\\\scriptsize\itshape (RxBeamforming / ReconstructLri)};
+  \node[op/gpu, right=of bf, yshift= 9mm](bmode) {B-mode reconstruction\\\scriptsize\itshape (envelope, log, scan conv.)};
+  \node[op/gpu, right=of bf, yshift=-9mm](dop)   {Color Doppler\\\scriptsize\itshape (wall filter, autocorr., mapping)};
+  \node[op/output, right=of bmode]      (outB)  {B-mode image};
+  \node[op/output, right=of dop]        (outD)  {Doppler image};
+
+  % --- Data-flow edges --------------------------------------------------------
+  % Us4R -> GPU is cross-region: real queue (double arrow).
+  \draw[edge/stream] (txrx.east) -- node[above,font=\scriptsize]{raw echoes} (bf.west);
+  % Beamforming -> B-mode: intra-region, per-frame (single arrow).
+  \draw[edge/intra]  (bf.east)   -- ++(4mm,0)  |- (bmode.west);
+  % Beamforming -> Doppler: cross-region (Doppler batches N frames of IQ).
+  \draw[edge/stream] (bf.east)   -- ++(4mm,0)  |- (dop.west);
+  % B-mode -> output, Doppler -> output: intra-region.
+  \draw[edge/intra]  (bmode.east) -- (outB.west);
+  \draw[edge/intra]  (dop.east)   -- (outD.west);
+
+  % --- Legend -----------------------------------------------------------------
+  \node[legendbox, below=13mm of bf.south, anchor=north] (leg) {
+    \begin{tikzpicture}[node distance=3mm]
+      \node[op/us4r,   minimum width=18mm, minimum height=6mm] (l1) {Us4R:0};
+      \node[op/gpu,    minimum width=18mm, minimum height=6mm, right=of l1] (l2) {GPU:0};
+      \node[op/output, minimum width=18mm, minimum height=6mm, right=of l2] (l3) {output};
+      \node[right=5mm of l3, font=\scriptsize] (l4)
+        {\tikz\draw[edge/intra]  (0,0) -- (7mm,0);\ intra-region data flow};
+      \node[right=5mm of l4, font=\scriptsize]
+        {\tikz\draw[edge/stream] (0,0) -- (7mm,0);\ cross-region stream (queue)};
+    \end{tikzpicture}
+  };
+
+\end{tikzpicture}
+\end{document}

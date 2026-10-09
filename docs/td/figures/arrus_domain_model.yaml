@@ -1,0 +1,247 @@
+# ARRUS ultrasound domain model (L3) --- device-agnostic core.
+#
+# Reverse-engineered from api/python/arrus/devices/*.py and filtered to the
+# device-agnostic slice: the base Device / Ultrasound abstractions, the
+# probe model (Probe, ProbeModel, Lens, MatchingLayer), the compute devices
+# (CPU, GPU, GpuSettings), value classes (DeviceId, ProbeModelId), and the
+# File playback implementation of Ultrasound.
+#
+# Hardware-family-specific classes (Us4R, Us4OEM, Backplane, HVPSMeasurement,
+# Variant, ...) are intentionally NOT in this file. They belong in a separate
+# family-specific metamodel (e.g. figures/us4r_domain_model.yaml) that
+# `extends` the classes defined here. Keeping L3 device-agnostic mirrors
+# the ARRUS architecture: the framework talks to any Ultrasound device via
+# the abstract interface; hardware families provide concrete implementations.
+#
+# L3 sits alongside L1 (ndarray_metamodel.yaml, the graph-of-operations
+# schema). L1's `Device` is a *placement target for ops*; L3's `Device` is a
+# *physical device with a sampling frequency, connected probes, firmware
+# versions, etc.*. In implementation, an L1 `Device` node carries a
+# reference to an L3 concrete instance as an attribute (see L1's
+# `Device.model_ref` field).
+#
+# Consumed by generate_metamodel_diagram.py (same generator as L1) to render
+# arrus_domain_model.png / .svg.
+
+version: 1
+
+# ---------------------------------------------------------------------------
+# Classes
+# ---------------------------------------------------------------------------
+
+node_kinds:
+
+  # ----- Base abstract classes ---------------------------------------------
+
+  Device:
+    kind: abstract
+    doc: >-
+      Base for every device in ARRUS. Every device is identified by a
+      DeviceId (device_type + ordinal). Sub-classes: Ultrasound, Us4OEM,
+      Probe, CPU, GPU.
+    attributes:
+      - {name: device_id, type: DeviceId, required: true}
+
+  Ultrasound:
+    kind: abstract
+    extends: Device
+    doc: >-
+      Interface for ultrasound acquisition devices. Implemented by Us4R
+      (real hardware) and File (recorded playback). Exposes a nominal and a
+      current sampling frequency; may have one or more probes connected.
+    attributes:
+      - {name: sampling_frequency,         type: float, unit: Hz,
+         required: true, doc: "Nominal device sampling rate"}
+      - {name: current_sampling_frequency, type: float, unit: Hz,
+         required: true, doc: "Actual data sampling frequency (depends on DDC decimation)"}
+
+  # ----- Concrete ultrasound devices (device-agnostic) ---------------------
+
+  File:
+    kind: concrete
+    extends: Ultrasound
+    doc: >-
+      File-based ultrasound "device" that replays recorded data. Presents the
+      Ultrasound interface without depending on any hardware family; useful
+      for offline processing and reproducing captures.
+
+  # ----- Probes ------------------------------------------------------------
+
+  Probe:
+    kind: concrete
+    extends: Device
+    doc: >-
+      A probe instance connected to an ultrasound device. Wraps a ProbeModel;
+      the model carries all static geometry / material properties.
+    attributes:
+      - {name: ordinal, type: int, required: true,
+         doc: "Probe index within its parent Ultrasound device (0 for the first)"}
+
+  ProbeModel:
+    kind: concrete
+    doc: >-
+      Static, immutable description of a probe model (P4-1, C5-2, L14-5, ...).
+      Contains geometry (element count, pitch, curvature) and acoustic
+      properties (frequency range, voltage range, lens, matching layer).
+      Curvature_radius = 0 for linear arrays; > 0 for convex.
+    attributes:
+      - {name: model_id,           type: ProbeModelId,             required: true}
+      - {name: n_elements,         type: int,                      required: true}
+      - {name: pitch,              type: float, unit: m,           required: true,
+         doc: "Element spacing"}
+      - {name: curvature_radius,   type: float, unit: m,           required: false,
+         doc: "0 for linear, > 0 for convex"}
+      - {name: tx_frequency_range, type: "Interval[float]", unit: Hz, required: false}
+      - {name: voltage_range,      type: "Interval[int]",   unit: V,  required: false}
+
+  ProbeModelId:
+    kind: concrete
+    doc: "Identifier of a probe model: (manufacturer, name)."
+    attributes:
+      - {name: manufacturer, type: str, required: true}
+      - {name: name,         type: str, required: true}
+
+  Lens:
+    kind: concrete
+    doc: >-
+      Optional acoustic lens on the probe surface (elevational focus).
+      Contributes an extra delay based on lens thickness and internal
+      speed-of-sound.
+    attributes:
+      - {name: thickness,      type: float, unit: m,   required: true}
+      - {name: speed_of_sound, type: float, unit: m/s, required: true}
+      - {name: focus,          type: float, unit: m,   required: false,
+         doc: "Elevational focal depth"}
+
+  MatchingLayer:
+    kind: concrete
+    doc: "Optional acoustic matching layer on the probe front face."
+    attributes:
+      - {name: thickness,      type: float, unit: m,   required: true}
+      - {name: speed_of_sound, type: float, unit: m/s, required: true}
+
+  # ----- Compute devices ---------------------------------------------------
+
+  CPU:
+    kind: concrete
+    extends: Device
+    doc: "The host CPU as a compute device."
+    attributes:
+      - {name: index, type: int, required: false,
+         doc: "Numa/socket index (usually 0)"}
+
+  GPU:
+    kind: concrete
+    extends: Device
+    doc: "A CUDA GPU as a compute device."
+    attributes: []
+
+  GpuSettings:
+    kind: concrete
+    doc: "Runtime settings for a GPU device (memory pool, memory-limit fraction)."
+    attributes:
+      - {name: memory_limit_percentage, type: float, unit: "%", required: false}
+      - {name: use_memory_pool,         type: bool,             required: true}
+
+  # ----- Value classes -----------------------------------------------------
+
+  DeviceId:
+    kind: concrete
+    doc: >-
+      Immutable compound key: (device_type, ordinal). Used to reference any
+      device consistently across the session.
+    attributes:
+      - {name: device_type, type: str, required: true,
+         doc: "e.g. 'Us4R', 'GPU', 'CPU', 'Us4OEM', 'Probe', 'File'"}
+      - {name: ordinal,     type: int, required: true}
+
+
+# ---------------------------------------------------------------------------
+# Relations
+# ---------------------------------------------------------------------------
+
+edge_kinds:
+
+  has_probe:
+    doc: >-
+      An Ultrasound device has zero or more Probes connected. Ordered by
+      probe ordinal within the device.
+    from: Ultrasound
+    to:   Probe
+    from_cardinality: [0, "*"]
+    to_cardinality:   [0, 1]
+    ordered: true
+
+  is_instance_of:
+    doc: "A Probe is an instance of a specific ProbeModel."
+    from: Probe
+    to:   ProbeModel
+    from_cardinality: [1, "*"]     # many probes may share the same model
+    to_cardinality:   [1, 1]       # each probe has exactly one model
+
+  has_model_id:
+    doc: "A ProbeModel is identified by a (manufacturer, name) tuple."
+    from: ProbeModel
+    to:   ProbeModelId
+    from_cardinality: [1, 1]
+    to_cardinality:   [1, 1]
+
+  has_lens:
+    doc: "A ProbeModel may declare an acoustic Lens."
+    from: ProbeModel
+    to:   Lens
+    from_cardinality: [1, 1]
+    to_cardinality:   [0, 1]
+
+  has_matching_layer:
+    doc: "A ProbeModel may declare a MatchingLayer."
+    from: ProbeModel
+    to:   MatchingLayer
+    from_cardinality: [1, 1]
+    to_cardinality:   [0, 1]
+
+  has_settings:
+    doc: "A GPU may carry runtime GpuSettings."
+    from: GPU
+    to:   GpuSettings
+    from_cardinality: [1, 1]
+    to_cardinality:   [0, 1]
+
+  identified_by:
+    doc: "Every Device is identified by a DeviceId."
+    from: Device
+    to:   DeviceId
+    from_cardinality: [1, 1]
+    to_cardinality:   [0, 1]
+
+
+# ---------------------------------------------------------------------------
+# Global constraints
+# ---------------------------------------------------------------------------
+
+global_constraints:
+
+  device_id_unique_in_session:
+    doc: >-
+      Within a session, DeviceId (device_type, ordinal) uniquely identifies
+      a Device. No two Devices share a DeviceId.
+
+  probe_ordinal_unique_per_ultrasound:
+    doc: "Within one Ultrasound device, probe ordinals are unique."
+
+  sampling_frequency_positive:
+    doc: >-
+      Ultrasound.sampling_frequency and .current_sampling_frequency must be
+      positive and finite. current_sampling_frequency <= sampling_frequency.
+
+  probe_geometry_consistent:
+    doc: >-
+      If ProbeModel.curvature_radius > 0, the probe is treated as convex
+      and element positions are computed along an arc; otherwise linear.
+
+  hv_voltage_within_probe_range:
+    doc: >-
+      Any hardware-family concrete Ultrasound implementation that exposes an
+      HV voltage setting must ensure the requested value falls within
+      Probe.model.voltage_range for every attached probe. Enforced at the
+      family-specific layer, not here.

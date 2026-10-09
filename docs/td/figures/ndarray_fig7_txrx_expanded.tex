@@ -1,0 +1,154 @@
+% Expanded (post-lowering) form of arrus.tx_rx_sequence.
+%
+% Fig 6 shows the AUTHORED form: one region body describing one slot's
+% schema, compact but hiding the fact that at runtime this is a
+% sequence of side-effecting firings threaded through device state.
+%
+% This figure shows the EXPANDED form after Us4RBackend.compile:
+%   - the region body's pure ops (aperture_for_slot, compute_delays)
+%     are hoisted into compile-time-materialized LUTs;
+%   - the region body's side-effecting op (tx_rx.slot) is expanded
+%     into 192 concrete slot descriptors resident in device DDR;
+%   - a runtime `us4r.rebind_wiring(@indices)` step updates the linked
+%     list to wire only the selected slots into the active chain;
+%   - `us4r.fire_sequence` threads a `!us4r.device_state` value through
+%     ONLY the wired slots, producing the (K, ...) stack of RF frames.
+%
+% Selected example: @indices = [3, 5, 8, 13].
+% Slot 3, 5, 8, 13 are HIGHLIGHTED as active; the others are grayed
+% out to show they exist in device memory but are skipped this frame.
+%
+% Build: pdflatex ndarray_fig7_txrx_expanded.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[
+    node distance=6mm and 8mm,
+    every node/.append style={font=\small},
+    slot/active/.style   = {rectangle, rounded corners=2pt, draw=arrusUs4R!80!black,
+                            fill=arrusUs4R!30, thick, minimum width=16mm,
+                            minimum height=14mm, align=center,
+                            font=\scriptsize\bfseries},
+    slot/inactive/.style = {rectangle, rounded corners=2pt, draw=black!30,
+                            fill=black!5, minimum width=16mm, minimum height=14mm,
+                            align=center, font=\scriptsize, text=black!45},
+    op/const/.style      = {op, fill=arrusHost!20, draw=arrusHost!80!black,
+                            font=\scriptsize\itshape},
+    edge/data/.style     = {-{Latex[length=2mm]}, thick, draw=black!70},
+    edge/state/.style    = {-{Latex[length=2.4mm]}, very thick,
+                            draw=arrusTrigger!80!black},
+    edge/skip/.style     = {-{Latex[length=1.5mm]}, thin, dashed, draw=black!35},
+]
+
+  % --- Top: @indices variable + LUT constants ------------------------------
+  \node[op/variable, minimum width=52mm] (indices)
+      {\textbf{Variable(@indices) = [3, 5, 8, 13]}\\%
+       \scriptsize\itshape (K, i32) @host};
+
+  \node[op/const, right=15mm of indices, minimum width=68mm] (luts)
+      {\textbf{compile-time LUTs}\\%
+       apertures\_LUT : const<192 $\times$ aperture> @Us4R:0\\%
+       delays\_LUT   : const<192 $\times$ delays>    @Us4R:0\\%
+       \scriptsize (hoisted from the region body's pure ops)};
+
+  % --- Middle: rebind_wiring op --------------------------------------------
+  \node[op/us4r, below=12mm of indices, minimum width=60mm] (rebind)
+      {\textbf{us4r.rebind\_wiring}\\%
+       \scriptsize (@indices) $\to$ \%wiring : !us4r.chain};
+
+  % --- Slot strip (12 slots + two "..." breaks; 4 are active) --------------
+  % Position the strip below with a horizontal layout.
+  \node[slot/inactive] (slot0) at (-70mm, -80mm) {slot 0\\\scriptsize skipped};
+  \node[slot/inactive, right=of slot0] (slot1) {slot 1\\\scriptsize skipped};
+  \node[slot/inactive, right=of slot1] (slot2) {slot 2\\\scriptsize skipped};
+  \node[slot/active,   right=of slot2] (slot3) {\textbf{slot 3}\\\scriptsize \textbf{fires}};
+  \node[slot/inactive, right=of slot3] (slot4) {slot 4\\\scriptsize skipped};
+  \node[slot/active,   right=of slot4] (slot5) {\textbf{slot 5}\\\scriptsize \textbf{fires}};
+  \node[right=of slot5, font=\Large\bfseries] (dots1) {\ldots};
+  \node[slot/active, right=of dots1] (slot8) {\textbf{slot 8}\\\scriptsize \textbf{fires}};
+  \node[right=of slot8, font=\Large\bfseries] (dots2) {\ldots};
+  \node[slot/active, right=of dots2] (slot13) {\textbf{slot 13}\\\scriptsize \textbf{fires}};
+  \node[right=of slot13, font=\Large\bfseries] (dots3) {\ldots};
+  \node[slot/inactive, right=of dots3] (slot191) {slot 191\\\scriptsize skipped};
+
+  % Label for the strip
+  \node[above=6mm of slot4, font=\small\itshape, text=arrusUs4R!80!black,
+        align=center]
+       (striplabel)
+       {\textbf{us4r.fire\_sequence} \; --- 192 slot descriptors materialized in device DDR;\\%
+        \%wiring selects the sub-chain to walk};
+
+  % --- Initial device state (left of strip) --------------------------------
+  \node[op/variable, left=8mm of slot0, minimum width=20mm,
+        fill=arrusTrigger!25, draw=arrusTrigger!80!black]
+       (s0) {\%s0\\\scriptsize\itshape !us4r.device\_state};
+
+  % --- Final state + frames output (right of strip) ------------------------
+  \node[op/output, right=10mm of slot191, minimum width=24mm] (frames)
+      {\%frames\\\scriptsize (K, n\_ch, n\_samp)};
+  \node[below=3mm of frames, op/variable, minimum width=24mm,
+        fill=arrusTrigger!25, draw=arrusTrigger!80!black]
+       (sfinal) {\%s1\\\scriptsize\itshape !us4r.device\_state};
+
+  % --- Edges: variable / LUT reads ----------------------------------------
+  \draw[edge/variable] (indices.south) -- (rebind.north)
+      node[midway, right, font=\scriptsize\itshape,
+           text=arrusVariable!80!black] {@indices};
+
+  \draw[edge/data] (luts.south) |- ($(rebind.east)+(6mm,0)$) -- (rebind.east)
+      node[near start, right, font=\scriptsize\itshape, text=black!55]
+      {LUTs (baked-in per slot)};
+
+  % rebind -> the strip (wiring)
+  \draw[edge/data, rounded corners=6pt] (rebind.south) --
+      ++(0,-6mm) node[midway, right, font=\scriptsize\itshape, text=black!55]
+      {\%wiring} -| (striplabel.north);
+
+  % --- State-thread edges (only through active slots, following wiring) ---
+  \draw[edge/state] (s0.east)   -- (slot3.west)
+      node[midway, above, font=\scriptsize\itshape,
+           text=arrusTrigger!80!black] {\%s0};
+  \draw[edge/state] (slot3.east) to[bend right=25] (slot5.west);
+  \draw[edge/state] (slot5.east) to[bend right=20] (slot8.west);
+  \draw[edge/state] (slot8.east) to[bend right=20] (slot13.west);
+  \draw[edge/state] (slot13.east) to[bend right=15] (sfinal.west);
+
+  % --- Skipped edges (dashed, showing linked-list bypass) -----------------
+  \draw[edge/skip] (slot0.east) -- (slot1.west);
+  \draw[edge/skip] (slot1.east) -- (slot2.west);
+  \draw[edge/skip] (slot2.east) -- (slot3.west);
+  \draw[edge/skip] (slot3.east) -- (slot4.west);
+  \draw[edge/skip] (slot4.east) -- (slot5.west);
+
+  % --- Frames output: each active slot contributes one row ---------------
+  \draw[edge/data, rounded corners=6pt] (slot3.south)  |- ($(frames.west)+(-6mm,-6mm)$);
+  \draw[edge/data, rounded corners=6pt] (slot5.south)  |- ($(frames.west)+(-6mm,-4mm)$);
+  \draw[edge/data, rounded corners=6pt] (slot8.south)  |- ($(frames.west)+(-6mm,-2mm)$);
+  \draw[edge/data, rounded corners=6pt] (slot13.south) |- (frames.west)
+      node[near end, above, font=\scriptsize\itshape, text=black!55]
+      {\%rf per active slot};
+
+  % --- Legend --------------------------------------------------------------
+  \node[legendbox, below=20mm of slot4, anchor=north] {%
+    \begin{tikzpicture}[node distance=3mm]
+      \node[slot/active, minimum width=26mm, minimum height=8mm] (l1)
+        {active slot (in @indices)};
+      \node[slot/inactive, minimum width=26mm, minimum height=8mm, below=of l1] (l2)
+        {skipped slot};
+      \node[op/const, minimum width=26mm, minimum height=6mm, below=of l2] (l3)
+        {compile-time LUT};
+      \node[below=3mm of l3.south, anchor=north, font=\scriptsize] (e1)
+        {\tikz\draw[edge/state] (0,0) -- (10mm,0);\ !us4r.device\_state (state thread)};
+      \node[below=1mm of e1.south, anchor=north, font=\scriptsize] (e2)
+        {\tikz\draw[edge/data]  (0,0) -- (10mm,0);\ SSA data};
+      \node[below=1mm of e2.south, anchor=north, font=\scriptsize] (e3)
+        {\tikz\draw[edge/skip]  (0,0) -- (10mm,0);\ linked-list bypass (slot skipped)};
+      \node[below=1mm of e3.south, anchor=north, font=\scriptsize] (e4)
+        {\tikz\draw[edge/variable] (0,0) -- (10mm,0);\ variable read};
+    \end{tikzpicture}%
+  };
+
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,59 @@
+% Shared preamble for NdArray graph figures.
+% Include with: \input{ndarray_common}
+%
+% Provides a consistent color palette and node styles for the three figures
+% in docs/td/ndarray_design.md.
+
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, fit, calc, backgrounds, shapes.geometric}
+
+% --- Device / role color palette ------------------------------------------------
+\definecolor{arrusUs4R}   {HTML}{2CA9BC}   % ultrasound device (teal)
+\definecolor{arrusGPU}    {HTML}{F28C28}   % CUDA GPU (orange)
+\definecolor{arrusCPU}    {HTML}{4CAF50}   % CPU (green)
+\definecolor{arrusHost}   {HTML}{9E9E9E}   % host / control (gray)
+\definecolor{arrusBuffer} {HTML}{616161}   % stream buffer (dark gray)
+\definecolor{arrusVariable}{HTML}{F4C542}  % Variable (gold)
+\definecolor{arrusTrigger}{HTML}{D64545}   % Trigger source (red)
+\definecolor{arrusOutput} {HTML}{5C6BC0}   % Graph output / sink (indigo)
+
+% --- Node styles ---------------------------------------------------------------
+\tikzset{
+  op/.style       = {rectangle, rounded corners=2pt, draw=black!60, thick,
+                     minimum width=26mm, minimum height=8mm, align=center,
+                     font=\small},
+  op/us4r/.style  = {op, fill=arrusUs4R!25,   draw=arrusUs4R!80!black},
+  op/gpu/.style   = {op, fill=arrusGPU!25,    draw=arrusGPU!80!black},
+  op/cpu/.style   = {op, fill=arrusCPU!25,    draw=arrusCPU!70!black},
+  op/host/.style  = {op, fill=arrusHost!20,   draw=arrusHost!70!black},
+  op/output/.style= {op, fill=arrusOutput!25, draw=arrusOutput!80!black},
+  op/variable/.style = {ellipse, draw=arrusVariable!70!black, thick,
+                        fill=arrusVariable!30, minimum width=22mm,
+                        minimum height=7mm, align=center, font=\small\itshape},
+  op/trigger/.style  = {regular polygon, regular polygon sides=3,
+                        draw=arrusTrigger!80!black, thick, fill=arrusTrigger!25,
+                        minimum size=11mm, align=center, font=\scriptsize,
+                        inner sep=0pt},
+  op/buffer/.style   = {cylinder, shape border rotate=90, aspect=0.3,
+                        draw=arrusBuffer!80!black, thick, fill=arrusBuffer!15,
+                        minimum width=18mm, minimum height=10mm, align=center,
+                        font=\scriptsize},
+  edge/.style        = {-{Latex[length=2mm]}, thick, draw=black!70},
+  % Intra-region data flow: shared buffer + CUDA-stream / kernel-order
+  % ordering. No runtime queue.
+  edge/intra/.style  = {-{Latex[length=2mm]}, thick, draw=black!70},
+  % Cross-region stream: real queue infrastructure (backpressure/drop policy,
+  % scheduler wake-up). Used for cross-device transfers and rate mismatches.
+  edge/stream/.style = {-{Latex[length=2mm]}, very thick, draw=black!70,
+                        double distance=1pt},
+  edge/trigger/.style= {-{Latex[length=2mm]}, thick, draw=arrusTrigger!80!black,
+                        dashed},
+  edge/variable/.style = {-{Latex[length=2mm]}, thick,
+                          draw=arrusVariable!80!black, densely dotted},
+  region/.style      = {rounded corners, inner sep=4mm, dashed,
+                        line width=0.8pt},
+  region/us4r/.style = {region, draw=arrusUs4R!70!black, fill=arrusUs4R!5},
+  region/gpu/.style  = {region, draw=arrusGPU!70!black,  fill=arrusGPU!5},
+  legendbox/.style   = {rectangle, draw=black!30, rounded corners=2pt,
+                        inner sep=4pt, fill=white},
+}

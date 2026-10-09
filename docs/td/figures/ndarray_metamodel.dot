@@ -1,0 +1,38 @@
+digraph metamodel {
+  graph [rankdir=LR, splines=spline, nodesep=0.55, ranksep=1.0,
+         bgcolor="white", fontname="Helvetica", pad=0.3];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica",
+         margin="0.12,0.08"];
+  edge  [fontname="Helvetica", fontsize=9, color="black"];
+  labelloc="t"; label=<<B>L1 --- Graph of operations on devices</B>>;
+
+  // ---------------- Node kinds ----------------
+  Op [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD ALIGN="CENTER"><FONT POINT-SIZE="10">«abstract»</FONT></TD></TR><TR><TD ALIGN="CENTER"><B><FONT POINT-SIZE="13">Op</FONT></B></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>name</B> : string</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">-&nbsp;<B>local_name</B> : string</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">-&nbsp;<B>attrs</B> : map&lt;string, Attribute&gt;</FONT></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="8"><I>Computation node.</I></FONT></TD></TR></TABLE>>, style="rounded,filled,dashed", fillcolor="#FFE7CC"];
+  Variable [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD ALIGN="CENTER"><FONT POINT-SIZE="10">«concrete»</FONT></TD></TR><TR><TD ALIGN="CENTER"><B><FONT POINT-SIZE="13">Variable</FONT></B></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>initial_type</B> : NdArrayType</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">-&nbsp;<B>initial_data</B> : bytes</FONT></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="8"><I>Named runtime-mutable cell.</I></FONT></TD></TR></TABLE>>, style="rounded,filled", fillcolor="#F9E7A0"];
+  TriggerSource [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD ALIGN="CENTER"><FONT POINT-SIZE="10">«concrete»</FONT></TD></TR><TR><TD ALIGN="CENTER"><B><FONT POINT-SIZE="13">TriggerSource</FONT></B></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>source_kind</B> : enum{internal, external, software}</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">-&nbsp;<B>params</B> : map&lt;string, Attribute&gt;</FONT></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="8"><I>Root of trigger flow.</I></FONT></TD></TR></TABLE>>, style="rounded,filled", fillcolor="#F2C4C4"];
+  Value [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD ALIGN="CENTER"><FONT POINT-SIZE="10">«concrete»</FONT></TD></TR><TR><TD ALIGN="CENTER"><B><FONT POINT-SIZE="13">Value</FONT></B></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>type</B> : NdArrayType | Stream[T]</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">-&nbsp;<B>name</B> : string</FONT></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="8"><I>SSA result of exactly one Op.</I></FONT></TD></TR></TABLE>>, style="rounded,filled", fillcolor="#D8DEF5"];
+  Device [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD ALIGN="CENTER"><FONT POINT-SIZE="10">«concrete»</FONT></TD></TR><TR><TD ALIGN="CENTER"><B><FONT POINT-SIZE="13">Device</FONT></B></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>local_name</B> : string</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">-&nbsp;<B>model_ref</B> : reference&lt;arrus_domain.Device&gt;</FONT></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="8"><I>Concrete placement target.</I></FONT></TD></TR></TABLE>>, style="rounded,filled", fillcolor="#C8E7E8"];
+  Stream [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="2"><TR><TD ALIGN="CENTER"><FONT POINT-SIZE="10">«concrete»</FONT></TD></TR><TR><TD ALIGN="CENTER"><B><FONT POINT-SIZE="13">Stream</FONT></B></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>element_type</B> : NdArrayType | Event</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>capacity</B> : int <FONT POINT-SIZE="7">[elements]</FONT></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">+&nbsp;<B>overflow_policy</B> : enum{drop_oldest, drop_newest, block}</FONT></TD></TR><HR/><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="8"><I>Runtime queue realized at a cross-region edge.</I></FONT></TD></TR></TABLE>>, style="rounded,filled", fillcolor="#D9D9D9"];
+
+  // ---------------- Inheritance ----------------
+  Variable -> Op [arrowhead=onormal, style=dashed, penwidth=0.8, minlen=2];
+  TriggerSource -> Op [arrowhead=onormal, style=dashed, penwidth=0.8, minlen=2];
+
+  // ---------------- Associations (edge kinds) ----------------
+  Op -> Value [label=<<B>operand</B> *<BR/><FONT POINT-SIZE="8">+&nbsp;<B>position</B> : int</FONT>>, headlabel="0..*", taillabel="0..*", labeldistance=2.4, labelangle=25, arrowhead=vee, penwidth=1.0, color="black"];
+  Op -> Value [label=<<B>result</B> *>, headlabel="1", taillabel="1..*", labeldistance=2.4, labelangle=25, arrowhead=vee, penwidth=1.0, color="black"];
+  Op -> Device [label=<<B>placement</B>>, headlabel="0..*", taillabel="1", labeldistance=2.4, labelangle=25, arrowhead=vee, penwidth=1.0, color="black"];
+  TriggerSource -> Op [label=<<B>triggers</B>>, headlabel="0..1", taillabel="1..*", labeldistance=2.4, labelangle=25, arrowhead=vee, penwidth=1.0, color="black"];
+  Value -> Stream [label=<<B>realized_by</B>>, headlabel="0..1", taillabel="1", labeldistance=2.4, labelangle=25, arrowhead=vee, penwidth=1.0, color="black"];
+  Op -> Op [label=<<B>contains_op</B> *<BR/><FONT POINT-SIZE="8">-&nbsp;<B>role</B> : string</FONT>>, headlabel="0..1", taillabel="0..*", labeldistance=2.4, labelangle=25, arrowhead=vee, penwidth=1.0, color="black"];
+  Device -> Device [label=<<B>contains_device</B> *>, headlabel="0..1", taillabel="0..*", labeldistance=2.4, labelangle=25, arrowhead=vee, penwidth=1.0, color="black"];
+
+  // ---------------- Legend ----------------
+  subgraph cluster_legend {
+    label=<<B>Legend</B>>; fontname="Helvetica"; fontsize=10;
+    style="rounded,filled"; fillcolor="#FAFAFA"; color="#BDBDBD";
+    labelloc="t";
+    node [shape=plaintext, margin=0];
+    legend [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2"><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9"><B>«abstract»</B>&nbsp;dashed box &mdash; abstract kind</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9"><B>«concrete»</B>&nbsp;solid box &mdash; concrete kind</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">triangle arrow &mdash; UML generalization (extends)</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">vee arrow &mdash; association, labelled with <B>name</B> and endpoint <I>cardinality</I></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9"><B>*</B> after edge name &mdash; ordered or has named constraints</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9">attributes shown UML-style: <B>+</B> required, <B>-</B> optional</FONT></TD></TR></TABLE>>];
+  }
+}

@@ -1,0 +1,108 @@
+% Mid-level graph: op-by-op view of the B-mode pipeline from
+% arrus.utils.imaging.get_bmode_imaging (LinSequence variant) with a
+% parallel Color Doppler branch forking off the IQ data. All processing
+% ops are on GPU.
+%
+% Build:  pdflatex ndarray_fig2_midlevel.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[
+    node distance=5mm and 12mm,
+    every node/.append style={font=\small},
+  ]
+
+  % --- Acquisition (Us4R) -----------------------------------------------------
+  \node[op/us4r] (txrx) {TX/RX sequence\\\scriptsize\itshape (LinSequence)};
+
+  % --- Common pre-processing (GPU) --------------------------------------------
+  \node[op/gpu, below=of txrx] (remap)  {RemapToLogicalOrder};
+  \node[op/gpu, below=of remap] (tr1)   {Transpose\\\scriptsize\itshape axes=(0,1,3,2)};
+  \node[op/gpu, below=of tr1]   (bp)    {BandpassFilter};
+  \node[op/gpu, below=of bp]    (qdemod){QuadratureDemodulation};
+  \node[op/gpu, below=of qdemod](dec)   {Decimation};
+
+  % --- Fork label -------------------------------------------------------------
+  \node[right=6mm of dec, font=\scriptsize\itshape, text=black!60] (fork)
+      {IQ data};
+
+  % --- B-mode branch (left column) --------------------------------------------
+  \node[op/gpu, below=10mm of dec, xshift=-30mm] (rxbf) {RxBeamforming};
+  \node[op/gpu, below=of rxbf]  (env)   {EnvelopeDetection};
+  \node[op/gpu, below=of env]   (tr2)   {Transpose\\\scriptsize\itshape axes=(0,2,1)};
+  \node[op/gpu, below=of tr2]   (sc)    {ScanConversion};
+  \node[op/gpu, below=of sc]    (meanB) {Mean\\\scriptsize\itshape axis=0};
+  \node[op/gpu, below=of meanB] (log)   {LogCompression};
+  \node[op/output, below=of log](outB)  {B-mode image};
+
+  % --- Doppler branch (right column) ------------------------------------------
+  \node[op/gpu, below=10mm of dec, xshift= 30mm] (wcf)  {WallClutterFilter\\\scriptsize\itshape (SVD / high-pass, slow-time)};
+  \node[op/gpu, below=of wcf]   (ac)    {Autocorrelation\\\scriptsize\itshape (Kasai)};
+  \node[op/gpu, below=of ac]    (vel)   {VelocityEstimation};
+  \node[op/gpu, below=of vel]   (pwr)   {PowerEstimation};
+  \node[op/gpu, below=of pwr]   (mask)  {ThresholdMask};
+  \node[op/gpu, below=of mask]  (scD)   {ScanConversion};
+  \node[op/gpu, below=of scD]   (map)   {ColorMap};
+  \node[op/output, below=of map](outD)  {Doppler image};
+
+  % --- Edges: acquisition -> pre-processing (Us4R -> GPU: cross-region) ------
+  \draw[edge/stream] (txrx)   -- (remap);
+  \draw[edge/intra]  (remap)  -- (tr1);
+  \draw[edge/intra]  (tr1)    -- (bp);
+  \draw[edge/intra]  (bp)     -- (qdemod);
+  \draw[edge/intra]  (qdemod) -- (dec);
+
+  % --- Edges: fork to B-mode (intra) and Doppler (cross-region: N-frame batch)
+  \draw[edge/intra]  (dec.south) -- ++(0,-3mm) -| (rxbf.north);
+  \draw[edge/stream] (dec.south) -- ++(0,-3mm) -| (wcf.north);
+
+  % --- Edges: B-mode branch (intra-region, per-frame) -------------------------
+  \draw[edge/intra] (rxbf)  -- (env);
+  \draw[edge/intra] (env)   -- (tr2);
+  \draw[edge/intra] (tr2)   -- (sc);
+  \draw[edge/intra] (sc)    -- (meanB);
+  \draw[edge/intra] (meanB) -- (log);
+  \draw[edge/intra] (log)   -- (outB);
+
+  % --- Edges: Doppler branch (intra-region, per-N-frame batch) ---------------
+  \draw[edge/intra] (wcf)  -- (ac);
+  \draw[edge/intra] (ac)   -- (vel);
+  \draw[edge/intra] (vel)  -- (pwr);
+  \draw[edge/intra] (pwr)  -- (mask);
+  \draw[edge/intra] (mask) -- (scD);
+  \draw[edge/intra] (scD)  -- (map);
+  \draw[edge/intra] (map)  -- (outD);
+
+  % --- Branch titles (placed above the first op of each branch) ---------------
+  \node[above=1mm of rxbf, font=\scriptsize\itshape, text=arrusGPU!80!black]
+      (lblB) {B-mode branch};
+  \node[above=1mm of wcf,  font=\scriptsize\itshape, text=arrusGPU!80!black]
+      (lblD) {Color Doppler branch};
+
+  % --- Branch background boxes ------------------------------------------------
+  \begin{scope}[on background layer]
+    \node[fit=(lblB) (rxbf) (env) (tr2) (sc) (meanB) (log) (outB),
+          rounded corners, fill=arrusGPU!5, draw=arrusGPU!40, dashed,
+          inner sep=3mm] {};
+    \node[fit=(lblD) (wcf) (ac) (vel) (pwr) (mask) (scD) (map) (outD),
+          rounded corners, fill=arrusGPU!5, draw=arrusGPU!40, dashed,
+          inner sep=3mm] {};
+  \end{scope}
+
+  % --- Legend -----------------------------------------------------------------
+  \node[legendbox, below=12mm of outD.south, anchor=north] {
+    \begin{tikzpicture}[node distance=3mm]
+      \node[op/us4r,   minimum width=18mm, minimum height=6mm] (l1) {Us4R:0};
+      \node[op/gpu,    minimum width=18mm, minimum height=6mm, right=of l1] (l2) {GPU:0};
+      \node[op/output, minimum width=18mm, minimum height=6mm, right=of l2] (l3) {output};
+      \node[right=5mm of l3, font=\scriptsize] (l4)
+        {\tikz\draw[edge/intra]  (0,0) -- (7mm,0);\ intra-region data flow};
+      \node[right=5mm of l4, font=\scriptsize]
+        {\tikz\draw[edge/stream] (0,0) -- (7mm,0);\ cross-region stream (queue)};
+    \end{tikzpicture}
+  };
+
+\end{tikzpicture}
+\end{document}

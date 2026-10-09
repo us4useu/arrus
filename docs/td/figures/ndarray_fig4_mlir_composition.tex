@@ -1,0 +1,151 @@
+% MLIR-style composition of arrus.tx_rx across two dialect levels.
+%
+% Illustrates that an operation can contain other operations (MLIR
+% regions-inside-ops pattern). The high-level `arrus.tx_rx` (Level 1,
+% arrus dialect) is composed of sub-ops that compute delays from SoS,
+% compose a TX descriptor, and acquire. The `arrus.acquire` sub-op is
+% itself lowered by `Us4RBackend.compile` into a body of Level-2 ops
+% from the `us4r` dialect (delays -> device cycles -> set_delays_register
+% -> ... -> fire).
+%
+% The nesting is real MLIR-style: a composite op owns a region containing
+% its body. Level 2 ops live INSIDE Level 1 ops after lowering; the graph
+% is not two separate layers but one graph with nested op scopes.
+%
+% Build:  pdflatex ndarray_fig4_mlir_composition.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[
+    node distance=5mm and 10mm,
+    every node/.append style={font=\small},
+    op/arrus/.style = {op, fill=arrusGPU!20, draw=arrusGPU!80!black},
+    op/us4rlow/.style = {op, fill=arrusUs4R!25, draw=arrusUs4R!80!black},
+]
+
+  % --- Variable input: sos --------------------------------------------------
+  \node[op/variable, minimum width=44mm] (sos)
+      {Variable(``sos'')\\\scriptsize\itshape NdArrayType((), f32, @ANY)};
+
+  % --- Level 1 sub-ops (arrus dialect, inside arrus.tx_rx) ------------------
+  \node[op/arrus, below=18mm of sos, minimum width=88mm] (cd) {%
+      \textbf{arrus.compute\_delays}\\%
+      \scriptsize\itshape (sos, focus, angle, aperture, geometry)
+      $\to$ delays: NdArrayType((n\_el,), f32, @host)};
+
+  \node[op/arrus, below=of cd, minimum width=88mm] (ct) {%
+      \textbf{arrus.compose\_tx}\\%
+      \scriptsize\itshape (aperture, pulse, delays)
+      $\to$ tx\_desc};
+
+  % --- Nested Level 2 body of arrus.acquire (us4r dialect) ------------------
+  % These live INSIDE the arrus.acquire region, drawn a bit indented.
+  \node[op/us4rlow, below=22mm of ct, minimum width=82mm] (d2c) {%
+      \textbf{us4r.delays\_to\_cycles}\\%
+      \scriptsize\itshape (delays: f32, clock\_freq)
+      $\to$ cycles: NdArrayType((n\_el,), u32, @Us4R:0)};
+
+  \node[op/us4rlow, below=of d2c, minimum width=82mm] (sdr) {%
+      \textbf{us4r.set\_delays\_register}\\%
+      \scriptsize\itshape (cycles, tx\_id)
+      \; [side-effect: writes device DDR shadow buffer]};
+
+  \node[op/us4rlow, below=of sdr, minimum width=82mm] (sam) {%
+      \textbf{us4r.set\_aperture\_mask}\\%
+      \scriptsize\itshape (aperture\_bits)
+      \; [side-effect]};
+
+  \node[op/us4rlow, below=of sam, minimum width=82mm] (at) {%
+      \textbf{us4r.arm\_trigger}\\%
+      \scriptsize\itshape (trigger\_source, prf)
+      \; [side-effect]};
+
+  \node[op/us4rlow, below=of at, minimum width=82mm] (fire) {%
+      \textbf{us4r.fire}\\%
+      \scriptsize\itshape ()
+      $\to$ raw\_frame: NdArrayType((n\_ch, n\_samples), i16, @Us4R:0)};
+
+  % --- Output ---------------------------------------------------------------
+  \node[op/output, below=8mm of fire, minimum width=48mm] (raw)
+      {raw\_frame};
+
+  % --- Regions (drawn before edges so they sit on background layer) ---------
+  \begin{scope}[on background layer]
+    % Inner region: arrus.acquire's body (Level-2 us4r dialect).
+    % Label placed inside the region at top-left so it doesn't clash with
+    % the outer region's label and doesn't run off the standalone canvas.
+    \node[region/us4r, fit=(d2c) (sdr) (sam) (at) (fire),
+          inner sep=5mm, line width=1pt,
+          label={[font=\scriptsize\itshape, text=arrusUs4R!80!black,
+                  anchor=south east, xshift=-2mm, yshift=-1mm]
+                  north east:\textbf{arrus.acquire} body \textit{(lowered to us4r dialect)}}]
+        (acquire_region) {};
+
+    % Outer region: arrus.tx_rx (composite Level-1 op containing three sub-ops).
+    % Label placed centered above the region.
+    \node[region/gpu, fit=(cd) (ct) (acquire_region),
+          inner sep=6mm, line width=1pt,
+          label={[font=\small\bfseries, text=arrusGPU!80!black]above:%
+                  arrus.tx\_rx \; \textit{(Level 1 --- arrus dialect, composite op)}}]
+        (txrx_region) {};
+  \end{scope}
+
+  % --- Data-flow edges ------------------------------------------------------
+  \draw[edge/variable] (sos.south) -- (cd.north)
+      node[midway, right, font=\scriptsize\itshape, text=arrusVariable!70!black]
+          {reads current sos};
+
+  \draw[edge/intra] (cd.south) -- (ct.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55]
+          {delays};
+
+  % Lowering barrier between ct and d2c.
+  \draw[very thick, -{Latex[length=3mm]}, draw=arrusUs4R!80!black]
+      (ct.south) -- ++(0,-6mm)
+      node[midway, right=1mm, font=\scriptsize\bfseries,
+           text=arrusUs4R!80!black]
+          {compiled by Us4RBackend.compile}
+      -- (d2c.north);
+
+  \draw[edge/intra] (d2c.south) -- (sdr.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55]
+          {cycles};
+
+  % These three ops are all side-effect sinks writing to device state;
+  % dashed thin arrows show the sequence, not a data flow.
+  \draw[-{Latex[length=2mm]}, draw=arrusUs4R!60, dashed, thick]
+      (sdr.south) -- (sam.north);
+  \draw[-{Latex[length=2mm]}, draw=arrusUs4R!60, dashed, thick]
+      (sam.south) -- (at.north);
+
+  % After arm, fire produces the raw frame.
+  \draw[edge/intra] (at.south) -- (fire.north);
+
+  \draw[edge/stream] (fire.south) -- (raw.north)
+      node[midway, right, font=\scriptsize\itshape, text=black!55]
+          {raw echoes};
+
+  % --- Legend ---------------------------------------------------------------
+  \node[legendbox, below=14mm of raw, anchor=north] {%
+    \begin{tikzpicture}[node distance=3mm]
+      \node[op/arrus,    minimum width=26mm, minimum height=6mm] (l1) {arrus.* (Level 1)};
+      \node[op/us4rlow,  minimum width=26mm, minimum height=6mm, below=of l1] (l2) {us4r.* (Level 2)};
+      \node[op/variable, minimum width=26mm, minimum height=6mm, below=of l2] (l3) {Variable};
+      \node[op/output,   minimum width=26mm, minimum height=6mm, below=of l3] (l4) {output};
+      \node[below=3mm of l4.south, anchor=north, font=\scriptsize] (e1)
+        {\tikz\draw[edge/intra]  (0,0) -- (8mm,0);\ SSA value};
+      \node[below=1mm of e1.south, anchor=north, font=\scriptsize] (e2)
+        {\tikz\draw[edge/variable] (0,0) -- (8mm,0);\ variable read};
+      \node[below=1mm of e2.south, anchor=north, font=\scriptsize] (e3)
+        {\tikz\draw[very thick, -{Latex[length=2mm]}, draw=arrusUs4R!80!black]
+              (0,0) -- (8mm,0);\ lowering};
+      \node[below=1mm of e3.south, anchor=north, font=\scriptsize] (e4)
+        {\tikz\draw[-{Latex[length=2mm]}, draw=arrusUs4R!60, dashed, thick]
+              (0,0) -- (8mm,0);\ sequenced side-effects};
+    \end{tikzpicture}%
+  };
+
+\end{tikzpicture}
+\end{document}

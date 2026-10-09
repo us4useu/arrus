@@ -1,0 +1,92 @@
+% Slide 2: multi-level representation of arrus.tx_rx_sequence.
+% Top: Level 1 -- one composite op (same box as in slide 1).
+% Bottom: Level 2 -- the op zoomed in, showing per-slot TX/RX
+% operations and their input variables (apertures, delays, @indices).
+% A downward "compile-time lowering" arrow connects the two.
+%
+% Build: pdflatex slide2_multilevel.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[
+    node distance=6mm and 10mm,
+    every node/.append style={font=\small},
+    slot/.style   = {op/us4r, minimum width=26mm, minimum height=14mm,
+                     align=center},
+    varop/.style  = {op/variable, minimum width=26mm},
+]
+
+  % --- Level 1: one composite op ------------------------------------------
+  \node[font=\small\bfseries, text=arrusUs4R!80!black] (l1label)
+      {Level 1 --- high-level composite op};
+  \node[op/us4r, minimum width=72mm, minimum height=14mm, below=2mm of l1label]
+      (txrx1)
+      {\textbf{arrus.tx\_rx\_sequence}};
+
+  % --- Lowering arrow ------------------------------------------------------
+  \draw[very thick, -{Latex[length=3.2mm]}, draw=arrusUs4R!80!black]
+      (txrx1.south) -- ++(0,-14mm)
+      node[midway, right=1mm, font=\small\bfseries, text=arrusUs4R!80!black,
+           align=left]
+      {compile-time lowering\\\scriptsize\itshape (Us4RBackend.compile)};
+
+  % --- Level 2: variables (top row) ---------------------------------------
+  \node[varop, below=32mm of txrx1, xshift=-30mm] (apertures)
+      {\textbf{apertures}\\\scriptsize const<192 $\times$ aperture>};
+  \node[varop, right=of apertures] (delays)
+      {\textbf{delays}\\\scriptsize const<192 $\times$ delays>};
+  \node[varop, right=of delays] (indices)
+      {\textbf{Variable(@indices)}\\\scriptsize (K, i32)};
+
+  % --- Level 2: slot ops (bottom row) -------------------------------------
+  \node[slot, below=10mm of apertures] (s0)
+      {\textbf{tx\_rx.slot 0}};
+  \node[slot, right=of s0] (s1)
+      {\textbf{tx\_rx.slot 1}};
+  \node[right=of s1, font=\Large\bfseries] (dots)
+      {\ldots};
+  \node[slot, right=of dots] (s191)
+      {\textbf{tx\_rx.slot 191}};
+
+  % --- Edges: variables feed slot ops (compile-time constants baked-in) ---
+  \draw[edge/intra] (apertures.south) -- ++(0,-3mm) -| (s0.north)
+      node[near end, right, font=\scriptsize\itshape, text=black!55]
+      {aperture[i]};
+  \draw[edge/intra] (delays.south)    -- ++(0,-3mm) -| (s1.north)
+      node[near end, right, font=\scriptsize\itshape, text=black!55]
+      {delays[i]};
+
+  % @indices reads by all slots (dashed variable-read)
+  \draw[edge/variable, rounded corners=4pt]
+      (indices.south) |- ($(s0.east)+(4mm,4mm)$) -- ($(s0.east)+(4mm,-2mm)$)
+      -- ($(s0.east)+(0,-2mm)$)
+      node[near start, right, font=\scriptsize\itshape,
+           text=arrusVariable!80!black] {@indices};
+  \draw[edge/variable] (indices.south) |- ($(s1.north)+(0,2mm)$)  -- (s1.north);
+  \draw[edge/variable] (indices.south) |- ($(s191.north)+(0,2mm)$) -- (s191.north);
+
+  % --- Slot chain (state thread) ------------------------------------------
+  \draw[-{Latex[length=2mm]}, very thick, draw=arrusTrigger!80!black]
+      ($(s0.west)+(-12mm,0)$) -- (s0.west)
+      node[near start, above, font=\scriptsize\itshape,
+           text=arrusTrigger!80!black] {\%s0};
+  \draw[-{Latex[length=2mm]}, very thick, draw=arrusTrigger!80!black]
+      (s0.east) -- (s1.west);
+  \draw[-{Latex[length=2mm]}, very thick, draw=arrusTrigger!80!black]
+      (s1.east) -- (dots.west);
+  \draw[-{Latex[length=2mm]}, very thick, draw=arrusTrigger!80!black]
+      (dots.east) -- (s191.west);
+  \draw[-{Latex[length=2mm]}, very thick, draw=arrusTrigger!80!black]
+      (s191.east) -- ++(12mm,0)
+      node[near end, above, font=\scriptsize\itshape,
+           text=arrusTrigger!80!black] {\%s1};
+
+  \node[font=\small\bfseries, text=arrusUs4R!80!black,
+        below=8mm of dots]
+       (l2label)
+       {Level 2 --- expanded slot sequence + variables};
+
+\end{tikzpicture}
+\end{document}

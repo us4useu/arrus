@@ -1,0 +1,80 @@
+% Slide 1: high-level graph of a duplex ultrasound scheme.
+% One TX/RX sequence feeding two parallel GPU processing branches
+% (B-mode + Color Doppler). Meant to be the reference "what does a
+% graph of operations look like" figure for the presentation.
+%
+% Build: pdflatex slide1_highlevel_duplex.tex
+
+\documentclass[tikz,border=6pt]{standalone}
+\input{ndarray_common}
+
+\begin{document}
+\begin{tikzpicture}[
+    node distance=8mm and 22mm,
+    every node/.append style={font=\small},
+]
+
+  % --- Acquisition (ultrasound device) -----------------------------------
+  \node[op/us4r, minimum width=64mm, minimum height=12mm] (txrx)
+      {\textbf{arrus.tx\_rx\_sequence}};
+
+  % Fanout point
+  \coordinate (rf) at ($(txrx.south) + (0,-10mm)$);
+  \node[right=1mm of rf, font=\scriptsize\itshape, text=black!60]
+      {RF frames};
+
+  % --- B-mode branch (left, GPU) -----------------------------------------
+  \node[op/gpu, below=18mm of txrx, xshift=-38mm, minimum width=44mm]
+      (bp_b) {\textbf{bandpass filter}};
+  \node[op/gpu, below=of bp_b, minimum width=44mm]
+      (bf_b) {\textbf{beamform}};
+  \node[op/gpu, below=of bf_b, minimum width=44mm]
+      (env)  {\textbf{envelope + log}};
+  \node[op/gpu, below=of env, minimum width=44mm]
+      (sc)   {\textbf{scan converter}};
+  \node[op/output, below=of sc, minimum width=44mm]
+      (bmode){\textbf{B-mode image}};
+
+  % --- Doppler branch (right, GPU) ---------------------------------------
+  \node[op/gpu, below=18mm of txrx, xshift=38mm, minimum width=44mm]
+      (bp_d) {\textbf{bandpass filter}};
+  \node[op/gpu, below=of bp_d, minimum width=44mm]
+      (bf_d) {\textbf{beamform}};
+  \node[op/gpu, below=of bf_d, minimum width=44mm]
+      (wf)   {\textbf{wall filter}};
+  \node[op/gpu, below=of wf, minimum width=44mm]
+      (dop)  {\textbf{Doppler estimator}};
+  \node[op/output, below=of dop, minimum width=44mm]
+      (doppler){\textbf{Color Doppler image}};
+
+  % --- Edges -------------------------------------------------------------
+  \draw[edge/intra] (txrx.south) -- (rf);
+  \draw[edge/intra, rounded corners=6pt] (rf) -| (bp_b.north);
+  \draw[edge/intra, rounded corners=6pt] (rf) -| (bp_d.north);
+
+  \draw[edge/intra] (bp_b) -- (bf_b);
+  \draw[edge/intra] (bf_b) -- (env);
+  \draw[edge/intra] (env)  -- (sc);
+  \draw[edge/intra] (sc)   -- (bmode);
+
+  \draw[edge/intra] (bp_d) -- (bf_d);
+  \draw[edge/intra] (bf_d) -- (wf);
+  \draw[edge/intra] (wf)   -- (dop);
+  \draw[edge/intra] (dop)  -- (doppler);
+
+  % --- Legend ------------------------------------------------------------
+  \node[legendbox, right=18mm of dop, anchor=west] {%
+    \begin{tikzpicture}[node distance=3mm]
+      \node[op/us4r,   minimum width=32mm, minimum height=7mm] (l1)
+        {ultrasound device op};
+      \node[op/gpu,    minimum width=32mm, minimum height=7mm, below=of l1] (l2)
+        {GPU op};
+      \node[op/output, minimum width=32mm, minimum height=7mm, below=of l2] (l3)
+        {output / image};
+      \node[below=3mm of l3.south, anchor=north, font=\scriptsize] (e1)
+        {\tikz\draw[edge/intra] (0,0) -- (10mm,0);\ data flow (SSA value)};
+    \end{tikzpicture}%
+  };
+
+\end{tikzpicture}
+\end{document}

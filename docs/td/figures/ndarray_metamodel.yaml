@@ -1,0 +1,258 @@
+# NdArray graph metamodel.
+#
+# Declares the node kinds, edge kinds, and structural constraints of the
+# ARRUS NdArray operation graph. This YAML is the single source of truth
+# for:
+#   - generate_metamodel_diagram.py -> class-diagram PNG/SVG
+#   - the graph verifier (walks concrete graphs, checks edges + cardinalities)
+#   - future: a SHACL emitter if the team decides to publish an RDF shape
+#
+# Structural constraints (well-formedness rules that can't be expressed with
+# just cardinality) are named here and implemented in code; the validator
+# dispatches to them by name.
+
+version: 1
+
+# ---------------------------------------------------------------------------
+# Node kinds
+# ---------------------------------------------------------------------------
+
+node_kinds:
+
+  Op:
+    kind: abstract
+    doc: >-
+      Computation node. Consumes zero or more Values, produces one or more
+      Values. Abstract; every concrete node is one of Variable, TriggerSource,
+      or a regular Op registered in the OpRegistry.
+    attributes:
+      - {name: name,       type: string, required: true,
+         doc: "Op's registry name, e.g. 'arrus.fft'"}
+      - {name: local_name, type: string, required: false,
+         doc: "Optional user-facing label; contributes to qualified_id path"}
+      - {name: attrs,      type: "map<string, Attribute>", required: false,
+         doc: "Op-specific attributes (from the L2 op catalog)"}
+
+  Variable:
+    kind: concrete
+    extends: Op
+    doc: >-
+      Named runtime-mutable cell. Zero operands, one Value result. The result
+      Value's SSA identity is immutable; the memory it references mutates
+      via session.set_variable(name, value).
+    attributes:
+      - {name: initial_type, type: NdArrayType, required: true}
+      - {name: initial_data, type: bytes,       required: false,
+         doc: "Serialized initial NdArray"}
+
+  TriggerSource:
+    kind: concrete
+    extends: Op
+    doc: >-
+      Root of trigger flow. Zero data operands, one Value result of type
+      Stream[Event]. Kinds: internal(prf=...), external(port=...),
+      software(name=...).
+    attributes:
+      - {name: source_kind, type: "enum{internal, external, software}",
+         required: true}
+      - {name: params,      type: "map<string, Attribute>", required: false,
+         doc: "e.g. {prf: 5000} for internal, {port: 'TRIG_IN_0'} for external"}
+
+  Value:
+    kind: concrete
+    doc: >-
+      SSA result of exactly one Op. Immutable identity, typed with either
+      NdArrayType(shape, dtype, device) or Stream[T]. Def-use edges from an
+      Op to its result and from Ops to their operands are the primary edges
+      of the graph.
+    attributes:
+      - {name: type, type: "NdArrayType | Stream[T]", required: true}
+      - {name: name, type: string, required: false,
+         doc: "Optional debug label"}
+
+  Device:
+    kind: concrete
+    doc: >-
+      Concrete placement target. Examples: CPU, GPU:0, Us4R:0, ANY. Each Op
+      has exactly one placement (which may be ANY, meaning "any backend
+      registered for this Op").
+    attributes:
+      - {name: local_name, type: string, required: true,
+         doc: "e.g. 'Us4R:0', 'OEM:2', 'GPU:0'; part of qualified_id path"}
+      - {name: model_ref,  type: "reference<arrus_domain.Device>",
+         required: false,
+         doc: "L3 domain entity this Device node placeholders"}
+
+  Stream:
+    kind: concrete
+    doc: >-
+      Runtime queue realized at a cross-region edge. Compile-time inserted
+      (not present in the source graph). Carries elements of type
+      NdArrayType or Event; has backpressure or drop policy.
+    attributes:
+      - {name: element_type,  type: "NdArrayType | Event", required: true}
+      - {name: capacity,      type: int, required: true, unit: elements}
+      - {name: overflow_policy, type: "enum{drop_oldest, drop_newest, block}",
+         required: true}
+
+
+# ---------------------------------------------------------------------------
+# Edge kinds
+# ---------------------------------------------------------------------------
+#
+# Each edge kind declares:
+#   from / to           -- allowed source and target node kinds
+#   from_cardinality    -- how many edges of this kind may leave one source
+#   to_cardinality      -- how many edges of this kind may reach one target
+#   ordered             -- whether the position of the edge matters
+#                          (relevant for operands / results whose order is
+#                           part of the op's signature)
+#   named_constraints   -- extra well-formedness rules invoked by the
+#                          validator, implemented in code by the same name
+
+edge_kinds:
+
+  operand:
+    doc:              "Op reads a Value as one of its operands."
+    from:             Op
+    to:               Value
+    from_cardinality: [0, "*"]     # an Op may take 0..N operands
+    to_cardinality:   [0, "*"]     # a Value may be read by many Ops
+    ordered:          true         # operand position is part of the signature
+    attributes:
+      - {name: position, type: int, required: true,
+         doc: "0-based operand index; matches op-signature slot"}
+
+  result:
+    doc:              "Op produces a Value."
+    from:             Op
+    to:               Value
+    from_cardinality: [1, "*"]     # an Op has 1..N results
+    to_cardinality:   [1, 1]       # SSA: each Value is produced by exactly one Op
+    ordered:          true
+    named_constraints: [ssa_single_producer]
+
+  placement:
+    doc:              "Op runs on a Device."
+    from:             Op
+    to:               Device
+    from_cardinality: [1, 1]       # each Op has exactly one placement
+    to_cardinality:   [0, "*"]     # a Device hosts many Ops
+
+  triggers:
+    doc:              "TriggerSource drives an Op's firing."
+    from:             TriggerSource
+    to:               Op
+    from_cardinality: [1, "*"]     # a TriggerSource may drive many Ops
+    to_cardinality:   [0, 1]       # an Op is driven by at most one TriggerSource
+                                   #  (indirectly via def-use chain of Stream[Event])
+
+  realized_by:
+    doc: >-
+      A Value that crosses a trigger-region boundary is realized at runtime
+      by a Stream (queue). Compile-time only; the source graph never contains
+      Stream nodes -- the placement/region pass inserts them.
+    from:             Value
+    to:               Stream
+    from_cardinality: [1, 1]
+    to_cardinality:   [0, 1]
+
+  contains_op:
+    doc: >-
+      A composite Op contains child Op(s); together they form the composite's
+      internal sub-DAG. An Op with zero outgoing contains_op edges is a leaf;
+      one with N is a composite. Composites expose an external interface via
+      boundary marker ops (arrus.io.input / arrus.io.output). Root Ops (no
+      incoming contains_op) live directly in the Graph.
+    from:             Op
+    to:               Op
+    from_cardinality: [0, "*"]     # a composite may contain many children
+    to_cardinality:   [0, 1]       # each Op has at most one containment parent
+    ordered:          false
+    named_constraints:
+      - containment_is_tree_op
+      - no_containment_cycles_op
+    attributes:
+      - {name: role, type: string, required: false,
+         doc: "Optional name for the child inside the composite; contributes to qualified_id"}
+
+  contains_device:
+    doc: >-
+      A composite Device contains sub-Device(s). E.g., Us4R:0 contains
+      OEM:0..N, each of which contains Channel:0..M. A Device with zero
+      outgoing contains_device edges is a leaf device.
+    from:             Device
+    to:               Device
+    from_cardinality: [0, "*"]
+    to_cardinality:   [0, 1]
+    ordered:          false
+    named_constraints:
+      - containment_is_tree_device
+      - no_containment_cycles_device
+
+
+# ---------------------------------------------------------------------------
+# Global constraints
+# ---------------------------------------------------------------------------
+#
+# Structural well-formedness rules that hold across the whole graph. Named
+# here; implemented in code (arrus/graph/verify.py). The validator invokes
+# each after the per-edge checks pass.
+
+global_constraints:
+
+  ssa_dag_no_cycles:
+    doc: >-
+      The value-edge graph (Op -operand-> Value -result-> Op) has no cycles.
+      Implemented as a topological-order check.
+
+  ssa_single_producer:
+    doc: >-
+      Each Value has exactly one incoming `result` edge. Enforced structurally
+      on the `result` edge (see to_cardinality [1,1]) plus a whole-graph
+      check that no Value exists with zero producers.
+
+  trigger_region_well_formed:
+    doc: >-
+      Every Op is reachable via def-use edges from exactly one TriggerSource.
+      No Op sits outside all regions; no Op sits in two regions at once.
+
+  placement_matches_backend:
+    doc: >-
+      Each Op's placement is a Device whose Backend has an implementation
+      registered for that Op's name. Ops with placement=ANY skip this check
+      and defer resolution to the compiler.
+
+  containment_is_tree_op:
+    doc: >-
+      The contains_op relation forms a forest of trees: every Op has at most
+      one containment parent; no Op is shared between composites. Enforced
+      structurally by to_cardinality [0,1] plus a whole-graph check.
+
+  containment_is_tree_device:
+    doc: >-
+      The contains_device relation forms a forest of trees: every Device has
+      at most one containment parent.
+
+  no_containment_cycles_op:
+    doc: >-
+      The transitive closure of contains_op is acyclic. A composite Op cannot
+      (transitively) contain itself.
+
+  no_containment_cycles_device:
+    doc: >-
+      The transitive closure of contains_device is acyclic. A composite
+      Device cannot (transitively) contain itself.
+
+  composite_op_interface_matches_boundary:
+    doc: >-
+      A composite Op's external operand and result types match the types of
+      its boundary marker ops (arrus.io.input, arrus.io.output) in the sub-DAG.
+      This is what makes a composite reusable as an opaque unit.
+
+  placement_within_containment:
+    doc: >-
+      For every Op placed on a composite Device, the compiler resolves the
+      placement to a leaf Device inside that composite. Ops with placement=ANY
+      skip this check (compiler picks a leaf). Ops placed on a leaf Device
+      pass trivially.
