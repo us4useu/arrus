@@ -989,6 +989,12 @@ void Us4RImpl::setSeqDmaBufferSize(size_t size) {
     }
 }
 
+void Us4RImpl::setSeqDmaTriggerOffs(size_t offs) {
+    for (auto &us4oem : us4oems) {
+        us4oem->setSeqDmaTriggerOffs(offs);
+    }
+}
+
 bool Us4RImpl::isStopOnOverflow() const { return stopOnOverflow; }
 
 void Us4RImpl::applyForAllUs4OEMs(const std::function<void(Us4OEM *us4oem)> &func, const std::string &funcName) {

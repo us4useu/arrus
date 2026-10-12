@@ -920,6 +920,10 @@ void Us4OEMImpl::setSeqDmaBufferSize(size_t size) {
     ius4oem->setSeqDmaBufferSize(size);
 }
 
+void Us4OEMImpl::setSeqDmaTriggerOffs(size_t offset) {
+    ius4oem->setSeqDmaTriggerOffs(offset);
+}
+
 Us4OEM::Variant Us4OEMImpl::getVariant() {
     const auto &sn = this->serialNumber.get();
     auto variantStr = std::string();

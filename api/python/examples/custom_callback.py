@@ -6,6 +6,8 @@ A callback measuring acquisition frame is used. The actual frame rate
 can be controlled using PwiSequence sri parameter.
 """
 
+import os
+
 import arrus
 import arrus.session
 import arrus.utils.imaging
@@ -17,8 +19,8 @@ from arrus.ops.us4r import Scheme, Pulse, DataBufferSpec, TxRxSequence, TxRx, Tx
 from arrus.ops.imaging import LinSequence
 
 
-arrus.set_clog_level(arrus.logging.TRACE)
-arrus.add_log_file("test.log", arrus.logging.TRACE)
+arrus.set_clog_level(arrus.logging.ERROR)
+arrus.add_log_file("test.log", arrus.logging.ERROR)
 
 class Timer:
     def __init__(self):
@@ -28,13 +30,13 @@ class Timer:
         element.release()
 
 def main(n_tx_rx = 10, test_buf_multiplier = 1):
-    print(f"DMA PERF TEST called with n_tx_rx = {n_tx_rx}, test_buf_multiplier = {test_buf_multiplier}")
+    #print(f"DMA PERF TEST called with n_tx_rx = {n_tx_rx}, test_buf_multiplier = {test_buf_multiplier}")
 
     # Here starts communication with the device.
-    with arrus.Session("/home/mila/work/setup-olympus.prototxt") as sess:
+    with arrus.Session("whatever-olympus.prototxt") as sess:
         ultrasound = sess.get_device("/Us4R:0")
         n_elements = ultrasound.get_probe_model().n_elements
-        print(f"DMA PERF TEST n_elements = {n_elements}")
+        #print(f"DMA PERF TEST n_elements = {n_elements}")
 
         seq = TxRxSequence(
                     ops=[
@@ -46,7 +48,7 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
                                 delays=[]),
                             Rx(aperture=[True]*n_elements,
                                 #sample_range=(0, 65472-(64*20)),
-                                sample_range=(0, 1024*20),
+                                sample_range=(0, 1024*40),
                                 downsampling_factor=1),
                             pri=1e-3
                         ),
@@ -64,8 +66,9 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
             )
 
         seqdma_buffer_size = 512 * n_tx_rx * test_buf_multiplier
-        print(f"DMA PERF TEST SeqDMA buffer size: {seqdma_buffer_size}")
+        #print(f"DMA PERF TEST SeqDMA buffer size: {seqdma_buffer_size}")
         ultrasound.set_seq_dma_buffer_size(seqdma_buffer_size)
+        ultrasound.set_seq_dma_trigger_offs(0)
         ultrasound.set_hv_voltage(5)
         ultrasound.set_stop_on_overflow(True)
         # Upload sequence on the us4r-lite device.
@@ -74,15 +77,26 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
         buffer.append_on_new_data_callback(timer.callback)
         sess.start_scheme()
 
-        print("Running for 1 minute")
+        print("Running for 10 minutes", file=sys.stderr)
 
-        time.sleep(60)
+        time.sleep(60*10)
     # When we exit the above scope, the session and scheme is properly closed.
     print("Finished.")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python custom_callback.py <n_tx_rx> <test_buf_multiplier>")
-        sys.exit(1)
-    main(int(sys.argv[1]), int(sys.argv[2]))
+    #if len(sys.argv) < 3:
+    #    print("Usage: python custom_callback.py <n_tx_rx> <test_buf_multiplier>")
+    #    sys.exit(1)
+    for n in [10, 20, 50]:
+        for m in [1, 2]:
+            print(f"TESTING CASE n_tx_rx = {n}, test_buf_multiplier = {m}...", file=sys.stderr)
+            main(n,m)
+            # This will drop a file like "ppm_histogram_[sn]_2026-10-01_14-28-15.458439.csv" (or multiple if more than one oem)
+            # Rename it/them to "ppm_histogram_[sn]_n[n]_m[m].csv" <- DROP DATE AND TIME, ADD n_tx_rx AND test_buf_multiplier
+            for file in os.listdir("."):
+                if file.startswith("ppm_histogram_") and file.endswith(".csv"):
+                    new_file_name = f"{file[:-4]}_n{n}_m{m}.csv"
+                    os.rename(file, new_file_name)
+                    print(f"Renamed {file} to {new_file_name}", file=sys.stderr)
+    #main(int(sys.argv[1]), int(sys.argv[2]))

@@ -468,6 +468,8 @@ public:
 
     virtual void setSeqDmaBufferSize(size_t size) = 0;
 
+    virtual void setSeqDmaTriggerOffs(size_t offs) = 0;
+
     Us4R(Us4R const &) = delete;
     Us4R(Us4R const &&) = delete;
     void operator=(Us4R const &) = delete;
