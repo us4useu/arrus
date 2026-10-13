@@ -48,7 +48,7 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
                                 delays=[]),
                             Rx(aperture=[True]*n_elements,
                                 #sample_range=(0, 65472-(64*20)),
-                                sample_range=(0, 1024*40),
+                                sample_range=(0, 1024*20),
                                 downsampling_factor=1),
                             pri=1e-3
                         ),
@@ -79,7 +79,7 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
 
         print("Running for 10 minutes", file=sys.stderr)
 
-        time.sleep(60*10)
+        time.sleep(10)
     # When we exit the above scope, the session and scheme is properly closed.
     print("Finished.")
 
@@ -93,10 +93,10 @@ if __name__ == "__main__":
             print(f"TESTING CASE n_tx_rx = {n}, test_buf_multiplier = {m}...", file=sys.stderr)
             main(n,m)
             # This will drop a file like "ppm_histogram_[sn]_2026-10-01_14-28-15.458439.csv" (or multiple if more than one oem)
-            # Rename it/them to "ppm_histogram_[sn]_n[n]_m[m].csv" <- DROP DATE AND TIME, ADD n_tx_rx AND test_buf_multiplier
+            # Rename it/them to "ppm_histogram_[sn]_n[n]_m[m].csv"
             for file in os.listdir("."):
                 if file.startswith("ppm_histogram_") and file.endswith(".csv"):
-                    new_file_name = f"{file[:-4]}_n{n}_m{m}.csv"
+                    new_file_name = f"{file[:-31]}_n{n}_m{m}.csv"
                     os.rename(file, new_file_name)
                     print(f"Renamed {file} to {new_file_name}", file=sys.stderr)
     #main(int(sys.argv[1]), int(sys.argv[2]))
