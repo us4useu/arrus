@@ -159,6 +159,8 @@ public:
     MOCK_METHOD(void, SetStandardIODriveMode, (), (override));
     MOCK_METHOD(void, SetWaveformIODriveMode, (), (override));
     MOCK_METHOD(void, SetIOLevels, (uint8_t), (override));
+    MOCK_METHOD(uint8_t, GetIOLevels, (), (override));
+    MOCK_METHOD(void, SetIODirection, (uint8_t), (override));
     MOCK_METHOD(void, SetFiringIOBS, (uint32_t, uint16_t), (override));
     MOCK_METHOD(void, SetIOBSRegister, (uint16_t, uint8_t, bool, uint16_t), (override));
     MOCK_METHOD(uint32_t, GetIOBSRegister, (uint16_t), (override));

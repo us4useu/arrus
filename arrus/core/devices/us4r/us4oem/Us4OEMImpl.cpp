@@ -680,6 +680,54 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
 
 uint64_t Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
 
+void Us4OEMImpl::setIoAccessContext(IoAccessContext context) {
+    this->ioAccessContext = std::move(context);
+}
+
+void Us4OEMImpl::validateIoAccess(bool requireSingleOEM) {
+    ARRUS_REQUIRES_TRUE_E(ioAccessContext.has_value(),
+                          IllegalStateException("IO access context is not set for this us4OEM."));
+    const auto &ctx = ioAccessContext.value();
+    ARRUS_REQUIRES_TRUE_E(!ctx.hasAdapterIOCapabilities,
+                          IllegalStateException("IO access is not available: the probe adapter has IO capabilities."));
+    ARRUS_REQUIRES_TRUE_E(!ctx.hasIOBitstreams,
+                          IllegalStateException("IO access is not available: IO bitstreams are in use."));
+    ARRUS_REQUIRES_TRUE_E(ctx.isStopped && ctx.isStopped(),
+                          IllegalStateException("IO access is available only when the system is stopped."));
+    if (requireSingleOEM) {
+        ARRUS_REQUIRES_TRUE_E(ctx.nUs4OEMs == 1,
+                              IllegalStateException(format("Reading IO levels is available only for a system with "
+                                                           "a single us4OEM (got: {}).", ctx.nUs4OEMs)));
+    }
+}
+
+void Us4OEMImpl::setIoMode(IoMode mode) {
+    validateIoAccess(false);
+    switch (mode) {
+    case IoMode::STANDARD: ius4oem->SetStandardIODriveMode(); break;
+    case IoMode::WAVEFORM: ius4oem->SetWaveformIODriveMode(); break;
+    default: throw IllegalArgumentException("Unsupported IO mode.");
+    }
+}
+
+uint8_t Us4OEMImpl::getIo() {
+    validateIoAccess(true);
+    return ius4oem->GetIOLevels();
+}
+
+void Us4OEMImpl::setIo(uint8_t levels) {
+    validateIoAccess(false);
+    ARRUS_REQUIRES_TRUE_IAE(levels <= 0b1111, format("IO levels should be a 4-bit value (got: {}).", static_cast<int>(levels)));
+    ius4oem->SetIOLevels(levels);
+}
+
+void Us4OEMImpl::setIoDirection(uint8_t inputs) {
+    validateIoAccess(false);
+    ARRUS_REQUIRES_TRUE_IAE(inputs <= 0b1111, format("IO direction should be a 4-bit mask (got: {}).",
+                                                     static_cast<int>(inputs)));
+    ius4oem->SetIODirection(inputs);
+}
+
 void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {
     if (ddc.has_value()) {
         auto &value = ddc.value();

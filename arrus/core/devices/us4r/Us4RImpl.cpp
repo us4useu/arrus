@@ -81,6 +81,19 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
     }
 
     for(auto &oem: this->us4oems) {
+        Us4OEMImplBase::IoAccessContext ioAccessContext;
+        ioAccessContext.nUs4OEMs = this->us4oems.size();
+        ioAccessContext.hasAdapterIOCapabilities =
+            ioSettings.hasProbeConnectedCheckCapability() || ioSettings.hasFrameMetadataCapability();
+        ioAccessContext.hasIOBitstreams = !this->bitstreams.empty() || this->hasIOBitstreamAdressing;
+        ioAccessContext.isStopped = [this]() {
+            std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
+            return this->state == State::STOPPED;
+        };
+        oem->setIoAccessContext(ioAccessContext);
+    }
+
+    for(auto &oem: this->us4oems) {
         // Register pulser IRQ handling procedure.
         if(getMasterOEM()->getDescriptor().isUs4OEMPlus()) {
             oem->getIUs4OEM()->SetPulserInterruptCallback(

@@ -163,11 +163,18 @@ public:
 
     int64_t getHVPSTuningInfo() override; 
 
+    void setIoAccessContext(IoAccessContext context) override;
+    void setIoMode(IoMode mode) override;
+    uint8_t getIo() override;
+    void setIo(uint8_t levels) override;
+    void setIoDirection(uint8_t inputs) override;
+
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;
     using Us4OEMChannelsGroupsMask = std::bitset<Us4OEMDescriptor::N_ACTIVE_CHANNEL_GROUPS>;
 
     float getTxRxTime(float rxTime) const;
+    void validateIoAccess(bool requireSingleOEM);
     float getRxTime(const ::arrus::devices::us4r::TxRxParameters &op, float samplingFrequency);
     /**
      * Returns the sample number that corresponds to the time of Tx.
@@ -255,6 +262,8 @@ private:
     }};
     /** The current TX delay profiles (their ids/ordinal numbers). Maps Sequence id -> TX delay profile id. */
     std::vector<size_t> currentTxDelayProfileIds;
+    /** Parameters required to properly validate/set us4OEM IOs */
+    std::optional<IoAccessContext> ioAccessContext;
 };
 
 }// namespace arrus::devices
