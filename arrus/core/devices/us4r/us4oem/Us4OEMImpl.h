@@ -167,7 +167,6 @@ public:
     void setIoMode(IoMode mode) override;
     uint8_t getIo() override;
     void setIo(uint8_t levels) override;
-    void setIoDirection(uint8_t inputs) override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;

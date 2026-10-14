@@ -712,20 +712,17 @@ void Us4OEMImpl::setIoMode(IoMode mode) {
 
 uint8_t Us4OEMImpl::getIo() {
     validateIoAccess(true);
+    // Switch all IOs to input (bit = 1: input), so the us4OEM does not drive them.
+    ius4oem->SetIODirection(0b1111);
     return ius4oem->GetIOLevels();
 }
 
 void Us4OEMImpl::setIo(uint8_t levels) {
     validateIoAccess(false);
     ARRUS_REQUIRES_TRUE_IAE(levels <= 0b1111, format("IO levels should be a 4-bit value (got: {}).", static_cast<int>(levels)));
+    // Set the levels first, then switch all IOs to output (bit = 0: output), to avoid glitches.
     ius4oem->SetIOLevels(levels);
-}
-
-void Us4OEMImpl::setIoDirection(uint8_t inputs) {
-    validateIoAccess(false);
-    ARRUS_REQUIRES_TRUE_IAE(inputs <= 0b1111, format("IO direction should be a 4-bit mask (got: {}).",
-                                                     static_cast<int>(inputs)));
-    ius4oem->SetIODirection(inputs);
+    ius4oem->SetIODirection(0b0000);
 }
 
 void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {

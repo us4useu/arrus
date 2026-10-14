@@ -274,7 +274,9 @@ class Us4OEM(Device):
 
     def get_io(self) -> int:
         """
-        Returns the current IO levels, as a 4-bit value (bit i: level of IO i).
+        Switches all IOs to input and returns their current levels, as a 4-bit
+        value (bit i: level of IO i). NOTE: the IOs are left as inputs after
+        this call.
 
         Requirements: as in set_io_mode; additionally, the system should have
         only a single us4OEM.
@@ -283,24 +285,14 @@ class Us4OEM(Device):
 
     def set_io(self, levels: int):
         """
-        Sets the IO levels (STANDARD IO mode is reuqired, see set_io_mode).
+        Sets the IO levels and switches all IOs to output (STANDARD IO mode
+        is required, see set_io_mode).
 
         Requirements: as in set_io_mode.
 
         :param levels: 4-bit IO levels (bit i: level of IO i)
         """
         self._handle.setIo(levels)
-
-    def set_io_direction(self, inputs: int):
-        """
-        Sets the IO direction.
-
-        Requirements: as in set_io_mode.
-
-        :param inputs: 4-bit mask, bit i = 1: IO i is an input,
-          0: IO i is an output
-        """
-        self._handle.setIoDirection(inputs)
 
     def get_fpga_wallclock(self) -> int:
         """

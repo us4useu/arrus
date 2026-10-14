@@ -267,29 +267,22 @@ public:
     virtual void setIoMode(IoMode mode) = 0;
 
     /**
-     * Returns the current IO levels (4-bit value, bit i: level of IO i).
+     * Switches all IOs to input and returns their current levels (4-bit value, bit i: level of IO i).
+     *
+     * NOTE: the IOs are left as inputs after this call.
      *
      * Requirements: see setIoMode; additionally, the system should have only a single us4OEM+.
      */
     virtual uint8_t getIo() = 0;
 
     /**
-     * Sets the IO levels (required the STANDARD IO mode to be selected).
+     * Sets the IO levels and switches all IOs to output (required the STANDARD IO mode to be selected).
      *
      * Requirements: as in setIoMode.
      *
      * @param levels 4-bit IO levels (bit i: level of IO i)
      */
     virtual void setIo(uint8_t levels) = 0;
-
-    /**
-     * Sets the IO direction.
-     *
-     * Requirements: as in setIoMode.
-     *
-     * @param inputs 4-bit mask, bit i = 1: IO i is an input, 0: IO i is an output
-     */
-    virtual void setIoDirection(uint8_t inputs) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;
