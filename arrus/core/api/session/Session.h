@@ -91,10 +91,10 @@ public:
      * Runs the uploaded scheme.
      *
      * The behaviour of this method depends on the work mode:
+     * 
      * - MANUAL: triggers execution of batch of sequences only ONCE,
      * - MANUAL_OP: triggers execution of a single TX/RX only ONCE,
-     * - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release).
-     *   The run function can be called only once (before the scheme is stopped).
+     * - HOST, ASYNC: triggers execution of batch of sequences IN A LOOP (Host: trigger is on buffer element release). The run function can be called only once for that modes (before the scheme is stopped).
      *
      * @param sync whether this method should work in a synchronous or asynchronous; true means synchronous, i.e.
      *        the caller will wait until the triggered TX/RX or sequence of TX/RXs has been done. The sync = true is only
