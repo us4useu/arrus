@@ -685,6 +685,8 @@ void Us4OEMImpl::setIoAccessContext(IoAccessContext context) {
 }
 
 void Us4OEMImpl::validateIoAccess(bool requireSingleOEM) {
+    ARRUS_REQUIRES_TRUE_E(descriptor.isUs4OEMPlus(),
+                          IllegalStateException("IO access is available only for us4OEM+."));
     ARRUS_REQUIRES_TRUE_E(ioAccessContext.has_value(),
                           IllegalStateException("IO access context is not set for this us4OEM."));
     const auto &ctx = ioAccessContext.value();
