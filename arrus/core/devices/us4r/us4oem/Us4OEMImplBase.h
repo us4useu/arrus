@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPLBASE_H
 
 #include <functional>
+#include <mutex>
 #include <vector>
 #include <utility>
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
@@ -75,6 +76,8 @@ public:
         bool hasIOBitstreams{false};
         /** True if the system is currently stopped. */
         std::function<bool()> isStopped;
+        /** Locks the system state (the lock should be kept until the IO operation completes). */
+        std::function<std::unique_lock<std::recursive_mutex>()> lockState;
     };
 
     /**

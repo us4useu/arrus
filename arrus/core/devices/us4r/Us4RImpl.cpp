@@ -90,6 +90,9 @@ Us4RImpl::Us4RImpl(const DeviceId &id, Us4OEMs us4oems, std::vector<ProbeSetting
             std::unique_lock<std::recursive_mutex> guard(deviceStateMutex);
             return this->state == State::STOPPED;
         };
+        ioAccessContext.lockState = [this]() {
+            return std::unique_lock<std::recursive_mutex>(deviceStateMutex);
+        };
         oem->setIoAccessContext(ioAccessContext);
     }
 
