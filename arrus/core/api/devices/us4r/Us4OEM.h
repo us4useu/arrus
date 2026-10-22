@@ -35,6 +35,16 @@ public:
         RAMP,
     };
 
+    /**
+     * Us4OEM IO drive mode.
+     */
+    enum class IoMode {
+        /** IO levels are set directly, use e.g. setIo. */
+        STANDARD,
+        /** IO levels are controlled via the IO bitstreams. */
+        WAVEFORM
+    };
+
     ~Us4OEM() override = default;
 
     /**
@@ -244,6 +254,35 @@ public:
      * Returns the variant of OEM.
      */
     virtual Variant getVariant() = 0;
+
+    /**
+     * Sets the IO drive mode.
+     *
+     * Requirements: the probe adapter has no IO capabilities, no IO bitstreams are set,
+     * the system is stopped, OEM+.
+     *
+     *
+     * @param mode IO drive mode to set
+     */
+    virtual void setIoMode(IoMode mode) = 0;
+
+    /**
+     * Switches all IOs to input and returns their current levels (4-bit value, bit i: level of IO i).
+     *
+     * NOTE: the IOs are left as inputs after this call.
+     *
+     * Requirements: see setIoMode; additionally, the system should have only a single us4OEM+.
+     */
+    virtual uint8_t getIo() = 0;
+
+    /**
+     * Sets the IO levels and switches all IOs to output (required the STANDARD IO mode to be selected).
+     *
+     * Requirements: as in setIoMode.
+     *
+     * @param levels 4-bit IO levels (bit i: level of IO i)
+     */
+    virtual void setIo(uint8_t levels) = 0;
 
     Us4OEM(Us4OEM const&) = delete;
     Us4OEM(Us4OEM const&&) = delete;

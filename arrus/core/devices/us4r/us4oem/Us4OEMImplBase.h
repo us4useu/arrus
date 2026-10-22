@@ -1,6 +1,8 @@
 #ifndef ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPLBASE_H
 #define ARRUS_CORE_DEVICES_US4R_US4OEM_US4OEMIMPLBASE_H
 
+#include <functional>
+#include <mutex>
 #include <vector>
 #include <utility>
 #include "arrus/core/devices/us4r/external/ius4oem/IUs4OEMFactory.h"
@@ -61,6 +63,27 @@ public:
      * @param maxLength maximum pulse length (s) nullopt means to use the default 32 TX cycles (legacy OEM constraint)
      */
     virtual void setMaximumPulseLength(std::optional<float> maxLength) = 0;
+
+    /**
+     * The Us4R context required to validate the us4OEM IO access methods.
+     */
+    struct IoAccessContext {
+        /** The number of us4OEMs in the system. */
+        size_t nUs4OEMs{0};
+        /** Whether the probe adapter has any IO capability (e.g. probe connected check). */
+        bool hasAdapterIOCapabilities{false};
+        /** Whether any IO bitstreams are in use. */
+        bool hasIOBitstreams{false};
+        /** True if the system is currently stopped. */
+        std::function<bool()> isStopped;
+        /** Locks the system state (the lock should be kept until the IO operation completes). */
+        std::function<std::unique_lock<std::recursive_mutex>()> lockState;
+    };
+
+    /**
+     * Sets the context used for IO access methods validation. Should be called by the Us4R.
+     */
+    virtual void setIoAccessContext(IoAccessContext context) = 0;
 
 
     virtual void sync(std::optional<long long> timeout) = 0;

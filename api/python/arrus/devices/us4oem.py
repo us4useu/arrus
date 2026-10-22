@@ -141,6 +141,27 @@ def _variant_enum_to_enum(enum):
     }[enum]
 
 
+class IoMode(Enum):
+    """
+    Us4OEM IO drive mode.
+
+    STANDARD: IO levels are set directly (see :func:`Us4OEM.set_io`),
+    WAVEFORM: IO levels are driven by the IO bitstreams.
+    """
+    STANDARD = "STANDARD"
+    WAVEFORM = "WAVEFORM"
+
+
+def _io_mode_enum_to_core(mode: IoMode):
+    """
+    IoMode Python Enum to C++ Enum.
+    """
+    return {
+        IoMode.STANDARD: arrus.core.Us4OEM.IoMode_STANDARD,
+        IoMode.WAVEFORM: arrus.core.Us4OEM.IoMode_WAVEFORM,
+    }[IoMode(mode)]
+
+
 class Us4OEM(Device):
 
     def __init__(self, handle):
@@ -239,6 +260,39 @@ class Us4OEM(Device):
         """
         core_variant = self._handle.getVariant()
         return _variant_enum_to_enum(core_variant)
+
+    def set_io_mode(self, mode: IoMode):
+        """
+        Sets the IO drive mode.
+
+        Requirements: the probe adapter has no IO capabilities, no IO
+        bitstreams are set, the system is stopped, OEM+.
+
+        :param mode: IO drive mode (IoMode or its string value)
+        """
+        self._handle.setIoMode(_io_mode_enum_to_core(mode))
+
+    def get_io(self) -> int:
+        """
+        Switches all IOs to input and returns their current levels, as a 4-bit
+        value (bit i: level of IO i). NOTE: the IOs are left as inputs after
+        this call.
+
+        Requirements: as in set_io_mode; additionally, the system should have
+        only a single us4OEM.
+        """
+        return self._handle.getIo()
+
+    def set_io(self, levels: int):
+        """
+        Sets the IO levels and switches all IOs to output (STANDARD IO mode
+        is required, see set_io_mode).
+
+        Requirements: as in set_io_mode.
+
+        :param levels: 4-bit IO levels (bit i: level of IO i)
+        """
+        self._handle.setIo(levels)
 
     def get_fpga_wallclock(self) -> int:
         """

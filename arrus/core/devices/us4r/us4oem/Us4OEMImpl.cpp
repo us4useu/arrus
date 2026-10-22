@@ -680,6 +680,58 @@ float Us4OEMImpl::getCurrentSamplingFrequency() const {
 
 uint64_t Us4OEMImpl::getFPGAWallclock() { return ius4oem->GetFPGAWallclock(); }
 
+void Us4OEMImpl::setIoAccessContext(IoAccessContext context) {
+    this->ioAccessContext = std::move(context);
+}
+
+std::unique_lock<std::recursive_mutex> Us4OEMImpl::validateIoAccess(bool requireSingleOEM) {
+    ARRUS_REQUIRES_TRUE_E(descriptor.isUs4OEMPlus(),
+                          IllegalStateException("IO access is available only for us4OEM+."));
+    ARRUS_REQUIRES_TRUE_E(ioAccessContext.has_value(),
+                          IllegalStateException("IO access context is not set for this us4OEM."));
+    const auto &ctx = ioAccessContext.value();
+    ARRUS_REQUIRES_TRUE_E(!ctx.hasAdapterIOCapabilities,
+                          IllegalStateException("IO access is not available: the probe adapter has IO capabilities."));
+    ARRUS_REQUIRES_TRUE_E(!ctx.hasIOBitstreams,
+                          IllegalStateException("IO access is not available: IO bitstreams are in use."));
+    ARRUS_REQUIRES_TRUE_E(ctx.lockState && ctx.isStopped,
+                          IllegalStateException("IO access context is not complete for this us4OEM."));
+    // Keep the system state locked until the IO operation completes, so the system cannot be started meanwhile.
+    auto stateLock = ctx.lockState();
+    ARRUS_REQUIRES_TRUE_E(ctx.isStopped(),
+                          IllegalStateException("IO access is available only when the system is stopped."));
+    if (requireSingleOEM) {
+        ARRUS_REQUIRES_TRUE_E(ctx.nUs4OEMs == 1,
+                              IllegalStateException(format("Reading IO levels is available only for a system with "
+                                                           "a single us4OEM (got: {}).", ctx.nUs4OEMs)));
+    }
+    return stateLock;
+}
+
+void Us4OEMImpl::setIoMode(IoMode mode) {
+    auto stateLock = validateIoAccess(false);
+    switch (mode) {
+    case IoMode::STANDARD: ius4oem->SetStandardIODriveMode(); break;
+    case IoMode::WAVEFORM: ius4oem->SetWaveformIODriveMode(); break;
+    default: throw IllegalArgumentException("Unsupported IO mode.");
+    }
+}
+
+uint8_t Us4OEMImpl::getIo() {
+    auto stateLock = validateIoAccess(true);
+    // Switch all IOs to input (bit = 1: input), so the us4OEM does not drive them.
+    ius4oem->SetIODirection(0b1111);
+    return ius4oem->GetIOLevels();
+}
+
+void Us4OEMImpl::setIo(uint8_t levels) {
+    auto stateLock = validateIoAccess(false);
+    ARRUS_REQUIRES_TRUE_IAE(levels <= 0b1111, format("IO levels should be a 4-bit value (got: {}).", static_cast<int>(levels)));
+    // Set the levels first, then switch all IOs to output (bit = 0: output), to avoid glitches.
+    ius4oem->SetIOLevels(levels);
+    ius4oem->SetIODirection(0b0000);
+}
+
 void Us4OEMImpl::setAfeDemod(const std::optional<DigitalDownConversion> &ddc) {
     if (ddc.has_value()) {
         auto &value = ddc.value();
