@@ -601,8 +601,8 @@ class Us4R(Device, Ultrasound):
     def set_seq_dma_buffer_size(self, size: int):
         return self._handle.setSeqDmaBufferSize(size)
 
-    def set_seq_dma_trigger_offs(self, offs: int):
-        return self._handle.setSeqDmaTriggerOffs(offs)
+    def set_seq_dma_trigger_spec(self, spec: List[int]):
+        return self._handle.setSeqDmaTriggerSpec([int(x) for x in spec])
 
 # ------------------------------------------ LEGACY MOCK
 @dataclasses.dataclass(frozen=True)

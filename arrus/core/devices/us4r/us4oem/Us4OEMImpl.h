@@ -164,7 +164,7 @@ public:
 
     void setSeqDmaBufferSize(size_t size) override;
 
-    void setSeqDmaTriggerOffs(size_t offs) override;
+    void setSeqDmaTriggerSpec(std::vector<uint16_t> spec) override;
 
 private:
     using Us4OEMAperture = std::bitset<Us4OEMDescriptor::N_ADDR_CHANNELS>;

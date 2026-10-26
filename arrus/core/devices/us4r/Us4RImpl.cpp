@@ -989,9 +989,9 @@ void Us4RImpl::setSeqDmaBufferSize(size_t size) {
     }
 }
 
-void Us4RImpl::setSeqDmaTriggerOffs(size_t offs) {
+void Us4RImpl::setSeqDmaTriggerSpec(std::vector<uint16_t> spec) {
     for (auto &us4oem : us4oems) {
-        us4oem->setSeqDmaTriggerOffs(offs);
+        us4oem->setSeqDmaTriggerSpec(spec);
     }
 }
 

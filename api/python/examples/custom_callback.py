@@ -19,8 +19,8 @@ from arrus.ops.us4r import Scheme, Pulse, DataBufferSpec, TxRxSequence, TxRx, Tx
 from arrus.ops.imaging import LinSequence
 
 
-arrus.set_clog_level(arrus.logging.ERROR)
-arrus.add_log_file("test.log", arrus.logging.ERROR)
+arrus.set_clog_level(arrus.logging.DEBUG)
+arrus.add_log_file("test.log", arrus.logging.DEBUG)
 
 class Timer:
     def __init__(self):
@@ -29,7 +29,7 @@ class Timer:
     def callback(self, element):
         element.release()
 
-def main(n_tx_rx = 10, test_buf_multiplier = 1):
+def main(n_tx_rx = 10, prf = 1):
     #print(f"DMA PERF TEST called with n_tx_rx = {n_tx_rx}, test_buf_multiplier = {test_buf_multiplier}")
 
     # Here starts communication with the device.
@@ -48,11 +48,11 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
                                 delays=[]),
                             Rx(aperture=[True]*n_elements,
                                 #sample_range=(0, 65472-(64*20)),
-                                sample_range=(0, 1024*20),
+                                sample_range=(0, 1024*1),
                                 downsampling_factor=1),
-                            pri=1e-3
+                            pri=(1/(prf*1000))
                         ),
-                    ]*n_tx_rx,
+                    ]*n_tx_rx*2,
                     # Turn off TGC.
                     tgc_curve=[]#,  # [dB]
                     # Time between consecutive acquisitions, i.e. 1/frame rate.
@@ -65,10 +65,10 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
             work_mode="SYNC"
             )
 
-        seqdma_buffer_size = 512 * n_tx_rx * test_buf_multiplier
+        seqdma_buffer_size = 512 * n_tx_rx
         #print(f"DMA PERF TEST SeqDMA buffer size: {seqdma_buffer_size}")
         ultrasound.set_seq_dma_buffer_size(seqdma_buffer_size)
-        ultrasound.set_seq_dma_trigger_offs(0)
+        ultrasound.set_seq_dma_trigger_spec([3, 3+8])
         ultrasound.set_hv_voltage(5)
         ultrasound.set_stop_on_overflow(True)
         # Upload sequence on the us4r-lite device.
@@ -79,7 +79,7 @@ def main(n_tx_rx = 10, test_buf_multiplier = 1):
 
         print("Running for 10 minutes", file=sys.stderr)
 
-        time.sleep(10)
+        time.sleep(2*60)
     # When we exit the above scope, the session and scheme is properly closed.
     print("Finished.")
 
@@ -88,15 +88,15 @@ if __name__ == "__main__":
     #if len(sys.argv) < 3:
     #    print("Usage: python custom_callback.py <n_tx_rx> <test_buf_multiplier>")
     #    sys.exit(1)
-    for n in [10, 20, 50]:
-        for m in [1, 2]:
-            print(f"TESTING CASE n_tx_rx = {n}, test_buf_multiplier = {m}...", file=sys.stderr)
-            main(n,m)
+    for n in [8]:
+        for f in [1]:
+            print(f"--> TESTING CASE n_tx_rx = {n}, PRF = {f} kHz...", file=sys.stderr)
+            main(n,f)
             # This will drop a file like "ppm_histogram_[sn]_2026-10-01_14-28-15.458439.csv" (or multiple if more than one oem)
-            # Rename it/them to "ppm_histogram_[sn]_n[n]_m[m].csv"
+            # Rename it/them to "ppm_histogram_[sn]_n[n]_f[f].csv"
             for file in os.listdir("."):
                 if file.startswith("ppm_histogram_") and file.endswith(".csv"):
-                    new_file_name = f"{file[:-31]}_n{n}_m{m}.csv"
+                    new_file_name = f"final_{file[:-31]}_n{n}_f{f}.csv"
                     os.rename(file, new_file_name)
                     print(f"Renamed {file} to {new_file_name}", file=sys.stderr)
     #main(int(sys.argv[1]), int(sys.argv[2]))

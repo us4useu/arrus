@@ -99,7 +99,7 @@ public:
 
     virtual void setSeqDmaBufferSize(size_t size) = 0;
 
-    virtual void setSeqDmaTriggerOffs(size_t offs) = 0;
+    virtual void setSeqDmaTriggerSpec(std::vector<uint16_t> spec) = 0;
 
 protected:
     explicit Us4OEMImplBase(const DeviceId &id) : Us4OEM(id) {}

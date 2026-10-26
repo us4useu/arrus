@@ -136,7 +136,7 @@ public:
     void disableAdcHpf() override;
     void disableAllHpf() override;
     void setSeqDmaBufferSize(size_t size) override;
-    void setSeqDmaTriggerOffs(size_t offs) override;
+    void setSeqDmaTriggerSpec(std::vector<uint16_t> spec) override;
 
     uint16_t getAfe(uint8_t reg) override;
     void setAfe(uint8_t reg, uint16_t val) override;

@@ -920,8 +920,8 @@ void Us4OEMImpl::setSeqDmaBufferSize(size_t size) {
     ius4oem->setSeqDmaBufferSize(size);
 }
 
-void Us4OEMImpl::setSeqDmaTriggerOffs(size_t offset) {
-    ius4oem->setSeqDmaTriggerOffs(offset);
+void Us4OEMImpl::setSeqDmaTriggerSpec(std::vector<uint16_t> spec) {
+    ius4oem->setSeqDmaTriggerSpec(spec);
 }
 
 Us4OEM::Variant Us4OEMImpl::getVariant() {
