@@ -1501,10 +1501,13 @@ int Us4RImpl::getNumberOfProbes() const {
  * Only TX delays from the active (aperture) elements are considered.
  * If the given TX/RX does not perform TX, this method returns 0.
  * If the given RX does not perform RX, this method also return 0.
+ * The result is limited max RX delay that can be applied on OEM
+ *
+ * @param maxRxDelay the maximum RX delay that can be set in the us4OEM [s]
  * @return rx delay [s]
  *
  */
-float Us4RImpl::getRxDelay(const TxRx &op) {
+float Us4RImpl::getRxDelay(const TxRx &op, float maxRxDelay) {
     float rxDelay = 0.0f; // default value.
     if(op.getRx().isNOP()) {
         return rxDelay;
@@ -1522,7 +1525,7 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
         // This should be done only once, in the Us4R::upload method.
         float burstTime = TxWaveformConverter::getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
         // Total rx delay
-        rxDelay = txDelay + burstTime;
+        rxDelay = std::min(txDelay + burstTime, maxRxDelay);
     }
     return rxDelay;
 }
@@ -1634,13 +1637,15 @@ void Us4RImpl::handlePulserInterrupt() {
  */
 std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequence> &seqs) {
     std::vector<std::vector<float>> result(seqs.size());
+    // NOTE: assuming all OEMs are of the same variant
+    const float maxRxDelay = getMasterOEM()->getIUs4OEM()->GetMaximumRxDelay();
     for(size_t i = 0; i < seqs.size(); ++i) {
         const auto &seq = seqs.at(i);
         const auto &ops = seq.getOps();
         auto &outputDelays = result.at(i);
         outputDelays.resize(ops.size());
         std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=](const auto &op) {
-            return this->getRxDelay(op);
+            return this->getRxDelay(op, maxRxDelay);
         });
     }
     return result;

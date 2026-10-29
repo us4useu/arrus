@@ -39,7 +39,7 @@ public:
 
     enum class State { START_IN_PROGRESS, STARTED, STOP_IN_PROGRESS, STOPPED };
 
-    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op);
+    static float getRxDelay(const ::arrus::ops::us4r::TxRx &op, float maxRxDelay);
 
     ~Us4RImpl() override;
 
