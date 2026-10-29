@@ -33,6 +33,10 @@ public:
             std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0]), logger));
             return std::make_unique<DigitalBackplane>(std::move(dbar));
         }
+        else if(name == "us4rdbar_8bit") {
+            std::unique_ptr<IDBAR> dbar(GetUs4RDBAR(dynamic_cast<II2CMaster *>(us4oems[0]), logger, false, 8));
+            return std::make_unique<DigitalBackplane>(std::move(dbar));
+        }
         else {
             throw IllegalArgumentException(
                 ::arrus::format("Unrecognized DBAR: {}, {}", manufacturer, name));
