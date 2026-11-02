@@ -1022,7 +1022,7 @@ class ProbeHealthVerifier:
                         pri=20e-3
                     )
                     ops.append(op)
-                seq = TxRxSequence(ops)
+                seq = TxRxSequence(ops, tgc_curve=[14])  # TGC does not matter here
             else:
                 seq = footprint.get_sequence()
                 n = footprint.get_number_of_frames()
