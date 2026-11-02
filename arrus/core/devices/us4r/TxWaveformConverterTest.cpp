@@ -18,6 +18,7 @@ using Waveform = ::arrus::ops::us4r::Waveform;
 
 constexpr auto ENDSTATE = TxWaveformConverter::END_STATE;
 constexpr auto SAMPLING_FREQUENCY = 130.0e6f;
+const TxWaveformConverter CONVERTER{SAMPLING_FREQUENCY};
 
 // PARAMETRIC TESTS -- CORRECT WAVEFORMS (no exception should be thrown)
 struct TxWaveformConverterTestParams {
@@ -31,7 +32,7 @@ class TxWaveformConverterTest : public ::testing::TestWithParam<TxWaveformConver
 TEST_P(TxWaveformConverterTest, ConvertsCorrectWaveform) {
     const auto &input = GetParam().input;
     const auto &expected = GetParam().expectedOutput;
-    auto actual = TxWaveformConverter::toPulser(input);
+    auto actual = CONVERTER.toPulser(input);
     EXPECT_EQ(actual, expected);
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -459,7 +460,7 @@ class TxIncorrectWaveformConverterTest : public ::testing::TestWithParam<TxWavef
 
 TEST_P(TxIncorrectWaveformConverterTest, IncorrectWaveform) {
     const auto &input = GetParam().input;
-    EXPECT_THROW(TxWaveformConverter::toPulser(input), ::arrus::IllegalArgumentException);
+    EXPECT_THROW(CONVERTER.toPulser(input), ::arrus::IllegalArgumentException);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -482,7 +483,7 @@ INSTANTIATE_TEST_SUITE_P(
             Waveform{
                 {
                     WaveformSegment{
-                        {TxWaveformConverter::MINIMUM_DURATION-1e-7f, 1e-6f},
+                        {CONVERTER.getMinimumDuration()-1e-7f, 1e-6f},
                         {1, -1}
                     }
                 },
@@ -676,7 +677,7 @@ TEST(TxWaveformConverter032Test, ConvertsCorrectlyWaveforms) {
                     bool hasTooShortState = false;
                     for(const auto &segment: inputWf.getSegments()) {
                         for(const auto &duration: segment.getDuration()) {
-                            if(duration < TxWaveformConverter::MINIMUM_DURATION) {
+                            if(duration < CONVERTER.getMinimumDuration()) {
                                 hasTooShortState = true;
                                 break;
                             }
@@ -687,7 +688,7 @@ TEST(TxWaveformConverter032Test, ConvertsCorrectlyWaveforms) {
                         continue;
                     }
 
-                    const auto wf = TxWaveformConverter::toPulser(pulse.toWaveform());
+                    const auto wf = CONVERTER.toPulser(pulse.toWaveform());
 
                     const auto [firstState, secondState] = getPulserStates(pulse);
 
@@ -704,6 +705,25 @@ TEST(TxWaveformConverter032Test, ConvertsCorrectlyWaveforms) {
     }
 }
 }
+namespace {
+TEST(TxWaveformConverterSamplingFrequencyTest, UsesTheGivenSamplingFrequency) {
+    // 1 MHz @ 120 MHz -> 0.5 us up and then 0.5 us down -> 60 cycles (-2) -> durationClk: 58, no repetition
+    const TxWaveformConverter converter{120e6f};
+    auto actual = converter.toPulser(Pulse(1e6f, 1, false, 2).toWaveform());
+    std::vector<uint32_t> expected{0b00000'0111010'0000 | State::HVP0, 0b00000'0111010'0000 | State::HVM0, ENDSTATE};
+    EXPECT_EQ(actual, expected);
+    EXPECT_FLOAT_EQ(converter.getMinimumDuration(), 2.0f/120e6f);
+    // 1 us + 1/4 cycle @ 120 MHz -> rounded to 120 cycles
+    auto hwWaveform = converter.getHWWaveform(Waveform{{WaveformSegment{{1e-6f + 0.25f/120e6f}, {1}}}, {1}});
+    EXPECT_FLOAT_EQ(hwWaveform.getSegments().at(0).getDuration().at(0), 120.0f/120e6f);
+}
+
+TEST(TxWaveformConverterSamplingFrequencyTest, ThrowsOnIncorrectSamplingFrequency) {
+    EXPECT_THROW(TxWaveformConverter{0.0f}, ::arrus::IllegalArgumentException);
+    EXPECT_THROW(TxWaveformConverter{-130e6f}, ::arrus::IllegalArgumentException);
+}
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::GTEST_FLAG(catch_exceptions) = false;

@@ -13,6 +13,7 @@
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/devices/UltrasoundDevice.h"
 #include "Us4OEMUploadResult.h"
+#include "arrus/core/devices/us4r/TxWaveformConverter.h"
 
 namespace arrus::devices {
 
@@ -47,6 +48,8 @@ public:
                                       const std::vector<TxTimeout> &txTimeouts = {}) = 0;
 
     virtual Ius4OEMRawHandle getIUs4OEM() = 0;
+
+    virtual TxWaveformConverter getTxWaveformConverter() = 0;
     virtual void enableSequencer(uint16 startEntry, bool dvddMask) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
     virtual void setRxSettings(const RxSettings& settings) = 0;

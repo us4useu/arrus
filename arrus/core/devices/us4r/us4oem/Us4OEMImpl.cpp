@@ -203,6 +203,11 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
 
     // Reset the currently selected profiles.
     currentTxDelayProfileIds = std::vector<size_t>(sequences.size());
+    // TX waveform -> pulser memory converter (us4OEM+ only).
+    std::optional<TxWaveformConverter> txWaveformConverter;
+    if(isOEMPlus()) {
+        txWaveformConverter = getTxWaveformConverter();
+    }
     // us4OEM sequencer firing/entry id (global).
     OpId firingId = 0;
     for (SequenceId sequenceId = 0; sequenceId < ARRUS_SAFE_CAST(sequences.size(), SequenceId); ++sequenceId) {
@@ -253,7 +258,7 @@ void Us4OEMImpl::uploadFirings(const TxParametersSequenceColl &sequences,
             currentTxDelayProfileIds.at(sequenceId) = nProfiles;
             if(isOEMPlus()) {
                 auto waveform = op.getTxWaveform();
-                ius4oem->SetCustomSequenceWaveform(firingId, TxWaveformConverter::toPulser(waveform));
+                ius4oem->SetCustomSequenceWaveform(firingId, txWaveformConverter.value().toPulser(waveform));
             }
             else {
                 // Legacy OEM.
@@ -892,6 +897,10 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     builder.setTxRxSequenceLimits(seqBuilder.build());
     // Set the new descriptor.
     descriptor = builder.build();
+}
+
+TxWaveformConverter Us4OEMImpl::getTxWaveformConverter() {
+    return TxWaveformConverter{ius4oem->GetWaveformSamplingFrequency()};
 }
 
 HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {

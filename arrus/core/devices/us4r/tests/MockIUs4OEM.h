@@ -262,6 +262,7 @@ public:
     MOCK_METHOD(std::string, GetVariant, (), (override));
     MOCK_METHOD(std::string, GetVariantReadable, (), (override));
     MOCK_METHOD(float, GetAfeSamplingFrequency, (), (override));
+    MOCK_METHOD(float, GetWaveformSamplingFrequency, (), (override));
 };
 
 #define GET_MOCK_PTR(sptr) *(MockIUs4OEM *) (sptr.get())
