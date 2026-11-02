@@ -894,8 +894,8 @@ void Us4OEMImpl::setMaximumPulseLength(std::optional<float> maxLength) {
     descriptor = builder.build();
 }
 
-HVPSMeasurement Us4OEMImpl::getHVPSMeasurement() {
-    auto m = ius4oem->GetHVPSMeasurements();
+HVPSMeasurement Us4OEMImpl::getHVPSMeasurement(bool compensated) {
+    auto m = ius4oem->GetHVPSMeasurements(compensated);
     HVPSMeasurementBuilder builder;
     builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::VOLTAGE, m.HVP0Voltage);
     builder.set(0, HVPSMeasurement::Polarity::PLUS, HVPSMeasurement::Unit::CURRENT, m.HVP0Current);

@@ -212,7 +212,7 @@ public:
     MOCK_METHOD(void, SetSubsequences, (const std::vector<uint16_t> &start, const std::vector<uint16_t> &end, bool syncMode, const std::vector<uint32_t> &endTimeToNextTrigger), (override));
     MOCK_METHOD(void, ResetSequencer, (), (override));
     MOCK_METHOD(float, SetHVPSSyncMeasurement, (uint16_t, float), (override));
-    MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (), (override));
+    MOCK_METHOD(HVPSMeasurements, GetHVPSMeasurements, (bool), (override));
     MOCK_METHOD(void, EnableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, DisableHVPSMeasurementReadyIRQ, (), (override));
     MOCK_METHOD(void, ClearTransferRXBufferToHost, (const size_t firing), (override));

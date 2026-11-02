@@ -100,7 +100,7 @@ public:
     virtual void waitForHVPSMeasurementDone(std::optional<long long> timeout) override = 0;
 
 
-    HVPSMeasurement getHVPSMeasurement() override = 0;
+    HVPSMeasurement getHVPSMeasurement(bool compensated = true) override = 0;
 
     HVPSScalarMeasurement getHVPSScalarMeasurement() override = 0;
 
