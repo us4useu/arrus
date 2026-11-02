@@ -58,6 +58,7 @@ protected:
         // Default values returned by us4oem.
         ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetWaveformSamplingFrequency).WillByDefault(testing::Return(130e6f));
         ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2)); // OEM+ variant 0
     }
 
@@ -714,6 +715,7 @@ protected:
         // Default values returned by us4oem.
         ON_CALL(*ius4oemPtr, GetMaxTxFrequency).WillByDefault(testing::Return(MAX_TX_FREQUENCY));
         ON_CALL(*ius4oemPtr, GetMinTxFrequency).WillByDefault(testing::Return(MIN_TX_FREQUENCY));
+        ON_CALL(*ius4oemPtr, GetWaveformSamplingFrequency).WillByDefault(testing::Return(130e6f));
         ON_CALL(*ius4oemPtr, GetOemVersion).WillByDefault(testing::Return(2));
 
         std::vector<uint8> channelMapping = getRange<uint8>(0, 128);

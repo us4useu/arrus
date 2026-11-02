@@ -68,17 +68,17 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
     };
     TxRxSequence seq{txrxs, {}};
 
-    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0));
+    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0), TxWaveformConverter{130e6f});
     float expectedRxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0)) + 1e-6f; // 1 us impulse
     EXPECT_EQ(expectedRxDelay0, actualRxDelay0);
 
     float expectedRxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1)) + 2e-6f; // 2 us impulse
-    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1));
+    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1), TxWaveformConverter{130e6f});
     EXPECT_EQ(expectedRxDelay1, actualRxDelay1);
 
 
     float expectedRxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0) + 10) + 2e-6f; // 2 us impulse
-    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2));
+    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2), TxWaveformConverter{130e6f});
     EXPECT_EQ(expectedRxDelay2, actualRxDelay2);
 }
 

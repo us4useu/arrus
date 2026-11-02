@@ -71,8 +71,10 @@ public:
     explicit TxTimeoutRegisterFactory(
         size_t nTimeouts,
         std::function<float(float)> actualTxFunc,
-        const std::vector<std::vector<float>> &rxDelays
-        ): nTimeouts(nTimeouts), actualTxFunc(std::move(actualTxFunc)), rxDelays(rxDelays) {}
+        const std::vector<std::vector<float>> &rxDelays,
+        TxWaveformConverter txWaveformConverter
+        ): nTimeouts(nTimeouts), actualTxFunc(std::move(actualTxFunc)), rxDelays(rxDelays),
+           txWaveformConverter(txWaveformConverter) {}
 
     TxTimeoutRegister createFor(const std::vector<::arrus::ops::us4r::TxRxSequence> &sequences) {
         return createFor(sequences, {});
@@ -192,7 +194,7 @@ private:
         }
         // TODO avoid doing all the below conversion here, on the TX timeout calculations, and when setting the waveform.
         // This should be done only once, in the Us4R::upload method.
-        float burstTime = TxWaveformConverter::getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
+        float burstTime = txWaveformConverter.getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
         auto txTimeUs = ARRUS_SAFE_CAST(std::roundf((maxDelay + burstTime)*1e6f), TxTimeout);
         return txTimeUs;
     }
@@ -235,6 +237,7 @@ private:
     size_t nTimeouts{0};
     std::function<float(float)> actualTxFunc;
     std::vector<std::vector<float>> rxDelays;
+    TxWaveformConverter txWaveformConverter;
 };
 
 }

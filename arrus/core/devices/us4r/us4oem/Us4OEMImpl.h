@@ -96,6 +96,8 @@ public:
     void stop() override;
     void setTgcCurve(const RxSettings &cfg);
     Ius4OEMRawHandle getIUs4OEM() override;
+
+    TxWaveformConverter getTxWaveformConverter() override;
     void enableSequencer(uint16 startEntry, bool dvddMask) override;
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &settings) override;

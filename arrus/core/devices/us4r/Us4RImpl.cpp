@@ -687,7 +687,9 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
         [this](const float frequency) {
             return this->getActualTxFrequency(frequency);
         },
-        rxDelays
+        rxDelays,
+        // NOTE: assuming here that all OEMs have the same TX waveform sampling frequency.
+        getMasterOEM()->getTxWaveformConverter()
     };
     // Group TX delay profiles by sequence name. Also, validates NdArray names.
     const auto txDelayProfilesBySequence = groupTxDelaysBySequence(sequences, txDelayProfiles);
@@ -1504,7 +1506,7 @@ int Us4RImpl::getNumberOfProbes() const {
  * @return rx delay [s]
  *
  */
-float Us4RImpl::getRxDelay(const TxRx &op) {
+float Us4RImpl::getRxDelay(const TxRx &op, const TxWaveformConverter &txWaveformConverter) {
     float rxDelay = 0.0f; // default value.
     if(op.getRx().isNOP()) {
         return rxDelay;
@@ -1520,7 +1522,7 @@ float Us4RImpl::getRxDelay(const TxRx &op) {
         // burst time
         // TODO avoid doing all the below conversion here, on the TX timeout calculations, and when setting the waveform.
         // This should be done only once, in the Us4R::upload method.
-        float burstTime = TxWaveformConverter::getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
+        float burstTime = txWaveformConverter.getHWWaveform(op.getTx().getExcitation()).getTotalDuration();
         // Total rx delay
         rxDelay = txDelay + burstTime;
     }
@@ -1634,13 +1636,15 @@ void Us4RImpl::handlePulserInterrupt() {
  */
 std::vector<std::vector<float>> Us4RImpl::getRxDelays(const std::vector<TxRxSequence> &seqs) {
     std::vector<std::vector<float>> result(seqs.size());
+    // NOTE: assuming here that all OEMs have the same TX waveform sampling frequency.
+    const auto txWaveformConverter = getMasterOEM()->getTxWaveformConverter();
     for(size_t i = 0; i < seqs.size(); ++i) {
         const auto &seq = seqs.at(i);
         const auto &ops = seq.getOps();
         auto &outputDelays = result.at(i);
         outputDelays.resize(ops.size());
-        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [=](const auto &op) {
-            return this->getRxDelay(op);
+        std::transform(std::begin(ops), std::end(ops), std::begin(outputDelays), [&](const auto &op) {
+            return getRxDelay(op, txWaveformConverter);
         });
     }
     return result;

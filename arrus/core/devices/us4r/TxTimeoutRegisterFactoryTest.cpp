@@ -49,7 +49,7 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyNoTxTimeouts) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{0, [](float frequency) {return frequency;}, {}};
+    TxTimeoutRegisterFactory factory{0, [](float frequency) {return frequency;}, {}, TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence});
     EXPECT_TRUE(reg.empty());
 }
@@ -79,7 +79,7 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyOnlyTxNop) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{0, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1)};
+    TxTimeoutRegisterFactory factory{0, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1), TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence});
     EXPECT_TRUE(reg.empty());
 }
@@ -116,7 +116,7 @@ TEST(TxTimeoutRegisterFactoryTest, HandlesProperlyTxNopsWithTxOps) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, rxDelays};
+    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, rxDelays, TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(2, reg.getTimeouts().size());
     EXPECT_EQ(300 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(1));
@@ -148,7 +148,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOp) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1)};
+    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1), TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(1, reg.getTimeouts().size());
     EXPECT_EQ(300 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(0));
@@ -178,7 +178,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperlySingleOpLessThan1
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1)};
+    TxTimeoutRegisterFactory factory{nTimeouts, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 1), TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(1, reg.getTimeouts().size());
     // Should be exactly EPSILON.
@@ -236,7 +236,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly3Ops) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 3)};
+    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 3), TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(3, reg.getTimeouts().size());
     EXPECT_EQ(510 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(2));
@@ -327,7 +327,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly5Ops) {
 
     TxRxSequence sequence{txrxs, {}};
 
-    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 5)};
+    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 5), TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence});
     EXPECT_EQ(4, reg.getTimeouts().size());
     EXPECT_EQ(510 + TxTimeoutRegisterFactory::EPSILON, reg.getTimeouts().at(3));
@@ -443,7 +443,7 @@ TEST(TxTimeoutRegisterFactoryTest, CalculatesTxTimeoutsProperly30psWithDynamicDe
 
     delayProfiles.insert({sequence.getName(), profiles});
 
-    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 3)};
+    TxTimeoutRegisterFactory factory{4, [](float frequency) {return frequency;}, getDefaultRxDelays(1, 3), TxWaveformConverter{130e6f}};
     auto reg = factory.createFor({sequence}, delayProfiles);
 
     ASSERT_EQ(3, reg.getTimeouts().size());

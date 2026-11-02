@@ -14,6 +14,21 @@ namespace arrus::devices {
  */
 class TxWaveformConverter {
 public:
+    /**
+     * @param samplingFrequency TX waveform sampling frequency [Hz]
+     */
+    explicit TxWaveformConverter(float samplingFrequency) : samplingFrequency(samplingFrequency) {
+        if (!(samplingFrequency > 0.0f)) {
+            throw IllegalArgumentException(
+                format("TX waveform sampling frequency should be positive, got: {}", samplingFrequency));
+        }
+    }
+
+    /** Returns the TX waveform sampling frequency [Hz]. */
+    float getSamplingFrequency() const { return samplingFrequency; }
+
+    /** Returns the minimum possible duration for a single state [s]. */
+    float getMinimumDuration() const { return toTime(MINIMUM_N_CYCLES); }
 
     // TODO this should probably be the part of us4r-api/Us4OEM
     enum DeviceState {
@@ -41,10 +56,8 @@ public:
     }
 
     constexpr static uint32_t END_STATE = 0b1110;
-    // Waveform sampling frequency
-    constexpr static float SAMPLING_FREQUENCY = 130e6f;
-    // The minimum possible duration for a single state.
-    constexpr static float MINIMUM_DURATION = 2.0f / SAMPLING_FREQUENCY;
+    // The minimum possible duration for a single state [number of cycles].
+    constexpr static uint32_t MINIMUM_N_CYCLES = 2;
     // Number of bits for the duration field
     constexpr static uint32_t DURATION_BITS_SIZE = 7;
     // MAXIMUM single duration; +1, because it's 127 + 2
@@ -107,7 +120,7 @@ public:
      * @param wf input waveform
      * @return waveform after considering the device sampling frequency
      */
-    static ::arrus::ops::us4r::Waveform getHWWaveform(const ::arrus::ops::us4r::Waveform &wf) {
+    ::arrus::ops::us4r::Waveform getHWWaveform(const ::arrus::ops::us4r::Waveform &wf) const {
         ops::us4r::WaveformBuilder builder;
         for (size_t s = 0; s < wf.getSegments().size(); ++s) {
             const auto &inputSegment = wf.getSegments().at(s);
@@ -202,8 +215,8 @@ public:
         return result;
     }
 
-    static std::vector<SegmentWithRepetitions> preprocessSegment(const ::arrus::ops::us4r::WaveformSegment &segment,
-                                                                 size_t nRepeats) {
+    std::vector<SegmentWithRepetitions> preprocessSegment(const ::arrus::ops::us4r::WaveformSegment &segment,
+                                                          size_t nRepeats) const {
         auto splittedSegments = handleTooLongStates(segment, nRepeats);
         return handleTooManyRepetitions(splittedSegments);
     }
@@ -215,7 +228,7 @@ public:
      * guarantee, that there is no state with duration longer than the maximum duration for a single
      * pulser register.
      */
-    static std::vector<SegmentWithRepetitions> handleTooLongStates(const ops::us4r::WaveformSegment &segment, size_t nRepeats) {
+    std::vector<SegmentWithRepetitions> handleTooLongStates(const ops::us4r::WaveformSegment &segment, size_t nRepeats) const {
         std::vector<SegmentWithRepetitions> result;
         // Provide the possibility to transmit longer states (e.g., lower frequencies) by splitting and repeating
         // it if it's necessary.
@@ -352,7 +365,7 @@ public:
         }
     }
 
-    static std::vector<uint32_t> toPulser(const ::arrus::ops::us4r::Waveform &wf) {
+    std::vector<uint32_t> toPulser(const ::arrus::ops::us4r::Waveform &wf) const {
         validateWaveform(wf);
         // Calculate.
         std::vector<uint32_t> result;
@@ -379,10 +392,10 @@ public:
                 auto state = segment.getState().at(i);
 
                 uint32 durationClk = toClk(duration);
-                if (durationClk < 2) {
+                if (durationClk < MINIMUM_N_CYCLES) {
                     throw IllegalArgumentException(format(
-                        "The minimum waveform state duration that can be set on the pulser is {}, got: {}",
-                        MINIMUM_DURATION, duration));
+                        "The minimum waveform state duration that can be set on the pulser is {}, got: {} [s]",
+                        getMinimumDuration(), duration));
                 }
                 // The actual number of cycles is durationClk + 2 cycles
                 durationClk -= 2;
@@ -414,9 +427,12 @@ public:
     }
 
 private:
-    static uint32_t toClk(float time) { return static_cast<uint32>(std::roundf(time * SAMPLING_FREQUENCY)); }
+    /** TX waveform sampling frequency [Hz]. */
+    float samplingFrequency;
 
-    static float toTime(uint32_t clk) { return static_cast<float>(clk) / SAMPLING_FREQUENCY; }
+    uint32_t toClk(float time) const { return static_cast<uint32>(std::roundf(time * samplingFrequency)); }
+
+    float toTime(uint32_t clk) const { return static_cast<float>(clk) / samplingFrequency; }
 
     static uint32_t setNRepetitionsPart(uint32_t input, uint32_t nRepetitions, uint32_t part) {
         uint32_t mask = 0;
