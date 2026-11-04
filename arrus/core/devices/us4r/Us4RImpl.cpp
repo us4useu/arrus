@@ -990,15 +990,16 @@ std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     float nominalFs = getSamplingFrequency();
     // TGC curve offset (relative to the first acquired sample), TGC time resolution
     uint16_t offset = 0, tgcT = 0;
+    // NOTE: measured between TX start (tx delay = 0) and first TGC sample occurrence (determined
+    // experimentally on VANDV, #M_OEM-322 task).
+    float offsetUs = 2.15f; // [us]
     if(us4oems.at(0)->isAFEJD18()) {
-        // TGC sampling period: 1 us (65 samples @ 65 MHz).
-        offset = 359;
-        tgcT = 65;
+        tgcT = 65; // number of samples / [us], currently corresponds to AFE sampling frequency
     }
     else if (us4oems.at(0)->isAFEJD48()) {
-        offset = 359;
-        tgcT = 120;
+        tgcT = 120; // number of samples / [us], current corresponds to AFE sampling frequency
     }
+    offset = offsetUs*tgcT;
 
     // TODO try avoid converting from samples to time then back to samples?
     auto maxNSamples = uint32(roundf(maxT * nominalFs));
