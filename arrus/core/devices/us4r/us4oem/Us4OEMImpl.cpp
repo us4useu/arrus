@@ -587,9 +587,10 @@ void Us4OEMImpl::uploadTgcCurves(const TxParametersSequenceColl &sequences) {
         // No TGC curve specified: TGC stays turned off (it can be turned on later using setTgcCurve).
         return;
     }
-    // TX/RXs without the TGC curve (e.g. NOPs added internally by ARRUS) get the last TGC curve
-    // (or the first one, if there was no TGC curve before) -- the TGC profile pointer should always point to the
-    // valid profile.
+    // TX/RXs without the TGC curve (e.g. NOPs added internally by ARRUS ex. for the IO bitstreams) get the last TGC curve
+    // (or the first one, if there was no TGC curve before).
+    // TxRxSequenceValidator makes sure that if there is at least one TxRx with tgc, all TxRxs in a single sequence
+    // should be set.
     ops::us4r::Tgc currentTgc = firstTgc.value();
     uint16 firingId = 0;
     for(const auto &sequence: sequences) {

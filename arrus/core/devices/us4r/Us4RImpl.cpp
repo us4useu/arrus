@@ -501,7 +501,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
     currentScheme = scheme;
     // TGC state.
     tgcUploadState = TgcUploadState{};
-    tgcUploadState.isUploaded = true;
+    tgcUploadState.isSchemeUploaded = true;
     for(const auto &sequence: scheme.getTxRxSequences()) {
         if(sequence.getTgc().has_value()) {
             tgcUploadState.isTgcSetOnUpload = true;
@@ -517,7 +517,7 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
             }
         }
     }
-    // The TGC curves currently programmed on the device are the ones from the uploaded scheme only.
+    // Reset currently remembered Tgc curves.
     if(rxSettings.has_value()) {
         rxSettings = RxSettingsBuilder(rxSettings.value()).clearTgcCurves().build();
     }
@@ -823,6 +823,8 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
         TxRxParametersSequenceBuilder sequenceBuilder;
         sequenceBuilder.setCommon(sequence);
         // TGC: either for the whole sequence (name: "default" if not set) or for each Rx (name: nullopt if not set).
+        // NOTE: user can set only Tgc for the whole sequence or for each Tx/rx sequence separately (verified
+        // by TxRxSequenceValidator).
         std::optional<ops::us4r::Tgc> sequenceTgc;
         if(sequence.getTgc().has_value()) {
             sequenceTgc = toSystemTgc(sequence.getTgc().value(), std::string(RxSettings::DEFAULT_TGC_NAME));
@@ -905,10 +907,15 @@ void Us4RImpl::setTgcCurve(const ops::us4r::Tgc &tgc, bool applyCharacteristic, 
     auto newRxSettings = RxSettingsBuilder(rxSettings.value())
                              .setApplyTgcCharacteristic(applyCharacteristic)
                              .setClipTgc(clip);
-    const bool assignToAllFirings = tgcUploadState.isUploaded && !tgcUploadState.isTgcSetOnUpload
+    // Do we need to assign this TGC curve to all firings (the legacy way?). This is true only when
+    // the scheme was already uploaded, but no TGC was set yet -- we will have to update sequencer entries
+    // to point to the proper TGC curve..
+    const bool assignToAllFirings = tgcUploadState.isSchemeUploaded && !tgcUploadState.isTgcSetOnUpload
                                     && !tgcUploadState.isAssignedToAllFirings;
     if(systemTgc.empty() || !assignToAllFirings) {
+        // We are modifying already uploaded sequence (via the Us4RImpl::upload method).
         if(!systemTgc.empty() && tgcUploadState.isTgcSetOnUpload && tgcUploadState.names.count(name) == 0) {
+            // The provided tgc is empty but no TGC with the given name was uploaded.
             std::vector<std::string> names{std::begin(tgcUploadState.names), std::end(tgcUploadState.names)};
             std::sort(std::begin(names), std::end(names));
             std::string namesStr;

@@ -311,7 +311,7 @@ private:
     /** TGC state of the currently uploaded scheme. */
     struct TgcUploadState {
         /** True if the scheme was uploaded. */
-        bool isUploaded{false};
+        bool isSchemeUploaded{false};
         /** True if any TGC curve was specified in the uploaded sequences (TxRxSequence or Rx). */
         bool isTgcSetOnUpload{false};
         /** The names of TGC curves uploaded with the sequences (only the names that are known to the user). */
