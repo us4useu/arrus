@@ -3,11 +3,21 @@
 
 #include <vector>
 
+#include "Us4OEM/api/Tgc.h"
+
 namespace arrus::ops::us4r {
 
 using TGCSampleValue = float;
-/** TGC curve to apply on the us4r device. */
-using TGCCurve = std::vector<TGCSampleValue>;
+
+using Tgc = ::us4us::us4r::Tgc;
+using TgcBuilder = ::us4us::us4r::TgcBuilder;
+
+/**
+ * TGC curve to apply on the us4r device.
+ *
+ * @deprecated TGCCurve will be removed in ARRUS/ us4us HAL 2.0.0, please use arrus::ops::us4r::Tgc instead.
+ */
+using TGCCurve = Tgc;
 
 }
 

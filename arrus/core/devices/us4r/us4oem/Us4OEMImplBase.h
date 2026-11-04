@@ -48,6 +48,11 @@ public:
     virtual void enableSequencer(uint16 startEntry, bool dvddMask) = 0;
     virtual std::vector<uint8_t> getChannelMapping() = 0;
     virtual void setRxSettings(const RxSettings& settings) = 0;
+    /**
+     * Programs the given TGC curve (values given for the device TGC sampling points) for all the firings of the
+     * currently uploaded sequences.
+     */
+    virtual void setTgcCurveForAllFirings(const ops::us4r::Tgc &tgc) = 0;
     virtual void setTestPattern(RxTestPattern pattern) = 0;
     virtual BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;
     virtual void setIOBitstream(BitstreamId id, const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods) = 0;

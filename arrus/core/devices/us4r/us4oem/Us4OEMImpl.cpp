@@ -147,15 +147,20 @@ Us4OEMUploadResult Us4OEMImpl::upload(const std::vector<us4r::TxRxParametersSequ
                                       const std::vector<TxTimeout> &txTimeouts) {
     std::unique_lock<std::mutex> lock{stateMutex};
     validate(sequences, rxBufferSize);
-    setTgcCurve(sequences);
+    // Remove all the TGC curves programmed previously (this also turns off TGC). The TGC curves currently stored
+    // in the RX settings are not related to the new sequences anymore.
+    ius4oem->ClearTgcCurves();
+    this->rxSettings = RxSettingsBuilder(this->rxSettings).clearTgcCurves().build();
     ius4oem->ResetSequencer();
-    ius4oem->SetNumberOfFirings(ARRUS_SAFE_CAST(getNumberOfFirings(sequences), uint16_t));
+    nUploadedFirings = ARRUS_SAFE_CAST(getNumberOfFirings(sequences), uint16_t);
+    ius4oem->SetNumberOfFirings(nUploadedFirings);
     ius4oem->ClearScheduledReceive();
     ius4oem->ResetRuntimeCallbacks();
     auto rxMappingRegister = setRxMappings(sequences);
     this->isDecimationFactorAdjustmentLogged = false;
     setTxTimeouts(txTimeouts);
     uploadFirings(sequences, ddc, txDelays, rxMappingRegister);
+    uploadTgcCurves(sequences);
     // For us4OEM+ the method below must be called right after programming TX/RX, and before calling ScheduleReceive.
     ius4oem->SetNTriggers(ARRUS_SAFE_CAST(getNumberOfTriggers(sequences, rxBufferSize), uint16_t));
     auto [bufferDef, rxTimeOffset] = uploadAcquisition(sequences, rxBufferSize, ddc, rxMappingRegister);
@@ -564,28 +569,46 @@ void Us4OEMImpl::stop() { this->stopTrigger(); }
 
 void Us4OEMImpl::syncTrigger() { this->ius4oem->TriggerSync(); }
 
-void Us4OEMImpl::setTgcCurve(const std::vector<TxRxParametersSequence> &sequences) {
-    // Make sure all TGC curve are the same.
-    if (sequences.empty()) {
-        return;
-    }
-    bool allCurvesTheSame = true;
-    const auto &referenceCurve = sequences.at(0).getTgcCurve();
-    for (size_t i = 1; i < sequences.size(); ++i) {
-        const auto &s = sequences.at(i).getTgcCurve();
-        if (s != referenceCurve) {
-            allCurvesTheSame = false;
+void Us4OEMImpl::uploadTgcCurves(const TxParametersSequenceColl &sequences) {
+    // Determine whether any of the TX/RXs has the TGC curve specified.
+    std::optional<ops::us4r::Tgc> firstTgc;
+    for(const auto &sequence: sequences) {
+        for(const auto &op: sequence) {
+            if(op.getTgc().has_value()) {
+                firstTgc = op.getTgc();
+                break;
+            }
+        }
+        if(firstTgc.has_value()) {
             break;
         }
     }
-    ARRUS_REQUIRES_TRUE_IAE(allCurvesTheSame, "TGC curves for all sequences should be exactly the same.");
-    setTgcCurve(sequences.at(0).getTgcCurve());
+    if(!firstTgc.has_value()) {
+        // No TGC curve specified: TGC stays turned off (it can be turned on later using setTgcCurve).
+        return;
+    }
+    // TX/RXs without the TGC curve (e.g. NOPs added internally by ARRUS) get the last TGC curve
+    // (or the first one, if there was no TGC curve before) -- the TGC profile pointer should always point to the
+    // valid profile.
+    ops::us4r::Tgc currentTgc = firstTgc.value();
+    uint16 firingId = 0;
+    for(const auto &sequence: sequences) {
+        for(const auto &op: sequence) {
+            if(op.getTgc().has_value()) {
+                currentTgc = op.getTgc().value();
+            }
+            ius4oem->SetTgcCurve(currentTgc, firingId);
+            ++firingId;
+        }
+    }
 }
 
-void Us4OEMImpl::setTgcCurve(const ops::us4r::TGCCurve &tgc) {
-    RxSettingsBuilder rxSettingsBuilder(this->rxSettings);
-    this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcSamples(tgc).build();
-    setRxSettings(this->rxSettings);
+void Us4OEMImpl::setTgcCurveForAllFirings(const ops::us4r::Tgc &tgc) {
+    std::unique_lock<std::mutex> lock{stateMutex};
+    for(uint16 firing = 0; firing < nUploadedFirings; ++firing) {
+        ius4oem->SetTgcCurve(tgc, firing);
+    }
+    this->rxSettings = RxSettingsBuilder(this->rxSettings).setTgcCurve(tgc).build();
 }
 
 Ius4OEMRawHandle Us4OEMImpl::getIUs4OEM() { return ius4oem.get(); }
@@ -909,6 +932,7 @@ float Us4OEMImpl::getActualTxFrequency(float frequency) {
 }
 void Us4OEMImpl::setRxSettings(const RxSettings &settings) {
     ius4oem->SetRxSettings(settings, false);
+    this->rxSettings = settings;
 }
 
 std::pair<float, float> Us4OEMImpl::getTGCValueRange() const {

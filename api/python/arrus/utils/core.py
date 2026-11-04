@@ -60,13 +60,23 @@ def convert_to_core_sequence(seq):
         # RX
         rx_placement = parse_device_id(rx.placement)
         rx_placement = to_core_device_id(rx_placement)
-        core_rx = arrus.core.Rx(
-            arrus.core.VectorBool(rx.aperture.tolist()),
-            arrus.core.PairUint32(int(rx.sample_range[0]), int(rx.sample_range[1])),
-            rx.downsampling_factor,
-            arrus.core.PairChannelIdx(int(rx.padding[0]), int(rx.padding[1])),
-            rx_placement
-        )
+        if rx.tgc is None:
+            core_rx = arrus.core.Rx(
+                arrus.core.VectorBool(rx.aperture.tolist()),
+                arrus.core.PairUint32(int(rx.sample_range[0]), int(rx.sample_range[1])),
+                rx.downsampling_factor,
+                arrus.core.PairChannelIdx(int(rx.padding[0]), int(rx.padding[1])),
+                rx_placement
+            )
+        else:
+            core_rx = arrus.core.arrusCreateRxWithTgc(
+                arrus.core.VectorBool(rx.aperture.tolist()),
+                arrus.core.PairUint32(int(rx.sample_range[0]), int(rx.sample_range[1])),
+                rx.downsampling_factor,
+                arrus.core.PairChannelIdx(int(rx.padding[0]), int(rx.padding[1])),
+                rx_placement,
+                convert_to_core_tgc(rx.tgc)
+            )
         core_txrx = arrus.core.TxRx(core_tx, core_rx, op.pri)
         arrus.core.TxRxVectorPushBack(core_seq, core_txrx)
 
@@ -84,9 +94,30 @@ def convert_to_core_sequence(seq):
             f"Parameter n_repeats should be in range "
             f"[{_UINT16_MIN}, {_UINT16_MAX}]"
         )
-    core_seq = arrus.core.TxRxSequence(core_seq, seq.tgc_curve.tolist(), sri,
+    core_seq = arrus.core.TxRxSequence(core_seq, convert_to_core_tgc(seq.get_tgc()), sri,
                                        seq.n_repeats, seq.name)
     return core_seq
+
+
+def convert_to_core_tgc(tgc):
+    """
+    Converts arrus.ops.us4r.Tgc (or None) to arrus.core.Tgc. None is converted to an empty TGC curve
+    (i.e. TGC curve not specified).
+    """
+    import arrus.ops.us4r
+    import arrus.ops.tgc
+    if tgc is None:
+        return arrus.core.arrusCreateTgc(arrus.core.VectorFloat([]), False, arrus.core.VectorFloat([]), False, "")
+    if isinstance(tgc, arrus.ops.tgc.LinearTgc):
+        raise ValueError("LinearTgc should be converted to Tgc first.")
+    if not isinstance(tgc, arrus.ops.us4r.Tgc):
+        tgc = arrus.ops.us4r.Tgc(values=tgc)
+    values = arrus.core.VectorFloat([float(v) for v in tgc.values])
+    has_time = tgc.time is not None
+    time = arrus.core.VectorFloat([float(v) for v in tgc.time] if has_time else [])
+    has_name = tgc.name is not None
+    name = tgc.name if has_name else ""
+    return arrus.core.arrusCreateTgc(values, has_time, time, has_name, name)
 
 
 def convert_fcm_to_np_arrays(fcm, n_us4oems):

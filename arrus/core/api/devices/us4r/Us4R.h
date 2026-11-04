@@ -6,6 +6,7 @@
 #include "arrus/core/api/devices/Device.h"
 #include "arrus/core/api/devices/DeviceWithComponents.h"
 #include "arrus/core/api/devices/us4r/RxSettings.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/api/devices/us4r/Us4OEM.h"
 #include "arrus/core/api/framework/Buffer.h"
 #include "arrus/core/api/framework/DataBufferSpec.h"
@@ -120,7 +121,7 @@ public:
      * Setting empty vector turns off analog TGC.
      * Setting non-empty vector turns off DTGC and turns on analog TGC.
      *
-     * TGC curve can have up to 1022 samples.
+     * TGC curve can have up to 4094 samples (all TGC curves used on a single us4OEM must fit into 4096 samples).
      *
      * @param tgcCurvePoints tgc curve points to set (gain [dB])
      * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
@@ -143,7 +144,7 @@ public:
      * Linear interpolation will be performed, the TGC curve will be extrapolated with the first (left-side of the cure)
      * and the last sample (right side of the curve).
      *
-     * NOTE: TGC curve can have up to 1022 samples.
+     * NOTE: TGC curve can have up to 4094 samples.
      *
      * @param t sampling time, relative to the "sample 0"
      * @param y gain values to apply at given sampling time [dB]
@@ -155,6 +156,33 @@ public:
      * (resulting from amplifier settings such as LNA and PGA) is exceeded.
      */
     virtual void setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, bool clip = false) = 0;
+
+    /**
+     * Sets TGC curve asynchronously.
+     *
+     * The curve with the name tgc.getName() is updated (nullopt name means "default" tgc). The TGC curve should be
+     * one of the curves specified in the uploaded sequences (TxRxSequence or Rx), otherwise
+     * ::arrus::IllegalArgumentException is thrown.
+     *
+     * If no TGC curve was specified in the uploaded sequences,
+     * the given curve is applied for all TX/RXs (backward compatibility).
+     *
+     * If the TGC curve time points are set, the values will be interpolated into target hardware sampling points
+     * (see setTgcCurve(t, y, ...)). Otherwise, the values are applied at the hardware TGC sampling points
+     * (see getTgcCurvePoints).
+     *
+     * Setting a curve with empty values turns off analog TGC.
+     *
+     * NOTE: TGC curve can have up to 4094 samples.
+     *
+     * @param tgc TGC curve to set (gain [dB])
+     * @param applyCharacteristic set it to true if you want to compensate response characteristic (pre-computed
+     * by us4us).
+     * @param clip set it true if you would like to get TGC clipped to the min/max possible gain value; otherwise,
+     * an IllegalArgumentException will be raised with message that the maximum possible gain value
+     * (resulting from amplifier settings such as LNA and PGA) is exceeded.
+     */
+    virtual void setTgcCurve(const ::arrus::ops::us4r::Tgc &tgc, bool applyCharacteristic = true, bool clip = false) = 0;
 
     /**
      * Returns us4R TGC sampling points (along time axis, relative to the "sample 0"), up to given maximum time.

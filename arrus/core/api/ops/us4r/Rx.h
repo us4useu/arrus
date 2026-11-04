@@ -1,11 +1,13 @@
 #ifndef ARRUS_CORE_API_OPS_US4R_RX_H
 #define ARRUS_CORE_API_OPS_US4R_RX_H
 
+#include <optional>
 #include <utility>
 
 #include "arrus/core/api/common/Interval.h"
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/types.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
 
 namespace arrus::ops::us4r {
 
@@ -22,13 +24,16 @@ public:
      * @param rxSampleRange [start, end) range of samples to acquire, starts from 0
      * @param downsamplingFactor the factor by which the sampling frequency should be divided, an integer
      * @param placement probe on which the RX should be performed.
+     * @param tgc TGC curve to apply for this RX; nullopt means that no TGC curve is specified for this RX
+     *   (e.g. TGC curve may still be specified for the whole TxRxSequence).
      */
     Rx(std::vector<bool> aperture, std::pair<unsigned int, unsigned int> sampleRange,
        unsigned int downsamplingFactor = 1,
        std::pair<unsigned short, unsigned short> padding = {(ChannelIdx) 0, (ChannelIdx) 0},
-       devices::DeviceId placement = devices::DeviceId(devices::DeviceType::Probe, 0))
+       devices::DeviceId placement = devices::DeviceId(devices::DeviceType::Probe, 0),
+       std::optional<Tgc> tgc = std::nullopt)
         : aperture(std::move(aperture)), sampleRange(std::move(sampleRange)), downsamplingFactor(downsamplingFactor),
-          padding(std::move(padding)), placement(placement) {
+          padding(std::move(padding)), placement(placement), tgc(std::move(tgc)) {
         if(placement.getDeviceType() != devices::DeviceType::Probe) {
             throw IllegalArgumentException("Only probe can be set as a placement for RX.");
         }
@@ -44,6 +49,11 @@ public:
 
     devices::DeviceId getPlacement() const { return placement; }
 
+    /**
+     * Returns TGC curve to apply for this RX; nullopt means that no TGC curve was specified for this RX.
+     */
+    const std::optional<Tgc> &getTgc() const { return tgc; }
+
     bool isNOP() const {
         bool atLeastOneActive = false;
         for(auto bit: aperture) {
@@ -58,6 +68,7 @@ private:
     unsigned downsamplingFactor;
     std::pair<unsigned short, unsigned short> padding;
     devices::DeviceId placement;
+    std::optional<Tgc> tgc;
 };
 
 }// namespace arrus::ops::us4r
