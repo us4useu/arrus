@@ -132,7 +132,7 @@ public:
     Interval<Voltage> getAcceptedVoltageRange() override;
     Us4OEMDescriptor getDescriptor() const override;
 
-    HVPSMeasurement getHVPSMeasurement() override;
+    HVPSMeasurement getHVPSMeasurement(bool compensated = true) override;
 
     HVPSScalarMeasurement getHVPSScalarMeasurement() override;
 

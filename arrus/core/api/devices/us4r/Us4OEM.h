@@ -205,9 +205,12 @@ public:
     virtual const char* getRevision() = 0;
 
     /**
-     * Returns HVPS ADC measurements
+     * Returns HVPS ADC measurements.
+     *
+     * @param compensated if true, the last measured standby currents
+     *   are subtracted from the current measurements
      */
-    virtual HVPSMeasurement getHVPSMeasurement() = 0;
+    virtual HVPSMeasurement getHVPSMeasurement(bool compensated = true) = 0;
 
     /**
      * Returns the latest scalar HVPS voltage measurements for all

@@ -214,8 +214,14 @@ class Us4OEM(Device):
         """
         return self._handle.getRevision()
 
-    def get_hvps_measurement(self) -> HVPSMeasurement:
-        return HVPSMeasurement(self._handle.getHVPSMeasurement())
+    def get_hvps_measurement(self, compensated: bool = True) -> HVPSMeasurement:
+        """
+        Returns HVPS ADC measurements.
+
+        :param compensated: if True, the standby currents (the last measured one) are
+          subtracted from the current measurements
+        """
+        return HVPSMeasurement(self._handle.getHVPSMeasurement(compensated))
 
     def get_hvps_scalar_measurement(self) -> dict:
         """

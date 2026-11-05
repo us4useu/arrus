@@ -1022,7 +1022,7 @@ class ProbeHealthVerifier:
                         pri=20e-3
                     )
                     ops.append(op)
-                seq = TxRxSequence(ops)
+                seq = TxRxSequence(ops) 
             else:
                 seq = footprint.get_sequence()
                 n = footprint.get_number_of_frames()
@@ -1032,6 +1032,7 @@ class ProbeHealthVerifier:
                 work_mode="MANUAL_OP",
             )
             buffer, metadata = sess.upload(scheme)
+            us4r.set_dtgc_attenuation(0) # TGC does not matter here
             metadata = metadata[0]
             fcm = metadata.data_description.custom["frame_channel_mapping"]
             oem_mapping = fcm.us4oems  # TX/RX -> OEM mapping
