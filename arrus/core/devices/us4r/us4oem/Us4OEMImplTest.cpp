@@ -75,7 +75,7 @@ protected:
         return upload(seq);
     }
 
-    Us4OEMUploadResult upload(const std::vector<TxRxParameters> &txrxs, TGCCurve tgc) {
+    Us4OEMUploadResult upload(const std::vector<TxRxParameters> &txrxs, Tgc tgc) {
         auto seq = ARRUS_STRUCT_INIT_LIST(TestTxRxParamsSequence, (x.txrx = txrxs, x.tgcCurve = tgc)).get();
         return upload(seq);
     }
@@ -84,7 +84,7 @@ protected:
     // A raw pointer stored to the object stored in the above unique_ptr.
     MockIUs4OEM *ius4oemPtr;
     Us4OEMImpl::Handle us4oem;
-    const TGCCurve defaultTGCCurve;
+    const Tgc defaultTGCCurve;
     const uint16 defaultRxBufferSize = 1;
     const uint16 defaultBatchSize = 1;
     const Scheme::WorkMode defaultWorkMode = arrus::ops::us4r::Scheme::WorkMode::MANUAL;
@@ -222,6 +222,62 @@ TEST_F(Us4OEMImplEsaote3LikeTest, TurnsOffAllChannelsForNOP) {
     EXPECT_CALL(*ius4oemPtr, SetActiveChannelGroup(activeChannelGroup, 0));
 
     upload(seq);
+}
+
+// TGC
+TEST_F(Us4OEMImplEsaote3LikeTest, ClearsTgcAndDoesNotProgramTgcWhenNotSpecified) {
+    std::vector<TxRxParameters> seq = {
+        TestTxRxParams{}.get(),
+        TestTxRxParams{}.get()
+    };
+    EXPECT_CALL(*ius4oemPtr, ClearTgcCurves()).Times(1);
+    EXPECT_CALL(*ius4oemPtr, SetTgcCurve(_, _)).Times(0);
+    upload(seq);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, ProgramsTgcCurveForEachFiring) {
+    Tgc a{std::vector<float>{30.0f, 31.0f}, std::string("a")};
+    Tgc b{std::vector<float>{32.0f}, std::nullopt};
+    std::vector<TxRxParameters> seq = {
+        ARRUS_STRUCT_INIT_LIST(TestTxRxParams, (x.tgc = a)).get(),
+        ARRUS_STRUCT_INIT_LIST(TestTxRxParams, (x.tgc = b)).get(),
+        ARRUS_STRUCT_INIT_LIST(TestTxRxParams, (x.tgc = a)).get(),
+    };
+    {
+        ::testing::InSequence s;
+        EXPECT_CALL(*ius4oemPtr, ClearTgcCurves());
+        EXPECT_CALL(*ius4oemPtr, SetTgcCurve(a, 0));
+        EXPECT_CALL(*ius4oemPtr, SetTgcCurve(b, 1));
+        EXPECT_CALL(*ius4oemPtr, SetTgcCurve(a, 2));
+    }
+    upload(seq);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, FiringsWithoutTgcGetTheCurrentTgcCurve) {
+    Tgc a{std::vector<float>{30.0f, 31.0f}, std::string("a")};
+    // RX NOPs (e.g. added by ARRUS internally), without TGC curve.
+    auto rxNop = ARRUS_STRUCT_INIT_LIST(TestTxRxParams, (x.rxAperture = getNTimes(false, Us4OEMDescriptor::N_ADDR_CHANNELS))).get();
+    std::vector<TxRxParameters> seq = {
+        rxNop,
+        ARRUS_STRUCT_INIT_LIST(TestTxRxParams, (x.tgc = a)).get(),
+        rxNop,
+    };
+    EXPECT_CALL(*ius4oemPtr, SetTgcCurve(a, 0));
+    EXPECT_CALL(*ius4oemPtr, SetTgcCurve(a, 1));
+    EXPECT_CALL(*ius4oemPtr, SetTgcCurve(a, 2));
+    upload(seq);
+}
+
+TEST_F(Us4OEMImplEsaote3LikeTest, SetsTgcCurveForAllFirings) {
+    std::vector<TxRxParameters> seq = {
+        TestTxRxParams{}.get(),
+        TestTxRxParams{}.get()
+    };
+    upload(seq);
+    Tgc t{std::vector<float>{30.0f}, std::string("default")};
+    EXPECT_CALL(*ius4oemPtr, SetTgcCurve(t, 0));
+    EXPECT_CALL(*ius4oemPtr, SetTgcCurve(t, 1));
+    us4oem->setTgcCurveForAllFirings(t);
 }
 
 TEST_F(Us4OEMImplEsaote3LikeTest, SetsCorrectActiveChannelGroups) {

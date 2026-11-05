@@ -16,6 +16,8 @@ namespace arrus {
  * @param x a sorted list
  * @param y
  * @param xi a list of interpolated values, may not be sorted
+ * @param minFillValue the value for xi < x[0] (no value: exception is thrown)
+ * @param maxFillValue the value for xi > x[-1] (no value: exception is thrown)
  * @return yi
  */
 template<typename T>
@@ -34,8 +36,8 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
         auto it = std::lower_bound(std::begin(x), std::end(x), value);
         if(it == std::end(x)) {
             // extrapolate, value > element for all elements of x
-            if(minFillValue.has_value()) {
-                result[i] = minFillValue.value();
+            if(maxFillValue.has_value()) {
+                result[i] = maxFillValue.value();
             }
             else {
                 throw IllegalArgumentException(format(
@@ -43,12 +45,12 @@ std::vector<T> interpolate1d(const std::vector<T> &x, const std::vector<T> &y,
                     value, *std::begin(x), *std::prev(std::end(x))));
             }
         } else if(it == std::begin(x)) {
-            if(*it == *std::begin(x)) {
+            if(value == *std::begin(x)) {
                 result[i] = y[0];
             } else {
                 // Extrapolate value is lower than the first element of x
-                if(maxFillValue.has_value()) {
-                    result[i] = maxFillValue.value();
+                if(minFillValue.has_value()) {
+                    result[i] = minFillValue.value();
                 }
                 else {
                     throw IllegalArgumentException(format(

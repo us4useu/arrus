@@ -16,7 +16,7 @@ struct TestUs4OEMSettings {
     std::optional<uint16> dtgcAttenuation{std::nullopt};
     uint16 pgaGain{30};
     uint16 lnaGain{24};
-    ::arrus::ops::us4r::TGCCurve tgcSamples{getRange<float>(30, 40, 0.5)};
+    std::vector<float> tgcSamples{getRange<float>(30, 40, 0.5)};
     uint32 lpfCutoff{(int) 10e6};
     std::optional<uint16> activeTermination{50};
     bool isApplyCharacteristic{true};
@@ -109,11 +109,12 @@ struct TestTxRxParams {
     std::unordered_set<ChannelIdx> maskedChannelsRx = {};
     Tuple<ChannelIdx> rxPadding = {0, 0};
     float rxDelay = 0.0f;
+    std::optional<ops::us4r::Tgc> tgc{std::nullopt};
 
     [[nodiscard]] arrus::devices::us4r::TxRxParameters get() const {
         return arrus::devices::us4r::TxRxParameters(
             txAperture, txDelays, pulse.toWaveform(), rxAperture, sampleRange, decimationFactor, pri,
-            rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx);
+            rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx, std::nullopt, tgc);
     }
 
     [[nodiscard]] arrus::ops::us4r::TxRx getTxRx() const {
@@ -127,7 +128,7 @@ struct TestTxRxParamsSequence {
     std::vector<arrus::devices::us4r::TxRxParameters> txrx = {TestTxRxParams{}.get()};
     uint16 nRepeats = 1;
     std::optional<float> sri = std::nullopt;
-    ops::us4r::TGCCurve tgcCurve = {};
+    ops::us4r::Tgc tgcCurve = {};
     DeviceId txProbeId{arrus::devices::DeviceType::Probe, 0};
     DeviceId rxProbeId{arrus::devices::DeviceType::Probe, 0};
     std::string name = "";

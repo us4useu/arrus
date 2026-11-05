@@ -106,6 +106,7 @@ public:
     void setTgcCurve(const std::vector<float> &x, const std::vector<float> &y, bool applyCharacteristic, bool clip) override;
 
     void setTgcCurve(const std::vector<float> &tgcCurvePoints) override;
+    void setTgcCurve(const ::arrus::ops::us4r::Tgc &tgc, bool applyCharacteristic, bool clip) override;
     std::vector<float> getTgcCurvePoints(float endSample) const override;
 
     void setRxSettings(const RxSettings &settings) override;
@@ -237,6 +238,12 @@ private:
     BitstreamId addIOBitstream(const std::vector<uint8_t> &levels, const std::vector<uint16_t> &periods);
     Us4OEMImplBase::RawHandle getMasterOEM() const { return this->us4oems[0].get(); }
     std::vector<float> interpolateToSystemTGC(const std::vector<float> &t, const std::vector<float> &y) const;
+    /**
+     * Converts the given TGC curve to the curve with values for the device TGC sampling points (interpolates if
+     * time points are given). The name of the curve is set to defaultName, if the curve has no name.
+     */
+    ::arrus::ops::us4r::Tgc toSystemTgc(const ::arrus::ops::us4r::Tgc &tgc,
+                                        const std::optional<std::string> &defaultName) const;
     void handlePulserInterrupt();
 
     /**
@@ -301,6 +308,18 @@ private:
     std::optional<std::vector<Us4RSubsequence>> currentSubsequenceParams;
     /** The currently uploaded scheme */
     std::optional<::arrus::ops::us4r::Scheme> currentScheme;
+    /** TGC state of the currently uploaded scheme. */
+    struct TgcUploadState {
+        /** True if the scheme was uploaded. */
+        bool isSchemeUploaded{false};
+        /** True if any TGC curve was specified in the uploaded sequences (TxRxSequence or Rx). */
+        bool isTgcSetOnUpload{false};
+        /** The names of TGC curves uploaded with the sequences (only the names that are known to the user). */
+        std::unordered_set<std::string> names;
+        /** True if the TGC curve was assigned to all firings by setTgcCurve (TGC not set during upload). */
+        bool isAssignedToAllFirings{false};
+    };
+    TgcUploadState tgcUploadState;
     std::optional<float> currentRxTimeOffset;
     /** Expected constant name: /SequenceName/parameterName:ordinal */
     const std::regex CONSTANT_NAME_PATTERN{R"(^/([A-Za-z][A-Za-z0-9_:]*)/([^/]+):([0-9]+)$)"};
