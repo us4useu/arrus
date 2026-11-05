@@ -15,6 +15,8 @@ using namespace arrus::devices;
 using namespace arrus::devices::us4r;
 using namespace arrus::ops::us4r;
 
+constexpr float MAX_RX_DELAY = 1.0f; // [s] large enough to not limit the RX delay
+
 TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
     std::function<float(float)> defaultTxFunc = [] (float frequency) {return frequency;};
     constexpr ChannelIdx nChannels = 192;
@@ -68,18 +70,55 @@ TEST(Us4RImplTest, CalculatesCorrectRxDelay) {
     };
     TxRxSequence seq{txrxs, {}};
 
-    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0));
+    float actualRxDelay0 = Us4RImpl::getRxDelay(seq.getOps().at(0), MAX_RX_DELAY);
     float expectedRxDelay0 = *std::max_element(std::begin(delays0), std::end(delays0)) + 1e-6f; // 1 us impulse
     EXPECT_EQ(expectedRxDelay0, actualRxDelay0);
 
     float expectedRxDelay1 = *std::max_element(std::begin(delays1), std::end(delays1)) + 2e-6f; // 2 us impulse
-    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1));
+    float actualRxDelay1 = Us4RImpl::getRxDelay(seq.getOps().at(1), MAX_RX_DELAY);
     EXPECT_EQ(expectedRxDelay1, actualRxDelay1);
 
 
     float expectedRxDelay2 = *std::max_element(std::begin(delays0), std::begin(delays0) + 10) + 2e-6f; // 2 us impulse
-    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2));
+    float actualRxDelay2 = Us4RImpl::getRxDelay(seq.getOps().at(2), MAX_RX_DELAY);
     EXPECT_EQ(expectedRxDelay2, actualRxDelay2);
+}
+
+TEST(Us4RImplTest, LimitsRxDelayToMaximumRxDelay) {
+    constexpr ChannelIdx nChannels = 192;
+    std::vector<float> delays(nChannels, 0.0f);
+    for (int i = 0; i < nChannels; ++i) {
+        delays[i] = i * 1e-7f;
+    }
+    BitMask txAperture(nChannels, true);
+    BitMask rxAperture(nChannels, true);
+    ops::us4r::Pulse pulse{1.0e6f, 300.0f, false}; // 300 us
+    auto op = ARRUS_STRUCT_INIT_LIST(
+        TestTxRxParams,
+        (
+            x.txAperture = txAperture,
+            x.rxAperture = rxAperture,
+            x.txDelays = delays,
+            x.pulse = pulse
+        )
+    ).getTxRx();
+    float rxDelay = Us4RImpl::getRxDelay(op, MAX_RX_DELAY);
+    // RX delay above the maximum: limited to the maximum.
+    float maxRxDelay = rxDelay / 2;
+    EXPECT_EQ(maxRxDelay, Us4RImpl::getRxDelay(op, maxRxDelay));
+    // RX delay below the maximum: unchanged.
+    EXPECT_EQ(rxDelay, Us4RImpl::getRxDelay(op, rxDelay*2));
+    // RX NOP: 0, regardless of the maximum.
+    auto rxNop = ARRUS_STRUCT_INIT_LIST(
+        TestTxRxParams,
+        (
+            x.txAperture = txAperture,
+            x.rxAperture = BitMask(nChannels, false),
+            x.txDelays = delays,
+            x.pulse = pulse
+        )
+    ).getTxRx();
+    EXPECT_EQ(0.0f, Us4RImpl::getRxDelay(rxNop, maxRxDelay));
 }
 
 //TEST_F(A2OConverterTestMappingEsaote3, SetsSubapertureCorrectly) {
