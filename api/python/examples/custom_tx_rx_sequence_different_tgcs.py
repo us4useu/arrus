@@ -68,8 +68,8 @@ def main():
             # Custom TGC: values [dB] for the given time points [s]
             # (relative to the first acquired sample).
             Tgc(time=[0, 20e-6, 40e-6, 80e-6], values=[14, 14, 54, 54], name="custom"),
-            # Custom TGC.
-            Tgc(time=[0, 30e-6, 60e-6], values=[34, 54, 34], name="constant"),
+            # Custom TGC. 
+            Tgc(time=[0, 30e-6, 40e-6], values=[34, 54, 34], name="constant"),
 
         ]
 
