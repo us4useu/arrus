@@ -84,7 +84,6 @@ public:
     void startTrigger() override;
     void stopTrigger() override;
     void syncTrigger() override;
-    void setTgcCurve(const std::vector<us4r::TxRxParametersSequence> & sequences);
     Us4OEMUploadResult upload(const std::vector<us4r::TxRxParametersSequence> &sequences, uint16 rxBufferSize,
                               ops::us4r::Scheme::WorkMode workMode,
                               const std::optional<ops::us4r::DigitalDownConversion> &ddc,
@@ -94,11 +93,11 @@ public:
     float getSamplingFrequency() override;
     void start() override;
     void stop() override;
-    void setTgcCurve(const RxSettings &cfg);
     Ius4OEMRawHandle getIUs4OEM() override;
     void enableSequencer(uint16 startEntry, bool dvddMask) override;
     std::vector<uint8_t> getChannelMapping() override;
     void setRxSettings(const RxSettings &settings) override;
+    void setTgcCurveForAllFirings(const ops::us4r::Tgc &tgc) override;
     float getFPGATemperature() override;
     float getUCDTemperature() override;
     float getUCDExternalTemperature() override;
@@ -194,7 +193,10 @@ private:
     void setCurrentSamplingFrequency(float fs) { this->currentSamplingFrequency = fs; }
     void setTxDelays(const std::vector<bool> &txAperture, const std::vector<float> &delays, uint16 firingId,
                      size_t delaysId, const std::unordered_set<ChannelIdx> &maskedChannelsTx, SequenceId i);
-    void setTgcCurve(const ops::us4r::TGCCurve &tgc);
+    /**
+     * Programs TGC curves for all the firings (see TxRxParameters::getTgc).
+     */
+    void uploadTgcCurves(const us4r::TxParametersSequenceColl &sequences);
     Us4OEMChannelsGroupsMask getActiveChannelGroups(const Us4OEMAperture &txAperture, const Us4OEMAperture &rxAperture);
     void uploadFirings(const us4r::TxParametersSequenceColl &sequences,
                        const std::optional<ops::us4r::DigitalDownConversion> &ddc,
@@ -232,6 +234,8 @@ private:
     /** Current RX settings */
     // TODO(ARRUS-179) consider removing the below property
     RxSettings rxSettings;
+    /** The number of firings of the currently uploaded sequences. */
+    uint16 nUploadedFirings{0};
     bool externalTrigger{false};
     /** Current sampling frequency of the data produced by us4OEM. */
     float currentSamplingFrequency{0};

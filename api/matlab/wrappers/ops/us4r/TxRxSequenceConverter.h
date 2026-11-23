@@ -31,10 +31,10 @@ public:
     }
 
     static TxRxSequenceConverter from(const MexContext::SharedHandle &ctx, const TxRxSequence &object) {
-        return TxRxSequenceConverter{ctx, object.getOps(), object.getTgcCurve(), object.getSri().value_or(NO_SRI), object.getNRepeats(), object.getName()};
+        return TxRxSequenceConverter{ctx, object.getOps(), object.getTgcCurve().getValues(), object.getSri().value_or(NO_SRI), object.getNRepeats(), object.getName()};
     }
 
-    TxRxSequenceConverter(MexContext::SharedHandle ctx, std::vector<TxRx> ops, TGCCurve tgcCurve, float sri, int16 nRepeats, std::string name)
+    TxRxSequenceConverter(MexContext::SharedHandle ctx, std::vector<TxRx> ops, std::vector<float> tgcCurve, float sri, int16 nRepeats, std::string name)
         : ctx(std::move(ctx)), ops(std::move(ops)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats), name(std::move(name)) {}
 
     [[nodiscard]] ::arrus::ops::us4r::TxRxSequence toCore() const {
@@ -43,7 +43,7 @@ public:
             // In matlab SRI == 0 is the default value, to not use the SRI.
             actualSri = sri;
         }
-        return ::arrus::ops::us4r::TxRxSequence{ops, tgcCurve, actualSri, nRepeats, name};
+        return ::arrus::ops::us4r::TxRxSequence{ops, Tgc{tgcCurve}, actualSri, nRepeats, name};
     }
 
     [[nodiscard]] ::matlab::data::Array toMatlab() const {
@@ -60,7 +60,7 @@ public:
 private:
     MexContext::SharedHandle ctx;
     std::vector<TxRx> ops;
-    TGCCurve tgcCurve;
+    std::vector<float> tgcCurve;
     float sri;
     int16 nRepeats;
     std::string name;

@@ -25,6 +25,9 @@ public:
         (unsigned char * dstAddress, size_t length, size_t srcAddress),
     (override));
     MOCK_METHOD(void, SetRxSettings, (const us4us::us4r::RxSettings &rxSettings, bool force), (override));
+    MOCK_METHOD(std::string, SetTgcCurve, (const us4us::us4r::Tgc &tgc, uint16_t firing), (override));
+    MOCK_METHOD(void, ClearTgcCurves, (), (override));
+    MOCK_METHOD(std::vector<std::string>, GetTgcCurveNames, (), (const, override));
     MOCK_METHOD(void, InitializeTX, (bool ignoreHVPSCalibration), (override));
     MOCK_METHOD(void, SetNumberOfFirings, (const unsigned short nFirings),
     (override));

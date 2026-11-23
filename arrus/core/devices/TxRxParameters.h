@@ -11,6 +11,8 @@
 #include "arrus/core/api/common/Tuple.h"
 #include "arrus/core/api/common/types.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
+#include "arrus/core/api/ops/us4r/tgc.h"
+#include "arrus/core/api/ops/us4r/TxRxSequence.h"
 #include "arrus/core/common/aperture.h"
 #include "arrus/core/common/collections.h"
 
@@ -23,7 +25,7 @@ public:
     static TxRxParameters createRxNOPCopy(const TxRxParameters &op) {
         return TxRxParameters(op.txAperture, op.txDelays, op.txWaveform, BitMask(op.rxAperture.size(), false),
                               op.rxSampleRange, op.rxDecimationFactor, op.pri, op.rxPadding, op.rxDelay,
-                              op.bitstreamId, op.maskedChannelsTx, op.maskedChannelsRx);
+                              op.bitstreamId, op.maskedChannelsTx, op.maskedChannelsRx, std::nullopt, op.tgc);
     }
 
     /**
@@ -40,6 +42,7 @@ public:
      * @param rxDecimationFactor
      * @param pri
      * @param rxPadding how many 0-channels pad from the left and right
+     * @param tgc TGC curve to apply for this TX/RX (nullopt: no TGC curve specified)
      */
     TxRxParameters(std::vector<bool> txAperture, std::vector<float> txDelays, const ops::us4r::Waveform &txWaveform,
                    std::vector<bool> rxAperture, Interval<uint32> rxSampleRange, int32 rxDecimationFactor, float pri,
@@ -47,13 +50,14 @@ public:
                    std::optional<BitstreamId> bitstreamId = std::nullopt,
                    std::unordered_set<ChannelIdx> maskedChannelsTx = {},
                    std::unordered_set<ChannelIdx> maskedChannelsRx = {},
-                   std::optional<TxTimeoutId> txTimeoutId = {}
+                   std::optional<TxTimeoutId> txTimeoutId = {},
+                   std::optional<ops::us4r::Tgc> tgc = std::nullopt
     )
         : txAperture(std::move(txAperture)), txDelays(std::move(txDelays)), txWaveform(txWaveform),
           rxAperture(std::move(rxAperture)), rxSampleRange(std::move(rxSampleRange)),
           rxDecimationFactor(rxDecimationFactor), pri(pri), rxPadding(std::move(rxPadding)), rxDelay(rxDelay),
           bitstreamId(bitstreamId), maskedChannelsTx(std::move(maskedChannelsTx)),
-          maskedChannelsRx(std::move(maskedChannelsRx)), txTimeoutId(txTimeoutId) {}
+          maskedChannelsRx(std::move(maskedChannelsRx)), txTimeoutId(txTimeoutId), tgc(std::move(tgc)) {}
 
     [[nodiscard]] const std::vector<bool> &getTxAperture() const { return txAperture; }
 
@@ -99,6 +103,9 @@ public:
     [[nodiscard]] const std::unordered_set<ChannelIdx> &getMaskedChannelsRx() const { return maskedChannelsRx; }
 
     const std::optional<TxTimeoutId> &getTxTimeoutId() const { return txTimeoutId; }
+
+    /** TGC curve to apply for this TX/RX; nullopt: no TGC curve specified. */
+    const std::optional<ops::us4r::Tgc> &getTgc() const { return tgc; }
 
     friend std::ostream &operator<<(std::ostream &os, const TxRxParameters &parameters) {
         os << std::scientific;
@@ -153,6 +160,9 @@ public:
         if(parameters.txTimeoutId.has_value()) {
             os << ", tx timeout: " << (int)parameters.txTimeoutId.value();
         }
+        if(parameters.tgc.has_value()) {
+            os << ", tgc: " << parameters.tgc.value();
+        }
         os << std::endl;
         os << std::fixed;
         return os;
@@ -165,7 +175,8 @@ public:
             && bitstreamId == rhs.bitstreamId
             && maskedChannelsTx == rhs.maskedChannelsTx
             && maskedChannelsRx == rhs.maskedChannelsRx
-            && txTimeoutId == rhs.txTimeoutId;
+            && txTimeoutId == rhs.txTimeoutId
+            && tgc == rhs.tgc;
     }
 
     bool operator!=(const TxRxParameters &rhs) const { return !(rhs == *this); }
@@ -187,6 +198,7 @@ private:
     std::unordered_set<ChannelIdx> maskedChannelsTx;
     std::unordered_set<ChannelIdx> maskedChannelsRx;
     std::optional<TxTimeoutId> txTimeoutId;
+    std::optional<ops::us4r::Tgc> tgc;
 };
 
 class TxRxParametersBuilder {
@@ -205,6 +217,7 @@ public:
         maskedChannelsTx = params.getMaskedChannelsTx();
         maskedChannelsRx = params.getMaskedChannelsRx();
         txTimeoutId = params.getTxTimeoutId();
+        tgc = params.getTgc();
     }
 
     explicit TxRxParametersBuilder(const arrus::ops::us4r::TxRx &op) {
@@ -227,6 +240,7 @@ public:
         this->maskedChannelsTx = {};
         this->maskedChannelsRx = {};
         this->txTimeoutId = std::nullopt;
+        this->tgc = rx.getTgc();
     }
 
     TxRxParameters build() {
@@ -234,7 +248,7 @@ public:
             throw IllegalArgumentException("TX pulse definition is required");
         }
         return TxRxParameters(txAperture, txDelays, txWaveform.value(), rxAperture, rxSampleRange, rxDecimationFactor, pri,
-                              rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx, txTimeoutId);
+                              rxPadding, rxDelay, bitstreamId, maskedChannelsTx, maskedChannelsRx, txTimeoutId, tgc);
     }
 
     void convertToNOP() {
@@ -256,6 +270,7 @@ public:
     void setMaskedChannelsTx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsTx = value; }
     void setMaskedChannelsRx(const std::unordered_set<ChannelIdx> &value) { TxRxParametersBuilder::maskedChannelsRx = value; }
     void setTxTimeoutId(const std::optional<TxTimeoutId> &value) { TxRxParametersBuilder::txTimeoutId = value; }
+    void setTgc(const std::optional<ops::us4r::Tgc> &value) { TxRxParametersBuilder::tgc = value; }
 
 private:
     ::std::vector<bool> txAperture;
@@ -271,6 +286,7 @@ private:
     std::unordered_set<ChannelIdx> maskedChannelsTx;
     std::unordered_set<ChannelIdx> maskedChannelsRx;
     std::optional<TxTimeoutId> txTimeoutId;
+    std::optional<ops::us4r::Tgc> tgc;
 };
 
 class TxRxParametersSequenceBuilder;
@@ -279,7 +295,7 @@ class TxRxParametersSequence {
 public:
     TxRxParametersSequence() = default;
     TxRxParametersSequence(const std::vector<TxRxParameters> &parameters, const uint16 nRepeats,
-                           const std::optional<float> &sri, ops::us4r::TGCCurve tgcCurve,
+                           const std::optional<float> &sri, std::optional<ops::us4r::Tgc> tgcCurve,
                            const DeviceId &txProbeId, const DeviceId &rxProbeId,
                            const std::string &name = "")
         : parameters(parameters), nRepeats(nRepeats), sri(sri), tgcCurve(std::move(tgcCurve)), txProbeId(txProbeId),
@@ -292,7 +308,9 @@ public:
     [[nodiscard]] size_t size() const { return parameters.size(); }
     [[nodiscard]] uint16 getNRepeats() const { return nRepeats; }
     [[nodiscard]] const std::optional<float> &getSri() const { return sri; }
-    ops::us4r::TGCCurve getTgcCurve() const { return tgcCurve; }
+    /** TGC curve specified for the whole sequence (nullopt: not specified). NOTE: the TGC curve to apply
+     * for each TX/RX is available in TxRxParameters::getTgc. */
+    const std::optional<ops::us4r::Tgc> &getTgcCurve() const { return tgcCurve; }
     const DeviceId &getTxProbeId() const { return txProbeId; }
     const DeviceId &getRxProbeId() const { return rxProbeId; }
     const std::string &getName() const { return name; }
@@ -350,7 +368,9 @@ public:
         }
         os << " n repeats: " << sequence.getNRepeats() << ", ";
         os << " SRI: " << arrus::toString(sequence.getSri()) << ", ";
-        os << " TGC curve: " << arrus::toString(sequence.getTgcCurve());
+        if(sequence.getTgcCurve().has_value()) {
+            os << " TGC curve: " << sequence.getTgcCurve().value();
+        }
         os << std::endl;
         return os;
     }
@@ -360,7 +380,7 @@ private:
     std::vector<TxRxParameters> parameters;
     uint16 nRepeats{0};
     std::optional<float> sri{0.0f};
-    ops::us4r::TGCCurve tgcCurve;
+    std::optional<ops::us4r::Tgc> tgcCurve;
     DeviceId txProbeId{DeviceType::Probe, 0};
     DeviceId rxProbeId{DeviceType::Probe, 0};
     std::string name;
@@ -375,7 +395,7 @@ public:
     TxRxParametersSequenceBuilder &setCommon(const ops::us4r::TxRxSequence &s) {
         sequence.nRepeats = s.getNRepeats();
         sequence.sri = s.getSri();
-        sequence.tgcCurve = s.getTgcCurve();
+        sequence.tgcCurve = s.getTgc();
         sequence.txProbeId = s.getTxProbeId();
         sequence.rxProbeId = s.getRxProbeId();
         sequence.name = s.getName();

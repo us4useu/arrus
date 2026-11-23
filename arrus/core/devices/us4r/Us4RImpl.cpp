@@ -6,6 +6,7 @@
 #include "arrus/core/devices/probe/ProbeImpl.h"
 #include "arrus/core/devices/us4r/mapping/AdapterToUs4OEMMappingConverter.h"
 #include "arrus/core/devices/us4r/mapping/ProbeToAdapterMappingConverter.h"
+#include "arrus/core/devices/us4r/validators/TxRxSequenceValidator.h"
 #include "arrus/core/common/collections.h"
 #include "arrus/common/utils.h"
 #include "arrus/common/format.h"
@@ -498,6 +499,28 @@ std::pair<Buffer::SharedHandle, std::vector<Metadata::SharedHandle>> Us4RImpl::u
           oemSequences] = uploadSequences(scheme.getTxRxSequences(), rxBufferSize, workMode,
                                            scheme.getDigitalDownConversion(), scheme.getConstants());
     currentScheme = scheme;
+    // TGC state.
+    tgcUploadState = TgcUploadState{};
+    tgcUploadState.isSchemeUploaded = true;
+    for(const auto &sequence: scheme.getTxRxSequences()) {
+        if(sequence.getTgc().has_value()) {
+            tgcUploadState.isTgcSetOnUpload = true;
+            tgcUploadState.names.insert(sequence.getTgc()->getName().value_or(RxSettings::DEFAULT_TGC_NAME));
+        }
+        for(const auto &op: sequence.getOps()) {
+            const auto &tgc = op.getRx().getTgc();
+            if(tgc.has_value()) {
+                tgcUploadState.isTgcSetOnUpload = true;
+                if(tgc->hasName()) {
+                    tgcUploadState.names.insert(tgc->getName().value());
+                }
+            }
+        }
+    }
+    // Reset currently remembered Tgc curves.
+    if(rxSettings.has_value()) {
+        rxSettings = RxSettingsBuilder(rxSettings.value()).clearTgcCurves().build();
+    }
     currentRxTimeOffset = rxTimeOffset;
     prepareHostBuffer(currentScheme->getOutputBuffer().getNumberOfElements(), currentScheme->getWorkMode(), buffers);
     // Reset sub-sequence factory and params.
@@ -656,6 +679,11 @@ Us4RImpl::uploadSequences(const std::vector<TxRxSequence> &sequences, uint16 buf
                           const std::vector<NdArray> &txDelayProfiles) {
     // NOTE: assuming all OEMs are of the same version (legacy or OEM+)
     auto oemDescriptor = getMasterOEM()->getDescriptor();
+    for(const auto &sequence: sequences) {
+        TxRxSequenceValidator validator(format("TX/RX sequence '{}'", sequence.getName()));
+        validator.validate(sequence);
+        validator.throwOnErrors();
+    }
     // Convert to intermediate representation (TxRxParameters).
     auto noems = ARRUS_SAFE_CAST(this->us4oems.size(), Ordinal);
     auto nSequences = ARRUS_SAFE_CAST(sequences.size(), SequenceId);
@@ -794,8 +822,29 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
     for(const auto &sequence: sequences) {
         TxRxParametersSequenceBuilder sequenceBuilder;
         sequenceBuilder.setCommon(sequence);
+        // TGC: either for the whole sequence (name: "default" if not set) or for each Rx (name: nullopt if not set).
+        // NOTE: user can set only Tgc for the whole sequence or for each Tx/rx sequence separately (verified
+        // by TxRxSequenceValidator).
+        std::optional<ops::us4r::Tgc> sequenceTgc;
+        if(sequence.getTgc().has_value()) {
+            sequenceTgc = toSystemTgc(sequence.getTgc().value(), std::string(RxSettings::DEFAULT_TGC_NAME));
+        }
+        auto getOpTgc = [&](const ops::us4r::TxRx &txrx) -> std::optional<ops::us4r::Tgc> {
+            if(sequenceTgc.has_value()) {
+                return sequenceTgc;
+            }
+            if(txrx.getRx().getTgc().has_value()) {
+                return toSystemTgc(txrx.getRx().getTgc().value(), std::nullopt);
+            }
+            return std::nullopt;
+        };
         if (hasIOBitstreamAdressing) {
             auto preamble = createBitstreamSequenceSelectPreamble(sequence);
+            if(!sequence.getOps().empty()) {
+                TxRxParametersBuilder preambleBuilder(preamble);
+                preambleBuilder.setTgc(getOpTgc(sequence.getOps().at(0)));
+                preamble = preambleBuilder.build();
+            }
             if(!currentBitstreamId.has_value() || currentBitstreamId.value() != preamble.getBitstreamId()) {
                 // Use the preamble only when the Bitstream Id changes.
                 // For example, if the same bitstream id is used in two consecutive sequences -- skip the preamble.
@@ -807,6 +856,7 @@ Us4RImpl::convertToInternalSequences(const std::vector<ops::us4r::TxRxSequence> 
         OpId opId = 0;
         for (const auto &txrx : sequence.getOps()) {
             TxRxParametersBuilder builder(txrx);
+            builder.setTgc(getOpTgc(txrx));
             auto rxDelay = rxDelays.at(sequenceId).at(opId);
             builder.setRxDelay(rxDelay);
             if (hasIOBitstreamAdressing) {
@@ -842,24 +892,63 @@ void Us4RImpl::sync(std::optional<long long> timeout)  {
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints) { setTgcCurve(tgcCurvePoints, true, false); }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &tgcCurvePoints, bool applyCharacteristic, const bool clip) {
-    ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-                             .setTgcSamples(tgcCurvePoints)
-                             .setApplyTgcCharacteristic(applyCharacteristic)
-                             .setClipTgc(clip)
-                             .build();
-    setRxSettings(newRxSettings);
+    setTgcCurve(ops::us4r::Tgc{tgcCurvePoints, std::string(RxSettings::DEFAULT_TGC_NAME)}, applyCharacteristic, clip);
 }
 
 void Us4RImpl::setTgcCurve(const std::vector<float> &t, const std::vector<float> &y, bool applyCharacteristic, const bool clip) {
     ARRUS_REQUIRES_TRUE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
-    if (y.empty()) {
-        // Turn off TGC
-        setTgcCurve(y, applyCharacteristic, clip);
-    } else {
-        vector<float> tgcValues = interpolateToSystemTGC(t, y);
-        setTgcCurve(tgcValues, applyCharacteristic, clip);
+    setTgcCurve(ops::us4r::Tgc{t, y, std::string(RxSettings::DEFAULT_TGC_NAME)}, applyCharacteristic, clip);
+}
+
+void Us4RImpl::setTgcCurve(const ops::us4r::Tgc &tgc, bool applyCharacteristic, bool clip) {
+    ARRUS_ASSERT_RX_SETTINGS_SET();
+    const auto systemTgc = toSystemTgc(tgc, std::string(RxSettings::DEFAULT_TGC_NAME));
+    const auto &name = systemTgc.getName().value();
+    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
+                             .setApplyTgcCharacteristic(applyCharacteristic)
+                             .setClipTgc(clip);
+    // Do we need to assign this TGC curve to all firings (the legacy way?). This is true only when
+    // the scheme was already uploaded, but no TGC was set yet -- we will have to update sequencer entries
+    // to point to the proper TGC curve..
+    const bool assignToAllFirings = tgcUploadState.isSchemeUploaded && !tgcUploadState.isTgcSetOnUpload
+                                    && !tgcUploadState.isAssignedToAllFirings;
+    if(systemTgc.empty() || !assignToAllFirings) {
+        // We are modifying already uploaded sequence (via the Us4RImpl::upload method).
+        if(!systemTgc.empty() && tgcUploadState.isTgcSetOnUpload && tgcUploadState.names.count(name) == 0) {
+            // The provided tgc is empty but no TGC with the given name was uploaded.
+            std::vector<std::string> names{std::begin(tgcUploadState.names), std::end(tgcUploadState.names)};
+            std::sort(std::begin(names), std::end(names));
+            std::string namesStr;
+            for(const auto &n: names) {
+                namesStr += (namesStr.empty() ? "" : ", ") + n;
+            }
+            throw IllegalArgumentException(
+                format("There is no TGC curve with name '{}' in the uploaded sequences. Available TGC curves: [{}]",
+                       name, namesStr));
+        }
+        // Update the curve with the given name (the curve is turned off if the values are empty).
+        setRxSettings(newRxSettings.setTgcCurve(systemTgc).build());
+        return;
     }
+    // Backward compatibility: TGC was not set during the upload -> apply the given TGC curve for all firings.
+    setRxSettings(newRxSettings.build());
+    for(auto &us4oem: us4oems) {
+        us4oem->setTgcCurveForAllFirings(systemTgc);
+    }
+    tgcUploadState.isAssignedToAllFirings = true;
+    tgcUploadState.names.insert(name);
+    rxSettings = RxSettingsBuilder(rxSettings.value()).setTgcCurve(systemTgc).build();
+}
+
+ops::us4r::Tgc Us4RImpl::toSystemTgc(const ops::us4r::Tgc &tgc, const std::optional<std::string> &defaultName) const {
+    std::optional<std::string> name = tgc.hasName() ? tgc.getName() : defaultName;
+    if(!tgc.hasTime() || tgc.empty()) {
+        return ops::us4r::Tgc{tgc.getValues(), name};
+    }
+    const auto &t = tgc.getTime().value();
+    const auto &y = tgc.getValues();
+    ARRUS_REQUIRES_TRUE_IAE(t.size() == y.size(), "TGC sample values t and y should have the same size.");
+    return ops::us4r::Tgc{interpolateToSystemTGC(t, y), name};
 }
 
 std::vector<float> Us4RImpl::interpolateToSystemTGC(const vector<float> &t, const vector<float> &y) const {
@@ -891,26 +980,26 @@ void Us4RImpl::setVcat(const vector<float> &attenuation) { setVcat(attenuation, 
 
 void Us4RImpl::setVcat(const vector<float> &attenuation, bool applyCharacteristic, const bool clip) {
     ARRUS_ASSERT_RX_SETTINGS_SET();
-    auto newRxSettings = RxSettingsBuilder(rxSettings.value())
-                             .setVcat(attenuation)
-                             .setApplyTgcCharacteristic(applyCharacteristic)
-                             .setClipTgc(clip)
-                             .build();
-    setRxSettings(newRxSettings);
+    // Convert to TGC gain values (the "default" TGC curve).
+    const auto &cfg = rxSettings.value();
+    auto gain = RxSettings::vcatToGain(attenuation, cfg.getPgaGain(), cfg.getLnaGain());
+    setTgcCurve(gain, applyCharacteristic, clip);
 }
 
 std::vector<float> Us4RImpl::getTgcCurvePoints(float maxT) const {
     float nominalFs = getSamplingFrequency();
     // TGC curve offset (relative to the first acquired sample), TGC time resolution
     uint16_t offset = 0, tgcT = 0;
+    // NOTE: measured between TX start (tx delay = 0) and first TGC sample occurrence (determined
+    // experimentally on VANDV, #M_OEM-322 task).
+    float offsetUs = 2.15f; // [us]
     if(us4oems.at(0)->isAFEJD18()) {
-        offset = 359;
-        tgcT = 153;
+        tgcT = 65; // number of samples / [us], currently corresponds to AFE sampling frequency
     }
     else if (us4oems.at(0)->isAFEJD48()) {
-        offset = 359;
-        tgcT = 120;
+        tgcT = 120; // number of samples / [us], current corresponds to AFE sampling frequency
     }
+    offset = offsetUs*tgcT;
 
     // TODO try avoid converting from samples to time then back to samples?
     auto maxNSamples = uint32(roundf(maxT * nominalFs));

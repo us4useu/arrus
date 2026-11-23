@@ -7,6 +7,7 @@ from arrus.framework import Constant
 import dataclasses
 from typing import Iterable, Dict, Union, List, Callable, Sequence, Optional, Set, Sized
 from arrus.devices.device import parse_device_id, DeviceId
+from arrus.ops.tgc import LinearTgc
 
 
 @dataclass(frozen=True)
@@ -213,6 +214,9 @@ class Rx(Operation):
       transmit starts, 'tx_center' - the first recorded sample is delayed by \
       tx aperture center delay and burst factor.
     :param placement: id of the probe that should do this RX
+    :param tgc: TGC curve to apply for this RX: Tgc, LinearTgc or a list of TGC values [dB] (given for the device
+      TGC sampling points); None means that no TGC curve is specified for this RX. NOTE: tgc still can be specified
+      for the TxRxSequence (tgc_curve).
     """
     aperture: Union[np.ndarray, Aperture]
     sample_range: tuple = None
@@ -222,6 +226,7 @@ class Rx(Operation):
     placement: str = "Probe:0"
     depth_range: tuple = None
     time_range: tuple = None
+    tgc: Optional[Union["Tgc", LinearTgc, np.ndarray, Iterable]] = None
 
     def __post_init__(self):
         is_range_available = [
@@ -235,6 +240,8 @@ class Rx(Operation):
                              "or time_range.")
         if not isinstance(self.aperture, Aperture):
             object.__setattr__(self, "aperture", np.asarray(self.aperture))
+        if self.tgc is not None and not isinstance(self.tgc, (Tgc, LinearTgc)):
+            object.__setattr__(self, "tgc", Tgc(values=self.tgc))
 
     def get_n_samples(self):
         start, end = self.sample_range
@@ -245,6 +252,42 @@ class Rx(Operation):
             return self.aperture.size == 0
         else:
             return np.sum(self.aperture) == 0
+
+
+@dataclass(frozen=True)
+class Tgc:
+    """
+    TGC curve.
+
+    :param values: TGC gain values [dB]
+    :param time: time points [s] (relative to the "sample 0") at which the values should be applied;
+      None means that the values are given for the device TGC sampling frequency (see Us4R.get_tgc_curve_points)
+    :param name: the name of the TGC curve; the name can be used to update the TGC curve after uploading
+      the sequence (see Us4R.set_tgc); None means that no name is given (auto-determined).
+    """
+    values: Union[np.ndarray, Iterable]
+    time: Optional[Union[np.ndarray, Iterable]] = None
+    name: Optional[str] = None
+
+    def __post_init__(self):
+        object.__setattr__(self, "values", np.asarray(self.values, dtype=np.float32))
+        if self.time is not None:
+            object.__setattr__(self, "time", np.asarray(self.time, dtype=np.float32))
+            if self.time.shape != self.values.shape:
+                raise ValueError("TGC time points and values should have the same shape.")
+        if len(self.values.shape) != 1:
+            raise ValueError("TGC values should be a 1D array.")
+
+    def __eq__(self, other):
+        if not isinstance(other, Tgc):
+            return False
+        same_time = (self.time is None and other.time is None) or (
+            self.time is not None and other.time is not None and np.array_equal(self.time, other.time))
+        return np.array_equal(self.values, other.values) and same_time and self.name == other.name
+
+    def __hash__(self):
+        time = None if self.time is None else tuple(self.time.tolist())
+        return hash((tuple(self.values.tolist()), time, self.name))
 
 
 @dataclass(frozen=True)
@@ -267,20 +310,37 @@ class TxRxSequence:
     A sequence of tx/rx operations to perform.
 
     :param operations: sequence of TX/RX operations to perform
-    :param tgc_curve: TGC curve samples [dB]
+    :param tgc_curve: TGC curve to apply for all TX/RXs of this sequence: Tgc, LinearTgc or a list of TGC
+        values [dB] (given for the device TGC sampling points). An empty list means that the TGC curve is not
+        specified for the sequence. If the curve has no name, it gets "default" name.
+        NOTE: TGC can be specified either for the TxRxSequence, or for each (non-NOP) Rx of the sequence (not for both).
     :param sri: sequence repetition interval - the time between consecutive RF \
         frames. When None, the time between consecutive RF frames is \
         determined by the total pri only. [s]
     """
     ops: List[TxRx]
-    tgc_curve: Union[np.ndarray, Iterable] = field(
+    tgc_curve: Union["Tgc", LinearTgc, np.ndarray, Iterable] = field(
         default_factory=lambda: [])
     sri: float = None
     n_repeats: int = 1
     name: Optional[str] = None
 
     def __post_init__(self):
-        object.__setattr__(self, "tgc_curve", np.asarray(self.tgc_curve))
+        if self.tgc_curve is None:
+            object.__setattr__(self, "tgc_curve", np.asarray([]))
+        elif not isinstance(self.tgc_curve, (Tgc, LinearTgc)):
+            object.__setattr__(self, "tgc_curve", np.asarray(self.tgc_curve))
+
+    def get_tgc(self):
+        """
+        Returns TGC curve set for this sequence (Tgc or LinearTgc), None if not specified.
+        """
+        if isinstance(self.tgc_curve, (Tgc, LinearTgc)):
+            return self.tgc_curve
+        elif self.tgc_curve.size == 0:
+            return None
+        else:
+            return Tgc(values=self.tgc_curve)
 
     def get_n_samples(self):
         """

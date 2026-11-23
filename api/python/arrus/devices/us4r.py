@@ -97,7 +97,13 @@ class Us4R(Device, Ultrasound):
         """
         Sets TGC samples for given TGC description.
 
-        :param tgc_curve: tgc curve to set; None value turns off analog TGC.
+        If the TGC curve has a name (arrus.ops.us4r.Tgc.name, arrus.ops.tgc.LinearTgc.name), the TGC curve with
+        that name is updated (the curve should be one of the curves specified in the uploaded sequences).
+        Otherwise, the TGC curve with name "default" is updated. If no TGC curve was specified in the uploaded
+        sequences, the given curve is applied for all TX/RXs.
+
+        :param tgc_curve: tgc curve to set: arrus.ops.us4r.Tgc, arrus.ops.tgc.LinearTgc, a list of TGC values
+         (for the device TGC sampling points) or a pair (time points, values); None value turns off analog TGC.
         :param apply_characteristic: set it to true if you want to compensate response characteristic (pre-computed
          by us4us). If true, LNA and PGA gains should be set to 24 an 30 dB, respectively, otherwise the
          ValueError will be thrown.
@@ -106,6 +112,8 @@ class Us4R(Device, Ultrasound):
          (resulting from amplifier settings such as LNA and PGA) is exceeded.
          This parameter is ignored when tgc_curve.clip is True, or tgc_curve is None.
         """
+        import arrus.ops.us4r
+        import arrus.utils.core
         if tgc_curve is None:
             self._handle.setTgcCurve([])
             return
@@ -115,11 +123,20 @@ class Us4R(Device, Ultrasound):
                                  "Make sure a TX/RX sequence is uploaded and "
                                  "a medium was specified. ")
             clip = tgc_curve.clip
-            tgc_curve = arrus.kernels.tgc.compute_linear_tgc(
+            t, y = arrus.kernels.tgc.compute_linear_tgc(
                 self._tgc_context,
                 self.current_sampling_frequency,
                 tgc_curve,
             )
+            if len(y) == 0:
+                # Turn off the TGC curve with the given name.
+                tgc_curve = arrus.ops.us4r.Tgc(values=[], name=tgc_curve.name)
+            else:
+                tgc_curve = arrus.ops.us4r.Tgc(values=y, time=t, name=tgc_curve.name)
+        if isinstance(tgc_curve, arrus.ops.us4r.Tgc):
+            core_tgc = arrus.utils.core.convert_to_core_tgc(tgc_curve)
+            self._handle.setTgcCurve(core_tgc, apply_characteristic, clip)
+            return
         elif not isinstance(tgc_curve, Iterable):
             raise ValueError(f"Unrecognized tgc type: {type(tgc_curve)}")
         # Here, TGC curve is iterable.
@@ -128,7 +145,7 @@ class Us4R(Device, Ultrasound):
                 isinstance(tgc_curve[0], Iterable)
                 and isinstance(tgc_curve[1], Iterable)):
             t, y = tgc_curve
-            self._handle.setTgcCurve(list(t), list(y), apply_characteristic, clip)
+            self._handle.setTgcCurve([float(v) for v in t], [float(v) for v in y], apply_characteristic, clip)
         else:
             # Otherwise, assume list of floats, use by default TGC sampling
             # points.
@@ -260,11 +277,12 @@ class Us4R(Device, Ultrasound):
         self._handle.stop()
 
     def set_tgc_and_context(self, sequences, medium):
-        self._tgc_context, tgc = self._get_unique_tgc_context_and_tgc(
+        # NOTE: the TGC curves are now passed to the device on upload (see Session.upload); here only the
+        # context (used to compute LinearTgc in set_tgc) is determined.
+        self._tgc_context = self._get_unique_tgc_context(
             sequences=sequences,
             medium=medium
         )
-        self.set_tgc(tgc)
 
     def get_probe_model(self, ordinal=0):
         """
@@ -512,18 +530,19 @@ class Us4R(Device, Ultrasound):
             frame_offsets=frame_offsets,
             n_frames=n_frames,
             batch_size=sequence.n_repeats)
-    def _get_unique_tgc_context_and_tgc(self, sequences, medium):
-        # Make sure that every sequence gives us the same TGC curve.
-        # For that:
-        # every should be the same
-        # every end_sample, speed_of_sound should be the same
-        tgcs = set()
+    def _get_unique_tgc_context(self, sequences, medium):
+        """
+        Returns the TGC calculation context, if it is the same for all the given sequences, otherwise None
+        (in that case, LinearTgc cannot be set using set_tgc).
+        """
         tgc_contexts = set()
         for seq in sequences:
             if isinstance(seq, arrus.ops.imaging.SimpleTxRxSequence):
-                # Determine TGC context
                 c = seq.speed_of_sound
-                c = c if c is not None else medium.speed_of_sound
+                c = c if c is not None else (medium.speed_of_sound if medium is not None else None)
+                if c is None:
+                    tgc_contexts.add(None)
+                    continue
                 sample_range = get_sample_range(
                     op=seq,
                     fs=self.current_sampling_frequency,
@@ -535,20 +554,8 @@ class Us4R(Device, Ultrasound):
                         speed_of_sound=c
                     )
                 )
-                # Determine TGC.
-                if seq.tgc_start is not None and seq.tgc_slope is not None:
-                    tgcs.add(arrus.ops.tgc.LinearTgc(
-                        start=seq.tgc_start,
-                        slope=seq.tgc_slope
-                    ))
-                else:
-                    tgcs.add(seq.tgc_curve)
             elif isinstance(seq, arrus.ops.us4r.TxRxSequence):
-                # Make the curve hashable.
-                curve = tuple(seq.tgc_curve.tolist())
-                tgcs.add(curve)
                 if medium is None:
-                    # No context
                     tgc_contexts.add(None)
                 else:
                     c = medium.speed_of_sound
@@ -567,20 +574,8 @@ class Us4R(Device, Ultrasound):
                 raise ValueError(f"Unsupported type of TX/RX sequence: "
                                  f"{type(seq)}")
         if len(tgc_contexts) != 1:
-            raise ValueError("The TGC setting context is not unique. "
-                             "Please make sure that all you sequences "
-                             "are of the same type,"
-                             "acquire the same number of samples and specify "
-                             "the same speed of sound. "
-                             f"Detected TGC contexts: {tgc_contexts}")
-        if len(tgcs) != 1:
-            raise ValueError("The TGC curve should be unique for all "
-                             "TX/RX sequences. Detected TGC curves: "
-                             f"{tgcs}")
-        tgc = next(iter(tgcs))
-        if isinstance(tgc, Iterable):
-            tgc = np.array(tgc)
-        return next(iter(tgc_contexts)), tgc
+            return None
+        return next(iter(tgc_contexts))
     def get_minimum_tgc_value(self):
         return self._handle.getMinimumTGCValue()
     def get_maximum_tgc_value(self):

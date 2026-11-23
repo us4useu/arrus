@@ -61,6 +61,8 @@ class SimpleTxRxSequence:
     :param speed_of_sound: assumed speed of sound [m/s]
     :param tgc_start: tgc starting gain [dB]
     :param tgc_slope: tgc gain slope [dB/m]
+    :param tgc_curve: TGC curve to apply [dB]. At most one of the following can be set: tgc_curve or
+      tgc_start/tgc_slope.
     :param sri: sequence repetition interval - the time between consecutive RF \
       frames. When None, the time between consecutive RF frames is determined \
       by the total pri only. [s]
@@ -91,7 +93,7 @@ class SimpleTxRxSequence:
     rx_aperture_size: int = None
     tgc_start: float = None
     tgc_slope: float = None
-    tgc_curve: list = None
+    tgc_curve: Union[list, "arrus.ops.us4r.Tgc", "arrus.ops.tgc.LinearTgc"] = None
     n_repeats: int = 1
     init_delay: str = "tx_start"
     rx_depth_range: tuple = None
@@ -160,7 +162,7 @@ class SimpleTxRxSequence:
             tx_aperture_size=self.tx_aperture_size,
             rx_aperture_center_element=self.rx_aperture_center_element,
             rx_aperture_center=self.rx_aperture_center,
-            tgc_curve=self.tgc_curve)
+            tgc_curve=self.tgc_curve if not self._is_tgc_object(self.tgc_curve) else None)
         # All given parameters should have the same length (or to be a scalar)
         self.__assert_same_length_lists(
             tx_focus=self.tx_focus,
@@ -170,6 +172,27 @@ class SimpleTxRxSequence:
             tx_aperture_size=self.tx_aperture_size,
             rx_aperture_center_element=self.rx_aperture_center_element,
             rx_aperture_center=self.rx_aperture_center)
+
+    @staticmethod
+    def _is_tgc_object(value):
+        import arrus.ops.tgc
+        return isinstance(value, (arrus.ops.us4r.Tgc, arrus.ops.tgc.LinearTgc))
+
+    def get_tgc(self):
+        """
+        Returns the TGC curve specified for this sequence: Tgc or LinearTgc, None if not specified.
+        """
+        import arrus.ops.tgc
+        if self.tgc_start is not None and self.tgc_slope is not None:
+            return arrus.ops.tgc.LinearTgc(start=self.tgc_start, slope=self.tgc_slope)
+        if self.tgc_curve is None:
+            return None
+        if self._is_tgc_object(self.tgc_curve):
+            return self.tgc_curve
+        values = np.asarray(self.tgc_curve)
+        if values.size == 0:
+            return None
+        return arrus.ops.us4r.Tgc(values=values)
 
     def __assert_at_most_one(self, **kwargs):
         keys, values = list(zip(*kwargs.items()))

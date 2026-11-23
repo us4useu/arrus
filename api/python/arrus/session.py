@@ -222,6 +222,7 @@ class Session(AbstractSession):
             )
             conversion_results = arrus.kernels.get_kernel(type(sequence))(kernel_context)
             raw_seq = conversion_results.sequence
+            raw_seq = self._resolve_tgcs(raw_seq, sequence, us_device, medium, scheme.digital_down_conversion)
             raw_seqs.append(raw_seq)
             tx_delay_constants.extend(conversion_results.constants)
 
@@ -565,6 +566,26 @@ class Session(AbstractSession):
             (arrus.core.DeviceType_CPU, 0) : arrus.devices.cpu.CPU(0)
         }
         return devices
+
+    def _resolve_tgcs(self, raw_seq, sequence, us_device, medium, ddc):
+        """
+        Resolves TGC curves of the given raw sequence (LinearTgc -> Tgc with time points).
+        """
+        speed_of_sound = getattr(sequence, "speed_of_sound", None)
+        if speed_of_sound is None and medium is not None:
+            speed_of_sound = medium.speed_of_sound
+        nominal_fs = us_device.sampling_frequency
+
+        def fs_for_rx(rx):
+            if ddc is not None:
+                return nominal_fs / ddc.decimation_factor
+            else:
+                return nominal_fs / rx.downsampling_factor
+        gain_range = None
+        if hasattr(us_device, "get_minimum_tgc_value") and hasattr(us_device, "get_maximum_tgc_value"):
+            gain_range = (us_device.get_minimum_tgc_value(), us_device.get_maximum_tgc_value())
+        return arrus.kernels.tgc.resolve_sequence_tgcs(
+            raw_seq, fs_for_rx=fs_for_rx, speed_of_sound=speed_of_sound, gain_range=gain_range)
 
     def _create_kernel_context(self, seq, device, medium, hardware_ddc,
                                constants):

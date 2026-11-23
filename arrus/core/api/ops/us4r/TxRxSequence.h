@@ -60,15 +60,18 @@ public:
      * Tx/Rx sequence to execute on Us4R device.
      *
      * @param sequence a list of tx/rxs that compose a given sequence
-     * @param tgcCurve tgc curve to apply
+     * @param tgcCurve tgc curve to apply for all TX/RXs of this sequence. A curve with no values no name,
+     *   no time points), e.g. {}, means that the TGC curve is not specified for the sequence (still, the TGC
+     *   curve can be specified for each Rx separately. NOTE: TGC can be specified either for the TxRxSequence, or for each (non-NOP) Rx
+     *   of the sequence.
      * @param sri sequence repetition interval - the total time that a given sequence should take.
      * @param nRepeats - the number of repetitions of a given sequence. Determines the size of the batch
      */
-    TxRxSequence(std::vector<TxRx> sequence, TGCCurve tgcCurve, float sri = NO_SRI, int16 nRepeats = 1, std::string name = "")
-        : txrxs(std::move(sequence)), tgcCurve(std::move(tgcCurve)), sri(sri), nRepeats(nRepeats), name(name) {}
+    TxRxSequence(std::vector<TxRx> sequence, Tgc tgcCurve, float sri = NO_SRI, int16 nRepeats = 1, std::string name = "")
+        : txrxs(std::move(sequence)), tgc(toOptional(std::move(tgcCurve))), sri(sri), nRepeats(nRepeats), name(name) {}
 
     TxRxSequence copy(std::vector<TxRx> ops) {
-        return TxRxSequence(std::move(ops), this->tgcCurve, this->sri.value(), this->nRepeats);
+        return TxRxSequence(std::move(ops), this->tgc.value_or(Tgc{}), this->sri.value(), this->nRepeats);
     }
 
     /**
@@ -77,9 +80,17 @@ public:
     const std::vector<TxRx> &getOps() const { return txrxs; }
 
     /**
-     * Initial TGC curve points.
+     * TGC curve to apply for all TX/RXs of this sequence; nullopt means that the TGC curve was not
+     * specified for the sequence.
      */
-    const TGCCurve &getTgcCurve() const { return tgcCurve; }
+    const std::optional<Tgc> &getTgc() const { return tgc; }
+
+    /**
+     * Initial TGC curve points (empty curve if not specified).
+     *
+     * @deprecated will be removed in ARRUS 2.0.0, use getTgc() instead.
+     */
+    Tgc getTgcCurve() const { return tgc.value_or(Tgc{}); }
 
     /**
      * Returns sequence repetition interval (the total time the given sequence should actually take).
@@ -137,8 +148,15 @@ public:
     const std::string &getName() const { return name; }
 
 private:
+    static std::optional<Tgc> toOptional(Tgc tgc) {
+        if(tgc.empty() && !tgc.hasName() && !tgc.hasTime()) {
+            return std::nullopt;
+        }
+        return tgc;
+    }
+
     std::vector<TxRx> txrxs;
-    TGCCurve tgcCurve;
+    std::optional<Tgc> tgc;
     std::optional<float> sri;
     int16 nRepeats;
     std::string name;

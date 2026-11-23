@@ -545,6 +545,7 @@ float arrusUs4OEMGetUCDExternalTemperature(::arrus::devices::Us4OEM *us4oem) {
 // Us4R
 %feature("valuewrapper");
 %{
+#include "Us4OEM/api/Tgc.h"
 #include "arrus/core/api/ops/us4r/tgc.h"
 #include "arrus/core/api/ops/us4r/Pulse.h"
 #include "arrus/core/api/ops/us4r/Waveform.h"
@@ -559,6 +560,12 @@ using namespace arrus::ops::us4r;
 
 
 %feature("valuewrapper") TxRx;
+%ignore us4us::us4r::operator<<;
+%ignore us4us::us4r::Tgc::getTime;
+%ignore us4us::us4r::Tgc::getName;
+%ignore us4us::us4r::TgcBuilder;
+%ignore us4us::us4r::Tgc::Tgc(std::initializer_list<float>);
+%include "Us4OEM/api/Tgc.h"
 %include "arrus/core/api/ops/us4r/tgc.h"
 %ignore arrus::ops::us4r::Pulse::toWaveform() const;
 %include "arrus/core/api/ops/us4r/Pulse.h"
@@ -584,6 +591,26 @@ namespace std {
 
 void TxRxVectorPushBack(std::vector<arrus::ops::us4r::TxRx> &txrxs, arrus::ops::us4r::TxRx &txrx) {
     txrxs.push_back(txrx);
+}
+
+::us4us::us4r::Tgc arrusCreateTgc(const std::vector<float> &values, bool hasTime, const std::vector<float> &time,
+                                   bool hasName, const std::string &name) {
+    std::optional<std::vector<float>> t = hasTime ? std::make_optional(time) : std::nullopt;
+    std::optional<std::string> n = hasName ? std::make_optional(name) : std::nullopt;
+    return ::us4us::us4r::Tgc{t, values, n};
+}
+
+bool arrusTgcHasName(const ::us4us::us4r::Tgc &tgc) { return tgc.hasName(); }
+std::string arrusTgcGetName(const ::us4us::us4r::Tgc &tgc) { return tgc.getName().value_or(""); }
+std::vector<float> arrusTgcGetTime(const ::us4us::us4r::Tgc &tgc) {
+    return tgc.getTime().value_or(std::vector<float>{});
+}
+
+::arrus::ops::us4r::Rx arrusCreateRxWithTgc(
+    std::vector<bool> aperture, std::pair<unsigned int, unsigned int> sampleRange, unsigned int downsamplingFactor,
+    std::pair<unsigned short, unsigned short> padding, ::arrus::devices::DeviceId placement,
+    const ::us4us::us4r::Tgc &tgc) {
+    return ::arrus::ops::us4r::Rx{std::move(aperture), sampleRange, downsamplingFactor, padding, placement, tgc};
 }
 
 void VectorFloatPushBack(std::vector<float> &vector, double value) {
