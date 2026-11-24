@@ -51,4 +51,7 @@ message Us4RSettings {
   oneof optional_allow_duplicate_oem_ids {
     bool allow_duplicate_oem_ids = 19;
   }
+  // Positions (in the list of OEMs sorted by ID) of the OEMs that should not be used (nor initialized).
+  // OEM 0 cannot be masked.
+  repeated uint32 oems_mask = 20;
 }

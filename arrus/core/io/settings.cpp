@@ -530,6 +530,10 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             adapterToUs4RModuleNr.emplace_back(static_cast<Ordinal>(nr));
         }
     }
+    std::vector<Ordinal> oemsMask;
+    for (auto &nr: us4r.oems_mask()) {
+        oemsMask.emplace_back(static_cast<Ordinal>(nr));
+    }
     WatchdogSettings watchdog = WatchdogSettings::defaultSettings();
     if(us4r.has_watchdog()) {
         auto enabled = us4r.watchdog().enabled();
@@ -578,7 +582,8 @@ Us4RSettings readUs4RSettings(const proto::Us4RSettings &us4r, const SettingsDic
             bitstreams,
             limits,
             watchdog,
-            allowDuplicateOEMIds
+            allowDuplicateOEMIds,
+            oemsMask
     };
 }
 Us4OEMSettings::ReprogrammingMode convertToReprogrammingMode(proto::Us4OEMSettings_ReprogrammingMode mode) {

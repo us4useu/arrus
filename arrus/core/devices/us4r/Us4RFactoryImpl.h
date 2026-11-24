@@ -2,6 +2,7 @@
 #define ARRUS_CORE_DEVICES_US4R_US4RFACTORYIMPL_H
 
 #include <stdexcept>
+#include <set>
 #include <unordered_set>
 #include <algorithm>
 #include <iterator>
@@ -69,7 +70,13 @@ public:
             // Get IUs4OEM handles only, without initializing them.
             // This is in order to enable internal trigger before
             // OEMs are initialized.
-            auto ius4oemHandles = getIUS4OEMs((Ordinal)(us4OEMSettings.size()), settings.isAllowDuplicateOEMIds());
+            // The adapter mapping (us4OEMSettings) refers to the not masked OEMs only, so we need to get
+            // additional OEMs for the masked ones.
+            std::set<Ordinal> oemsMask(std::begin(settings.getOemsMask()), std::end(settings.getOemsMask()));
+            auto ius4oemHandles = getIUS4OEMs((Ordinal)(us4OEMSettings.size() + oemsMask.size()),
+                                              settings.isAllowDuplicateOEMIds());
+            // Remove masked OEMs (before initialization).
+            ius4oemHandles = maskOEMs(std::move(ius4oemHandles), oemsMask);
 
             // initialization
             std::vector<IUs4OEM*> ius4oems;
@@ -123,6 +130,28 @@ private:
         // Modifies input list - sorts ius4oems by ID in ascending order.
         ius4oemInitializer->sortModulesById(ius4oems);
         return ius4oems;
+    }
+
+    /**
+     * Removes from the list of OEMs the OEMs at the given positions.
+     */
+    std::vector<IUs4OEMHandle> maskOEMs(std::vector<IUs4OEMHandle> ius4oems, const std::set<Ordinal> &mask) {
+        for (auto oem: mask) {
+            if (oem >= ius4oems.size()) {
+                throw IllegalArgumentException(::arrus::format(
+                    "OEMs mask: invalid OEM position: {}, the number of OEMs: {}", oem, ius4oems.size()));
+            }
+        }
+        std::vector<IUs4OEMHandle> result;
+        for (size_t i = 0; i < ius4oems.size(); ++i) {
+            if (mask.count(static_cast<Ordinal>(i)) > 0) {
+                getDefaultLogger()->log(LogSeverity::INFO, ::arrus::format(
+                    "OEM at position {} (ID: {}) is masked and will not be used.", i, ius4oems[i]->GetID()));
+            } else {
+                result.push_back(std::move(ius4oems[i]));
+            }
+        }
+        return result;
     }
 
     /**

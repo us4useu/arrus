@@ -12,6 +12,9 @@ public:
         : SettingsValidator<Us4RSettings>(DeviceId(DeviceType::Us4R, moduleOrdinal)) {}
 
     void validate(const Us4RSettings &obj) override {
+        for (auto oem: obj.getOemsMask()) {
+            expectTrue("oems mask", oem > 0, "OEM 0 cannot be masked (only values > 0 are allowed).");
+        }
         if (obj.getUs4OEMSettings().empty()) {
             expectTrue("probe adapter settings", obj.getProbeAdapterSettings().has_value(),
                        "Probe adapter settings are required.");

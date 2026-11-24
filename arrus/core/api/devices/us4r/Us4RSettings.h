@@ -38,6 +38,7 @@ namespace arrus::devices {
  * @param limits TX/RX constraints to apply on the system (e.g. minimum/maximum voltage, etc.).
  * @param watchdogSettings us4OEM+ watchdog settings.
  * @param allowDuplicateOEMIds whether we should allow to run system with duplicate OEM ids (e.g. due to connectivity issues).
+ * @param oemsMask OEMs that should not be used (nor initialized); positions in the list of all OEMs sorted by ID. OEM 0 cannot be masked. The probe adapter mapping and nUs4OEMs refer to the remaining OEMs only.
  */
 class Us4RSettings {
 public:
@@ -58,7 +59,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        std::vector<Ordinal> oemsMask = {}
     ) : probeAdapterSettings(std::move(probeAdapterSettings)),
           probeSettings(std::move(probeSettings)),
           rxSettings(std::move(rxSettings)),
@@ -73,7 +75,8 @@ public:
           bitstreams(std::move(bitstreams)),
           limits(std::move(limits)),
           watchdogSettings(std::move(watchdogSettings)),
-          allowDuplicateOEMIds(allowDuplicateOEMIds)
+          allowDuplicateOEMIds(allowDuplicateOEMIds),
+          oemsMask(std::move(oemsMask))
     {}
 
     Us4RSettings(
@@ -91,7 +94,8 @@ public:
         std::vector<Bitstream> bitstreams = std::vector<Bitstream>(),
         std::optional<Us4RTxRxLimits> limits = std::nullopt,
         WatchdogSettings watchdogSettings = WatchdogSettings::defaultSettings(),
-        bool allowDuplicateOEMIds = true
+        bool allowDuplicateOEMIds = true,
+        std::vector<Ordinal> oemsMask = {}
         ) : Us4RSettings(
                 std::move(probeAdapterSettings),
                 std::vector<ProbeSettings>{std::move(probeSettings)},
@@ -107,7 +111,8 @@ public:
                 std::move(bitstreams),
                 std::move(limits),
                 std::move(watchdogSettings),
-                allowDuplicateOEMIds
+                allowDuplicateOEMIds,
+                std::move(oemsMask)
         )
     {}
 
@@ -204,6 +209,8 @@ public:
 
     bool isAllowDuplicateOEMIds() const { return allowDuplicateOEMIds; }
 
+    const std::vector<Ordinal> &getOemsMask() const { return oemsMask; }
+
 private:
     /* A list of settings for Us4OEMs.
      * First element configures Us4OEM:0, second: Us4OEM:1, etc. */
@@ -263,6 +270,11 @@ private:
       * the software.
       */
      bool allowDuplicateOEMIds{true};
+     /**
+      * OEMs that should not be used (nor initialized): positions in the list of all OEMs sorted by ID.
+      * OEM 0 cannot be masked. The probe adapter mapping and nUs4OEMs refer to the remaining OEMs only.
+      */
+     std::vector<Ordinal> oemsMask;
 };
 
 }
